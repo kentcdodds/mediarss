@@ -15,7 +15,7 @@ sqlite3 $CACHE_DATABASE_PATH "PRAGMA journal_mode = WAL;"
 
 # Generate Prisma types
 echo "Generating Prisma types..."
-npx prisma generate --sql
+npx prisma generate
 
 # Start the application
 echo "Starting the application..."

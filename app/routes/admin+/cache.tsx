@@ -1,5 +1,4 @@
 import { invariantResponse } from '@epic-web/invariant'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import {
 	redirect,
 	Form,
@@ -18,18 +17,9 @@ import {
 	lruCache,
 	searchCacheKeys,
 } from '#app/utils/cache.server.ts'
-import {
-	ensureInstance,
-	getAllInstances,
-	getInstanceInfo,
-} from '#app/utils/litefs.server.ts'
 import { useDebounce, useDoubleCheck } from '#app/utils/misc.tsx'
 import { requireUserWithRole } from '#app/utils/permissions.server.ts'
 import { type Route } from './+types/cache.ts'
-
-export const handle: SEOHandle = {
-	getSitemapEntries: () => null,
-}
 
 export async function loader({ request }: Route.LoaderArgs) {
 	await requireUserWithRole(request, 'admin')
@@ -41,33 +31,23 @@ export async function loader({ request }: Route.LoaderArgs) {
 	}
 	const limit = Number(searchParams.get('limit') ?? 100)
 
-	const currentInstanceInfo = await getInstanceInfo()
-	const instance =
-		searchParams.get('instance') ?? currentInstanceInfo.currentInstance
-	const instances = await getAllInstances()
-	await ensureInstance(instance)
-
 	let cacheKeys: { sqlite: Array<string>; lru: Array<string> }
 	if (typeof query === 'string') {
 		cacheKeys = await searchCacheKeys(query, limit)
 	} else {
 		cacheKeys = await getAllCacheKeys(limit)
 	}
-	return { cacheKeys, instance, instances, currentInstanceInfo }
+	return { cacheKeys }
 }
 
 export async function action({ request }: Route.ActionArgs) {
 	await requireUserWithRole(request, 'admin')
 	const formData = await request.formData()
 	const key = formData.get('cacheKey')
-	const { currentInstance } = await getInstanceInfo()
-	const instance = formData.get('instance') ?? currentInstance
 	const type = formData.get('type')
 
 	invariantResponse(typeof key === 'string', 'cacheKey must be a string')
 	invariantResponse(typeof type === 'string', 'type must be a string')
-	invariantResponse(typeof instance === 'string', 'instance must be a string')
-	await ensureInstance(instance)
 
 	switch (type) {
 		case 'sqlite': {
@@ -90,7 +70,6 @@ export default function CacheAdminRoute({ loaderData }: Route.ComponentProps) {
 	const submit = useSubmit()
 	const query = searchParams.get('query') ?? ''
 	const limit = searchParams.get('limit') ?? '100'
-	const instance = searchParams.get('instance') ?? loaderData.instance
 
 	const handleFormChange = useDebounce(async (form: HTMLFormElement) => {
 		await submit(form)
@@ -145,48 +124,20 @@ export default function CacheAdminRoute({ loaderData }: Route.ComponentProps) {
 							placeholder: 'results limit',
 						}}
 					/>
-					<select name="instance" defaultValue={instance}>
-						{Object.entries(loaderData.instances).map(([inst, region]) => (
-							<option key={inst} value={inst}>
-								{[
-									inst,
-									`(${region})`,
-									inst === loaderData.currentInstanceInfo.currentInstance
-										? '(current)'
-										: '',
-									inst === loaderData.currentInstanceInfo.primaryInstance
-										? ' (primary)'
-										: '',
-								]
-									.filter(Boolean)
-									.join(' ')}
-							</option>
-						))}
-					</select>
 				</div>
 			</Form>
 			<Spacer size="2xs" />
 			<div className="flex flex-col gap-4">
 				<h2 className="text-h2">LRU Cache:</h2>
 				{loaderData.cacheKeys.lru.map((key) => (
-					<CacheKeyRow
-						key={key}
-						cacheKey={key}
-						instance={instance}
-						type="lru"
-					/>
+					<CacheKeyRow key={key} cacheKey={key} type="lru" />
 				))}
 			</div>
 			<Spacer size="3xs" />
 			<div className="flex flex-col gap-4">
 				<h2 className="text-h2">SQLite Cache:</h2>
 				{loaderData.cacheKeys.sqlite.map((key) => (
-					<CacheKeyRow
-						key={key}
-						cacheKey={key}
-						instance={instance}
-						type="sqlite"
-					/>
+					<CacheKeyRow key={key} cacheKey={key} type="sqlite" />
 				))}
 			</div>
 		</div>
@@ -195,22 +146,19 @@ export default function CacheAdminRoute({ loaderData }: Route.ComponentProps) {
 
 function CacheKeyRow({
 	cacheKey,
-	instance,
 	type,
 }: {
 	cacheKey: string
-	instance?: string
 	type: 'sqlite' | 'lru'
 }) {
 	const fetcher = useFetcher<typeof action>()
 	const dc = useDoubleCheck()
 	const encodedKey = encodeURIComponent(cacheKey)
-	const valuePage = `/admin/cache/${type}/${encodedKey}?instance=${instance}`
+	const valuePage = `/admin/cache/${type}/${encodedKey}`
 	return (
 		<div className="flex items-center gap-2 font-mono">
 			<fetcher.Form method="POST">
 				<input type="hidden" name="cacheKey" value={cacheKey} />
-				<input type="hidden" name="instance" value={instance} />
 				<input type="hidden" name="type" value={type} />
 				<Button
 					size="sm"

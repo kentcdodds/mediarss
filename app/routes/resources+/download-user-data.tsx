@@ -1,34 +1,33 @@
 import { requireUserId } from '#app/utils/auth.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
-import { getDomainUrl, getNoteImgSrc, getUserImgSrc } from '#app/utils/misc.tsx'
+import { getDomainUrl, getFeedImgSrc } from '#app/utils/misc.tsx'
 import { type Route } from './+types/download-user-data.ts'
 
 export async function loader({ request }: Route.LoaderArgs) {
 	const userId = await requireUserId(request)
 	const user = await prisma.user.findUniqueOrThrow({
 		where: { id: userId },
-		// this is one of the *few* instances where you can use "include" because
-		// the goal is to literally get *everything*. Normally you should be
-		// explicit with "select". We're using select for images because we don't
-		// want to send back the entire blob of the image. We'll send a URL they can
-		// use to download it instead.
 		include: {
-			image: {
+			feeds: {
 				select: {
-					id: true,
-					createdAt: true,
-					updatedAt: true,
-					objectKey: true,
-				},
-			},
-			notes: {
-				include: {
-					images: {
+					image: {
 						select: {
 							id: true,
-							createdAt: true,
-							updatedAt: true,
-							objectKey: true,
+							link: true,
+							title: true,
+							description: true,
+						},
+					},
+					media: true,
+					subscribers: {
+						select: {
+							user: {
+								select: {
+									id: true,
+									name: true,
+									username: true,
+								},
+							},
 						},
 					},
 				},
@@ -44,18 +43,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 	return Response.json({
 		user: {
 			...user,
-			image: user.image
-				? {
-						...user.image,
-						url: domain + getUserImgSrc(user.image.objectKey),
-					}
-				: null,
-			notes: user.notes.map((note) => ({
-				...note,
-				images: note.images.map((image) => ({
-					...image,
-					url: domain + getNoteImgSrc(image.objectKey),
-				})),
+			feeds: user.feeds.map((feed) => ({
+				...feed,
+				image: feed.image
+					? {
+							...feed.image,
+							url: domain + getFeedImgSrc(feed.image.id),
+						}
+					: null,
 			})),
 		},
 	})

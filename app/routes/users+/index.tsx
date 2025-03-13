@@ -1,21 +1,25 @@
-import { searchUsers } from '@prisma/client/sql'
-import { Img } from 'openimg/react'
 import { redirect, Link } from 'react-router'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { ErrorList } from '#app/components/forms.tsx'
 import { SearchBar } from '#app/components/search-bar.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import { cn, getUserImgSrc, useDelayedIsPending } from '#app/utils/misc.tsx'
+import { cn, useDelayedIsPending } from '#app/utils/misc.tsx'
 import { type Route } from './+types/index.ts'
 
 export async function loader({ request }: Route.LoaderArgs) {
 	const searchTerm = new URL(request.url).searchParams.get('search')
-	if (searchTerm === '') {
+	if (!searchTerm) {
 		return redirect('/users')
 	}
 
-	const like = `%${searchTerm ?? ''}%`
-	const users = await prisma.$queryRawTyped(searchUsers(like))
+	const users = await prisma.user.findMany({
+		where: {
+			OR: [
+				{ name: { contains: searchTerm } },
+				{ username: { contains: searchTerm } },
+			],
+		},
+	})
 	return { status: 'idle', users } as const
 }
 
@@ -27,7 +31,7 @@ export default function UsersRoute({ loaderData }: Route.ComponentProps) {
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
-			<h1 className="text-h1">Epic Notes Users</h1>
+			<h1 className="text-h1">mediarss Users</h1>
 			<div className="w-full max-w-[700px]">
 				<SearchBar status={loaderData.status} autoFocus autoSubmit />
 			</div>
@@ -44,15 +48,8 @@ export default function UsersRoute({ loaderData }: Route.ComponentProps) {
 								<li key={user.id}>
 									<Link
 										to={user.username}
-										className="flex h-36 w-44 flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
+										className="rounded-lg bg-muted px-5 py-3"
 									>
-										<Img
-											alt={user.name ?? user.username}
-											src={getUserImgSrc(user.imageObjectKey)}
-											className="h-16 w-16 rounded-full"
-											width={256}
-											height={256}
-										/>
 										{user.name ? (
 											<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">
 												{user.name}

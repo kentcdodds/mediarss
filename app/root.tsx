@@ -63,7 +63,7 @@ export const links: Route.LinksFunction = () => {
 
 export const meta: Route.MetaFunction = ({ data }) => {
 	return [
-		{ title: data ? 'Epic Notes' : 'Error | Epic Notes' },
+		{ title: data ? 'mediarss' : 'Error | mediarss' },
 		{ name: 'description', content: `Your own captain's log` },
 	]
 }
@@ -84,7 +84,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 							id: true,
 							name: true,
 							username: true,
-							image: { select: { objectKey: true } },
 							roles: {
 								select: {
 									name: true,
@@ -145,7 +144,6 @@ function Document({
 	theme?: Theme
 	env?: Record<string, string | undefined>
 }) {
-	const allowIndexing = ENV.ALLOW_INDEXING !== 'false'
 	return (
 		<html lang="en" className={`${theme} h-full overflow-x-hidden`}>
 			<head>
@@ -153,9 +151,7 @@ function Document({
 				<Meta />
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width,initial-scale=1" />
-				{allowIndexing ? null : (
-					<meta name="robots" content="noindex, nofollow" />
-				)}
+				<meta name="robots" content="noindex, nofollow" />
 				<Links />
 			</head>
 			<body className="bg-background text-foreground">
@@ -238,10 +234,10 @@ function Logo() {
 	return (
 		<Link to="/" className="group grid leading-snug">
 			<span className="font-light transition group-hover:-translate-x-1">
-				epic
+				media
 			</span>
 			<span className="font-bold transition group-hover:translate-x-1">
-				notes
+				rss
 			</span>
 		</Link>
 	)

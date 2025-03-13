@@ -7,7 +7,7 @@ FROM node:22-bookworm-slim as base
 ENV NODE_ENV production
 
 # Install openssl for Prisma
-RUN apt-get update && apt-get install -y fuse3 openssl sqlite3 ca-certificates
+RUN apt-get update && apt-get install -y openssl sqlite3 ca-certificates
 
 # Install all node_modules, including dev dependencies
 FROM base as deps
@@ -55,14 +55,15 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
 FROM base
 
 ENV FLY="true"
-ENV LITEFS_DIR="/litefs/data"
+ENV MEDIA_PATH="/media"
+ENV DATA_PATH="/data"
 ENV DATABASE_FILENAME="sqlite.db"
-ENV DATABASE_PATH="$LITEFS_DIR/$DATABASE_FILENAME"
+ENV DATABASE_PATH="$DATA_PATH/$DATABASE_FILENAME"
 ENV DATABASE_URL="file:$DATABASE_PATH"
 ENV CACHE_DATABASE_FILENAME="cache.db"
-ENV CACHE_DATABASE_PATH="$LITEFS_DIR/$CACHE_DATABASE_FILENAME"
-ENV INTERNAL_PORT="8080"
-ENV PORT="8081"
+ENV CACHE_DATABASE_PATH="$DATA_PATH/$CACHE_DATABASE_FILENAME"
+ENV INTERNAL_PORT="8765"
+ENV PORT="8765"
 ENV NODE_ENV="production"
 # For WAL support: https://github.com/prisma/prisma-engines/issues/4675#issuecomment-1914383246
 ENV PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK = "1"
@@ -71,10 +72,6 @@ ENV PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK = "1"
 RUN echo "#!/bin/sh\nset -x\nsqlite3 \$DATABASE_URL" > /usr/local/bin/database-cli && chmod +x /usr/local/bin/database-cli
 
 WORKDIR /myapp
-
-# Generate random value and save it to .env file which will be loaded by dotenv
-RUN INTERNAL_COMMAND_TOKEN=$(openssl rand -hex 32) && \
-  echo "INTERNAL_COMMAND_TOKEN=$INTERNAL_COMMAND_TOKEN" > .env
 
 COPY --from=production-deps /myapp/node_modules /myapp/node_modules
 COPY --from=build /myapp/node_modules/.prisma /myapp/node_modules/.prisma
@@ -85,11 +82,11 @@ COPY --from=build /myapp/package.json /myapp/package.json
 COPY --from=build /myapp/prisma /myapp/prisma
 COPY --from=build /myapp/app/components/ui/icons /myapp/app/components/ui/icons
 
-# prepare for litefs
-COPY --from=flyio/litefs:0.5.11 /usr/local/bin/litefs /usr/local/bin/litefs
-ADD other/litefs.yml /etc/litefs.yml
-RUN mkdir -p /data ${LITEFS_DIR}
+# Create base directories
+RUN mkdir -p $DATA_PATH $MEDIA_PATH
 
 ADD . .
+COPY other/start.sh ./start.sh
+RUN chmod +x ./start.sh
 
-CMD ["litefs", "mount"]
+CMD ["./start.sh"]

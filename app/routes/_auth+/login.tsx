@@ -1,6 +1,5 @@
 import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { useOptimistic, useState, useTransition } from 'react'
 import { data, Form, Link, useNavigate, useSearchParams } from 'react-router'
@@ -12,19 +11,11 @@ import { Spacer } from '#app/components/spacer.tsx'
 import { Icon } from '#app/components/ui/icon.tsx'
 import { StatusButton } from '#app/components/ui/status-button.tsx'
 import { login, requireAnonymous } from '#app/utils/auth.server.ts'
-import {
-	ProviderConnectionForm,
-	providerNames,
-} from '#app/utils/connections.tsx'
 import { checkHoneypot } from '#app/utils/honeypot.server.ts'
 import { getErrorMessage, useIsPending } from '#app/utils/misc.tsx'
 import { PasswordSchema, UsernameSchema } from '#app/utils/user-validation.ts'
 import { type Route } from './+types/login.ts'
 import { handleNewSession } from './login.server.ts'
-
-export const handle: SEOHandle = {
-	getSitemapEntries: () => null,
-}
 
 const LoginFormSchema = z.object({
 	username: UsernameSchema,
@@ -180,17 +171,6 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
 							/>
 						</div>
 						<hr className="my-4" />
-						<ul className="flex flex-col gap-5">
-							{providerNames.map((providerName) => (
-								<li key={providerName}>
-									<ProviderConnectionForm
-										type="Login"
-										providerName={providerName}
-										redirectTo={redirectTo}
-									/>
-								</li>
-							))}
-						</ul>
 						<div className="flex items-center justify-center gap-2 pt-6">
 							<span className="text-muted-foreground">New here?</span>
 							<Link
@@ -299,7 +279,7 @@ function PasskeyLogin({
 }
 
 export const meta: Route.MetaFunction = () => {
-	return [{ title: 'Login to Epic Notes' }]
+	return [{ title: 'Login to mediarss' }]
 }
 
 export function ErrorBoundary() {

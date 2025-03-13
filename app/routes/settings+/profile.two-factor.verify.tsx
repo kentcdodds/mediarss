@@ -1,6 +1,5 @@
 import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import * as QRCode from 'qrcode'
 import { data, redirect, Form, useNavigation } from 'react-router'
 import { z } from 'zod'
@@ -17,9 +16,8 @@ import { type Route } from './+types/profile.two-factor.verify.ts'
 import { type BreadcrumbHandle } from './profile.tsx'
 import { twoFAVerificationType } from './profile.two-factor.tsx'
 
-export const handle: BreadcrumbHandle & SEOHandle = {
+export const handle: BreadcrumbHandle = {
 	breadcrumb: <Icon name="check">Verify</Icon>,
-	getSitemapEntries: () => null,
 }
 
 const CancelSchema = z.object({ intent: z.literal('cancel') })
@@ -54,12 +52,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 	}
 	const user = await prisma.user.findUniqueOrThrow({
 		where: { id: userId },
-		select: { email: true },
+		select: { username: true },
 	})
 	const issuer = new URL(getDomainUrl(request)).host
 	const otpUri = getTOTPAuthUri({
 		...verification,
-		accountName: user.email,
+		accountName: user.username,
 		issuer,
 	})
 	const qrCode = await QRCode.toDataURL(otpUri)

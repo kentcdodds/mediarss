@@ -1,6 +1,5 @@
 import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import { Form, useSearchParams } from 'react-router'
 import { HoneypotInputs } from 'remix-utils/honeypot/react'
 import { z } from 'zod'
@@ -13,15 +12,11 @@ import { useIsPending } from '#app/utils/misc.tsx'
 import { type Route } from './+types/verify.ts'
 import { validateRequest } from './verify.server.ts'
 
-export const handle: SEOHandle = {
-	getSitemapEntries: () => null,
-}
-
 export const codeQueryParam = 'code'
 export const targetQueryParam = 'target'
 export const typeQueryParam = 'type'
 export const redirectToQueryParam = 'redirectTo'
-const types = ['onboarding', 'reset-password', 'change-email', '2fa'] as const
+const types = ['2fa'] as const
 const VerificationTypeSchema = z.enum(types)
 export type VerificationTypes = z.infer<typeof VerificationTypeSchema>
 
@@ -46,19 +41,7 @@ export default function VerifyRoute({ actionData }: Route.ComponentProps) {
 	)
 	const type = parseWithZoddType.success ? parseWithZoddType.data : null
 
-	const checkEmail = (
-		<>
-			<h1 className="text-h1">Check your email</h1>
-			<p className="mt-3 text-body-md text-muted-foreground">
-				We've sent you a code to verify your email address.
-			</p>
-		</>
-	)
-
 	const headings: Record<VerificationTypes, React.ReactNode> = {
-		onboarding: checkEmail,
-		'reset-password': checkEmail,
-		'change-email': checkEmail,
 		'2fa': (
 			<>
 				<h1 className="text-h1">Check your 2FA app</h1>

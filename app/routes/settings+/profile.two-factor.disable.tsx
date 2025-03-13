@@ -1,4 +1,3 @@
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import { useFetcher } from 'react-router'
 import { Icon } from '#app/components/ui/icon.tsx'
 import { StatusButton } from '#app/components/ui/status-button.tsx'
@@ -11,9 +10,8 @@ import { type Route } from './+types/profile.two-factor.disable.ts'
 import { type BreadcrumbHandle } from './profile.tsx'
 import { twoFAVerificationType } from './profile.two-factor.tsx'
 
-export const handle: BreadcrumbHandle & SEOHandle = {
+export const handle: BreadcrumbHandle = {
 	breadcrumb: <Icon name="lock-open-1">Disable</Icon>,
-	getSitemapEntries: () => null,
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

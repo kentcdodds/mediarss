@@ -1,54 +1,224 @@
+# mediarss
+
 <div align="center">
-  <h1 align="center"><a href="https://www.epicweb.dev/epic-stack">The Epic Stack 🚀</a></h1>
+  <h1 align="center">mediarss</h1>
   <strong align="center">
-    Ditch analysis paralysis and start shipping Epic Web apps.
+    An RSS feed generator for media (audio/video).
   </strong>
-  <p>
-    This is an opinionated project starter and reference that allows teams to
-    ship their ideas to production faster and on a more stable foundation based
-    on the experience of <a href="https://kentcdodds.com">Kent C. Dodds</a> and
-    <a href="https://github.com/epicweb-dev/epic-stack/graphs/contributors">contributors</a>.
-  </p>
 </div>
 
-```sh
-npx create-epic-app@latest
+## Self-Hosting
+
+### Prerequisites
+
+- Docker
+- A server or machine to host the application
+- Basic understanding of Docker volumes for data persistence
+- Media files organized in one or more directories on your host machine
+
+### Synology NAS Setup
+
+If you're running this on a Synology NAS, follow these specific instructions:
+
+1. Install Docker from the Synology Package Center if you haven't already.
+
+2. Create a shared folder for the database files:
+
+   - Open Control Panel → Shared Folder
+   - Create a new shared folder named `docker-data` (or your preferred name)
+   - Inside this folder, create a directory called `mediarss`
+
+3. Note your media locations:
+
+   - Synology typically stores media files in `/volume1/[shared-folder-name]`
+   - You can mount any number of media directories from your Synology
+
+4. Open Docker in Synology DSM:
+
+   - Go to "Registry" and search for the mediarss image
+   - Download the image
+   - Go to "Container" and launch using the image
+
+5. When setting up the container in the Synology Docker UI:
+
+   - In the "Advanced Settings" → "Volume" tab:
+     - Add a volume mount for the database:
+       - Mount path: `/data`
+       - Local path: `/volume1/docker-data/mediarss`
+     - Add your media volume mounts (add as many as you need):
+       - Mount path: `/media/[your-name]` (e.g., `/media/shows`,
+         `/media/personal`, etc.)
+       - Local path: `/volume1/[your-folder]`
+       - Check "Read-only"
+   - In the "Port Settings" tab:
+
+     - Local Port: 8765 (or your preferred port)
+     - Container Port: 8765
+
+   - In the "Environment" tab:
+     - Add the standard environment variables as needed
+     - For multiple media paths, specify them in MEDIA_PATHS:
+       - Variable: MEDIA_PATHS
+       - Value: /media/shows:/media/personal (colon-separated list of your mount
+         points)
+
+The rest of the standard instructions apply for managing the container.
+
+### Quick Start (Non-Synology)
+
+1. Pull the Docker image:
+
+```bash
+docker pull [your-image-name]
 ```
 
-[![The Epic Stack](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/246885449-1b00286c-aa3d-44b2-9ef2-04f694eb3592.png)](https://www.epicweb.dev/epic-stack)
+2. Create directories for persistent storage and ensure your media directories
+   exist:
 
-[The Epic Stack](https://www.epicweb.dev/epic-stack)
+```bash
+# Create directory for database storage
+mkdir -p /path/to/your/data
 
-<hr />
+# Your media directories should already exist
+```
 
-## Watch Kent's Introduction to The Epic Stack
+3. Run the container:
 
-[![Epic Stack Talk slide showing Flynn Rider with knives, the text "I've been around and I've got opinions" and Kent speaking in the corner](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/277818553-47158e68-4efc-43ae-a477-9d1670d4217d.png)](https://www.epicweb.dev/talks/the-epic-stack)
+```bash
+docker run -d \
+  --name mediarss \
+  -p 8765:8765 \
+  -v /path/to/your/data:/data \
+  -v /path/to/media1:/media/shows:ro \
+  -v /path/to/media2:/media/personal:ro \
+  -v /path/to/media3:/media/other:ro \
+  -e MEDIA_PATHS=/media/shows:/media/personal:/media/other \
+  [your-image-name]
+```
 
-["The Epic Stack" by Kent C. Dodds](https://www.epicweb.dev/talks/the-epic-stack)
+Note: The `:ro` flag in the media volume mounts makes them read-only, which is
+recommended for security.
 
-## Docs
+### Volume Mounts
 
-[Read the docs](https://github.com/epicweb-dev/epic-stack/blob/main/docs)
-(please 🙏).
+The application requires these volume mounts:
 
-## Support
+1. **Database Volume** (`/data`):
 
-- 🆘 Join the
-  [discussion on GitHub](https://github.com/epicweb-dev/epic-stack/discussions)
-  and the [KCD Community on Discord](https://kcd.im/discord).
-- 💡 Create an
-  [idea discussion](https://github.com/epicweb-dev/epic-stack/discussions/new?category=ideas)
-  for suggestions.
-- 🐛 Open a [GitHub issue](https://github.com/epicweb-dev/epic-stack/issues) to
-  report a bug.
+   - Purpose: Stores SQLite databases
+   - Mount point: `/data`
+   - Example: `-v /path/to/your/data:/data`
 
-## Branding
+2. **Media Volumes** (any number allowed):
+   - Purpose: Access to your media files
+   - Mount point pattern: `/media/[your-name]`
+   - Examples:
+     - `-v /path/to/media1:/media/shows:ro`
+     - `-v /path/to/media2:/media/personal:ro`
+   - Should be mounted read-only (`:ro`)
+   - Name the mount points anything that makes sense for your use case
 
-Want to talk about the Epic Stack in a blog post or talk? Great! Here are some
-assets you can use in your material:
-[EpicWeb.dev/brand](https://epicweb.dev/brand)
+### Media Directory Structure
 
-## Thanks
+You can organize your media directories however you prefer. Here's an example
+structure:
 
-You rock 🪨
+```
+/media/shows/
+├── educational/
+│   ├── course1/
+│   └── course2/
+└── entertainment/
+    ├── show1/
+    └── show2/
+
+/media/personal/
+├── family-videos/
+└── recordings/
+
+/media/other/
+└── misc-media/
+```
+
+### Environment Variables
+
+The following environment variables can be configured:
+
+- `PORT`: External port (default: 8765)
+- `INTERNAL_PORT`: Internal port (default: 8765)
+- `DATABASE_PATH`: Path to the main SQLite database (default: /data/sqlite.db)
+- `CACHE_DATABASE_PATH`: Path to the cache SQLite database (default:
+  /data/cache.db)
+- `MEDIA_PATHS`: Colon-separated list of media directories inside container
+  (e.g., /media/shows:/media/personal)
+
+### Database Persistence
+
+The application uses SQLite for both the main database and cache storage. Both
+databases are stored in the `/data` directory inside the container:
+
+- Main database: `/data/sqlite.db`
+- Cache database: `/data/cache.db`
+
+To ensure your data persists between container restarts and updates, you
+**must** mount a volume or bind mount to the `/data` directory as shown in the
+run command above.
+
+### Backup and Restore
+
+To backup your databases, simply copy the files from your mounted data
+directory. For example:
+
+```bash
+# Stop the container before backup
+docker stop mediarss
+
+# Backup the databases
+cp /path/to/your/data/sqlite.db /path/to/backup/sqlite.db
+cp /path/to/your/data/cache.db /path/to/backup/cache.db
+
+# Restart the container
+docker start mediarss
+```
+
+To restore from backup:
+
+```bash
+# Stop the container
+docker stop mediarss
+
+# Restore the databases
+cp /path/to/backup/sqlite.db /path/to/your/data/sqlite.db
+cp /path/to/backup/cache.db /path/to/your/data/cache.db
+
+# Restart the container
+docker start mediarss
+```
+
+### Upgrading
+
+To upgrade to a new version:
+
+```bash
+# Pull the new image
+docker pull [your-image-name]
+
+# Stop the current container
+docker stop mediarss
+
+# Remove the old container
+docker rm mediarss
+
+# Run the new container (using the same data directory and media mount)
+docker run -d \
+  --name mediarss \
+  -p 8765:8765 \
+  -v /path/to/your/data:/data \
+  -v /path/to/media1:/media/shows:ro \
+  -v /path/to/media2:/media/personal:ro \
+  -v /path/to/media3:/media/other:ro \
+  -e MEDIA_PATHS=/media/shows:/media/personal:/media/other \
+  [your-image-name]
+```
+
+Your data will be preserved as long as you use the same volume mount points.

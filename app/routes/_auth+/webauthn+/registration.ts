@@ -21,7 +21,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 	})
 	const user = await prisma.user.findUniqueOrThrow({
 		where: { id: userId },
-		select: { email: true, name: true, username: true },
+		select: { name: true, username: true },
 	})
 
 	const config = getWebAuthnConfig(request)
@@ -30,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 		rpID: config.rpID,
 		userName: user.username,
 		userID: new TextEncoder().encode(userId),
-		userDisplayName: user.name ?? user.email,
+		userDisplayName: user.name ?? user.username,
 		attestationType: 'none',
 		excludeCredentials: passkeys,
 		authenticatorSelection: {

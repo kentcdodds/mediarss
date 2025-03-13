@@ -1,26 +1,19 @@
 import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
-import { Img } from 'openimg/react'
 import { data, Link, useFetcher } from 'react-router'
 import { z } from 'zod'
 import { ErrorList, Field } from '#app/components/forms.tsx'
-import { Button } from '#app/components/ui/button.tsx'
 import { Icon } from '#app/components/ui/icon.tsx'
 import { StatusButton } from '#app/components/ui/status-button.tsx'
 import { requireUserId, sessionKey } from '#app/utils/auth.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
-import { getUserImgSrc, useDoubleCheck } from '#app/utils/misc.tsx'
+import { useDoubleCheck } from '#app/utils/misc.tsx'
 import { authSessionStorage } from '#app/utils/session.server.ts'
 import { redirectWithToast } from '#app/utils/toast.server.ts'
 import { NameSchema, UsernameSchema } from '#app/utils/user-validation.ts'
 import { type Route, type Info } from './+types/profile.index.ts'
 import { twoFAVerificationType } from './profile.two-factor.tsx'
-
-export const handle: SEOHandle = {
-	getSitemapEntries: () => null,
-}
 
 const ProfileFormSchema = z.object({
 	name: NameSchema.optional(),
@@ -35,10 +28,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 			id: true,
 			name: true,
 			username: true,
-			email: true,
-			image: {
-				select: { objectKey: true },
-			},
 			_count: {
 				select: {
 					sessions: {
@@ -100,43 +89,10 @@ export async function action({ request }: Route.ActionArgs) {
 export default function EditUserProfile({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="flex flex-col gap-12">
-			<div className="flex justify-center">
-				<div className="relative h-52 w-52">
-					<Img
-						src={getUserImgSrc(loaderData.user.image?.objectKey)}
-						alt={loaderData.user.username}
-						className="h-full w-full rounded-full object-cover"
-						width={832}
-						height={832}
-						isAboveFold
-					/>
-					<Button
-						asChild
-						variant="outline"
-						className="absolute -right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full p-0"
-					>
-						<Link
-							preventScrollReset
-							to="photo"
-							title="Change profile photo"
-							aria-label="Change profile photo"
-						>
-							<Icon name="camera" className="h-4 w-4" />
-						</Link>
-					</Button>
-				</div>
-			</div>
 			<UpdateProfile loaderData={loaderData} />
 
 			<div className="col-span-6 my-6 h-1 border-b-[1.5px] border-foreground" />
 			<div className="col-span-full flex flex-col gap-6">
-				<div>
-					<Link to="change-email">
-						<Icon name="envelope-closed">
-							Change email from {loaderData.user.email}
-						</Icon>
-					</Link>
-				</div>
 				<div>
 					<Link to="two-factor">
 						{loaderData.isTwoFactorEnabled ? (
@@ -154,11 +110,6 @@ export default function EditUserProfile({ loaderData }: Route.ComponentProps) {
 					</Link>
 				</div>
 				<div>
-					<Link to="connections">
-						<Icon name="link-2">Manage connections</Icon>
-					</Link>
-				</div>
-				<div>
 					<Link to="passkeys">
 						<Icon name="passkey">Manage passkeys</Icon>
 					</Link>
@@ -166,7 +117,7 @@ export default function EditUserProfile({ loaderData }: Route.ComponentProps) {
 				<div>
 					<Link
 						reloadDocument
-						download="my-epic-notes-data.json"
+						download="my-mediarss-data.json"
 						to="/resources/download-user-data"
 					>
 						<Icon name="download">Download your data</Icon>

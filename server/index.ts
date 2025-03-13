@@ -14,7 +14,6 @@ import { type ServerBuild } from 'react-router'
 const MODE = process.env.NODE_ENV ?? 'development'
 const IS_PROD = MODE === 'production'
 const IS_DEV = MODE === 'development'
-const ALLOW_INDEXING = process.env.ALLOW_INDEXING !== 'false'
 const SENTRY_ENABLED = IS_PROD && process.env.SENTRY_DSN
 
 if (SENTRY_ENABLED) {
@@ -185,12 +184,10 @@ async function getBuild() {
 	}
 }
 
-if (!ALLOW_INDEXING) {
-	app.use((_, res, next) => {
-		res.set('X-Robots-Tag', 'noindex, nofollow')
-		next()
-	})
-}
+app.use((_, res, next) => {
+	res.set('X-Robots-Tag', 'noindex, nofollow')
+	next()
+})
 
 app.all(
 	'*',

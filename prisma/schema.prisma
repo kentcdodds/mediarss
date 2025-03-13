@@ -13,66 +13,18 @@ datasource db {
 
 model User {
   id       String  @id @default(cuid())
-  email    String  @unique
   username String  @unique
   name     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image       UserImage?
-  password    Password?
-  notes       Note[]
-  roles       Role[]
-  sessions    Session[]
-  connections Connection[]
-  passkey     Passkey[]
-}
-
-model Note {
-  id      String @id @default(cuid())
-  title   String
-  content String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  ownerId String
-
-  images NoteImage[]
-
-  // non-unique foreign key
-  @@index([ownerId])
-  // This helps our order by in the user search a LOT
-  @@index([ownerId, updatedAt])
-}
-
-model NoteImage {
-  id        String  @id @default(cuid())
-  altText   String?
-  objectKey String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  noteId String
-
-  // non-unique foreign key
-  @@index([noteId])
-}
-
-model UserImage {
-  id        String  @id @default(cuid())
-  altText   String?
-  objectKey String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @unique
+  password      Password?
+  roles         Role[]
+  sessions      Session[]
+  passkey       Passkey[]
+  feeds         Feed[]             @relation("FeedOwnership") // Feeds created by the user
+  subscriptions FeedSubscription[] // Feeds the user is subscribed to
 }
 
 model Password {
@@ -154,20 +106,6 @@ model Verification {
   @@unique([target, type])
 }
 
-model Connection {
-  id           String @id @default(cuid())
-  providerName String
-  providerId   String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String
-
-  @@unique([providerName, providerId])
-}
-
 model Passkey {
   id             String   @id
   aaguid         String
@@ -183,4 +121,68 @@ model Passkey {
   transports     String? // Stored as comma-separated values
 
   @@index(userId)
+}
+
+model Feed {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // RSS feed configuration
+  sort          String @default("chronological")
+  sortDirection String @default("descending") // "ascending" or "descending"
+  overrides     Json? // Stores RSS feed metadata overrides
+
+  owner   User   @relation("FeedOwnership", fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ownerId String
+
+  subscribers FeedSubscription[]
+  image       FeedImage?
+  media       FeedMedia[]
+}
+
+model FeedImage {
+  id          String  @id @default(cuid())
+  title       String?
+  description String?
+  link        String?
+  filePath    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feed   Feed   @relation(fields: [feedId], references: [id])
+  feedId String @unique
+}
+
+model FeedMedia {
+  id       String @id @default(cuid())
+  filePath String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feed   Feed   @relation(fields: [feedId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  feedId String
+
+  @@index([feedId])
+}
+
+model FeedSubscription {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  feed   Feed   @relation(fields: [feedId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  feedId String
+
+  @@unique([userId, feedId])
+  @@index([userId])
+  @@index([feedId])
 }

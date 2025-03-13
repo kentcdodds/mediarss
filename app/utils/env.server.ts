@@ -2,30 +2,15 @@ import { z } from 'zod'
 
 const schema = z.object({
 	NODE_ENV: z.enum(['production', 'development', 'test'] as const),
+	MEDIA_PATH: z.string(),
+	DATA_PATH: z.string(),
 	DATABASE_PATH: z.string(),
 	DATABASE_URL: z.string(),
 	SESSION_SECRET: z.string(),
-	INTERNAL_COMMAND_TOKEN: z.string(),
 	HONEYPOT_SECRET: z.string(),
 	CACHE_DATABASE_PATH: z.string(),
 	// If you plan on using Sentry, remove the .optional()
 	SENTRY_DSN: z.string().optional(),
-	// If you plan to use Resend, remove the .optional()
-	RESEND_API_KEY: z.string().optional(),
-	// If you plan to use GitHub auth, remove the .optional()
-	GITHUB_CLIENT_ID: z.string().optional(),
-	GITHUB_CLIENT_SECRET: z.string().optional(),
-	GITHUB_REDIRECT_URI: z.string().optional(),
-	GITHUB_TOKEN: z.string().optional(),
-
-	ALLOW_INDEXING: z.enum(['true', 'false']).optional(),
-
-	// Tigris Object Storage Configuration
-	AWS_ACCESS_KEY_ID: z.string(),
-	AWS_SECRET_ACCESS_KEY: z.string(),
-	AWS_REGION: z.string(),
-	AWS_ENDPOINT_URL_S3: z.string().url(),
-	BUCKET_NAME: z.string(),
 })
 
 declare global {
@@ -60,7 +45,6 @@ export function getEnv() {
 	return {
 		MODE: process.env.NODE_ENV,
 		SENTRY_DSN: process.env.SENTRY_DSN,
-		ALLOW_INDEXING: process.env.ALLOW_INDEXING,
 	}
 }
 

@@ -8,7 +8,7 @@ import { cn } from '#app/utils/misc.tsx'
 import { type Route } from './+types/index.ts'
 import { logos } from './logos/logos.ts'
 
-export const meta: Route.MetaFunction = () => [{ title: 'Epic Notes' }]
+export const meta: Route.MetaFunction = () => [{ title: 'mediarss' }]
 
 // Tailwind Grid cell classes lookup
 const columnClasses: Record<(typeof logos)[number]['column'], string> = {

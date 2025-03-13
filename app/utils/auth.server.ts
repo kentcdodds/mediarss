@@ -1,30 +1,17 @@
 import crypto from 'node:crypto'
-import { type Connection, type Password, type User } from '@prisma/client'
+import { type Password, type User } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { redirect } from 'react-router'
-import { Authenticator } from 'remix-auth'
 import { safeRedirect } from 'remix-utils/safe-redirect'
-import { providers } from './connections.server.ts'
 import { prisma } from './db.server.ts'
-import { combineHeaders, downloadFile } from './misc.tsx'
-import { type ProviderUser } from './providers/provider.ts'
+import { combineHeaders } from './misc.tsx'
 import { authSessionStorage } from './session.server.ts'
-import { uploadProfileImage } from './storage.server.ts'
 
 export const SESSION_EXPIRATION_TIME = 1000 * 60 * 60 * 24 * 30
 export const getSessionExpirationDate = () =>
 	new Date(Date.now() + SESSION_EXPIRATION_TIME)
 
 export const sessionKey = 'sessionId'
-
-export const authenticator = new Authenticator<ProviderUser>()
-
-for (const [providerName, provider] of Object.entries(providers)) {
-	const strategy = provider.getAuthStrategy()
-	if (strategy) {
-		authenticator.use(strategy, providerName)
-	}
-}
 
 export async function getUserId(request: Request) {
 	const authSession = await authSessionStorage.getSession(
@@ -113,12 +100,10 @@ export async function resetUserPassword({
 }
 
 export async function signup({
-	email,
 	username,
 	password,
 	name,
 }: {
-	email: User['email']
 	username: User['username']
 	name: User['name']
 	password: string
@@ -130,7 +115,6 @@ export async function signup({
 			expirationDate: getSessionExpirationDate(),
 			user: {
 				create: {
-					email: email.toLowerCase(),
 					username: username.toLowerCase(),
 					name,
 					roles: { connect: { name: 'user' } },
@@ -141,58 +125,6 @@ export async function signup({
 					},
 				},
 			},
-		},
-		select: { id: true, expirationDate: true },
-	})
-
-	return session
-}
-
-export async function signupWithConnection({
-	email,
-	username,
-	name,
-	providerId,
-	providerName,
-	imageUrl,
-}: {
-	email: User['email']
-	username: User['username']
-	name: User['name']
-	providerId: Connection['providerId']
-	providerName: Connection['providerName']
-	imageUrl?: string
-}) {
-	const user = await prisma.user.create({
-		data: {
-			email: email.toLowerCase(),
-			username: username.toLowerCase(),
-			name,
-			roles: { connect: { name: 'user' } },
-			connections: { create: { providerId, providerName } },
-		},
-		select: { id: true },
-	})
-
-	if (imageUrl) {
-		const imageFile = await downloadFile(imageUrl)
-		await prisma.user.update({
-			where: { id: user.id },
-			data: {
-				image: {
-					create: {
-						objectKey: await uploadProfileImage(user.id, imageFile),
-					},
-				},
-			},
-		})
-	}
-
-	// Create and return the session
-	const session = await prisma.session.create({
-		data: {
-			expirationDate: getSessionExpirationDate(),
-			userId: user.id,
 		},
 		select: { id: true, expirationDate: true },
 	})

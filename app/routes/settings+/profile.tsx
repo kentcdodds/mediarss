@@ -1,5 +1,4 @@
 import { invariantResponse } from '@epic-web/invariant'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import { Link, Outlet, useMatches } from 'react-router'
 import { z } from 'zod'
 import { Spacer } from '#app/components/spacer.tsx'
@@ -13,9 +12,8 @@ import { type Route } from './+types/profile.ts'
 export const BreadcrumbHandle = z.object({ breadcrumb: z.any() })
 export type BreadcrumbHandle = z.infer<typeof BreadcrumbHandle>
 
-export const handle: BreadcrumbHandle & SEOHandle = {
+export const handle: BreadcrumbHandle = {
 	breadcrumb: <Icon name="file-text">Edit Profile</Icon>,
-	getSitemapEntries: () => null,
 }
 
 export async function loader({ request }: Route.LoaderArgs) {

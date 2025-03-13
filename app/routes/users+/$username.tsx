@@ -1,5 +1,4 @@
 import { invariantResponse } from '@epic-web/invariant'
-import { Img } from 'openimg/react'
 import {
 	type LoaderFunctionArgs,
 	Form,
@@ -11,7 +10,6 @@ import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
 import { Icon } from '#app/components/ui/icon.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import { getUserImgSrc } from '#app/utils/misc.tsx'
 import { useOptionalUser } from '#app/utils/user.ts'
 import { type Route } from './+types/$username.ts'
 
@@ -22,7 +20,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
 			name: true,
 			username: true,
 			createdAt: true,
-			image: { select: { id: true, objectKey: true } },
 		},
 		where: {
 			username: params.username,
@@ -46,22 +43,6 @@ export default function ProfileRoute() {
 			<Spacer size="4xs" />
 
 			<div className="container flex flex-col items-center rounded-3xl bg-muted p-12">
-				<div className="relative w-52">
-					<div className="absolute -top-40">
-						<div className="relative">
-							<Img
-								src={getUserImgSrc(data.user.image?.objectKey)}
-								alt={userDisplayName}
-								className="h-52 w-52 rounded-full object-cover"
-								width={832}
-								height={832}
-							/>
-						</div>
-					</div>
-				</div>
-
-				<Spacer size="sm" />
-
 				<div className="flex flex-col items-center">
 					<div className="flex flex-wrap items-center justify-center gap-4">
 						<h1 className="text-center text-h2">{userDisplayName}</h1>
@@ -82,8 +63,8 @@ export default function ProfileRoute() {
 						{isLoggedInUser ? (
 							<>
 								<Button asChild>
-									<Link to="notes" prefetch="intent">
-										My notes
+									<Link to="feeds" prefetch="intent">
+										My feeds
 									</Link>
 								</Button>
 								<Button asChild>
@@ -94,8 +75,8 @@ export default function ProfileRoute() {
 							</>
 						) : (
 							<Button asChild>
-								<Link to="notes" prefetch="intent">
-									{userDisplayName}'s notes
+								<Link to="feeds" prefetch="intent">
+									{userDisplayName}'s feeds
 								</Link>
 							</Button>
 						)}
@@ -109,10 +90,10 @@ export default function ProfileRoute() {
 export const meta: Route.MetaFunction = ({ data, params }) => {
 	const displayName = data?.user.name ?? params.username
 	return [
-		{ title: `${displayName} | Epic Notes` },
+		{ title: `${displayName} | mediarss` },
 		{
 			name: 'description',
-			content: `Profile of ${displayName} on Epic Notes`,
+			content: `Profile of ${displayName} on mediarss`,
 		},
 	]
 }

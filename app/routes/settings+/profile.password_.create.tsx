@@ -1,6 +1,5 @@
 import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
-import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import { data, redirect, Form, Link } from 'react-router'
 import { ErrorList, Field } from '#app/components/forms.tsx'
 import { Button } from '#app/components/ui/button.tsx'
@@ -17,9 +16,8 @@ import { PasswordAndConfirmPasswordSchema } from '#app/utils/user-validation.ts'
 import { type Route } from './+types/profile.password_.create.ts'
 import { type BreadcrumbHandle } from './profile.tsx'
 
-export const handle: BreadcrumbHandle & SEOHandle = {
+export const handle: BreadcrumbHandle = {
 	breadcrumb: <Icon name="dots-horizontal">Password</Icon>,
-	getSitemapEntries: () => null,
 }
 
 const CreatePasswordForm = PasswordAndConfirmPasswordSchema

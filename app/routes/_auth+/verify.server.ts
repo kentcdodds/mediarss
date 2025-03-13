@@ -2,7 +2,6 @@ import { type Submission } from '@conform-to/react'
 import { parseWithZod } from '@conform-to/zod'
 import { data } from 'react-router'
 import { z } from 'zod'
-import { handleVerification as handleChangeEmailVerification } from '#app/routes/settings+/profile.change-email.server.tsx'
 import { twoFAVerificationType } from '#app/routes/settings+/profile.two-factor.tsx'
 import { requireUserId } from '#app/utils/auth.server.ts'
 import { prisma } from '#app/utils/db.server.ts'
@@ -14,8 +13,6 @@ import {
 	handleVerification as handleLoginTwoFactorVerification,
 	shouldRequestTwoFA,
 } from './login.server.ts'
-import { handleVerification as handleOnboardingVerification } from './onboarding.server.ts'
-import { handleVerification as handleResetPasswordVerification } from './reset-password.server.ts'
 import {
 	VerifySchema,
 	codeQueryParam,
@@ -169,30 +166,7 @@ export async function validateRequest(
 
 	const { value: submissionValue } = submission
 
-	async function deleteVerification() {
-		await prisma.verification.delete({
-			where: {
-				target_type: {
-					type: submissionValue[typeQueryParam],
-					target: submissionValue[targetQueryParam],
-				},
-			},
-		})
-	}
-
 	switch (submissionValue[typeQueryParam]) {
-		case 'reset-password': {
-			await deleteVerification()
-			return handleResetPasswordVerification({ request, body, submission })
-		}
-		case 'onboarding': {
-			await deleteVerification()
-			return handleOnboardingVerification({ request, body, submission })
-		}
-		case 'change-email': {
-			await deleteVerification()
-			return handleChangeEmailVerification({ request, body, submission })
-		}
 		case '2fa': {
 			return handleLoginTwoFactorVerification({ request, body, submission })
 		}

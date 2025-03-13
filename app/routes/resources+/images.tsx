@@ -1,8 +1,8 @@
 import { promises as fs, constants } from 'node:fs'
 import { invariantResponse } from '@epic-web/invariant'
 import { getImgResponse } from 'openimg/node'
+import { prisma } from '#app/utils/db.server.ts'
 import { getDomainUrl } from '#app/utils/misc.tsx'
-import { getSignedGetRequestInfo } from '#app/utils/storage.server.ts'
 import { type Route } from './+types/images'
 
 let cacheDir: string | null = null
@@ -18,7 +18,7 @@ async function getCacheDir() {
 			.catch(() => false)
 
 		if (isAccessible) {
-			dir = '/data/images'
+			dir = '/data/images/openimg'
 		}
 	}
 
@@ -32,7 +32,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 	const headers = new Headers()
 	headers.set('Cache-Control', 'public, max-age=31536000, immutable')
 
-	const objectKey = searchParams.get('objectKey')
+	const feedImageId = searchParams.get('feedImageId')
 
 	return getImgResponse(request, {
 		headers,
@@ -41,14 +41,21 @@ export async function loader({ request }: Route.LoaderArgs) {
 			process.env.AWS_ENDPOINT_URL_S3,
 		].filter(Boolean),
 		cacheFolder: await getCacheDir(),
-		getImgSource: () => {
-			if (objectKey) {
-				const { url: signedUrl, headers: signedHeaders } =
-					getSignedGetRequestInfo(objectKey)
+		getImgSource: async () => {
+			if (feedImageId) {
+				const feedImage = await prisma.feedImage.findUnique({
+					where: { id: feedImageId },
+					select: { filePath: true },
+				})
+				if (!feedImage) {
+					return {
+						type: 'fs',
+						path: './public/images/fallback-feed-image.jpg',
+					}
+				}
 				return {
-					type: 'fetch',
-					url: signedUrl,
-					headers: signedHeaders,
+					type: 'fs',
+					path: feedImage.filePath,
 				}
 			}
 

@@ -1,7 +1,5 @@
-import { Img } from 'openimg/react'
 import { useRef } from 'react'
 import { Link, Form } from 'react-router'
-import { getUserImgSrc } from '#app/utils/misc.tsx'
 import { useUser } from '#app/utils/user.ts'
 import { Button } from './ui/button'
 import {
@@ -24,15 +22,7 @@ export function UserDropdown() {
 						to={`/users/${user.username}`}
 						// this is for progressive enhancement
 						onClick={(e) => e.preventDefault()}
-						className="flex items-center gap-2"
 					>
-						<Img
-							className="h-8 w-8 rounded-full object-cover"
-							alt={user.name ?? user.username}
-							src={getUserImgSrc(user.image?.objectKey)}
-							width={256}
-							height={256}
-						/>
 						<span className="text-body-sm font-bold">
 							{user.name ?? user.username}
 						</span>
@@ -49,9 +39,9 @@ export function UserDropdown() {
 						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuItem asChild>
-						<Link prefetch="intent" to={`/users/${user.username}/notes`}>
+						<Link prefetch="intent" to={`/users/${user.username}/feeds`}>
 							<Icon className="text-body-md" name="pencil-2">
-								Notes
+								Feeds
 							</Icon>
 						</Link>
 					</DropdownMenuItem>

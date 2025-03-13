@@ -197,4 +197,4 @@ jobs:
           build-args: |
             COMMIT_SHA=${{ github.sha }}
           build-contexts: |
-            dockerignore=./other/dockerfile.dockerignore
+            dockerignore=./other/Dockerfile.dockerignore

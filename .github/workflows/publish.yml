@@ -1,4 +1,4 @@
-name: 🚀 Deploy
+name: 🚀 Publish
 on:
   push:
     branches:
@@ -151,11 +151,11 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-  deploy:
-    name: 🚀 Deploy
+  publish:
+    name: 🚀 Publish
     runs-on: ubuntu-22.04
     needs: [lint, typecheck, vitest, playwright]
-    # only build/deploy on pushes
+    # only build/publish on pushes
     if: ${{ github.event_name == 'push' }}
 
     steps:

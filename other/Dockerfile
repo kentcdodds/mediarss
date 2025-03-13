@@ -6,8 +6,8 @@ FROM node:22-bookworm-slim as base
 # set for base and all layer that inherit from it
 ENV NODE_ENV production
 
-# Install openssl for Prisma
-RUN apt-get update && apt-get install -y openssl sqlite3 ca-certificates
+# Install openssl for Prisma and ffmpeg for video frame extraction
+RUN apt-get update && apt-get install -y openssl sqlite3 ca-certificates ffmpeg
 
 # Install all node_modules, including dev dependencies
 FROM base as deps
@@ -55,7 +55,7 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
 FROM base
 
 ENV DOCKER="true"
-ENV MEDIA_PATH="/media"
+ENV MEDIA_PATHS="/media"
 ENV DATA_PATH="/data"
 ENV DATABASE_FILENAME="sqlite.db"
 ENV DATABASE_PATH="$DATA_PATH/$DATABASE_FILENAME"
@@ -85,7 +85,7 @@ COPY --from=build /myapp/prisma /myapp/prisma
 COPY --from=build /myapp/app/components/ui/icons /myapp/app/components/ui/icons
 
 # Create base directories
-RUN mkdir -p $DATA_PATH $MEDIA_PATH
+RUN mkdir -p $DATA_PATH $MEDIA_PATHS
 
 ADD . .
 COPY other/start.sh ./start.sh

@@ -1,39 +1,16 @@
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '#app/components/ui/tooltip.tsx'
-import { cn } from '#app/utils/misc.tsx'
 import { type Route } from './+types/index.ts'
-import { logos } from './logos/logos.ts'
 
-export const meta: Route.MetaFunction = () => [{ title: 'mediarss' }]
-
-// Tailwind Grid cell classes lookup
-const columnClasses: Record<(typeof logos)[number]['column'], string> = {
-	1: 'xl:col-start-1',
-	2: 'xl:col-start-2',
-	3: 'xl:col-start-3',
-	4: 'xl:col-start-4',
-	5: 'xl:col-start-5',
-}
-const rowClasses: Record<(typeof logos)[number]['row'], string> = {
-	1: 'xl:row-start-1',
-	2: 'xl:row-start-2',
-	3: 'xl:row-start-3',
-	4: 'xl:row-start-4',
-	5: 'xl:row-start-5',
-	6: 'xl:row-start-6',
-}
+export const meta: Route.MetaFunction = () => [
+	{ title: 'mediarss - RSS Feeds for Your Media' },
+]
 
 export default function Index() {
 	return (
-		<main className="font-poppins grid h-full place-items-center">
-			<div className="grid place-items-center px-4 py-16 xl:grid-cols-2 xl:gap-24">
-				<div className="flex max-w-md flex-col items-center text-center xl:order-2 xl:items-start xl:text-left">
+		<main className="font-poppins container flex h-full items-center justify-center">
+			<div className="flex flex-col items-center justify-center gap-12 px-4 py-16 xl:flex-row xl:gap-24">
+				<div className="flex max-w-md flex-col items-center text-center xl:items-start xl:text-left">
 					<a
-						href="https://www.epicweb.dev/stack"
+						href="/"
 						className="animate-slide-top [animation-fill-mode:backwards] xl:animate-slide-left xl:[animation-delay:0.5s] xl:[animation-fill-mode:backwards]"
 					>
 						<svg
@@ -52,49 +29,35 @@ export default function Index() {
 						data-heading
 						className="mt-8 animate-slide-top text-4xl font-medium text-foreground [animation-delay:0.3s] [animation-fill-mode:backwards] md:text-5xl xl:mt-4 xl:animate-slide-left xl:text-6xl xl:[animation-delay:0.8s] xl:[animation-fill-mode:backwards]"
 					>
-						<a href="https://www.epicweb.dev/stack">The Epic Stack</a>
+						mediarss
 					</h1>
 					<p
 						data-paragraph
 						className="mt-6 animate-slide-top text-xl/7 text-muted-foreground [animation-delay:0.8s] [animation-fill-mode:backwards] xl:mt-8 xl:animate-slide-left xl:text-xl/6 xl:leading-10 xl:[animation-delay:1s] xl:[animation-fill-mode:backwards]"
 					>
-						Check the{' '}
-						<a
-							className="underline hover:no-underline"
-							href="https://github.com/epicweb-dev/epic-stack/blob/main/docs/getting-started.md"
-						>
-							Getting Started guide
-						</a>{' '}
-						file for how to get your project off the ground!
+						Generate RSS feeds for your media files. Share your videos and audio
+						content with the world through standard RSS feeds that work with any
+						podcast or video player.
 					</p>
 				</div>
-				<ul className="mt-16 flex max-w-3xl flex-wrap justify-center gap-2 sm:gap-4 xl:mt-0 xl:grid xl:grid-flow-col xl:grid-cols-5 xl:grid-rows-6">
-					<TooltipProvider>
-						{logos.map((logo, i) => (
-							<li
-								key={logo.href}
-								className={cn(
-									columnClasses[logo.column],
-									rowClasses[logo.row],
-									'animate-roll-reveal [animation-fill-mode:backwards]',
-								)}
-								style={{ animationDelay: `${i * 0.07}s` }}
-							>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<a
-											href={logo.href}
-											className="grid size-20 place-items-center rounded-2xl bg-violet-600/10 p-4 transition hover:-rotate-6 hover:bg-violet-600/15 dark:bg-violet-200 dark:hover:bg-violet-100 sm:size-24"
-										>
-											<img src={logo.src} alt="" />
-										</a>
-									</TooltipTrigger>
-									<TooltipContent>{logo.alt}</TooltipContent>
-								</Tooltip>
-							</li>
-						))}
-					</TooltipProvider>
-				</ul>
+				<div className="flex flex-wrap justify-center gap-4">
+					<div className="grid grid-cols-2 gap-4">
+						<div className="rounded-2xl bg-violet-600/10 p-6 transition hover:bg-violet-600/15 dark:bg-violet-200 dark:hover:bg-violet-100">
+							<h3 className="text-lg font-semibold">Video Support</h3>
+							<p className="mt-2 text-sm text-muted-foreground">
+								Generate RSS feeds for your video content, compatible with
+								popular video players and platforms.
+							</p>
+						</div>
+						<div className="rounded-2xl bg-violet-600/10 p-6 transition hover:bg-violet-600/15 dark:bg-violet-200 dark:hover:bg-violet-100">
+							<h3 className="text-lg font-semibold">Audio Support</h3>
+							<p className="mt-2 text-sm text-muted-foreground">
+								Create podcast-style RSS feeds for your audio content, ready for
+								any podcast app.
+							</p>
+						</div>
+					</div>
+				</div>
 			</div>
 		</main>
 	)

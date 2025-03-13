@@ -1,4 +1,5 @@
 import { promises as fs, constants } from 'node:fs'
+import path from 'node:path'
 import { invariantResponse } from '@epic-web/invariant'
 import { getImgResponse } from 'openimg/node'
 import { prisma } from '#app/utils/db.server.ts'
@@ -55,7 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 				}
 				return {
 					type: 'fs',
-					path: feedImage.filePath,
+					path: path.join(process.env.DATA_PATH, feedImage.filePath),
 				}
 			}
 

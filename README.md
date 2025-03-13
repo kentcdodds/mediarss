@@ -222,3 +222,9 @@ docker run -d \
 ```
 
 Your data will be preserved as long as you use the same volume mount points.
+
+## Alternatives
+
+[Audiobookshelf](https://github.com/advplyr/audiobookshelf) is a fully featured
+audio media server. It doesn't support private RSS feeds and it's a little too
+much for what I want, so I built my own thing. But you might like it.

@@ -27,3 +27,9 @@ node_modules
 
 # react router v7 generated types
 .react-router
+
+# openimg cache
+/tests/fixtures/openimg
+
+# uploaded files
+/tests/fixtures/data/users

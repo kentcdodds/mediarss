@@ -22,7 +22,9 @@ export const toastSessionStorage = createCookieSessionStorage({
 		path: '/',
 		httpOnly: true,
 		secrets: process.env.SESSION_SECRET.split(','),
-		secure: process.env.NODE_ENV === 'production',
+		// because people run this app on their local networks and it's annoying
+		// to set up HTTPS for local networks.
+		secure: false,
 	},
 })
 

@@ -11,8 +11,10 @@ export const passkeyCookie = createCookie('webauthn-challenge', {
 	sameSite: 'lax',
 	httpOnly: true,
 	maxAge: 60 * 60 * 2,
-	secure: process.env.NODE_ENV === 'production',
 	secrets: [process.env.SESSION_SECRET],
+	// because people run this app on their local networks and it's annoying
+	// to set up HTTPS for local networks.
+	secure: false,
 })
 
 export const PasskeyCookieSchema = z.object({

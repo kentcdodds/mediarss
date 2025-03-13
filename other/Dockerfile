@@ -54,7 +54,7 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
 # Finally, build the production image with minimal footprint
 FROM base
 
-ENV FLY="true"
+ENV DOCKER="true"
 ENV MEDIA_PATH="/media"
 ENV DATA_PATH="/data"
 ENV DATABASE_FILENAME="sqlite.db"
@@ -70,6 +70,8 @@ ENV PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK = "1"
 
 # add shortcut for connecting to database CLI
 RUN echo "#!/bin/sh\nset -x\nsqlite3 \$DATABASE_URL" > /usr/local/bin/database-cli && chmod +x /usr/local/bin/database-cli
+# and cache database CLI
+RUN echo "#!/bin/sh\nset -x\nsqlite3 \$CACHE_DATABASE_URL" > /usr/local/bin/cache-database-cli && chmod +x /usr/local/bin/cache-database-cli
 
 WORKDIR /myapp
 

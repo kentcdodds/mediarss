@@ -2,7 +2,7 @@ import { getFormProps, getInputProps, useForm } from '@conform-to/react'
 import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { useOptimistic, useState, useTransition } from 'react'
-import { data, Form, Link, useNavigate, useSearchParams } from 'react-router'
+import { data, Form, useNavigate, useSearchParams } from 'react-router'
 import { HoneypotInputs } from 'remix-utils/honeypot/react'
 import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
@@ -137,14 +137,6 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
 									})}
 									errors={fields.remember.errors}
 								/>
-								<div>
-									<Link
-										to="/forgot-password"
-										className="text-body-xs font-semibold"
-									>
-										Forgot password?
-									</Link>
-								</div>
 							</div>
 
 							<input
@@ -169,19 +161,6 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
 								redirectTo={redirectTo}
 								remember={fields.remember.value === 'on'}
 							/>
-						</div>
-						<hr className="my-4" />
-						<div className="flex items-center justify-center gap-2 pt-6">
-							<span className="text-muted-foreground">New here?</span>
-							<Link
-								to={
-									redirectTo
-										? `/signup?redirectTo=${encodeURIComponent(redirectTo)}`
-										: '/signup'
-								}
-							>
-								Create an account
-							</Link>
 						</div>
 					</div>
 				</div>

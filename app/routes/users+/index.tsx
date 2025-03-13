@@ -8,15 +8,15 @@ import { type Route } from './+types/index.ts'
 
 export async function loader({ request }: Route.LoaderArgs) {
 	const searchTerm = new URL(request.url).searchParams.get('search')
-	if (!searchTerm) {
+	if (searchTerm === '') {
 		return redirect('/users')
 	}
 
 	const users = await prisma.user.findMany({
 		where: {
 			OR: [
-				{ name: { contains: searchTerm } },
-				{ username: { contains: searchTerm } },
+				{ name: { contains: searchTerm ?? '' } },
+				{ username: { contains: searchTerm ?? '' } },
 			],
 		},
 	})
@@ -48,7 +48,7 @@ export default function UsersRoute({ loaderData }: Route.ComponentProps) {
 								<li key={user.id}>
 									<Link
 										to={user.username}
-										className="rounded-lg bg-muted px-5 py-3"
+										className="flex flex-col items-center justify-center rounded-lg bg-muted px-5 py-3"
 									>
 										{user.name ? (
 											<span className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-body-md">

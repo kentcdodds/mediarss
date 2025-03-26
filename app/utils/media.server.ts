@@ -6,6 +6,7 @@ import * as mimeTypes from 'mime-types'
 import * as mm from 'music-metadata'
 import pLimit from 'p-limit'
 import { z } from 'zod'
+import { cache, cachified } from './cache.server.ts'
 
 const atob = (data: string) => Buffer.from(data, 'base64').toString()
 
@@ -79,6 +80,26 @@ export async function getAllFileMetadatas() {
 export async function getFileMetadata(
 	filepath: string,
 ): Promise<Metadata | null> {
+	const key = ['file-metadata', filepath].join(':')
+	const cached = await cache.get(key)
+	const forceFresh = cached
+		? (await fs.promises.stat(filepath)).mtimeMs > cached.metadata.createdTime
+		: false
+
+	return cachified({
+		ttl: 60 * 60 * 24 * 30, // 30 days
+		swr: 60 * 60 * 12, // 12 hours
+		forceFresh,
+		key,
+		async getFreshValue() {
+			const result = await getFileMetadataImpl(filepath)
+			return result
+		},
+		cache,
+	})
+}
+
+async function getFileMetadataImpl(filepath: string): Promise<Metadata | null> {
 	try {
 		const stat = await fs.promises.stat(filepath)
 		let rawMetadata: mm.IAudioMetadata
@@ -194,7 +215,7 @@ async function getMediaFiles() {
 					return ignore.some((ignoredDir) => fileName.includes(ignoredDir))
 				},
 			})
-			const files: string[] = []
+			const files: Array<string> = []
 			for await (const file of iterator) {
 				if (typeof file === 'string') {
 					files.push(path.resolve(file))
@@ -206,27 +227,32 @@ async function getMediaFiles() {
 	return result.flat()
 }
 
-type DirectoryNode =
+export type MediaNode = {
+	name: string
+	id: string
+	path: string
+} & (
 	| {
-			name: string
-			id?: never
 			type: 'directory'
-			children: DirectoryNode[]
+			metadata?: never
+			children: Array<MediaNode>
 	  }
 	| {
-			name: string
-			id: string
 			type: 'file'
+			metadata: Metadata | null
 			children?: never
 	  }
+)
 
 async function buildTree(currentPath: string) {
 	const ignore = ['@eaDir', '#recycle']
 	const entries = await fs.promises.readdir(currentPath, {
 		withFileTypes: true,
 	})
-	const node: DirectoryNode = {
+	const node: MediaNode = {
 		name: path.basename(currentPath),
+		id: md5(currentPath),
+		path: currentPath,
 		type: 'directory',
 		children: [],
 	}
@@ -244,7 +270,9 @@ async function buildTree(currentPath: string) {
 			node.children.push({
 				id: md5(path.join(currentPath, entry.name)),
 				name: entry.name,
+				path: path.join(currentPath, entry.name),
 				type: 'file',
+				metadata: await getFileMetadata(path.join(currentPath, entry.name)),
 			})
 		}
 	}
@@ -254,13 +282,15 @@ async function buildTree(currentPath: string) {
 	return node
 }
 
-export async function getMediaDirectories(): Promise<DirectoryNode[]> {
+export async function getAllMediaWithDirectories(): Promise<Array<MediaNode>> {
 	const roots = getRoots()
-	const result: DirectoryNode[] = []
+	const result: Array<MediaNode> = []
 
 	for (const root of roots) {
-		const rootNode: DirectoryNode = {
+		const rootNode: MediaNode = {
+			id: md5(root),
 			name: path.basename(root),
+			path: root,
 			type: 'directory',
 			children: (await buildTree(root)).children,
 		}
@@ -271,9 +301,36 @@ export async function getMediaDirectories(): Promise<DirectoryNode[]> {
 	return result
 }
 
+export async function getAllMediaWithDirectoriesNoPictures() {
+	const media = await getAllMediaWithDirectories()
+	return media.map((node) => {
+		if (node.type === 'directory') {
+			node.children = node.children.map((child) => {
+				if (child.type === 'file' && child.metadata) {
+					return {
+						...child,
+						metadata: { ...child.metadata, picture: undefined },
+					}
+				}
+				return child
+			})
+		} else if (node.type === 'file' && node.metadata) {
+			return {
+				...node,
+				metadata: {
+					...node.metadata,
+					picture: undefined,
+				},
+			}
+		} else {
+			return node
+		}
+	})
+}
+
 export async function getFileIdsByDirectory(
 	directoryPath: string,
-): Promise<string[]> {
+): Promise<Array<string>> {
 	const files = await getMediaFiles()
 	const directoryFiles = files.filter((file) => file.startsWith(directoryPath))
 	return directoryFiles.map((file) => md5(file))

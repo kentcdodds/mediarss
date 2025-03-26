@@ -1,5 +1,4 @@
 import fs from 'node:fs'
-import { DatabaseSync } from 'node:sqlite'
 import {
 	cachified as baseCachified,
 	verboseReporter,
@@ -13,6 +12,7 @@ import {
 } from '@epic-web/cachified'
 import { remember } from '@epic-web/remember'
 import { LRUCache } from 'lru-cache'
+import { DatabaseSync } from 'node:sqlite'
 import { z } from 'zod'
 import { cachifiedTimingReporter, type Timings } from './timing.server.ts'
 
@@ -65,6 +65,31 @@ export const lruCache = {
 	delete: (key) => lru.delete(key),
 } satisfies Cache
 
+const isBuffer = (obj: unknown): obj is Buffer =>
+	Buffer.isBuffer(obj) || obj instanceof Uint8Array
+
+function bufferReplacer(_key: string, value: unknown) {
+	if (isBuffer(value)) {
+		return {
+			__isBuffer: true,
+			data: value.toString('base64'),
+		}
+	}
+	return value
+}
+
+function bufferReviver(_key: string, value: unknown) {
+	if (
+		value &&
+		typeof value === 'object' &&
+		'__isBuffer' in value &&
+		(value as any).data
+	) {
+		return Buffer.from((value as any).data, 'base64')
+	}
+	return value
+}
+
 const cacheEntrySchema = z.object({
 	metadata: z.object({
 		createdTime: z.number(),
@@ -99,7 +124,7 @@ export const cache: CachifiedCache = {
 
 		const parsedEntry = cacheEntrySchema.safeParse({
 			metadata: JSON.parse(parseResult.data.metadata),
-			value: JSON.parse(parseResult.data.value),
+			value: JSON.parse(parseResult.data.value, bufferReviver),
 		})
 		if (!parsedEntry.success) return null
 		const { metadata, value } = parsedEntry.data
@@ -107,11 +132,8 @@ export const cache: CachifiedCache = {
 		return { metadata, value }
 	},
 	async set(key, entry) {
-		setStatement.run(
-			key,
-			JSON.stringify(entry.value),
-			JSON.stringify(entry.metadata),
-		)
+		const value = JSON.stringify(entry.value, bufferReplacer)
+		setStatement.run(key, value, JSON.stringify(entry.metadata))
 	},
 	async delete(key) {
 		deleteStatement.run(key)

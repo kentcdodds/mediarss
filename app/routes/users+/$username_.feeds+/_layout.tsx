@@ -1,12 +1,12 @@
 import {
 	getAllFileMetadatas,
-	getMediaDirectories,
+	getAllMediaWithDirectories,
 } from '#app/utils/media.server.ts'
 import { type Route } from './+types/_layout.ts'
 
 export async function loader() {
 	const mediaFiles = await getAllFileMetadatas()
-	const mediaDirectories = await getMediaDirectories()
+	const mediaDirectories = await getAllMediaWithDirectories()
 	const mediaFilesWithoutPictures = mediaFiles.map(
 		({ picture, ...rest }) => rest,
 	)

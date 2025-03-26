@@ -131,7 +131,7 @@ model Feed {
   updatedAt DateTime @updatedAt
 
   // RSS feed configuration
-  sort          String @default("chronological")
+  sort          String @default("pubDate")
   sortDirection String @default("descending") // "ascending" or "descending"
   overrides     Json? // Stores RSS feed metadata overrides
 
@@ -141,6 +141,7 @@ model Feed {
   subscribers FeedSubscription[]
   image       FeedImage?
   media       FeedMedia[]
+  exclusions  FeedMediaExclusion[]
 }
 
 model FeedImage {
@@ -160,6 +161,7 @@ model FeedImage {
 model FeedMedia {
   id       String @id @default(cuid())
   filePath String
+  order    Float  @default(0) // For manual sorting, lower numbers appear first. Using Float allows inserting items between existing ones.
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,6 +170,7 @@ model FeedMedia {
   feedId String
 
   @@index([feedId])
+  @@index([order])
 }
 
 model FeedSubscription {
@@ -183,5 +186,20 @@ model FeedSubscription {
 
   @@unique([userId, feedId])
   @@index([userId])
+  @@index([feedId])
+}
+
+// A file which would normally be included in the feed (because it's parent directory is included in the feed), but should be excluded from the feed.
+model FeedMediaExclusion {
+  id       String @id @default(cuid())
+  filePath String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feed   Feed   @relation(fields: [feedId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  feedId String
+
+  @@unique([feedId, filePath])
   @@index([feedId])
 }

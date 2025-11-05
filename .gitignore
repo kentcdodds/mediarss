@@ -1,35 +1,11 @@
-node_modules
-.DS_store
+# dependencies
+/node_modules
 
-/build
-/public/build
-/server-build
+# build output
+/dist
+
+# dotenv environment variable files
 .env
-.cache
 
-/prisma/data.db
-/prisma/data.db-journal
-/tests/prisma
-
-/test-results/
-/playwright-report/
-/playwright/.cache/
-/tests/fixtures/email/
-/coverage
-
-/other/cache.db
-
-# Easy way to create temporary files/folders that won't accidentally be added to git
-*.local.*
-
-# generated files
-/app/components/ui/icons
-
-# react router v7 generated types
-.react-router
-
-# openimg cache
-/tests/fixtures/openimg
-
-# uploaded files
-/tests/fixtures/data/users
+# Finder (MacOS) folder config
+.DS_Store

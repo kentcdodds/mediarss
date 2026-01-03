@@ -7,7 +7,7 @@ This is a demo application showcasing the integration of Remix v3 with Bun as th
 
 The application uses the new Remix v3 UI and routing features to render a few pages. It integrates with Remix Auth for authentications.
 
-On the home page (`/`) it shows a hydrated counter using Remix UI components instead of React.
+On the home page (`/`) it shows a counter using Remix UI components instead of React.
 
 To build the client-side code, it uses Bun's built-in bundler, and importmaps to load the dependencies.
 

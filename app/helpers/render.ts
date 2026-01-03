@@ -1,7 +1,6 @@
-import type { Remix } from '@remix-run/dom'
-import { renderToStream } from '@remix-run/dom/server'
-import { html } from '@remix-run/fetch-router/response-helpers'
+import type { SafeHtml } from '@remix-run/html-template'
+import { createHtmlResponse } from '@remix-run/response/html'
 
-export function render(element: Remix.RemixElement, init?: ResponseInit) {
-	return html(renderToStream(element), init)
+export function render(body: string | SafeHtml, init?: ResponseInit) {
+	return createHtmlResponse(body, init)
 }

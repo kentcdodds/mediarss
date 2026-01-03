@@ -1,0 +1,88 @@
+:root {
+	/* Colors - Light mode (warm whites + dark amber) */
+	--color-primary: #b45309;
+	--color-primary-hover: #92400e;
+	--color-primary-active: #78350f;
+	--color-background: #fefefe;
+	--color-surface: #fafaf9;
+	--color-text: #0c0c0c;
+	--color-text-muted: #6b6b6b;
+	--color-border: #e6e6e6;
+
+	/* Typography */
+	--font-family: system-ui, sans-serif;
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-base: 1rem;
+	--font-size-lg: 1.25rem;
+	--font-size-xl: 2rem;
+	--font-size-2xl: 3rem;
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	/* Spacing */
+	--spacing-xs: 0.25rem;
+	--spacing-sm: 0.5rem;
+	--spacing-md: 1rem;
+	--spacing-lg: 1.5rem;
+	--spacing-xl: 2rem;
+	--spacing-2xl: 3rem;
+
+	/* Border radius */
+	--radius-sm: 0.25rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+	--shadow-lg:
+		0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+	/* Transitions */
+	--transition-fast: 0.15s ease;
+	--transition-normal: 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		/* Colors - Dark mode (near-black + bright amber) */
+		--color-primary: #fbbf24;
+		--color-primary-hover: #f59e0b;
+		--color-primary-active: #d97706;
+		--color-background: #0a0a0a;
+		--color-surface: #141414;
+		--color-text: #f9f9f9;
+		--color-text-muted: #a3a3a3;
+		--color-border: #2a2a2a;
+
+		/* Dark mode shadows - lighter for visibility on near-black */
+		--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+		--shadow-md:
+			0 4px 6px -1px rgb(255 255 255 / 0.08), 0 2px 4px -2px
+			rgb(255 255 255 / 0.08);
+		--shadow-lg:
+			0 10px 15px -3px rgb(255 255 255 / 0.1), 0 4px 6px -4px
+			rgb(255 255 255 / 0.1);
+	}
+}
+
+/* Reset and base styles */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	font-family: var(--font-family);
+	font-size: var(--font-size-base);
+	line-height: 1.5;
+	color: var(--color-text);
+	background-color: var(--color-background);
+}

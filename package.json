@@ -19,13 +19,17 @@
     "check:ci": "biome check ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.4",
+    "@biomejs/biome": "^2.3.10",
     "@types/bun": "latest",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@remix-run/dom": "0.0.0-experimental-remix-jam.6",
-    "@remix-run/events": "0.0.0-experimental-remix-jam.5",
-    "@remix-run/fetch-router": "^0.8.0"
+    "@remix-run/component": "^0.2.1",
+    "@remix-run/fetch-router": "^0.14.0",
+    "@remix-run/interaction": "^0.3.0",
+    "@remix-run/logger-middleware": "^0.1.0",
+    "@remix-run/response": "^0.2.1",
+    "@remix-run/route-pattern": "^0.16.0",
+    "@remix-run/static-middleware": "^0.4.0"
   }
 }

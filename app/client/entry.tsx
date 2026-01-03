@@ -1,21 +1,31 @@
-import { createFrame } from '@remix-run/dom'
+import { createRoot } from '@remix-run/component'
+import { colors, spacing, typography } from '#app/styles/tokens.ts'
+import { Counter } from './counter.tsx'
 
-const reconciler = createFrame(document, {
-	async loadModule(moduleUrl, name) {
-		console.log('Loading module `%s` with name "%s"', moduleUrl, name)
-		const mod = await import(moduleUrl)
-		if (!mod) throw new Error(`Unknown module: ${moduleUrl}#${name}`)
-		const Component = mod[name]
-		if (!Component) throw new Error(`Unknown component: ${moduleUrl}#${name}`)
-		return Component
-	},
+function App() {
+	return (
+		<main
+			css={{
+				fontFamily: typography.fontFamily,
+				maxWidth: '600px',
+				margin: '0 auto',
+				padding: spacing['2xl'],
+			}}
+		>
+			<h1
+				css={{
+					fontSize: typography.fontSize['2xl'],
+					fontWeight: typography.fontWeight.semibold,
+					marginBottom: spacing.lg,
+					color: colors.text,
+				}}
+			>
+				Home
+			</h1>
+			<Counter initial={5} />
+		</main>
+	)
+}
 
-	async resolveFrame(frameUrl) {
-		console.log('Resolving frame', frameUrl)
-		const res = await fetch(frameUrl)
-		if (res.ok) return res.text()
-		throw new Error(`Failed to fetch ${frameUrl}`)
-	},
-})
-
-await reconciler.ready()
+const rootElement = document.getElementById('root') ?? document.body
+createRoot(rootElement).render(<App />)

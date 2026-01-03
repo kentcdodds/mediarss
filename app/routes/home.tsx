@@ -1,22 +1,12 @@
-import type { RouteHandler } from '@remix-run/fetch-router'
-import { Counter } from '#app/client/counter.tsx'
+import type { Action } from '@remix-run/fetch-router'
 import { Layout } from '#app/components/layout.tsx'
-import { ModulePreload } from '#app/components/module-preload.tsx'
 import { render } from '#app/helpers/render.ts'
 import type routes from '#config/routes.ts'
 
 export default {
 	middleware: [],
-	handler() {
-		return render(
-			<Layout>
-				<h1>Home</h1>
-				<ModulePreload url={Counter.$moduleUrl} />
-				<Counter initial={5} />
-			</Layout>,
-		)
+	action() {
+		// Client-only app - serve empty shell, client renders everything
+		return render(Layout({}))
 	},
-} satisfies RouteHandler<
-	typeof routes.home.method,
-	typeof routes.home.pattern.source
->
+} satisfies Action<typeof routes.home.method, typeof routes.home.pattern.source>

@@ -1,32 +1,47 @@
-import { hydrated, type Remix } from '@remix-run/dom'
-import { press } from '@remix-run/events/press'
+import type { Handle } from '@remix-run/component'
+import { press } from '@remix-run/interaction/press'
+import {
+	colors,
+	radius,
+	spacing,
+	transitions,
+	typography,
+} from '#app/styles/tokens.ts'
 
 type Props = { initial?: number }
 
-export const Counter = hydrated<Props>(
-	'/dist/counter.js#Counter',
-	function Counter({ initial }) {
-		return () => (
-			<>
-				<PlainCounter initial={initial} />
-			</>
-		)
-	},
-)
-
-function PlainCounter(this: Remix.Handle, { initial }: Props) {
+export function Counter(this: Handle, { initial }: Props) {
 	let count = initial ?? 0
 	return () => (
 		<button
 			type="button"
-			on={[
-				press(() => {
+			css={{
+				padding: `${spacing.lg} ${spacing.xl}`,
+				fontSize: typography.fontSize.base,
+				fontWeight: typography.fontWeight.medium,
+				color: colors.background,
+				backgroundColor: colors.primary,
+				border: 'none',
+				borderRadius: radius.md,
+				cursor: 'pointer',
+				transition: `all ${transitions.fast}`,
+				'&:hover': {
+					backgroundColor: colors.primaryHover,
+				},
+				'&:active': {
+					transform: 'scale(0.98)',
+					backgroundColor: colors.primaryActive,
+				},
+			}}
+			on={{
+				[press]: () => {
 					count++
 					this.update()
-				}),
-			]}
+				},
+			}}
 		>
-			Plain Counter: <span>{count}</span>
+			Count:{' '}
+			<span css={{ fontWeight: typography.fontWeight.bold }}>{count}</span>
 		</button>
 	)
 }

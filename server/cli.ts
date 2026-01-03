@@ -32,14 +32,26 @@ const showHelp = () => {
 
 export function setupInteractiveCli(url: string) {
 	console.log(`${dim('App is running on')} ${bright(url)}`)
+	const stdin = process.stdin
+	const canUseRawMode =
+		!!stdin &&
+		typeof stdin.setRawMode === 'function' &&
+		// On some environments stdin exists but is not a TTY
+		// (e.g. when run under a non-interactive process).
+		// In that case, raw mode + key handling doesn't work.
+		// @ts-expect-error Node typings: isTTY is optional
+		(stdin.isTTY ?? false)
+
+	if (!canUseRawMode) return
+
 	showHelp()
 
 	// Set stdin to raw mode for immediate key press detection
-	process.stdin.setRawMode(true)
-	process.stdin.resume()
-	process.stdin.setEncoding('utf8')
+	stdin.setRawMode(true)
+	stdin.resume()
+	stdin.setEncoding('utf8')
 
-	process.stdin.on('data', (key) => {
+	stdin.on('data', (key) => {
 		const char = key.toString()
 		// Handle Ctrl+C
 		if (char === '\u0003') {
@@ -56,7 +68,9 @@ export function setupInteractiveCli(url: string) {
 			}
 			case 'u':
 			case 'U': {
-				console.log(`\n${colorize('Copying URL to clipboard...', 'dodgerblue')}`)
+				console.log(
+					`\n${colorize('Copying URL to clipboard...', 'dodgerblue')}`,
+				)
 				const proc = Bun.spawn(['pbcopy'], { stdin: 'pipe' })
 				proc.stdin.write(url)
 				proc.stdin.end()
@@ -86,4 +100,3 @@ export function setupInteractiveCli(url: string) {
 		}
 	})
 }
-

@@ -1,13 +1,29 @@
 import { createRouter } from '@remix-run/fetch-router'
-import { logger } from '@remix-run/fetch-router/logger-middleware'
+import { html } from '@remix-run/html-template'
+import { logger } from '@remix-run/logger-middleware'
+import { staticFiles } from '@remix-run/static-middleware'
+import { Layout } from '#app/components/layout.tsx'
 import { render } from '#app/helpers/render.ts'
 import homeHandlers from '#app/routes/home.tsx'
 import routes from '#config/routes.ts'
 
 const router = createRouter({
-	middleware: Bun.env.NODE_ENV === 'development' ? [logger()] : [],
+	middleware: [
+		staticFiles('./app/assets', {
+			cacheControl:
+				Bun.env.NODE_ENV === 'production'
+					? 'public, max-age=31536000, immutable'
+					: 'no-cache',
+		}),
+		...(Bun.env.NODE_ENV === 'development' ? [logger()] : []),
+	].filter(Boolean),
 	defaultHandler() {
-		return render(<h1>404 Not Found</h1>)
+		return render(
+			Layout({
+				includeEntryScript: false,
+				children: html`<main><h1>404 Not Found</h1></main>`,
+			}),
+		)
 	},
 })
 

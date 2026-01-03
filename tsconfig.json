@@ -6,7 +6,7 @@
 		"module": "Preserve",
 		"moduleDetection": "force",
 		"jsx": "react-jsx",
-		"jsxImportSource": "@remix-run/dom",
+		"jsxImportSource": "@remix-run/component",
 		"allowJs": true,
 
 		// Bundler mode

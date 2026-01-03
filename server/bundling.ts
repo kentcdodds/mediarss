@@ -1,112 +1,93 @@
-import * as FS from 'node:fs'
-import * as Path from 'node:path'
+import fs from 'node:fs'
+import path from 'node:path'
+
+type PackageJson = {
+	exports?: Record<string, { default?: string; types?: string } | string>
+	main?: string
+}
 
 /**
- * Resolves a package specifier (e.g., "@remix-run/dom/jsx-dev-runtime") to the actual file path
- * by reading the package.json exports field
+ * Resolves a package specifier to the actual file path
  */
-export function resolvePackageExport(
+function resolvePackageExport(
 	specifier: string,
 	rootDir: string,
 ): string | null {
-	// Handle scoped packages (e.g., "@remix-run/dom/jsx-dev-runtime")
-	// Split by '/' but keep scoped package names together
 	const parts = specifier.split('/')
 	let packageName: string
 	let subpathParts: string[]
 
 	if (specifier.startsWith('@')) {
-		// Scoped package: "@remix-run/dom" or "@remix-run/dom/jsx-dev-runtime"
-		if (parts.length < 2) {
-			return null
-		}
+		if (parts.length < 2) return null
 		packageName = `${parts[0]}/${parts[1]}`
 		subpathParts = parts.slice(2)
 	} else {
-		// Regular package: "dom" or "dom/subpath"
-		if (parts.length === 0 || !parts[0]) {
-			return null
-		}
+		if (parts.length === 0 || !parts[0]) return null
 		packageName = parts[0]
 		subpathParts = parts.slice(1)
 	}
 
 	const subpath = subpathParts.length > 0 ? `./${subpathParts.join('/')}` : '.'
+	const packageDir = path.join(rootDir, 'node_modules', packageName)
+	const packageJsonPath = path.join(packageDir, 'package.json')
 
-	const packageDir = Path.join(rootDir, 'node_modules', packageName)
-	const packageJsonPath = Path.join(packageDir, 'package.json')
+	if (!fs.existsSync(packageJsonPath)) return null
 
-	if (!FS.existsSync(packageJsonPath)) {
-		return null
-	}
-
-	const packageJson = JSON.parse(FS.readFileSync(packageJsonPath, 'utf-8')) as {
-		exports?: Record<string, { default?: string; types?: string } | string>
-	}
+	const packageJson = JSON.parse(
+		fs.readFileSync(packageJsonPath, 'utf-8'),
+	) as PackageJson
 
 	if (!packageJson.exports) {
-		// Fallback to index.js if no exports field
-		const indexPath = Path.join(packageDir, 'index.js')
-		return FS.existsSync(indexPath) ? indexPath : null
+		const indexPath = path.join(packageDir, 'index.js')
+		return fs.existsSync(indexPath) ? indexPath : null
 	}
 
-	// Resolve subpath export
 	const exportEntry = packageJson.exports[subpath]
-	if (!exportEntry) {
-		return null
-	}
+	if (!exportEntry) return null
 
 	const exportPath =
 		typeof exportEntry === 'string'
 			? exportEntry
 			: exportEntry.default || exportEntry.types
 
-	if (!exportPath) {
-		return null
-	}
+	if (!exportPath) return null
 
-	const resolvedPath = Path.join(packageDir, exportPath)
-	return FS.existsSync(resolvedPath) ? resolvedPath : null
-}
-
-const buildOptions = {
-	target: 'browser' as const,
-	minify: Bun.env.NODE_ENV === 'production',
-	splitting: false,
-	format: 'esm' as const,
-	sourcemap: Bun.env.NODE_ENV === 'production' ? ('none' as const) : ('inline' as const),
-	jsx: { importSource: '@remix-run/dom' },
-	external: ['@remix-run/*'],
-	naming: {
-		entry: '[dir]/[name].[ext]',
-		chunk: 'chunks/[hash].[ext]',
-		asset: 'assets/[name]-[hash].[ext]',
-	},
+	const resolvedPath = path.join(packageDir, exportPath)
+	return fs.existsSync(resolvedPath) ? resolvedPath : null
 }
 
 export function createBundlingRoutes(rootDir: string) {
 	return {
 		'/dist/*': async (request: Request) => {
 			const url = new URL(request.url)
-
-			const filepath = Path.join(
+			const filepath = path.join(
 				rootDir,
 				url.pathname.replace('/dist', '/app/client'),
 			)
 
+			// Bundle entry files WITHOUT externals so that all dependencies
+			// share singleton instances (e.g., the interactions Map)
 			const {
 				outputs: [output],
 			} = await Bun.build({
 				entrypoints: [filepath],
-				...buildOptions,
+				target: 'browser',
+				minify: Bun.env.NODE_ENV === 'production',
+				splitting: false,
+				format: 'esm',
+				sourcemap: Bun.env.NODE_ENV === 'production' ? 'none' : 'inline',
+				jsx: { importSource: '@remix-run/component' },
+				// No externals - bundle everything together
 			})
 
-			return new Response(output)
+			return new Response(output, {
+				headers: { 'Content-Type': 'application/javascript' },
+			})
 		},
+
 		'/node_modules/*': async (request: Request) => {
 			const url = new URL(request.url)
 			const specifier = url.pathname.replace('/node_modules/', '')
-
 			const filepath = resolvePackageExport(specifier, rootDir)
 
 			if (!filepath) {
@@ -117,7 +98,11 @@ export function createBundlingRoutes(rootDir: string) {
 				outputs: [output],
 			} = await Bun.build({
 				entrypoints: [filepath],
-				...buildOptions,
+				target: 'browser',
+				minify: Bun.env.NODE_ENV === 'production',
+				splitting: false,
+				format: 'esm',
+				sourcemap: Bun.env.NODE_ENV === 'production' ? 'none' : 'inline',
 			})
 
 			return new Response(output, {
@@ -132,4 +117,3 @@ export function createBundlingRoutes(rootDir: string) {
 		},
 	}
 }
-

@@ -1,9 +1,6 @@
 # dependencies
 /node_modules
 
-# build output
-/dist
-
 # dotenv environment variable files
 .env
 

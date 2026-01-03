@@ -1,11 +1,10 @@
 {
-  "name": "remix-v3-demo",
+  "name": "mediarss",
   "module": "index.ts",
   "type": "module",
   "private": true,
   "imports": {
-    "#app/*": "./app/*",
-    "#config/*": "./config/*"
+    "#app/*": "./app/*"
   },
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch index.ts",

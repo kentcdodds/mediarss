@@ -3,9 +3,9 @@ import { html } from '@remix-run/html-template'
 import { logger } from '@remix-run/logger-middleware'
 import { staticFiles } from '@remix-run/static-middleware'
 import { Layout } from '#app/components/layout.tsx'
+import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
 import homeHandlers from '#app/routes/home.tsx'
-import routes from '#config/routes.ts'
 
 const router = createRouter({
 	middleware: [

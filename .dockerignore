@@ -1,0 +1,27 @@
+# Dependencies (will be installed fresh)
+node_modules
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log
+
+# Documentation (not needed at runtime)
+*.md
+!README.md
+
+# Docker
+Dockerfile
+.dockerignore

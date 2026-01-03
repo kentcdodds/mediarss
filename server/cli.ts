@@ -39,7 +39,6 @@ export function setupInteractiveCli(url: string) {
 		// On some environments stdin exists but is not a TTY
 		// (e.g. when run under a non-interactive process).
 		// In that case, raw mode + key handling doesn't work.
-		// @ts-expect-error Node typings: isTTY is optional
 		(stdin.isTTY ?? false)
 
 	if (!canUseRawMode) return

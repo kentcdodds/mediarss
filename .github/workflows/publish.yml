@@ -20,8 +20,6 @@ jobs:
   publish:
     name: 🚀 Publish
     runs-on: ubuntu-22.04
-    # only build/publish on pushes
-    if: ${{ github.event_name == 'push' }}
 
     steps:
       - name: ⬇️ Checkout repo
@@ -33,6 +31,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: 🔑 Login to Docker Hub
+        if: ${{ github.event_name == 'push' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -56,7 +55,7 @@ jobs:
         with:
           context: .
           file: ./other/Dockerfile
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |

@@ -10,4 +10,6 @@ export default route({
 	adminCatchAll: '/admin/*path',
 	adminApiFeeds: '/admin/api/feeds',
 	adminApiDirectories: '/admin/api/directories',
+	adminApiBrowse: '/admin/api/browse',
+	adminApiCreateDirectoryFeed: '/admin/api/feeds/directory',
 })

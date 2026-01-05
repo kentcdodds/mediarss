@@ -39,6 +39,25 @@ test("hello world", () => {
 });
 ```
 
+### Manual Testing with Local Media
+
+To test the application with sample media files, use the `local-test` directory:
+
+```bash
+bun run dev:test
+```
+
+This command:
+- Sets `DATABASE_PATH=./data/test.db` (separate from production data)
+- Sets `MEDIA_PATHS=./local-test/1/audio:./local-test/1/video`
+- Runs the dev server with watch mode
+
+The `local-test/1` directory contains sample media files:
+- `audio/` - Audiobook files (.m4b, .m4a, .mp3)
+- `video/` - Video files (.mkv)
+
+You can add your own test media files to `local-test/` - this directory is gitignored.
+
 ## Frontend
 
 We limit the number of frontend dependencies to the bare minimum. Each

@@ -6,3 +6,7 @@
 
 # Finder (MacOS) folder config
 .DS_Store
+
+/data
+
+/local-test

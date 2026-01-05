@@ -12,4 +12,7 @@ export default route({
 	adminApiDirectories: '/admin/api/directories',
 	adminApiBrowse: '/admin/api/browse',
 	adminApiCreateDirectoryFeed: '/admin/api/feeds/directory',
+	adminApiFeed: '/admin/api/feeds/:id',
+	adminApiFeedTokens: '/admin/api/feeds/:id/tokens',
+	adminApiToken: '/admin/api/tokens/:token',
 })

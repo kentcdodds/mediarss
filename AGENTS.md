@@ -4,6 +4,144 @@ Default to using Bun instead of Node.js.
 
 This application does NOT use React. We use `@remix-run/component` for UI components. Do not introduce React, Preact, or any other UI framework.
 
+### Remix Components vs React Components
+
+Remix components work differently from React. Here's how:
+
+#### Stateless Components
+
+For simple components with no state, just return JSX directly:
+
+```tsx
+function Greeting({ name }: { name: string }) {
+  return <div>Hello, {name}!</div>
+}
+```
+
+#### Stateful Components
+
+For components that need state, use `this: Handle` and **return a function** that returns JSX. The closure above the return acts as your state container:
+
+```tsx
+import type { Handle } from '@remix-run/component'
+
+function Counter(this: Handle) {
+  // State lives in the closure
+  let count = 0
+
+  // Call this.update() to re-render when state changes
+  const increment = () => {
+    count++
+    this.update()
+  }
+
+  // Return a render function
+  return () => (
+    <div>
+      <span>Count: {count}</span>
+      <button on={{ click: increment }}>+</button>
+    </div>
+  )
+}
+```
+
+#### Components with Props and State
+
+When a component has both props and state, use **setupProps** for initial setup and **renderProps** for rendering:
+
+> **⚠️ Important:** Always use `renderProps` inside the render function to get the latest prop values. The `setupProps` are captured once at setup time and may be stale.
+
+```tsx
+import type { Handle } from '@remix-run/component'
+
+function UserCard(
+  this: Handle,
+  setupProps: { userId: string }  // Captured once at setup
+) {
+  let user: User | null = null
+  let loading = true
+
+  // Use setupProps for initial data fetching
+  fetch(`/api/users/${setupProps.userId}`)
+    .then(res => res.json())
+    .then(data => {
+      user = data
+      loading = false
+      this.update()
+    })
+
+  // renderProps always has the latest values
+  return (renderProps: { userId: string }) => (
+    <div>
+      <h2>User: {renderProps.userId}</h2>
+      {loading ? <span>Loading...</span> : <span>{user?.name}</span>}
+    </div>
+  )
+}
+```
+
+#### Event Handling
+
+Use `on={{ eventName: handler }}` instead of `onClick`:
+
+```tsx
+<button on={{ click: handleClick }}>Click me</button>
+<input on={{ input: handleInput, blur: handleBlur }} />
+```
+
+#### CSS-in-JS
+
+Use the `css` prop for inline styles with pseudo-selector support:
+
+```tsx
+<button
+  css={{
+    padding: '8px 16px',
+    backgroundColor: '#3b82f6',
+    '&:hover': {
+      backgroundColor: '#2563eb',
+    },
+  }}
+>
+  Styled Button
+</button>
+```
+
+#### Subscribing to Events
+
+Use `this.on()` to subscribe to custom events or other event targets:
+
+```tsx
+function RouterAware(this: Handle) {
+  this.on(router, { navigate: () => this.update() })
+  
+  return () => <div>Current path: {location.pathname}</div>
+}
+```
+
+#### Abort Signal
+
+Use `this.signal` for cancellable async operations:
+
+```tsx
+function DataLoader(this: Handle) {
+  let data = null
+
+  fetch('/api/data', { signal: this.signal })
+    .then(res => res.json())
+    .then(d => {
+      data = d
+      this.update()
+    })
+    .catch(err => {
+      if (this.signal.aborted) return // Component unmounted
+      console.error(err)
+    })
+
+  return () => <div>{data ? JSON.stringify(data) : 'Loading...'}</div>
+}
+```
+
 ## Bun
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`

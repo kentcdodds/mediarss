@@ -5,6 +5,9 @@ import { logger } from '@remix-run/logger-middleware'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
+import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
+import adminApiFeedsHandlers from '#app/routes/admin/api/feeds.ts'
+import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
 import homeHandlers from '#app/routes/home.tsx'
@@ -59,7 +62,7 @@ const router = createRouter({
 	defaultHandler() {
 		return render(
 			Layout({
-				includeEntryScript: false,
+				entryScript: false,
 				children: html`<main><h1>404 Not Found</h1></main>`,
 			}),
 			{ status: 404 },
@@ -71,5 +74,11 @@ router.map(routes.home, homeHandlers)
 router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)
+
+// Admin routes - API routes first (more specific), then catch-all
+router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
+router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
+router.map(routes.admin, adminHandler)
+router.map(routes.adminCatchAll, adminCatchAllHandler)
 
 export default router

@@ -18,7 +18,6 @@ const migrations: Array<Migration> = [
 					id TEXT PRIMARY KEY,
 					name TEXT NOT NULL,
 					description TEXT NOT NULL DEFAULT '',
-					token TEXT NOT NULL UNIQUE,
 					directory_path TEXT NOT NULL,
 					sort_by TEXT NOT NULL DEFAULT 'filename',
 					sort_order TEXT NOT NULL DEFAULT 'asc' CHECK (sort_order IN ('asc', 'desc')),
@@ -26,8 +25,19 @@ const migrations: Array<Migration> = [
 					updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 				);
 			`)
+
 			db.run(sql`
-				CREATE INDEX IF NOT EXISTS idx_directory_feeds_token ON directory_feeds(token);
+				CREATE TABLE IF NOT EXISTS directory_feed_tokens (
+					token TEXT PRIMARY KEY,
+					feed_id TEXT NOT NULL REFERENCES directory_feeds(id) ON DELETE CASCADE,
+					label TEXT NOT NULL DEFAULT '',
+					created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+					last_used_at INTEGER,
+					revoked_at INTEGER
+				);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_directory_feed_tokens_feed_id ON directory_feed_tokens(feed_id);
 			`)
 
 			// CuratedFeed table
@@ -36,15 +46,25 @@ const migrations: Array<Migration> = [
 					id TEXT PRIMARY KEY,
 					name TEXT NOT NULL,
 					description TEXT NOT NULL DEFAULT '',
-					token TEXT NOT NULL UNIQUE,
 					sort_by TEXT NOT NULL DEFAULT 'position',
 					sort_order TEXT NOT NULL DEFAULT 'asc' CHECK (sort_order IN ('asc', 'desc')),
 					created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 					updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 				);
 			`)
+
 			db.run(sql`
-				CREATE INDEX IF NOT EXISTS idx_curated_feeds_token ON curated_feeds(token);
+				CREATE TABLE IF NOT EXISTS curated_feed_tokens (
+					token TEXT PRIMARY KEY,
+					feed_id TEXT NOT NULL REFERENCES curated_feeds(id) ON DELETE CASCADE,
+					label TEXT NOT NULL DEFAULT '',
+					created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+					last_used_at INTEGER,
+					revoked_at INTEGER
+				);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_curated_feed_tokens_feed_id ON curated_feed_tokens(feed_id);
 			`)
 
 			// FeedItem table

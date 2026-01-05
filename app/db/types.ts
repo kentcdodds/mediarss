@@ -1,37 +1,78 @@
-export type SortOrder = 'asc' | 'desc'
+import { z } from 'zod'
 
-export type DirectoryFeed = {
-	id: string
-	name: string
-	description: string
-	token: string
-	directoryPath: string
-	sortBy: string
-	sortOrder: SortOrder
-	createdAt: number
-	updatedAt: number
-}
+export const SortOrderSchema = z.enum(['asc', 'desc'])
+export type SortOrder = z.infer<typeof SortOrderSchema>
 
-export type CuratedFeed = {
-	id: string
-	name: string
-	description: string
-	token: string
-	sortBy: string
-	sortOrder: SortOrder
-	createdAt: number
-	updatedAt: number
-}
+export const DirectoryFeedSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	directoryPath: z.string(),
+	sortBy: z.string(),
+	sortOrder: SortOrderSchema,
+	createdAt: z.number(),
+	updatedAt: z.number(),
+})
+export type DirectoryFeed = z.infer<typeof DirectoryFeedSchema>
 
-export type FeedItem = {
-	id: string
-	feedId: string
-	filePath: string
-	position: number | null
-	addedAt: number
-}
+export const CuratedFeedSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	sortBy: z.string(),
+	sortOrder: SortOrderSchema,
+	createdAt: z.number(),
+	updatedAt: z.number(),
+})
+export type CuratedFeed = z.infer<typeof CuratedFeedSchema>
 
-export type Feed = DirectoryFeed | CuratedFeed
+export const FeedItemSchema = z.object({
+	id: z.string(),
+	feedId: z.string(),
+	filePath: z.string(),
+	position: z.number().nullable(),
+	addedAt: z.number(),
+})
+export type FeedItem = z.infer<typeof FeedItemSchema>
+
+/**
+ * Token for accessing a directory feed.
+ * Tokens are the only public identifier used in feed URLs.
+ * Multiple tokens per feed are allowed for per-client access control.
+ */
+export const DirectoryFeedTokenSchema = z.object({
+	token: z.string(),
+	feedId: z.string(),
+	label: z.string(),
+	createdAt: z.number(),
+	lastUsedAt: z.number().nullable(),
+	revokedAt: z.number().nullable(),
+})
+export type DirectoryFeedToken = z.infer<typeof DirectoryFeedTokenSchema>
+
+/**
+ * Token for accessing a curated feed.
+ * Tokens are the only public identifier used in feed URLs.
+ * Multiple tokens per feed are allowed for per-client access control.
+ */
+export const CuratedFeedTokenSchema = z.object({
+	token: z.string(),
+	feedId: z.string(),
+	label: z.string(),
+	createdAt: z.number(),
+	lastUsedAt: z.number().nullable(),
+	revokedAt: z.number().nullable(),
+})
+export type CuratedFeedToken = z.infer<typeof CuratedFeedTokenSchema>
+
+export const FeedSchema = z.union([DirectoryFeedSchema, CuratedFeedSchema])
+export type Feed = z.infer<typeof FeedSchema>
+
+export const FeedTokenSchema = z.union([
+	DirectoryFeedTokenSchema,
+	CuratedFeedTokenSchema,
+])
+export type FeedToken = z.infer<typeof FeedTokenSchema>
 
 /**
  * Type guard to check if a feed is a DirectoryFeed

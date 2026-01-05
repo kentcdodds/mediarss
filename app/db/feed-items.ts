@@ -1,19 +1,7 @@
-import { db } from './index.ts'
-import { sql, snakeToCamel } from './sql.ts'
-import type { FeedItem } from './types.ts'
 import { generateId } from '#app/helpers/crypto.ts'
-
-type FeedItemRow = {
-	id: string
-	feed_id: string
-	file_path: string
-	position: number | null
-	added_at: number
-}
-
-function rowToFeedItem(row: FeedItemRow): FeedItem {
-	return snakeToCamel(row) as FeedItem
-}
+import { db } from './index.ts'
+import { parseRow, parseRows, sql } from './sql.ts'
+import { type FeedItem, FeedItemSchema } from './types.ts'
 
 export function addItemToFeed(
 	feedId: string,
@@ -35,12 +23,12 @@ export function addItemToFeed(
 
 	// Return the item (could be newly inserted or existing)
 	const row = db
-		.query<FeedItemRow, [string, string]>(
+		.query<Record<string, unknown>, [string, string]>(
 			sql`SELECT * FROM feed_items WHERE feed_id = ? AND file_path = ?;`,
 		)
 		.get(feedId, filePath)
 
-	return rowToFeedItem(row!)
+	return parseRow(FeedItemSchema, row!)
 }
 
 export function removeItemFromFeed(feedId: string, filePath: string): boolean {
@@ -52,11 +40,11 @@ export function removeItemFromFeed(feedId: string, filePath: string): boolean {
 
 export function getItemsForFeed(feedId: string): Array<FeedItem> {
 	const rows = db
-		.query<FeedItemRow, [string]>(
+		.query<Record<string, unknown>, [string]>(
 			sql`SELECT * FROM feed_items WHERE feed_id = ? ORDER BY position ASC, added_at ASC;`,
 		)
 		.all(feedId)
-	return rows.map(rowToFeedItem)
+	return parseRows(FeedItemSchema, rows)
 }
 
 export function reorderFeedItems(
@@ -83,11 +71,11 @@ export function getItemByPath(
 	filePath: string,
 ): FeedItem | undefined {
 	const row = db
-		.query<FeedItemRow, [string, string]>(
+		.query<Record<string, unknown>, [string, string]>(
 			sql`SELECT * FROM feed_items WHERE feed_id = ? AND file_path = ?;`,
 		)
 		.get(feedId, filePath)
-	return row ? rowToFeedItem(row) : undefined
+	return row ? parseRow(FeedItemSchema, row) : undefined
 }
 
 export function clearFeedItems(feedId: string): number {

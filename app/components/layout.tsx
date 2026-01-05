@@ -15,10 +15,12 @@ const importmap = {
 
 export function Layout({
 	children,
-	includeEntryScript = true,
+	title = 'MediaRSS',
+	entryScript = '/app/client/entry.tsx',
 }: {
 	children?: SafeHtml
-	includeEntryScript?: boolean
+	title?: string
+	entryScript?: string | false
 }) {
 	const importmapJson = JSON.stringify(importmap)
 	const importmapScript = html.raw`<script type="importmap">${importmapJson}</script>`
@@ -29,15 +31,15 @@ export function Layout({
 	return html`<html lang="en">
 		<head>
 			<meta charset="utf-8" />
-			<title>Remix UI - Demo with Bun</title>
+			<title>${title}</title>
 			<link rel="stylesheet" href="/assets/styles.css" />
 			${importmapScript} ${modulePreloads}
 		</head>
 		<body>
 			<div id="root">${children ?? ''}</div>
 			${
-				includeEntryScript
-					? html`<script type="module" src="/dist/entry.js"></script>`
+				entryScript
+					? html`<script type="module" src="${entryScript}"></script>`
 					: ''
 			}
 		</body>

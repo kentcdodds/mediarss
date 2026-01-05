@@ -57,13 +57,30 @@ function resolvePackageExport(
 }
 
 export function createBundlingRoutes(rootDir: string) {
+	const clientDir = path.resolve(rootDir, 'app', 'client')
+
 	return {
-		'/dist/*': async (request: Request) => {
+		'/app/client/*': async (request: Request) => {
 			const url = new URL(request.url)
-			const filepath = path.join(
-				rootDir,
-				url.pathname.replace('/dist', '/app/client'),
-			)
+			const reqPath = path.posix.normalize(url.pathname.replace(/^\/+/, ''))
+			const resolved = path.resolve(rootDir, reqPath)
+
+			// Security: only allow files within /app/client/
+			if (!resolved.startsWith(clientDir + path.sep)) {
+				return new Response('Forbidden', { status: 403 })
+			}
+
+			// Only allow .ts and .tsx files
+			if (!resolved.endsWith('.ts') && !resolved.endsWith('.tsx')) {
+				return new Response('Not Found', { status: 404 })
+			}
+
+			// Check file exists
+			if (!fs.existsSync(resolved)) {
+				return new Response('Not Found', { status: 404 })
+			}
+
+			const filepath = resolved
 
 			// Bundle entry files WITHOUT externals so that all dependencies
 			// share singleton instances (e.g., the interactions Map)

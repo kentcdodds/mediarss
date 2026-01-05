@@ -24,12 +24,15 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@epic-web/invariant": "^1.0.0",
     "@remix-run/component": "^0.2.1",
     "@remix-run/fetch-router": "^0.14.0",
     "@remix-run/interaction": "^0.3.0",
     "@remix-run/logger-middleware": "^0.1.0",
     "@remix-run/response": "^0.2.1",
     "@remix-run/route-pattern": "^0.16.0",
-    "@remix-run/static-middleware": "^0.4.0"
+    "@remix-run/static-middleware": "^0.4.0",
+    "music-metadata": "^11.10.4",
+    "zod": "^4.3.5"
   }
 }

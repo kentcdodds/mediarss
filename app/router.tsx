@@ -5,7 +5,10 @@ import { logger } from '@remix-run/logger-middleware'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
+import artHandlers from '#app/routes/art.ts'
+import feedHandlers from '#app/routes/feed.ts'
 import homeHandlers from '#app/routes/home.tsx'
+import mediaHandlers from '#app/routes/media.ts'
 
 /**
  * Bun-native static file middleware that uses Bun.file() for proper lazy file handling.
@@ -65,5 +68,8 @@ const router = createRouter({
 })
 
 router.map(routes.home, homeHandlers)
+router.map(routes.feed, feedHandlers)
+router.map(routes.media, mediaHandlers)
+router.map(routes.art, artHandlers)
 
 export default router

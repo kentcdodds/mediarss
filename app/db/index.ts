@@ -1,9 +1,10 @@
 import { Database } from 'bun:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
+import { getEnv } from '#app/config/env.ts'
 
 function getDatabasePath(): string {
-	const envPath = process.env.DATABASE_PATH
+	const envPath = getEnv().DATABASE_PATH
 	if (envPath) return envPath
 
 	// Default: /data/sqlite.db for Docker, ./data/sqlite.db for local dev

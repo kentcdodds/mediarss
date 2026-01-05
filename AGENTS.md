@@ -49,7 +49,7 @@ bun run dev:test
 
 This command:
 - Sets `DATABASE_PATH=./data/test.db` (separate from production data)
-- Sets `MEDIA_PATHS=./local-test/1/audio:./local-test/1/video`
+- Sets `MEDIA_PATHS=audio:./local-test/1/audio,video:./local-test/1/video`
 - Runs the dev server with watch mode
 
 The `local-test/1` directory contains sample media files:

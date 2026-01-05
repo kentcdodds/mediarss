@@ -121,13 +121,16 @@ export function updateCuratedFeed(
 		$sortOrder: data.sortOrder ?? existing.sortOrder,
 		$imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
 		$author: data.author !== undefined ? data.author : existing.author,
-		$ownerName: data.ownerName !== undefined ? data.ownerName : existing.ownerName,
-		$ownerEmail: data.ownerEmail !== undefined ? data.ownerEmail : existing.ownerEmail,
+		$ownerName:
+			data.ownerName !== undefined ? data.ownerName : existing.ownerName,
+		$ownerEmail:
+			data.ownerEmail !== undefined ? data.ownerEmail : existing.ownerEmail,
 		$language: data.language ?? existing.language,
 		$explicit: data.explicit ?? existing.explicit,
 		$category: data.category !== undefined ? data.category : existing.category,
 		$link: data.link !== undefined ? data.link : existing.link,
-		$overrides: data.overrides !== undefined ? data.overrides : existing.overrides,
+		$overrides:
+			data.overrides !== undefined ? data.overrides : existing.overrides,
 		$updatedAt: now,
 	})
 

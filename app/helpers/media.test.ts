@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import path from 'node:path'
 import {
 	getFileMetadata,
-	getMediaPaths,
 	isMediaFile,
 	scanDirectory,
 	scanDirectoryWithMetadata,
@@ -10,52 +9,6 @@ import {
 
 const TEST_AUDIO_DIR = './test/fixtures/audio'
 const TEST_VIDEO_DIR = './test/fixtures/video'
-
-describe('getMediaPaths', () => {
-	const originalMediaPaths = process.env.MEDIA_PATHS
-
-	afterEach(() => {
-		if (originalMediaPaths !== undefined) {
-			process.env.MEDIA_PATHS = originalMediaPaths
-		} else {
-			delete process.env.MEDIA_PATHS
-		}
-	})
-
-	test('returns empty array when MEDIA_PATHS is not set', () => {
-		delete process.env.MEDIA_PATHS
-		expect(getMediaPaths()).toEqual([])
-	})
-
-	test('returns empty array when MEDIA_PATHS is empty string', () => {
-		process.env.MEDIA_PATHS = ''
-		expect(getMediaPaths()).toEqual([])
-	})
-
-	test('parses single path', () => {
-		process.env.MEDIA_PATHS = '/media/audio'
-		expect(getMediaPaths()).toEqual(['/media/audio'])
-	})
-
-	test('parses multiple colon-separated paths', () => {
-		process.env.MEDIA_PATHS = '/media/audio:/media/video:/media/podcasts'
-		expect(getMediaPaths()).toEqual([
-			'/media/audio',
-			'/media/video',
-			'/media/podcasts',
-		])
-	})
-
-	test('trims whitespace from paths', () => {
-		process.env.MEDIA_PATHS = ' /media/audio : /media/video '
-		expect(getMediaPaths()).toEqual(['/media/audio', '/media/video'])
-	})
-
-	test('filters out empty segments', () => {
-		process.env.MEDIA_PATHS = '/media/audio::/media/video:'
-		expect(getMediaPaths()).toEqual(['/media/audio', '/media/video'])
-	})
-})
 
 describe('isMediaFile', () => {
 	test('returns true for m4b audiobook file', async () => {

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch index.ts",
-    "dev:test": "DATABASE_PATH=./data/test.db MEDIA_PATHS=./local-test/1/audio:./local-test/1/video NODE_ENV=development bun run --watch index.ts",
+    "dev:test": "DATABASE_PATH=./data/test.db MEDIA_PATHS=audio:./local-test/1/audio,video:./local-test/1/video NODE_ENV=development bun run --watch index.ts",
     "test": "bun test",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",
@@ -33,6 +33,7 @@
     "@remix-run/response": "^0.2.1",
     "@remix-run/route-pattern": "^0.16.0",
     "@remix-run/static-middleware": "^0.4.0",
+    "fast-sort": "^3.4.1",
     "music-metadata": "^11.10.4",
     "zod": "^4.3.5"
   }

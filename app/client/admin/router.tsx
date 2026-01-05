@@ -94,21 +94,12 @@ export const router = new RouterState()
 window.addEventListener('popstate', router.handlePopState)
 
 /**
- * Link component for client-side navigation.
+ * Link component for navigation.
+ * Currently uses full page refreshes to work around a Remix DOM bug.
+ * TODO: Re-enable client-side navigation once the bug is fixed.
  */
-export function Link(this: Handle) {
-	return (renderProps: { href: string } & Record<string, unknown>) => (
-		<a
-			{...renderProps}
-			on={{
-				...(renderProps.on ?? {}),
-				click: (event) => {
-					event.preventDefault()
-					router.navigate(renderProps.href)
-				},
-			}}
-		/>
-	)
+export function Link(renderProps: { href: string } & Record<string, unknown>) {
+	return <a {...renderProps} />
 }
 
 /**

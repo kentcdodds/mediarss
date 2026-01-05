@@ -1,15 +1,9 @@
 import { createRoot } from '@remix-run/component'
 import { colors, spacing, typography } from '#app/styles/tokens.ts'
 import { CreateFeed } from './create-feed.tsx'
+import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
 import { RouterOutlet, router } from './router.tsx'
-
-// Placeholder components for routes not yet implemented
-function FeedDetail(_setupProps: { params: Record<string, string> }) {
-	return (renderProps: { params: Record<string, string> }) => (
-		<div>Feed Detail {renderProps.params.id} - Coming in Chunk 3</div>
-	)
-}
 
 // Register routes
 router.register('/admin', FeedList)

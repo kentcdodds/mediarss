@@ -207,7 +207,7 @@ than app-level authentication.
    - Go to **Access → Applications → Add an application**
    - Choose "Self-hosted"
    - Set the domain to `media.yourdomain.com`
-   - Set the path to `/` (just the root/admin pages)
+   - Set the path to `/admin` (just the admin pages)
    - Add an authentication method (email OTP is easiest)
    - **Important:** Don't protect `/feed/*`, `/media/*`, or `/art/*` paths
 

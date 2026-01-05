@@ -1,22 +1,7 @@
+import { generateId } from '#app/helpers/crypto.ts'
 import { db } from './index.ts'
-import { sql, snakeToCamel } from './sql.ts'
-import type { CuratedFeed, SortOrder } from './types.ts'
-import { generateId, generateToken } from '#app/helpers/crypto.ts'
-
-type CuratedFeedRow = {
-	id: string
-	name: string
-	description: string
-	token: string
-	sort_by: string
-	sort_order: SortOrder
-	created_at: number
-	updated_at: number
-}
-
-function rowToCuratedFeed(row: CuratedFeedRow): CuratedFeed {
-	return snakeToCamel(row) as CuratedFeed
-}
+import { parseRow, parseRows, sql } from './sql.ts'
+import { type CuratedFeed, CuratedFeedSchema, type SortOrder } from './types.ts'
 
 export type CreateCuratedFeedData = {
 	name: string
@@ -27,19 +12,17 @@ export type CreateCuratedFeedData = {
 
 export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
 	const id = generateId()
-	const token = generateToken()
 	const now = Math.floor(Date.now() / 1000)
 
 	db.query(
 		sql`
-			INSERT INTO curated_feeds (id, name, description, token, sort_by, sort_order, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+			INSERT INTO curated_feeds (id, name, description, sort_by, sort_order, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?);
 		`,
 	).run(
 		id,
 		data.name,
 		data.description ?? '',
-		token,
 		data.sortBy ?? 'position',
 		data.sortOrder ?? 'asc',
 		now,
@@ -49,31 +32,22 @@ export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
 	return getCuratedFeedById(id)!
 }
 
-export function getCuratedFeedByToken(token: string): CuratedFeed | undefined {
-	const row = db
-		.query<CuratedFeedRow, [string]>(
-			sql`SELECT * FROM curated_feeds WHERE token = ?;`,
-		)
-		.get(token)
-	return row ? rowToCuratedFeed(row) : undefined
-}
-
 export function getCuratedFeedById(id: string): CuratedFeed | undefined {
 	const row = db
-		.query<CuratedFeedRow, [string]>(
+		.query<Record<string, unknown>, [string]>(
 			sql`SELECT * FROM curated_feeds WHERE id = ?;`,
 		)
 		.get(id)
-	return row ? rowToCuratedFeed(row) : undefined
+	return row ? parseRow(CuratedFeedSchema, row) : undefined
 }
 
 export function listCuratedFeeds(): Array<CuratedFeed> {
 	const rows = db
-		.query<CuratedFeedRow, []>(
+		.query<Record<string, unknown>, []>(
 			sql`SELECT * FROM curated_feeds ORDER BY created_at DESC;`,
 		)
 		.all()
-	return rows.map(rowToCuratedFeed)
+	return parseRows(CuratedFeedSchema, rows)
 }
 
 export type UpdateCuratedFeedData = {

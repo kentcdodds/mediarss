@@ -1,3 +1,5 @@
+import type { z } from 'zod'
+
 /**
  * Template tag for SQL that joins multiline SQL into a single line.
  * Makes SQL strings more readable while producing clean single-line output.
@@ -37,4 +39,26 @@ export function snakeToCamel<T extends Record<string, unknown>>(obj: T) {
 			? `${Start}${Uppercase<Letter>}${Rest}`
 			: never]: T[K]
 	}
+}
+
+/**
+ * Converts a database row to a validated object using a Zod schema.
+ * Performs snake_case to camelCase conversion and runtime type validation.
+ */
+export function parseRow<T extends z.ZodTypeAny>(
+	schema: T,
+	row: Record<string, unknown>,
+): z.infer<T> {
+	const camelCased = snakeToCamel(row)
+	return schema.parse(camelCased)
+}
+
+/**
+ * Converts multiple database rows to validated objects using a Zod schema.
+ */
+export function parseRows<T extends z.ZodTypeAny>(
+	schema: T,
+	rows: Array<Record<string, unknown>>,
+): Array<z.infer<T>> {
+	return rows.map((row) => parseRow(schema, row))
 }

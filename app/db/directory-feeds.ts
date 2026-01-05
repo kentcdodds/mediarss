@@ -1,23 +1,11 @@
+import { generateId } from '#app/helpers/crypto.ts'
 import { db } from './index.ts'
-import { sql, snakeToCamel } from './sql.ts'
-import type { DirectoryFeed, SortOrder } from './types.ts'
-import { generateId, generateToken } from '#app/helpers/crypto.ts'
-
-type DirectoryFeedRow = {
-	id: string
-	name: string
-	description: string
-	token: string
-	directory_path: string
-	sort_by: string
-	sort_order: SortOrder
-	created_at: number
-	updated_at: number
-}
-
-function rowToDirectoryFeed(row: DirectoryFeedRow): DirectoryFeed {
-	return snakeToCamel(row) as DirectoryFeed
-}
+import { parseRow, parseRows, sql } from './sql.ts'
+import {
+	type DirectoryFeed,
+	DirectoryFeedSchema,
+	type SortOrder,
+} from './types.ts'
 
 export type CreateDirectoryFeedData = {
 	name: string
@@ -31,19 +19,17 @@ export function createDirectoryFeed(
 	data: CreateDirectoryFeedData,
 ): DirectoryFeed {
 	const id = generateId()
-	const token = generateToken()
 	const now = Math.floor(Date.now() / 1000)
 
 	db.query(
 		sql`
-			INSERT INTO directory_feeds (id, name, description, token, directory_path, sort_by, sort_order, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+			INSERT INTO directory_feeds (id, name, description, directory_path, sort_by, sort_order, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 		`,
 	).run(
 		id,
 		data.name,
 		data.description ?? '',
-		token,
 		data.directoryPath,
 		data.sortBy ?? 'filename',
 		data.sortOrder ?? 'asc',
@@ -54,33 +40,22 @@ export function createDirectoryFeed(
 	return getDirectoryFeedById(id)!
 }
 
-export function getDirectoryFeedByToken(
-	token: string,
-): DirectoryFeed | undefined {
-	const row = db
-		.query<DirectoryFeedRow, [string]>(
-			sql`SELECT * FROM directory_feeds WHERE token = ?;`,
-		)
-		.get(token)
-	return row ? rowToDirectoryFeed(row) : undefined
-}
-
 export function getDirectoryFeedById(id: string): DirectoryFeed | undefined {
 	const row = db
-		.query<DirectoryFeedRow, [string]>(
+		.query<Record<string, unknown>, [string]>(
 			sql`SELECT * FROM directory_feeds WHERE id = ?;`,
 		)
 		.get(id)
-	return row ? rowToDirectoryFeed(row) : undefined
+	return row ? parseRow(DirectoryFeedSchema, row) : undefined
 }
 
 export function listDirectoryFeeds(): Array<DirectoryFeed> {
 	const rows = db
-		.query<DirectoryFeedRow, []>(
+		.query<Record<string, unknown>, []>(
 			sql`SELECT * FROM directory_feeds ORDER BY created_at DESC;`,
 		)
 		.all()
-	return rows.map(rowToDirectoryFeed)
+	return parseRows(DirectoryFeedSchema, rows)
 }
 
 export type UpdateDirectoryFeedData = {

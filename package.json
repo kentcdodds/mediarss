@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch index.ts",
+    "dev:test": "DATABASE_PATH=./data/test.db MEDIA_PATHS=./local-test/1/audio:./local-test/1/video NODE_ENV=development bun run --watch index.ts",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",

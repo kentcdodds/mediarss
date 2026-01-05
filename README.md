@@ -59,8 +59,9 @@ If you're running this on a Synology NAS, follow these specific instructions:
      - Add the standard environment variables as needed
      - For multiple media paths, specify them in MEDIA_PATHS:
        - Variable: MEDIA_PATHS
-       - Value: /media/shows:/media/personal (colon-separated list of your mount
-         points)
+       - Value: `shows:/media/shows,personal:/media/personal`
+       - Format: `name:path,name:path` (comma-separated, each with a name and
+         path)
 
 The rest of the standard instructions apply for managing the container.
 
@@ -92,7 +93,7 @@ docker run -d \
   -v /path/to/media1:/media/shows:ro \
   -v /path/to/media2:/media/personal:ro \
   -v /path/to/media3:/media/other:ro \
-  -e MEDIA_PATHS=/media/shows:/media/personal:/media/other \
+  -e MEDIA_PATHS=shows:/media/shows,personal:/media/personal,other:/media/other \
   [your-image-name]
 ```
 
@@ -144,12 +145,15 @@ structure:
 
 The following environment variables can be configured:
 
-- `PORT`: External port (default: 8765)
-- `DATABASE_PATH`: Path to the main SQLite database (default: /data/sqlite.db)
+- `PORT`: Server port (default: 44100)
+- `NODE_ENV`: Environment mode (`production`, `development`, or `test`)
+- `DATABASE_PATH`: Path to the main SQLite database (default: ./data/sqlite.db)
 - `CACHE_DATABASE_PATH`: Path to the cache SQLite database (default:
-  /data/cache.db)
-- `MEDIA_PATHS`: Colon-separated list of media directories inside container
-  (e.g., /media/shows:/media/personal)
+  ./data/cache.db)
+- `MEDIA_PATHS`: Named media roots in format `name:path,name:path`
+  - Example: `shows:/media/shows,personal:/media/personal,other:/media/other`
+  - Each media root has a name (used in URLs) and a path (filesystem location)
+  - Names should be URL-safe (alphanumeric, hyphens, underscores)
 
 ### Database Persistence
 
@@ -216,7 +220,7 @@ docker run -d \
   -v /path/to/media1:/media/shows:ro \
   -v /path/to/media2:/media/personal:ro \
   -v /path/to/media3:/media/other:ro \
-  -e MEDIA_PATHS=/media/shows:/media/personal:/media/other \
+  -e MEDIA_PATHS=shows:/media/shows,personal:/media/personal,other:/media/other \
   [your-image-name]
 ```
 

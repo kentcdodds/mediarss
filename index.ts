@@ -1,16 +1,20 @@
+// Initialize environment variables
+import '#app/config/init-env.ts'
+
+import { getEnv } from '#app/config/env.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
 import router from './app/router.tsx'
 import { createBundlingRoutes } from './server/bundling.ts'
 import { setupInteractiveCli } from './server/cli.ts'
 
+const env = getEnv()
+
 // Initialize database and run migrations
 migrate(db)
 
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 44100
-
 const server = Bun.serve({
-	port,
+	port: env.PORT,
 	routes: createBundlingRoutes(import.meta.dirname),
 
 	async fetch(request) {

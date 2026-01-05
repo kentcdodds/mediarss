@@ -4,6 +4,7 @@ import { invariant } from '@epic-web/invariant'
 import { fileTypeFromFile } from 'file-type'
 import * as mm from 'music-metadata'
 import { z } from 'zod'
+import { getMediaRoots } from '#app/config/env.ts'
 
 /**
  * Directories to skip when scanning (Synology NAS junk, macOS metadata, etc.)
@@ -37,20 +38,6 @@ const MediaFileSchema = z.object({
 })
 
 export type MediaFile = z.infer<typeof MediaFileSchema>
-
-/**
- * Parse the MEDIA_PATHS environment variable (colon-separated paths)
- */
-export function getMediaPaths(): string[] {
-	const mediaPaths = process.env.MEDIA_PATHS
-	if (!mediaPaths) {
-		return []
-	}
-	return mediaPaths
-		.split(':')
-		.map((p) => p.trim())
-		.filter(Boolean)
-}
 
 /**
  * Check if a path segment is in the ignored directories list
@@ -143,14 +130,31 @@ function extractPublicationDate(common: mm.ICommonTagsResult): Date | null {
 }
 
 /**
+ * Safely convert a value to string, handling objects
+ */
+function valueToString(value: unknown): string {
+	if (value === null || value === undefined) return ''
+	if (typeof value === 'string') return value
+	if (typeof value === 'object') {
+		// Handle objects with text property (common in metadata)
+		if ('text' in value && typeof (value as { text: unknown }).text === 'string') {
+			return (value as { text: string }).text
+		}
+		// Try to extract meaningful content
+		return JSON.stringify(value)
+	}
+	return String(value)
+}
+
+/**
  * Extract description from metadata
  */
 function extractDescription(common: mm.ICommonTagsResult): string | null {
 	if (common.description && common.description.length > 0) {
-		return common.description.join('\n')
+		return common.description.map(valueToString).filter(Boolean).join('\n')
 	}
 	if (common.comment && common.comment.length > 0) {
-		return common.comment.join('\n')
+		return common.comment.map(valueToString).filter(Boolean).join('\n')
 	}
 	return null
 }
@@ -283,14 +287,14 @@ export async function scanDirectoryWithMetadata(
 }
 
 /**
- * Scan all configured media paths and return metadata for all media files
+ * Scan all configured media roots and return metadata for all media files
  */
-export async function scanAllMediaPaths(): Promise<MediaFile[]> {
-	const paths = getMediaPaths()
+export async function scanAllMediaRoots(): Promise<MediaFile[]> {
+	const roots = getMediaRoots()
 	const allFiles: MediaFile[] = []
 
-	for (const mediaPath of paths) {
-		const files = await scanDirectoryWithMetadata(mediaPath)
+	for (const root of roots) {
+		const files = await scanDirectoryWithMetadata(root.path)
 		allFiles.push(...files)
 	}
 

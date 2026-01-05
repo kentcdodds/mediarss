@@ -14,7 +14,7 @@ For simple components with no state, just return JSX directly:
 
 ```tsx
 function Greeting({ name }: { name: string }) {
-  return <div>Hello, {name}!</div>
+	return <div>Hello, {name}!</div>
 }
 ```
 
@@ -26,22 +26,22 @@ For components that need state, use `this: Handle` and **return a function** tha
 import type { Handle } from '@remix-run/component'
 
 function Counter(this: Handle) {
-  // State lives in the closure
-  let count = 0
+	// State lives in the closure
+	let count = 0
 
-  // Call this.update() to re-render when state changes
-  const increment = () => {
-    count++
-    this.update()
-  }
+	// Call this.update() to re-render when state changes
+	const increment = () => {
+		count++
+		this.update()
+	}
 
-  // Return a render function
-  return () => (
-    <div>
-      <span>Count: {count}</span>
-      <button on={{ click: increment }}>+</button>
-    </div>
-  )
+	// Return a render function
+	return () => (
+		<div>
+			<span>Count: {count}</span>
+			<button on={{ click: increment }}>+</button>
+		</div>
+	)
 }
 ```
 
@@ -55,28 +55,28 @@ When a component has both props and state, use **setupProps** for initial setup 
 import type { Handle } from '@remix-run/component'
 
 function UserCard(
-  this: Handle,
-  setupProps: { userId: string }  // Captured once at setup
+	this: Handle,
+	setupProps: { userId: string } // Captured once at setup
 ) {
-  let user: User | null = null
-  let loading = true
+	let user: User | null = null
+	let loading = true
 
-  // Use setupProps for initial data fetching
-  fetch(`/api/users/${setupProps.userId}`)
-    .then(res => res.json())
-    .then(data => {
-      user = data
-      loading = false
-      this.update()
-    })
+	// Use setupProps for initial data fetching
+	fetch(`/api/users/${setupProps.userId}`)
+		.then(res => res.json())
+		.then(data => {
+			user = data
+			loading = false
+			this.update()
+		})
 
-  // renderProps always has the latest values
-  return (renderProps: { userId: string }) => (
-    <div>
-      <h2>User: {renderProps.userId}</h2>
-      {loading ? <span>Loading...</span> : <span>{user?.name}</span>}
-    </div>
-  )
+	// renderProps always has the latest values
+	return (renderProps: { userId: string }) => (
+		<div>
+			<h2>User: {renderProps.userId}</h2>
+			{loading ? <span>Loading...</span> : <span>{user?.name}</span>}
+		</div>
+	)
 }
 ```
 
@@ -95,15 +95,15 @@ Use the `css` prop for inline styles with pseudo-selector support:
 
 ```tsx
 <button
-  css={{
-    padding: '8px 16px',
-    backgroundColor: '#3b82f6',
-    '&:hover': {
-      backgroundColor: '#2563eb',
-    },
-  }}
+	css={{
+		padding: '8px 16px',
+		backgroundColor: '#3b82f6',
+		'&:hover': {
+			backgroundColor: '#2563eb',
+		},
+	}}
 >
-  Styled Button
+	Styled Button
 </button>
 ```
 
@@ -113,9 +113,9 @@ Use `this.on()` to subscribe to custom events or other event targets:
 
 ```tsx
 function RouterAware(this: Handle) {
-  this.on(router, { navigate: () => this.update() })
-  
-  return () => <div>Current path: {location.pathname}</div>
+	this.on(router, { navigate: () => this.update() })
+	
+	return () => <div>Current path: {location.pathname}</div>
 }
 ```
 
@@ -125,20 +125,20 @@ Use `this.signal` for cancellable async operations:
 
 ```tsx
 function DataLoader(this: Handle) {
-  let data = null
+	let data = null
 
-  fetch('/api/data', { signal: this.signal })
-    .then(res => res.json())
-    .then(d => {
-      data = d
-      this.update()
-    })
-    .catch(err => {
-      if (this.signal.aborted) return // Component unmounted
-      console.error(err)
-    })
+	fetch('/api/data', { signal: this.signal })
+		.then(res => res.json())
+		.then(d => {
+			data = d
+			this.update()
+		})
+		.catch(err => {
+			if (this.signal.aborted) return // Component unmounted
+			console.error(err)
+		})
 
-  return () => <div>{data ? JSON.stringify(data) : 'Loading...'}</div>
+	return () => <div>{data ? JSON.stringify(data) : 'Loading...'}</div>
 }
 ```
 
@@ -173,7 +173,7 @@ Use `bun test` to run tests.
 import { test, expect } from "bun:test";
 
 test("hello world", () => {
-  expect(1).toBe(1);
+	expect(1).toBe(1);
 });
 ```
 

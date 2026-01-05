@@ -15,6 +15,8 @@
 - A server or machine to host the application
 - Basic understanding of Docker volumes for data persistence
 - Media files organized in one or more directories on your host machine
+- (Recommended) A domain name and Cloudflare account for secure remote access
+  (see [Securing the Admin Dashboard](#securing-the-admin-dashboard))
 
 ### Synology NAS Setup
 
@@ -154,6 +156,82 @@ The following environment variables can be configured:
   - Example: `shows:/media/shows,personal:/media/personal,other:/media/other`
   - Each media root has a name (used in URLs) and a path (filesystem location)
   - Names should be URL-safe (alphanumeric, hyphens, underscores)
+
+### Securing the Admin Dashboard
+
+MediaRSS has two types of routes:
+
+- **Public routes** (`/feed/*`, `/media/*`, `/art/*`) - These are accessed by RSS
+  readers and podcast apps. They use secret tokens in URLs for access control.
+- **Admin routes** (`/`) - The dashboard for managing feeds. This should be
+  protected.
+
+Since RSS readers need direct access to feed URLs without authentication prompts,
+we recommend using **Cloudflare Tunnel** to secure the admin dashboard rather
+than app-level authentication.
+
+#### Why Cloudflare Tunnel?
+
+- **Free HTTPS** - Automatic SSL certificates, no configuration needed
+- **No port forwarding** - Outbound-only connection, your router stays locked down
+- **Hidden IP** - Your home IP address is never exposed
+- **Access policies** - Add authentication at the edge (email OTP, SSO, etc.)
+- **Works with any DNS** - You don't need to move your domain to Cloudflare
+
+#### Setting Up Cloudflare Tunnel
+
+1. **Create a free Cloudflare account** and add your domain (you can use the free
+   plan).
+
+2. **Create a tunnel** in the Zero Trust dashboard:
+   - Go to **Networks → Tunnels → Create a tunnel**
+   - Name it (e.g., "mediarss")
+   - Choose **Docker** as the connector
+   - Copy the tunnel token
+
+3. **Run cloudflared** alongside MediaRSS on your NAS/server:
+
+   ```bash
+   docker run -d \
+     --name cloudflared \
+     --restart unless-stopped \
+     cloudflare/cloudflared:latest \
+     tunnel run --token YOUR_TUNNEL_TOKEN
+   ```
+
+4. **Configure the public hostname** in the tunnel settings:
+   - Hostname: `media.yourdomain.com` (a domain name you control)
+   - Service: `http://localhost:44100` (or your MediaRSS port)
+
+5. **Add an Access policy** to protect the admin dashboard:
+   - Go to **Access → Applications → Add an application**
+   - Choose "Self-hosted"
+   - Set the domain to `media.yourdomain.com`
+   - Set the path to `/` (just the root/admin pages)
+   - Add an authentication method (email OTP is easiest)
+   - **Important:** Don't protect `/feed/*`, `/media/*`, or `/art/*` paths
+
+#### Using Cloudflare Tunnel Without Moving DNS
+
+If your domain's DNS is managed elsewhere (not Cloudflare), you can still use
+Cloudflare Tunnel with a CNAME record:
+
+1. Complete steps 1-4 above
+2. Find your tunnel's hostname in the Cloudflare dashboard - it looks like:
+   `a1b2c3d4-e5f6-7890-abcd-ef1234567890.cfargotunnel.com`
+3. At your DNS provider, create a CNAME record:
+   ```
+   media.yourdomain.com  CNAME  <tunnel-uuid>.cfargotunnel.com
+   ```
+
+**Note:** This only works for subdomains (e.g., `media.yourdomain.com`), not the
+root domain.
+
+#### Alternative: Local Network Only
+
+If you only access MediaRSS from your local network and don't need remote
+access, you can skip Cloudflare Tunnel entirely. The token-based URLs for feeds
+provide sufficient security for trusted networks.
 
 ### Database Persistence
 

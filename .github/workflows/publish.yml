@@ -17,21 +17,113 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    name: 🚀 Publish
+  lint:
+    name: ⬣ Lint
     runs-on: ubuntu-22.04
-
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: 📥 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🔬 Lint
+        run: bun run check:ci
+
+  typecheck:
+    name: ʦ TypeCheck
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: 📥 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🔎 Type check
+        run: bun run typecheck
+
+  test:
+    name: 🧪 Test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: 📥 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Run tests
+        run: bun test
+
+  build:
+    name: 🐳 Build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image
+        uses: docker/build-push-action@v5
         with:
-          fetch-depth: '50'
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: mediarss:smoke-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
+
+      - name: 🧪 Smoke test
+        run: |
+          # Start the container
+          docker run -d --name smoke-test -p 22050:22050 mediarss:smoke-test
+
+          # Wait for the container to be ready (max 30 seconds)
+          for i in {1..30}; do
+            if curl -sf http://localhost:22050/health > /dev/null 2>&1; then
+              echo "✅ Health check passed!"
+              curl -s http://localhost:22050/health | jq .
+              docker stop smoke-test
+              docker rm smoke-test
+              exit 0
+            fi
+            echo "Waiting for container... ($i/30)"
+            sleep 1
+          done
+
+          echo "❌ Health check failed!"
+          docker logs smoke-test
+          docker stop smoke-test
+          docker rm smoke-test
+          exit 1
+
+  publish:
+    name: 🚀 Publish
+    runs-on: ubuntu-22.04
+    needs: [lint, typecheck, test, build]
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
 
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: 🔑 Login to Docker Hub
-        if: ${{ github.event_name == 'push' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -50,13 +142,15 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-      - name: 🏗️ Build and push Docker image
+      - name: 🚀 Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             COMMIT_SHA=${{ github.sha }}

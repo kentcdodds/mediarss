@@ -185,7 +185,8 @@ export function MediaList(this: Handle) {
 	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
 	let showBulkAssignModal = false
 	let showBulkUnassignModal = false
-	let bulkSelectedFeedId: string | null = null
+	let bulkSelectedFeedIds: Set<string> = new Set() // For bulk assign (multi-select)
+	let bulkUnassignFeedId: string | null = null // For bulk unassign (single-select)
 	let bulkSaving = false
 
 	// Helper to get the selection key for a media item
@@ -243,28 +244,28 @@ export function MediaList(this: Handle) {
 	// Open bulk assign modal
 	const openBulkAssignModal = () => {
 		showBulkAssignModal = true
-		bulkSelectedFeedId = null
+		bulkSelectedFeedIds = new Set()
 		this.update()
 	}
 
 	// Close bulk assign modal
 	const closeBulkAssignModal = () => {
 		showBulkAssignModal = false
-		bulkSelectedFeedId = null
+		bulkSelectedFeedIds = new Set()
 		this.update()
 	}
 
 	// Open bulk unassign modal
 	const openBulkUnassignModal = () => {
 		showBulkUnassignModal = true
-		bulkSelectedFeedId = null
+		bulkUnassignFeedId = null
 		this.update()
 	}
 
 	// Close bulk unassign modal
 	const closeBulkUnassignModal = () => {
 		showBulkUnassignModal = false
-		bulkSelectedFeedId = null
+		bulkUnassignFeedId = null
 		this.update()
 	}
 
@@ -298,9 +299,9 @@ export function MediaList(this: Handle) {
 		return Array.from(feedsWithItems.values())
 	}
 
-	// Save bulk assignments (add to feed)
+	// Save bulk assignments (add to feeds)
 	const saveBulkAssignments = async () => {
-		if (!bulkSelectedFeedId || state.status !== 'success') return
+		if (bulkSelectedFeedIds.size === 0 || state.status !== 'success') return
 
 		bulkSaving = true
 		this.update()
@@ -311,7 +312,7 @@ export function MediaList(this: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					mediaPaths: [...selectedItems],
-					feedId: bulkSelectedFeedId,
+					feedIds: [...bulkSelectedFeedIds],
 					action: 'add',
 				}),
 			})
@@ -321,16 +322,16 @@ export function MediaList(this: Handle) {
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			// Update local state with new assignments
+			// Update local state with new assignments for all selected feeds
 			for (const mediaPath of selectedItems) {
 				const existing = state.assignments[mediaPath] ?? []
-				// Only add if not already assigned
-				if (!existing.some((a) => a.feedId === bulkSelectedFeedId)) {
-					state.assignments[mediaPath] = [
-						...existing,
-						{ feedId: bulkSelectedFeedId, feedType: 'curated' },
-					]
+				for (const feedId of bulkSelectedFeedIds) {
+					// Only add if not already assigned to this feed
+					if (!existing.some((a) => a.feedId === feedId)) {
+						existing.push({ feedId, feedType: 'curated' })
+					}
 				}
+				state.assignments[mediaPath] = existing
 			}
 
 			closeBulkAssignModal()
@@ -345,7 +346,7 @@ export function MediaList(this: Handle) {
 
 	// Save bulk unassignments (remove from feed)
 	const saveBulkUnassignments = async () => {
-		if (!bulkSelectedFeedId || state.status !== 'success') return
+		if (!bulkUnassignFeedId || state.status !== 'success') return
 
 		bulkSaving = true
 		this.update()
@@ -356,7 +357,7 @@ export function MediaList(this: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					mediaPaths: [...selectedItems],
-					feedId: bulkSelectedFeedId,
+					feedIds: [bulkUnassignFeedId],
 					action: 'remove',
 				}),
 			})
@@ -370,7 +371,7 @@ export function MediaList(this: Handle) {
 			for (const mediaPath of selectedItems) {
 				const existing = state.assignments[mediaPath] ?? []
 				state.assignments[mediaPath] = existing.filter(
-					(a) => a.feedId !== bulkSelectedFeedId,
+					(a) => a.feedId !== bulkUnassignFeedId,
 				)
 			}
 
@@ -1003,10 +1004,14 @@ export function MediaList(this: Handle) {
 					<BulkAssignModal
 						selectedCount={selectedItems.size}
 						curatedFeeds={curatedFeeds}
-						selectedFeedId={bulkSelectedFeedId}
+						selectedFeedIds={bulkSelectedFeedIds}
 						saving={bulkSaving}
-						onSelectFeed={(feedId) => {
-							bulkSelectedFeedId = feedId
+						onToggleFeed={(feedId) => {
+							if (bulkSelectedFeedIds.has(feedId)) {
+								bulkSelectedFeedIds.delete(feedId)
+							} else {
+								bulkSelectedFeedIds.add(feedId)
+							}
 							this.update()
 						}}
 						onSave={saveBulkAssignments}
@@ -1019,10 +1024,10 @@ export function MediaList(this: Handle) {
 					<BulkUnassignModal
 						selectedCount={selectedItems.size}
 						feedsWithItems={getFeedsWithSelectedItems()}
-						selectedFeedId={bulkSelectedFeedId}
+						selectedFeedId={bulkUnassignFeedId}
 						saving={bulkSaving}
 						onSelectFeed={(feedId) => {
-							bulkSelectedFeedId = feedId
+							bulkUnassignFeedId = feedId
 							this.update()
 						}}
 						onSave={saveBulkUnassignments}
@@ -1874,20 +1879,23 @@ function FloatingActionBar({
 function BulkAssignModal({
 	selectedCount,
 	curatedFeeds,
-	selectedFeedId,
+	selectedFeedIds,
 	saving,
-	onSelectFeed,
+	onToggleFeed,
 	onSave,
 	onCancel,
 }: {
 	selectedCount: number
 	curatedFeeds: Array<CuratedFeed>
-	selectedFeedId: string | null
+	selectedFeedIds: Set<string>
 	saving: boolean
-	onSelectFeed: (feedId: string) => void
+	onToggleFeed: (feedId: string) => void
 	onSave: () => void
 	onCancel: () => void
 }) {
+	const feedCount = selectedFeedIds.size
+	const noFeedsSelected = feedCount === 0
+
 	return (
 		<div
 			css={{
@@ -1939,7 +1947,7 @@ function BulkAssignModal({
 							margin: 0,
 						}}
 					>
-						Assign to Feed
+						Assign to Feeds
 					</h3>
 					<p
 						css={{
@@ -1948,8 +1956,8 @@ function BulkAssignModal({
 							margin: `${spacing.xs} 0 0 0`,
 						}}
 					>
-						Add {selectedCount} item{selectedCount !== 1 ? 's' : ''} to a
-						curated feed
+						Add {selectedCount} item{selectedCount !== 1 ? 's' : ''} to curated
+						feeds
 					</p>
 				</div>
 
@@ -1972,13 +1980,13 @@ function BulkAssignModal({
 							}}
 						>
 							{curatedFeeds.map((feed) => (
-								<FeedRadioRow
+								<FeedCheckboxRow
 									key={feed.id}
 									feedId={feed.id}
 									name={feed.name}
 									updatedAt={feed.updatedAt}
-									isSelected={selectedFeedId === feed.id}
-									onSelect={() => onSelectFeed(feed.id)}
+									isSelected={selectedFeedIds.has(feed.id)}
+									onToggle={() => onToggleFeed(feed.id)}
 								/>
 							))}
 						</div>
@@ -2020,20 +2028,20 @@ function BulkAssignModal({
 					</button>
 					<button
 						type="button"
-						disabled={saving || !selectedFeedId}
+						disabled={saving || noFeedsSelected}
 						css={{
 							padding: `${spacing.sm} ${spacing.lg}`,
 							fontSize: typography.fontSize.sm,
 							fontWeight: typography.fontWeight.medium,
 							color: colors.background,
 							backgroundColor:
-								saving || !selectedFeedId ? colors.border : colors.primary,
+								saving || noFeedsSelected ? colors.border : colors.primary,
 							border: 'none',
 							borderRadius: radius.md,
-							cursor: saving || !selectedFeedId ? 'not-allowed' : 'pointer',
+							cursor: saving || noFeedsSelected ? 'not-allowed' : 'pointer',
 							transition: `all ${transitions.fast}`,
 							'&:hover':
-								saving || !selectedFeedId
+								saving || noFeedsSelected
 									? {}
 									: { backgroundColor: colors.primaryHover },
 						}}
@@ -2041,7 +2049,7 @@ function BulkAssignModal({
 					>
 						{saving
 							? 'Assigning...'
-							: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
+							: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
 					</button>
 				</div>
 			</div>
@@ -2390,6 +2398,102 @@ function FeedRadioRow({
 							backgroundColor: 'white',
 						}}
 					/>
+				)}
+			</div>
+			<img
+				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+				alt=""
+				css={{
+					width: '32px',
+					height: '32px',
+					borderRadius: radius.sm,
+					objectFit: 'cover',
+					flexShrink: 0,
+				}}
+			/>
+			<span
+				css={{
+					flex: 1,
+					fontSize: typography.fontSize.sm,
+					color: colors.text,
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap',
+				}}
+			>
+				{name}
+			</span>
+		</button>
+	)
+}
+
+function FeedCheckboxRow({
+	feedId,
+	name,
+	updatedAt,
+	isSelected,
+	onToggle,
+}: {
+	feedId: string
+	name: string
+	updatedAt: number
+	isSelected: boolean
+	onToggle: () => void
+}) {
+	return (
+		<button
+			type="button"
+			css={{
+				display: 'flex',
+				alignItems: 'center',
+				gap: spacing.md,
+				padding: spacing.sm,
+				backgroundColor: isSelected
+					? 'rgba(59, 130, 246, 0.1)'
+					: colors.background,
+				border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+				borderRadius: radius.md,
+				cursor: 'pointer',
+				textAlign: 'left',
+				width: '100%',
+				transition: `all ${transitions.fast}`,
+				'&:hover': {
+					backgroundColor: isSelected
+						? 'rgba(59, 130, 246, 0.15)'
+						: colors.surface,
+				},
+			}}
+			on={{ click: onToggle }}
+		>
+			<div
+				css={{
+					width: '18px',
+					height: '18px',
+					borderRadius: radius.sm,
+					border: `2px solid ${isSelected ? colors.primary : colors.border}`,
+					backgroundColor: isSelected ? colors.primary : 'transparent',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					flexShrink: 0,
+				}}
+			>
+				{isSelected && (
+					<svg
+						width="12"
+						height="12"
+						viewBox="0 0 12 12"
+						fill="none"
+						css={{ flexShrink: 0 }}
+					>
+						<path
+							d="M2 6L5 9L10 3"
+							stroke="white"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
 				)}
 			</div>
 			<img

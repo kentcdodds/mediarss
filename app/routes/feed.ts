@@ -70,6 +70,7 @@ export default {
 		const { feed, type } = result
 		const baseUrl = getBaseUrl(context.request)
 		const feedUrl = `${baseUrl}/feed/${token}`
+		const adminUrl = `${baseUrl}/admin/feeds/${feed.id}`
 
 		// Get items based on feed type
 		let items: Array<MediaFile>
@@ -86,6 +87,7 @@ export default {
 			baseUrl,
 			token,
 			feedUrl,
+			adminUrl,
 		})
 
 		return new Response(rssXml, {

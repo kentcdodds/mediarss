@@ -41,7 +41,7 @@ type UpdateAssignmentsRequest = {
 
 type BulkAssignRequest = {
 	mediaPaths: Array<string> // Array of "mediaRoot:relativePath" strings
-	feedId: string
+	feedIds: Array<string> // Array of curated feed IDs
 	action: 'add' | 'remove'
 }
 
@@ -53,7 +53,7 @@ type BulkAssignRequest = {
  * Updates curated feed assignments for a single file.
  *
  * POST /admin/api/media/assignments
- * Bulk assign multiple media files to a single feed.
+ * Bulk assign multiple media files to multiple feeds.
  */
 export default {
 	middleware: [],
@@ -233,7 +233,7 @@ async function handlePost(request: Request): Promise<Response> {
 		return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
 	}
 
-	const { mediaPaths, feedId, action } = body
+	const { mediaPaths, feedIds, action } = body
 
 	if (!Array.isArray(mediaPaths) || mediaPaths.length === 0) {
 		return Response.json(
@@ -242,9 +242,9 @@ async function handlePost(request: Request): Promise<Response> {
 		)
 	}
 
-	if (typeof feedId !== 'string' || !feedId.trim()) {
+	if (!Array.isArray(feedIds) || feedIds.length === 0) {
 		return Response.json(
-			{ error: 'feedId is required and must be a non-empty string' },
+			{ error: 'feedIds must be a non-empty array of feed IDs' },
 			{ status: 400 },
 		)
 	}
@@ -256,68 +256,73 @@ async function handlePost(request: Request): Promise<Response> {
 		)
 	}
 
-	// Validate the feed exists and is a curated feed
+	// Validate all feeds exist and are curated feeds
 	const curatedFeeds = listCuratedFeeds()
-	const feed = curatedFeeds.find((f) => f.id === feedId)
-	if (!feed) {
-		return Response.json(
-			{ error: `Feed ID "${feedId}" is not a valid curated feed` },
-			{ status: 400 },
-		)
+	const curatedFeedIds = new Set(curatedFeeds.map((f) => f.id))
+	for (const feedId of feedIds) {
+		if (!curatedFeedIds.has(feedId)) {
+			return Response.json(
+				{ error: `Feed ID "${feedId}" is not a valid curated feed` },
+				{ status: 400 },
+			)
+		}
 	}
-
-	// Get current items in the feed
-	const currentItems = getItemsForFeed(feedId)
-	let maxPosition = currentItems.reduce(
-		(max, item) => Math.max(max, item.position ?? 0),
-		-1,
-	)
 
 	let processed = 0
 	let skipped = 0
 	const errors: Array<string> = []
 
-	for (const mediaPath of mediaPaths) {
-		if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
-			errors.push(`Invalid media path: ${mediaPath}`)
-			continue
-		}
+	// Process each feed
+	for (const feedId of feedIds) {
+		// Get current items in this feed
+		const currentItems = getItemsForFeed(feedId)
+		let maxPosition = currentItems.reduce(
+			(max, item) => Math.max(max, item.position ?? 0),
+			-1,
+		)
 
-		try {
-			const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
-			const root = getMediaRootByName(mediaRoot)
-			if (!root) {
-				errors.push(`Unknown media root in path: ${mediaPath}`)
+		for (const mediaPath of mediaPaths) {
+			if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
+				errors.push(`Invalid media path: ${mediaPath}`)
 				continue
 			}
 
-			// Check if already assigned
-			const alreadyAssigned = currentItems.some(
-				(item) =>
-					item.mediaRoot === mediaRoot && item.relativePath === relativePath,
-			)
+			try {
+				const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+				const root = getMediaRootByName(mediaRoot)
+				if (!root) {
+					errors.push(`Unknown media root in path: ${mediaPath}`)
+					continue
+				}
 
-			if (action === 'add') {
-				if (alreadyAssigned) {
-					skipped++
+				// Check if already assigned to this feed
+				const alreadyAssigned = currentItems.some(
+					(item) =>
+						item.mediaRoot === mediaRoot && item.relativePath === relativePath,
+				)
+
+				if (action === 'add') {
+					if (alreadyAssigned) {
+						skipped++
+					} else {
+						maxPosition++
+						addItemToFeed(feedId, mediaRoot, relativePath, maxPosition)
+						processed++
+					}
 				} else {
-					maxPosition++
-					addItemToFeed(feedId, mediaRoot, relativePath, maxPosition)
-					processed++
+					// action === 'remove'
+					if (alreadyAssigned) {
+						removeItemFromFeed(feedId, mediaRoot, relativePath)
+						processed++
+					} else {
+						skipped++
+					}
 				}
-			} else {
-				// action === 'remove'
-				if (alreadyAssigned) {
-					removeItemFromFeed(feedId, mediaRoot, relativePath)
-					processed++
-				} else {
-					skipped++
-				}
+			} catch (err) {
+				errors.push(
+					`Failed to process ${mediaPath}: ${err instanceof Error ? err.message : 'Unknown error'}`,
+				)
 			}
-		} catch (err) {
-			errors.push(
-				`Failed to process ${mediaPath}: ${err instanceof Error ? err.message : 'Unknown error'}`,
-			)
 		}
 	}
 

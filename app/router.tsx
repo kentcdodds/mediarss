@@ -9,6 +9,7 @@ import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
 import adminApiFeedHandlers from '#app/routes/admin/api/feeds.$id.ts'
 import adminApiFeedTokensHandlers from '#app/routes/admin/api/feeds.$id.tokens.ts'
+import adminApiCreateCuratedFeedHandlers from '#app/routes/admin/api/feeds.curated.ts'
 import adminApiCreateDirectoryFeedHandlers from '#app/routes/admin/api/feeds.directory.ts'
 import adminApiFeedsHandlers from '#app/routes/admin/api/feeds.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
@@ -85,6 +86,7 @@ router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
 router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
 router.map(routes.adminApiBrowse, adminApiBrowseHandlers)
 router.map(routes.adminApiCreateDirectoryFeed, adminApiCreateDirectoryFeedHandlers)
+router.map(routes.adminApiCreateCuratedFeed, adminApiCreateCuratedFeedHandlers)
 router.map(routes.adminApiFeedTokens, adminApiFeedTokensHandlers)
 router.map(routes.adminApiFeed, adminApiFeedHandlers)
 router.map(routes.adminApiToken, adminApiTokenHandlers)

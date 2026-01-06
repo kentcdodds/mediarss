@@ -31,6 +31,9 @@ type MediaItemResponse = {
 	sizeBytes: number
 	filename: string
 	path: string
+	publicationDate: string | null // ISO string
+	trackNumber: number | null
+	fileModifiedAt: number // Unix timestamp
 }
 
 type UpdateFeedRequest = {
@@ -88,6 +91,9 @@ async function handleGet(id: string) {
 			sizeBytes: file.sizeBytes,
 			filename: file.filename,
 			path: file.path,
+			publicationDate: file.publicationDate?.toISOString() ?? null,
+			trackNumber: file.trackNumber,
+			fileModifiedAt: file.fileModifiedAt,
 		}))
 
 		return Response.json({
@@ -109,6 +115,9 @@ async function handleGet(id: string) {
 			sizeBytes: file.sizeBytes,
 			filename: file.filename,
 			path: file.path,
+			publicationDate: file.publicationDate?.toISOString() ?? null,
+			trackNumber: file.trackNumber,
+			fileModifiedAt: file.fileModifiedAt,
 		}))
 
 		return Response.json({

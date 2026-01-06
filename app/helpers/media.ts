@@ -505,9 +505,10 @@ export async function isMediaFile(filepath: string): Promise<boolean> {
 }
 
 /**
- * Scan a directory tree and return paths to all media files
+ * Scan a directory tree and return paths to all media files (uncached).
+ * This performs the actual file system scanning and media type detection.
  */
-export async function scanDirectory(directory: string): Promise<string[]> {
+async function scanDirectoryUncached(directory: string): Promise<string[]> {
 	const absoluteDir = path.resolve(directory)
 
 	// Check directory exists
@@ -549,6 +550,23 @@ export async function scanDirectory(directory: string): Promise<string[]> {
 	}
 
 	return mediaFiles
+}
+
+/**
+ * Scan a directory tree and return paths to all media files (with caching).
+ * Uses short TTL with long SWR for instant responses while keeping data fresh.
+ */
+export async function scanDirectory(directory: string): Promise<string[]> {
+	const absoluteDir = path.resolve(directory)
+	const cacheKey = `scan:${absoluteDir}`
+
+	return cachified({
+		key: cacheKey,
+		ttl: 1000 * 30, // 30 second TTL - data considered stale after this
+		swr: 1000 * 60 * 60 * 24 * 8, // 8 day SWR - serve stale while revalidating
+		getFreshValue: () => scanDirectoryUncached(absoluteDir),
+		checkValue: (value) => Array.isArray(value),
+	})
 }
 
 /**

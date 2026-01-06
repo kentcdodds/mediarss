@@ -163,7 +163,7 @@ function getMediaFeeds(
 	return feeds
 }
 
-const ITEMS_PER_PAGE = 50
+const ITEMS_PER_PAGE = 100
 
 /**
  * MediaList component - displays all media files with search/filter and assignment management
@@ -577,6 +577,7 @@ export function MediaList(this: Handle) {
 													<img
 														src={getArtworkUrl(item)}
 														alt=""
+														loading="lazy"
 														css={{
 															width: '40px',
 															height: '40px',

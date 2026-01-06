@@ -1051,6 +1051,12 @@ export function FeedDetail(this: Handle) {
 										</th>
 										<th
 											css={{
+												width: '48px',
+												padding: `${spacing.sm}`,
+											}}
+										/>
+										<th
+											css={{
 												textAlign: 'left',
 												padding: `${spacing.sm} ${spacing.md}`,
 												color: colors.textMuted,
@@ -1185,29 +1191,43 @@ export function FeedDetail(this: Handle) {
 													</span>
 												</td>
 											)}
-											<td
+										<td
+											css={{
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontFamily: 'monospace',
+												fontSize: typography.fontSize.xs,
+											}}
+										>
+											{index + 1}
+										</td>
+										<td css={{ padding: spacing.sm, textAlign: 'center' }}>
+											<img
+												src={`/admin/api/artwork/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
+												alt=""
+												loading="lazy"
 												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													color: colors.textMuted,
-													fontFamily: 'monospace',
-													fontSize: typography.fontSize.xs,
+													width: '32px',
+													height: '32px',
+													borderRadius: radius.sm,
+													objectFit: 'cover',
+													backgroundColor: colors.background,
 												}}
-											>
-												{index + 1}
-											</td>
-											<td
-												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													color: colors.text,
-													maxWidth: '300px',
-													overflow: 'hidden',
-													textOverflow: 'ellipsis',
-													whiteSpace: 'nowrap',
-												}}
-												title={item.title}
-											>
-												{item.title}
-											</td>
+											/>
+										</td>
+										<td
+											css={{
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.text,
+												maxWidth: '300px',
+												overflow: 'hidden',
+												textOverflow: 'ellipsis',
+												whiteSpace: 'nowrap',
+											}}
+											title={item.title}
+										>
+											{item.title}
+										</td>
 											<td
 												css={{
 													padding: `${spacing.sm} ${spacing.md}`,

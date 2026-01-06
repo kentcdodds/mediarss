@@ -16,6 +16,8 @@ import adminApiCreateDirectoryFeedHandlers from '#app/routes/admin/api/feeds.dir
 import adminApiFeedsHandlers from '#app/routes/admin/api/feeds.ts'
 import adminApiMediaHandlers from '#app/routes/admin/api/media.ts'
 import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assignments.ts'
+import adminApiMediaDetailHandlers from '#app/routes/admin/api/media.$path.ts'
+import adminApiMediaStreamHandlers from '#app/routes/admin/api/media-stream.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
@@ -100,6 +102,8 @@ router.map(routes.adminApiFeed, adminApiFeedHandlers)
 router.map(routes.adminApiToken, adminApiTokenHandlers)
 router.map(routes.adminApiMedia, adminApiMediaHandlers)
 router.map(routes.adminApiMediaAssignments, adminApiMediaAssignmentsHandlers)
+router.map(routes.adminApiMediaDetail, adminApiMediaDetailHandlers)
+router.map(routes.adminApiMediaStream, adminApiMediaStreamHandlers)
 router.map(routes.adminApiArtwork, adminApiArtworkHandlers)
 router.map(routes.admin, adminHandler)
 router.map(routes.adminCatchAll, adminCatchAllHandler)

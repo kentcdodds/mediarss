@@ -19,5 +19,7 @@ export default route({
 	adminApiToken: '/admin/api/tokens/:token',
 	adminApiMedia: '/admin/api/media',
 	adminApiMediaAssignments: '/admin/api/media/assignments',
+	adminApiMediaDetail: '/admin/api/media/*path',
+	adminApiMediaStream: '/admin/api/media-stream/*path',
 	adminApiArtwork: '/admin/api/artwork/*path',
 })

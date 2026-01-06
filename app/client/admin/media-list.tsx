@@ -536,6 +536,20 @@ export function MediaList(this: Handle) {
 										>
 											Feeds
 										</th>
+										<th
+											css={{
+												textAlign: 'center',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												width: '80px',
+											}}
+										>
+											Actions
+										</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -665,6 +679,33 @@ export function MediaList(this: Handle) {
 															None
 														</span>
 													)}
+												</td>
+												<td
+													css={{
+														padding: `${spacing.sm} ${spacing.md}`,
+														textAlign: 'center',
+													}}
+												>
+													<Link
+														href={`/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`}
+														css={{
+															padding: `${spacing.xs} ${spacing.sm}`,
+															fontSize: typography.fontSize.xs,
+															fontWeight: typography.fontWeight.medium,
+															color: colors.primary,
+															textDecoration: 'none',
+															border: `1px solid ${colors.primary}`,
+															borderRadius: radius.sm,
+															'&:hover': {
+																backgroundColor: 'rgba(59, 130, 246, 0.1)',
+															},
+														}}
+														on={{
+															click: (e: MouseEvent) => e.stopPropagation(),
+														}}
+													>
+														View
+													</Link>
 												</td>
 											</tr>
 										)

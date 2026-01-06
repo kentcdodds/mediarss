@@ -9,6 +9,7 @@ import {
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
+import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 
 type FeedAssignment = {
 	feedId: string
@@ -43,26 +44,6 @@ type MediaDetailResponse = {
 		directoryPaths: string[]
 		imageUrl: string | null
 	}>
-}
-
-/**
- * Parse the path parameter into root name and relative path.
- * Format: "rootName/relative/path/to/file.mp3"
- */
-function parsePathParam(
-	pathParam: string,
-): { rootName: string; relativePath: string } | null {
-	const firstSlash = pathParam.indexOf('/')
-	if (firstSlash === -1) {
-		// No slash means no relative path - could be just the root
-		return { rootName: pathParam, relativePath: '' }
-	}
-	const rootName = pathParam.slice(0, firstSlash)
-	const relativePath = pathParam.slice(firstSlash + 1)
-	if (!rootName) {
-		return null
-	}
-	return { rootName, relativePath }
 }
 
 /**
@@ -150,7 +131,7 @@ export default {
 		const decodedPath = decodeURIComponent(splatParam)
 
 		// Parse root name and relative path from URL
-		const parsed = parsePathParam(decodedPath)
+		const parsed = parseMediaPath(decodedPath)
 		if (!parsed) {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}

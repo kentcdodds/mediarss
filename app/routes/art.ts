@@ -2,59 +2,16 @@ import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
-import { getCuratedFeedByToken } from '#app/db/curated-feed-tokens.ts'
-import { getDirectoryFeedByToken } from '#app/db/directory-feed-tokens.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { DirectoryFeed, Feed } from '#app/db/types.ts'
+import type { Feed } from '#app/db/types.ts'
+import { isDirectoryFeed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
+import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
-
-/**
- * Look up a feed by token without touching last_used_at.
- */
-function getFeedByToken(
-	token: string,
-): { feed: Feed; type: 'directory' | 'curated' } | null {
-	const directoryFeed = getDirectoryFeedByToken(token)
-	if (directoryFeed) {
-		return { feed: directoryFeed, type: 'directory' }
-	}
-
-	const curatedFeed = getCuratedFeedByToken(token)
-	if (curatedFeed) {
-		return { feed: curatedFeed, type: 'curated' }
-	}
-
-	return null
-}
-
-/**
- * Check if a feed is a DirectoryFeed.
- */
-function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPaths' in feed
-}
-
-/**
- * Parse the path parameter into root name and relative path.
- * Format: "rootName/relative/path/to/file.mp3"
- */
-function parsePathParam(
-	pathParam: string,
-): { rootName: string; relativePath: string } | null {
-	const firstSlash = pathParam.indexOf('/')
-	if (firstSlash === -1) {
-		// No slash means no relative path - invalid
-		return null
-	}
-	const rootName = pathParam.slice(0, firstSlash)
-	const relativePath = pathParam.slice(firstSlash + 1)
-	if (!rootName || !relativePath) {
-		return null
-	}
-	return { rootName, relativePath }
-}
+import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
+import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 
 /**
  * Validate that a file path is allowed for the given feed.
@@ -95,19 +52,6 @@ function isFileAllowed(
 	)
 }
 
-/**
- * Generate a simple placeholder SVG for feeds/items without artwork.
- */
-function generatePlaceholderSvg(title: string): string {
-	// Get first letter or emoji for the placeholder
-	const firstChar = title.trim()[0]?.toUpperCase() ?? '?'
-
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
-  <rect width="600" height="600" fill="#1a1a2e"/>
-  <text x="300" y="340" font-family="system-ui, sans-serif" font-size="200" font-weight="bold" fill="#e94560" text-anchor="middle">${firstChar}</text>
-</svg>`
-}
-
 export default {
 	middleware: [],
 	async action(context) {
@@ -123,55 +67,7 @@ export default {
 
 		// Special case: "/art/:token/feed" returns the feed's artwork
 		if (splatParam === 'feed') {
-			// Priority 1: Check for uploaded artwork file
-			const uploadedArtwork = await getFeedArtworkPath(feed.id)
-			if (uploadedArtwork) {
-				const artworkFile = Bun.file(uploadedArtwork.path)
-				return new Response(artworkFile.stream(), {
-					headers: {
-						'Content-Type': uploadedArtwork.mimeType,
-						'Cache-Control': 'public, max-age=86400',
-					},
-				})
-			}
-
-			// Priority 2: Check for external imageUrl
-			if (feed.imageUrl) {
-				return new Response(null, {
-					status: 302,
-					headers: { Location: feed.imageUrl },
-				})
-			}
-
-			// Priority 3: First item's embedded artwork
-			const feedItems = getItemsForFeed(feed.id)
-			if (feedItems.length > 0) {
-				const firstItem = feedItems[0]!
-				const filePath = toAbsolutePath(
-					firstItem.mediaRoot,
-					firstItem.relativePath,
-				)
-				if (filePath) {
-					const itemArtwork = await extractArtwork(filePath)
-					if (itemArtwork) {
-						return new Response(new Uint8Array(itemArtwork.data), {
-							headers: {
-								'Content-Type': itemArtwork.mimeType,
-								'Cache-Control': 'public, max-age=86400',
-							},
-						})
-					}
-				}
-			}
-
-			// Priority 4: Generate placeholder
-			const svg = generatePlaceholderSvg(feed.name)
-			return new Response(svg, {
-				headers: {
-					'Content-Type': 'image/svg+xml',
-					'Cache-Control': 'public, max-age=86400',
-				},
-			})
+			return resolveFeedArtwork(feed.id, feed)
 		}
 
 		// File-specific artwork
@@ -183,7 +79,7 @@ export default {
 		const decodedPath = decodeURIComponent(splatParam)
 
 		// Parse root name and relative path from URL
-		const parsed = parsePathParam(decodedPath)
+		const parsed = parseMediaPathStrict(decodedPath)
 		if (!parsed) {
 			return new Response('Invalid path format', { status: 400 })
 		}

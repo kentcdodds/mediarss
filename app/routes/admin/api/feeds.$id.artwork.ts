@@ -1,17 +1,13 @@
 import type { Action } from '@remix-run/fetch-router'
-import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
-import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
-import { extractArtwork } from '#app/helpers/artwork.ts'
+import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import {
 	deleteFeedArtwork,
-	getFeedArtworkPath,
 	hasFeedArtwork,
 	saveFeedArtwork,
 } from '#app/helpers/feed-artwork.ts'
@@ -44,7 +40,7 @@ export default {
 		}
 
 		if (context.method === 'GET') {
-			return handleGet(id, feed)
+			return resolveFeedArtwork(id, feed)
 		}
 
 		if (context.method === 'POST') {
@@ -61,63 +57,6 @@ export default {
 	typeof routes.adminApiFeedArtwork.method,
 	typeof routes.adminApiFeedArtwork.pattern.source
 >
-
-async function handleGet(feedId: string, feed: DirectoryFeed | CuratedFeed) {
-	// Priority 1: Uploaded artwork
-	const artwork = await getFeedArtworkPath(feedId)
-	if (artwork) {
-		const file = Bun.file(artwork.path)
-		return new Response(file.stream(), {
-			headers: {
-				'Content-Type': artwork.mimeType,
-				'Cache-Control': 'public, max-age=86400',
-			},
-		})
-	}
-
-	// Priority 2: External imageUrl (redirect)
-	if (feed.imageUrl) {
-		return Response.redirect(feed.imageUrl, 302)
-	}
-
-	// Priority 3: First item's embedded artwork
-	const feedItems = getItemsForFeed(feedId)
-	if (feedItems.length > 0) {
-		const firstItem = feedItems[0]!
-		const filePath = toAbsolutePath(firstItem.mediaRoot, firstItem.relativePath)
-		if (filePath) {
-			const itemArtwork = await extractArtwork(filePath)
-			if (itemArtwork) {
-				return new Response(new Uint8Array(itemArtwork.data), {
-					headers: {
-						'Content-Type': itemArtwork.mimeType,
-						'Cache-Control': 'public, max-age=86400',
-					},
-				})
-			}
-		}
-	}
-
-	// Priority 4: Generated placeholder SVG
-	const svg = generatePlaceholderSvg(feed.name)
-	return new Response(svg, {
-		headers: {
-			'Content-Type': 'image/svg+xml',
-			'Cache-Control': 'public, max-age=86400',
-		},
-	})
-}
-
-/**
- * Generate a simple placeholder SVG with the feed's first letter
- */
-function generatePlaceholderSvg(name: string): string {
-	const letter = name.trim()[0]?.toUpperCase() ?? '?'
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-		<rect width="200" height="200" fill="#1a1a2e"/>
-		<text x="100" y="120" font-family="system-ui, sans-serif" font-size="80" font-weight="bold" fill="#e94560" text-anchor="middle">${letter}</text>
-	</svg>`
-}
 
 /**
  * Touch the feed's updated_at timestamp.

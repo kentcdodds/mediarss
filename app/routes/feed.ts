@@ -1,14 +1,8 @@
 import type { Action } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import {
-	getCuratedFeedByToken,
-	touchCuratedFeedToken,
-} from '#app/db/curated-feed-tokens.ts'
-import {
-	getDirectoryFeedByToken,
-	touchDirectoryFeedToken,
-} from '#app/db/directory-feed-tokens.ts'
-import type { CuratedFeed, DirectoryFeed, Feed } from '#app/db/types.ts'
+import type { CuratedFeed } from '#app/db/types.ts'
+import { isDirectoryFeed } from '#app/db/types.ts'
+import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
@@ -24,45 +18,13 @@ function getBaseUrl(request: Request): string {
 	return `${url.protocol}//${url.host}`
 }
 
-/**
- * Look up a feed by token.
- * Tries directory feeds first, then curated feeds.
- * Returns the feed and its type.
- */
-function getFeedByToken(
-	token: string,
-): { feed: Feed; type: 'directory' | 'curated' } | null {
-	// Try directory feed first
-	const directoryFeed = getDirectoryFeedByToken(token)
-	if (directoryFeed) {
-		touchDirectoryFeedToken(token)
-		return { feed: directoryFeed, type: 'directory' }
-	}
-
-	// Try curated feed
-	const curatedFeed = getCuratedFeedByToken(token)
-	if (curatedFeed) {
-		touchCuratedFeedToken(token)
-		return { feed: curatedFeed, type: 'curated' }
-	}
-
-	return null
-}
-
-/**
- * Check if a feed is a DirectoryFeed.
- */
-function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPaths' in feed
-}
-
 export default {
 	middleware: [],
 	async action(context) {
 		const { token } = context.params
 
 		// Look up feed by token
-		const result = getFeedByToken(token)
+		const result = getFeedByTokenAndTouch(token)
 		if (!result) {
 			return new Response('Feed not found', { status: 404 })
 		}

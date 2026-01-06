@@ -4,7 +4,7 @@ import { CreateFeed } from './create-feed.tsx'
 import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
 import { MediaList } from './media-list.tsx'
-import { RouterOutlet, router } from './router.tsx'
+import { Link, RouterOutlet, router } from './router.tsx'
 
 // Register routes
 router.register('/admin', FeedList)
@@ -30,24 +30,34 @@ function AdminApp() {
 					gap: spacing.lg,
 				}}
 			>
-				<h1
+				<Link
+					href="/admin"
 					css={{
-						fontSize: typography.fontSize.lg,
-						fontWeight: typography.fontWeight.semibold,
-						color: colors.text,
-						margin: 0,
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.lg,
+						textDecoration: 'none',
 					}}
 				>
-					MediaRSS
-				</h1>
-				<span
-					css={{
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-					}}
-				>
-					Admin
-				</span>
+					<h1
+						css={{
+							fontSize: typography.fontSize.lg,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+						}}
+					>
+						MediaRSS
+					</h1>
+					<span
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+						}}
+					>
+						Admin
+					</span>
+				</Link>
 			</header>
 			<main
 				css={{

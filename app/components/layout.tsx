@@ -32,6 +32,7 @@ export function Layout({
 		<head>
 			<meta charset="utf-8" />
 			<title>${title}</title>
+			<link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
 			<link rel="stylesheet" href="/assets/styles.css" />
 			${importmapScript} ${modulePreloads}
 		</head>

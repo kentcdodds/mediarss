@@ -35,10 +35,18 @@ function AdminApp() {
 					css={{
 						display: 'flex',
 						alignItems: 'center',
-						gap: spacing.lg,
+						gap: spacing.md,
 						textDecoration: 'none',
 					}}
 				>
+					<img
+						src="/assets/logo.svg"
+						alt="MediaRSS"
+						css={{
+							width: '36px',
+							height: '36px',
+						}}
+					/>
 					<h1
 						css={{
 							fontSize: typography.fontSize.lg,

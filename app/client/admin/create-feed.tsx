@@ -319,8 +319,7 @@ export function CreateFeed(this: Handle) {
 	}
 
 	const handleCuratedSubmit = async () => {
-		if (!curatedForm.name.trim() || curatedForm.selectedFiles.length === 0)
-			return
+		if (!curatedForm.name.trim()) return
 
 		submitState = { status: 'submitting' }
 		this.update()
@@ -361,9 +360,7 @@ export function CreateFeed(this: Handle) {
 		)
 
 		const canSubmitCurated = Boolean(
-			curatedForm.name.trim() &&
-				curatedForm.selectedFiles.length > 0 &&
-				submitState.status !== 'submitting',
+			curatedForm.name.trim() && submitState.status !== 'submitting',
 		)
 
 		return (
@@ -677,7 +674,7 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField label="Select Files" required>
+						<FormField label="Select Files">
 							{rootsState.status === 'loading' && (
 								<p css={{ color: colors.textMuted, margin: 0 }}>
 									Loading media roots...

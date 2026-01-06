@@ -17,7 +17,6 @@ import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
-import homeHandlers from '#app/routes/home.tsx'
 import mediaHandlers from '#app/routes/media.ts'
 
 /**
@@ -77,7 +76,6 @@ const router = createRouter({
 	},
 })
 
-router.map(routes.home, homeHandlers)
 router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)

@@ -19,6 +19,10 @@ const server = Bun.serve({
 
 	async fetch(request) {
 		try {
+			const url = new URL(request.url)
+			if (url.pathname === '/') {
+				return Response.redirect(new URL('/admin', request.url), 302)
+			}
 			return await router.fetch(request)
 		} catch (error) {
 			console.error(error)

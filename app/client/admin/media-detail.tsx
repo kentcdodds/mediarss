@@ -309,8 +309,16 @@ export function MediaDetail(this: Handle) {
 						},
 					}}
 				>
-					{/* Left Column - Artwork */}
-					<div>
+					{/* Left Column - Artwork & Metadata */}
+					<div
+						css={{
+							// On mobile, show after the title/player section
+							order: 1,
+							[`@media (min-width: ${breakpoints.mobile})` as const]: {
+								order: 0,
+							},
+						}}
+					>
 						{/* Artwork */}
 						<div
 							css={{
@@ -332,10 +340,148 @@ export function MediaDetail(this: Handle) {
 								}}
 							/>
 						</div>
+
+						{/* Metadata Card - Below artwork on desktop */}
+						<div
+							css={{
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: spacing.md,
+								marginTop: spacing.md,
+								boxShadow: shadows.sm,
+							}}
+						>
+							<h3
+								css={{
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: `0 0 ${spacing.sm} 0`,
+								}}
+							>
+								Details
+							</h3>
+
+							<div
+								css={{
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								<MetadataItem
+									label="Duration"
+									value={formatDuration(media.duration)}
+								/>
+								<MetadataItem
+									label="Size"
+									value={formatFileSize(media.sizeBytes)}
+								/>
+								<MetadataItem label="Format" value={media.mimeType} />
+								<MetadataItem
+									label="Published"
+									value={formatDate(media.publicationDate)}
+								/>
+								{media.trackNumber && (
+									<MetadataItem label="Track" value={`#${media.trackNumber}`} />
+								)}
+								<MetadataItem
+									label="Modified"
+									value={new Date(
+										media.fileModifiedAt * 1000,
+									).toLocaleDateString()}
+								/>
+								{media.narrators && media.narrators.length > 0 && (
+									<MetadataItem
+										label="Narrators"
+										value={media.narrators.join(', ')}
+									/>
+								)}
+								{media.genres && media.genres.length > 0 && (
+									<MetadataItem
+										label="Genres"
+										value={media.genres.join(', ')}
+									/>
+								)}
+								{media.copyright && (
+									<MetadataItem label="Copyright" value={media.copyright} />
+								)}
+							</div>
+
+							{/* Description - Only shown on mobile */}
+							{media.description && (
+								<div
+									css={{
+										marginTop: spacing.md,
+										[`@media (min-width: ${breakpoints.mobile})` as const]: {
+											display: 'none',
+										},
+									}}
+								>
+									<dt
+										css={{
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											textTransform: 'uppercase',
+											letterSpacing: '0.05em',
+											marginBottom: spacing.xs,
+										}}
+									>
+										Description
+									</dt>
+									<dd
+										css={{
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+											margin: 0,
+											lineHeight: 1.6,
+											whiteSpace: 'pre-wrap',
+										}}
+									>
+										{media.description}
+									</dd>
+								</div>
+							)}
+
+							{/* File Path */}
+							<div css={{ marginTop: spacing.md }}>
+								<dt
+									css={{
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+										marginBottom: spacing.xs,
+									}}
+								>
+									File Path
+								</dt>
+								<dd
+									css={{
+										fontSize: typography.fontSize.xs,
+										color: colors.text,
+										margin: 0,
+										fontFamily: 'monospace',
+										backgroundColor: colors.background,
+										padding: spacing.xs,
+										borderRadius: radius.sm,
+										wordBreak: 'break-all',
+									}}
+								>
+									{media.rootName}:{media.relativePath}
+								</dd>
+							</div>
+						</div>
 					</div>
 
-					{/* Right Column - Metadata & Feeds */}
-					<div>
+					{/* Right Column - Title, Player, Description & Feeds */}
+					<div
+						css={{
+							// On mobile, show first (before artwork/metadata)
+							order: 0,
+						}}
+					>
 						{/* Title & Author */}
 						<div css={{ marginBottom: spacing.lg }}>
 							<h1
@@ -408,140 +554,46 @@ export function MediaDetail(this: Handle) {
 							)}
 						</div>
 
-						{/* Metadata Card */}
-						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: responsive.spacingSection,
-								marginBottom: spacing.xl,
-								boxShadow: shadows.sm,
-							}}
-						>
-							<h3
-								css={{
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.semibold,
-									color: colors.text,
-									margin: `0 0 ${spacing.md} 0`,
-								}}
-							>
-								Details
-							</h3>
-
+						{/* Description Card - Hidden on mobile (shown in metadata card instead) */}
+						{media.description && (
 							<div
 								css={{
-									display: 'grid',
-									gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-									gap: spacing.md,
+									display: 'none',
+									[`@media (min-width: ${breakpoints.mobile})` as const]: {
+										display: 'block',
+									},
+									backgroundColor: colors.surface,
+									borderRadius: radius.lg,
+									border: `1px solid ${colors.border}`,
+									padding: responsive.spacingSection,
+									marginBottom: spacing.xl,
+									boxShadow: shadows.sm,
 								}}
 							>
-								<MetadataItem
-									label="Duration"
-									value={formatDuration(media.duration)}
-								/>
-								<MetadataItem
-									label="Size"
-									value={formatFileSize(media.sizeBytes)}
-								/>
-								<MetadataItem label="Format" value={media.mimeType} />
-								<MetadataItem
-									label="Published"
-									value={formatDate(media.publicationDate)}
-								/>
-								{media.trackNumber && (
-									<MetadataItem label="Track" value={`#${media.trackNumber}`} />
-								)}
-								<MetadataItem
-									label="Modified"
-									value={new Date(
-										media.fileModifiedAt * 1000,
-									).toLocaleDateString()}
-								/>
-							</div>
-
-							{media.narrators && media.narrators.length > 0 && (
-								<div css={{ marginTop: spacing.md }}>
-									<MetadataItem
-										label="Narrators"
-										value={media.narrators.join(', ')}
-									/>
-								</div>
-							)}
-
-							{media.genres && media.genres.length > 0 && (
-								<div css={{ marginTop: spacing.md }}>
-									<MetadataItem
-										label="Genres"
-										value={media.genres.join(', ')}
-									/>
-								</div>
-							)}
-
-							{media.copyright && (
-								<div css={{ marginTop: spacing.md }}>
-									<MetadataItem label="Copyright" value={media.copyright} />
-								</div>
-							)}
-
-							{media.description && (
-								<div css={{ marginTop: spacing.lg }}>
-									<dt
-										css={{
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-											marginBottom: spacing.xs,
-										}}
-									>
-										Description
-									</dt>
-									{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
-									<dd
-										css={{
-											fontSize: typography.fontSize.sm,
-											color: colors.text,
-											margin: 0,
-											lineHeight: 1.6,
-											whiteSpace: 'pre-wrap',
-										}}
-									>
-										{media.description}
-									</dd>
-								</div>
-							)}
-
-							{/* File Path */}
-							<div css={{ marginTop: spacing.lg }}>
-								<dt
+								<h3
 									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
-										marginBottom: spacing.xs,
+										fontSize: typography.fontSize.base,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										margin: `0 0 ${spacing.md} 0`,
 									}}
 								>
-									File Path
-								</dt>
-								<dd
+									Description
+								</h3>
+								{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
+								<p
 									css={{
 										fontSize: typography.fontSize.sm,
 										color: colors.text,
 										margin: 0,
-										fontFamily: 'monospace',
-										backgroundColor: colors.background,
-										padding: spacing.sm,
-										borderRadius: radius.sm,
-										wordBreak: 'break-all',
+										lineHeight: 1.6,
+										whiteSpace: 'pre-wrap',
 									}}
 								>
-									{media.rootName}:{media.relativePath}
-								</dd>
+									{media.description}
+								</p>
 							</div>
-						</div>
+						)}
 
 						{/* Feed Assignments Card */}
 						<div

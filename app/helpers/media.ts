@@ -188,6 +188,26 @@ function isMediaMimeType(mime: string): boolean {
 }
 
 /**
+ * Audio file extensions that use video containers (like MPEG-4).
+ * file-type detects these as video/* but they should be audio/*.
+ */
+const AUDIO_IN_VIDEO_CONTAINER: Record<string, string> = {
+	'.m4b': 'audio/mp4', // Audiobook (MPEG-4)
+	'.m4a': 'audio/mp4', // Audio (MPEG-4)
+}
+
+/**
+ * Correct the MIME type for audio files that use video containers.
+ * For example, .m4b files are detected as video/mp4 but are actually audio.
+ */
+function correctMimeType(detectedMime: string, filename: string): string {
+	if (!detectedMime.startsWith('video/')) return detectedMime
+
+	const ext = path.extname(filename).toLowerCase()
+	return AUDIO_IN_VIDEO_CONTAINER[ext] ?? detectedMime
+}
+
+/**
  * Check if a string looks like a year (4 digits, reasonable range)
  */
 function isYearString(value: string): boolean {
@@ -613,7 +633,7 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			genres: extractGenres(metadata, audible),
 			copyright: extractCopyright(metadata, audible),
 			sizeBytes: stat.size,
-			mimeType: fileType.mime,
+			mimeType: correctMimeType(fileType.mime, filename),
 			fileModifiedAt: Math.floor(stat.mtimeMs / 1000),
 		}
 

@@ -1,7 +1,13 @@
 import type { Action } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
-import { getDirectoryFeedById } from '#app/db/directory-feeds.ts'
+import {
+	getCuratedFeedById,
+	updateCuratedFeed,
+} from '#app/db/curated-feeds.ts'
+import {
+	getDirectoryFeedById,
+	updateDirectoryFeed,
+} from '#app/db/directory-feeds.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import {
 	deleteFeedArtwork,
@@ -95,6 +101,24 @@ function generatePlaceholderSvg(name: string): string {
 	</svg>`
 }
 
+/**
+ * Touch the feed's updated_at timestamp.
+ * This is needed when artwork changes since artwork is stored separately.
+ */
+function touchFeedUpdatedAt(feedId: string): void {
+	// Try directory feed first
+	const directoryFeed = getDirectoryFeedById(feedId)
+	if (directoryFeed) {
+		updateDirectoryFeed(feedId, {})
+		return
+	}
+	// Try curated feed
+	const curatedFeed = getCuratedFeedById(feedId)
+	if (curatedFeed) {
+		updateCuratedFeed(feedId, {})
+	}
+}
+
 async function handlePost(feedId: string, request: Request) {
 	const contentType = request.headers.get('content-type') ?? ''
 
@@ -127,6 +151,9 @@ async function handlePost(feedId: string, request: Request) {
 		return Response.json({ error: result.error }, { status: 400 })
 	}
 
+	// Update the feed's updated_at timestamp since artwork changed
+	touchFeedUpdatedAt(feedId)
+
 	return Response.json({
 		success: true,
 		hasUploadedArtwork: true,
@@ -148,6 +175,9 @@ async function handleDelete(feedId: string) {
 	if (!deleted) {
 		return Response.json({ error: 'Failed to delete artwork' }, { status: 500 })
 	}
+
+	// Update the feed's updated_at timestamp since artwork changed
+	touchFeedUpdatedAt(feedId)
 
 	return Response.json({
 		success: true,

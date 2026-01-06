@@ -59,8 +59,8 @@ If you're running this on a Synology NAS, follow these specific instructions:
        - Check "Read-only"
    - In the "Port Settings" tab:
 
-     - Local Port: 8765 (or your preferred port)
-     - Container Port: 44100 (or whatever you set PORT to in the env settings)
+     - Local Port: 22050 (or your preferred port)
+     - Container Port: 22050 (or whatever you set PORT to in the env settings)
 
    - In the "Environment" tab:
      - Add the standard environment variables as needed
@@ -72,7 +72,23 @@ If you're running this on a Synology NAS, follow these specific instructions:
 
 The rest of the standard instructions apply for managing the container.
 
-### Quick Start (Non-Synology)
+### Quick Start Script
+
+For the easiest setup, use the provided NAS setup script:
+
+1. Copy `scripts/nas-setup.sh` to your NAS
+2. Edit the configuration section at the top of the script
+3. Run it:
+
+```bash
+chmod +x nas-setup.sh
+./nas-setup.sh
+```
+
+The script will pull the latest image, set up the container with your media
+directories, and configure automatic restarts.
+
+### Manual Setup (Non-Synology)
 
 1. Pull the Docker image:
 
@@ -95,7 +111,7 @@ mkdir -p /path/to/your/data
 ```bash
 docker run -d \
   --name mediarss \
-  -p 8765:8765 \
+  -p 22050:22050 \
   -v /path/to/your/data:/data \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \
@@ -152,7 +168,7 @@ structure for audiobooks and audio series:
 
 The following environment variables can be configured:
 
-- `PORT`: Server port (default: 44100)
+- `PORT`: Server port (default: 22050)
 - `NODE_ENV`: Environment mode (`production`, `development`, or `test`)
 - `DATABASE_PATH`: Path to the main SQLite database (default: ./data/sqlite.db)
 - `CACHE_DATABASE_PATH`: Path to the cache SQLite database (default:
@@ -207,7 +223,7 @@ than app-level authentication.
 
 4. **Configure the public hostname** in the tunnel settings:
    - Hostname: `media.yourdomain.com` (a domain name you control)
-   - Service: `http://localhost:44100` (or your MediaRSS port)
+   - Service: `http://localhost:22050` (or your MediaRSS port)
 
 5. **Add an Access policy** to protect the admin dashboard:
    - Go to **Access → Applications → Add an application**
@@ -299,7 +315,7 @@ docker rm mediarss
 # Run the new container (using the same data directory and media mount)
 docker run -d \
   --name mediarss \
-  -p 8765:8765 \
+  -p 22050:22050 \
   -v /path/to/your/data:/data \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \

@@ -12,6 +12,20 @@
 > is not the primary focus and may have limitations (especially with regard to
 > performance) with certain formats.
 
+## Screenshots
+
+### Dashboard
+
+![Feed List](docs/screenshots/feed-list.png)
+
+### Feed Management
+
+![Feed Detail](docs/screenshots/feed-detail.png)
+
+### Media Library
+
+![Media List](docs/screenshots/media-list.png)
+
 ## Self-Hosting
 
 ### Prerequisites

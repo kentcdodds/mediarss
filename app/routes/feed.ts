@@ -8,16 +8,13 @@ import {
 	getDirectoryFeedByToken,
 	touchDirectoryFeedToken,
 } from '#app/db/directory-feed-tokens.ts'
-import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, Feed } from '#app/db/types.ts'
-import { filterMediaFiles } from '#app/helpers/filter.ts'
 import {
-	getFileMetadata,
-	type MediaFile,
-	scanDirectoryWithMetadata,
-} from '#app/helpers/media.ts'
+	getCuratedFeedItems,
+	getDirectoryFeedItems,
+} from '#app/helpers/feed-items.ts'
+import type { MediaFile } from '#app/helpers/media.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
-import { sortMediaFiles } from '#app/helpers/sort.ts'
 
 /**
  * Get the base URL from the request.
@@ -50,51 +47,6 @@ function getFeedByToken(
 	}
 
 	return null
-}
-
-/**
- * Get media items for a directory feed.
- * Scans the directory, applies filters, and sorts.
- */
-async function getDirectoryFeedItems(
-	feed: DirectoryFeed,
-): Promise<Array<MediaFile>> {
-	// Scan the directory for media files
-	const allItems = await scanDirectoryWithMetadata(feed.directoryPath)
-
-	// Apply filters
-	const filteredItems = filterMediaFiles(allItems, {
-		filterIn: feed.filterIn,
-		filterOut: feed.filterOut,
-	})
-
-	// Sort items
-	const sortString = `${feed.sortOrder}:${feed.sortFields}`
-	return sortMediaFiles(filteredItems, sortString)
-}
-
-/**
- * Get media items for a curated feed.
- * Fetches items from the database and gets their metadata.
- */
-async function getCuratedFeedItems(
-	feed: CuratedFeed,
-): Promise<Array<MediaFile>> {
-	// Get feed items from database
-	const feedItems = getItemsForFeed(feed.id)
-
-	// Get metadata for each item
-	const items: Array<MediaFile> = []
-	for (const feedItem of feedItems) {
-		const metadata = await getFileMetadata(feedItem.filePath)
-		if (metadata) {
-			items.push(metadata)
-		}
-	}
-
-	// Sort items
-	const sortString = `${feed.sortOrder}:${feed.sortFields}`
-	return sortMediaFiles(items, sortString)
 }
 
 /**

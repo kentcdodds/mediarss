@@ -16,53 +16,25 @@
 
 ### Dashboard
 
-**Desktop**
+![Homepage](docs/screenshots/homepage-mobile.png)
 
-![Feed List - Desktop](docs/screenshots/feed-list-desktop.png)
+### Feed Details
 
-**Mobile**
-
-![Feed List - Mobile](docs/screenshots/feed-list-mobile.png)
-
-### Feed Management
-
-**Desktop**
-
-![Feed Detail - Desktop](docs/screenshots/feed-detail-desktop.png)
-
-**Mobile**
-
-![Feed Detail - Mobile](docs/screenshots/feed-detail-mobile.png)
+![Feed Details](docs/screenshots/feed-details.png)
 
 ### Create Feed
 
-**Desktop**
-
-![Create Feed - Desktop](docs/screenshots/create-feed-desktop.png)
-
-**Mobile**
-
-![Create Feed - Mobile](docs/screenshots/create-feed-mobile.png)
+![Create New Curated Feed](docs/screenshots/create-new-curated-feed.png)
 
 ### Media Library
 
-**Desktop**
+![Media Library Selection](docs/screenshots/media-library-selection.png)
 
-![Media List - Desktop](docs/screenshots/media-list-desktop.png)
+![Media Library Modal](docs/screenshots/media-library-modal.png)
 
-**Mobile**
+### Media Details
 
-![Media List - Mobile](docs/screenshots/media-list-mobile.png)
-
-### Media Detail
-
-**Desktop**
-
-![Media Detail - Desktop](docs/screenshots/media-detail-desktop.png)
-
-**Mobile**
-
-![Media Detail - Mobile](docs/screenshots/media-detail-mobile.png)
+![Media Details](docs/screenshots/media-details.png)
 
 ## Self-Hosting
 

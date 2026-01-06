@@ -2180,7 +2180,7 @@ function AddFilesModal({
 				<div
 					css={{
 						flex: 1,
-						minHeight: 0,
+						minHeight: '250px',
 						border: `1px solid ${colors.border}`,
 						borderRadius: radius.md,
 						overflow: 'hidden',
@@ -2270,7 +2270,7 @@ function AddFilesModal({
 							<div
 								css={{
 									flex: 1,
-									minHeight: 0,
+									minHeight: '150px',
 									overflowY: 'auto',
 									backgroundColor: colors.surface,
 								}}

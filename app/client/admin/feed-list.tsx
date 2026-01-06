@@ -87,6 +87,8 @@ export function FeedList(this: Handle) {
 						justifyContent: 'space-between',
 						alignItems: 'center',
 						marginBottom: spacing.xl,
+						flexWrap: 'wrap',
+						gap: spacing.md,
 					}}
 				>
 					<h2
@@ -99,29 +101,54 @@ export function FeedList(this: Handle) {
 					>
 						Your Feeds
 					</h2>
-					<Link
-						href="/admin/feeds/new"
-						css={{
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: spacing.sm,
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor: colors.primary,
-							border: 'none',
-							borderRadius: radius.md,
-							textDecoration: 'none',
-							cursor: 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								backgroundColor: colors.primaryHover,
-							},
-						}}
-					>
-						+ New Feed
-					</Link>
+					<div css={{ display: 'flex', gap: spacing.sm }}>
+						<Link
+							href="/admin/media"
+							css={{
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: spacing.sm,
+								padding: `${spacing.sm} ${spacing.lg}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.primary,
+								backgroundColor: 'transparent',
+								border: `1px solid ${colors.primary}`,
+								borderRadius: radius.md,
+								textDecoration: 'none',
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: 'rgba(59, 130, 246, 0.1)',
+								},
+							}}
+						>
+							Manage Access
+						</Link>
+						<Link
+							href="/admin/feeds/new"
+							css={{
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: spacing.sm,
+								padding: `${spacing.sm} ${spacing.lg}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.background,
+								backgroundColor: colors.primary,
+								border: 'none',
+								borderRadius: radius.md,
+								textDecoration: 'none',
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: colors.primaryHover,
+								},
+							}}
+						>
+							+ New Feed
+						</Link>
+					</div>
 				</div>
 
 				{feeds.length === 0 ? (

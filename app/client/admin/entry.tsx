@@ -3,12 +3,14 @@ import { colors, spacing, typography } from '#app/styles/tokens.ts'
 import { CreateFeed } from './create-feed.tsx'
 import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
+import { MediaList } from './media-list.tsx'
 import { RouterOutlet, router } from './router.tsx'
 
 // Register routes
 router.register('/admin', FeedList)
 router.register('/admin/feeds/new', CreateFeed)
 router.register('/admin/feeds/:id', FeedDetail)
+router.register('/admin/media', MediaList)
 
 function AdminApp() {
 	return () => (

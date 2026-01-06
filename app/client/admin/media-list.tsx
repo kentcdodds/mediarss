@@ -112,11 +112,14 @@ function isMediaInDirectoryFeed(
 		const normalizedDir = dirPath.replace(/\\/g, '/')
 
 		// Check if the file is within this directory
+		// Must match exact root name followed by colon to avoid false matches
+		// e.g., "audiobooks:file.mp3" should not match "audiobooks-archive"
 		if (
 			normalizedFile.startsWith(normalizedDir + '/') ||
 			normalizedFile === normalizedDir ||
-			// Also check if the directory path is a prefix (for root-level matches)
-			normalizedFile.startsWith(normalizedDir)
+			// For root-level matches, ensure we have the colon separator
+			(normalizedFile.startsWith(normalizedDir + ':') &&
+				!normalizedDir.includes(':'))
 		) {
 			return true
 		}

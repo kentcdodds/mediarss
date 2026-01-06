@@ -378,6 +378,7 @@ export function MediaDetail(this: Handle) {
 										backgroundColor: '#000',
 									}}
 								>
+									<track kind="captions" />
 									Your browser does not support video playback.
 								</video>
 							) : (
@@ -389,6 +390,7 @@ export function MediaDetail(this: Handle) {
 										width: '100%',
 									}}
 								>
+									<track kind="captions" />
 									Your browser does not support audio playback.
 								</audio>
 							)}

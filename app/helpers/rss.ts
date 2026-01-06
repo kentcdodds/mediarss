@@ -209,7 +209,9 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 
 	// Generate items
 	const itemsXml = items
-		.map((item, index) => generateItem(item, index, baseUrl, token, cacheVersion))
+		.map((item, index) =>
+			generateItem(item, index, baseUrl, token, cacheVersion),
+		)
 		.join('\n')
 
 	return `<?xml version="1.0" encoding="utf-8"?>

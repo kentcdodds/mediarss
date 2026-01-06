@@ -618,7 +618,7 @@ export function FeedDetail(this: Handle) {
 		}
 	}
 
-	const saveImageUrl = async (feed: Feed) => {
+	const saveImageUrl = async () => {
 		imageUrlSaving = true
 		artworkError = null
 		this.update()
@@ -678,10 +678,6 @@ export function FeedDetail(this: Handle) {
 			imageUrlSaving = false
 			this.update()
 		}
-	}
-
-	const initImageUrlInput = (feed: Feed) => {
-		imageUrlInput = feed.imageUrl ?? ''
 	}
 
 	// Item management functions (curated feeds only)
@@ -1320,7 +1316,7 @@ export function FeedDetail(this: Handle) {
 													? {}
 													: { backgroundColor: colors.primaryHover },
 										}}
-										on={{ click: () => saveImageUrl(feed) }}
+										on={{ click: () => saveImageUrl() }}
 									>
 										{imageUrlSaving ? 'Saving...' : 'Save'}
 									</button>

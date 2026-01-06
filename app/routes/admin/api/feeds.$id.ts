@@ -19,16 +19,13 @@ import {
 	getDirectoryFeedById,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
+import { reorderFeedItems } from '#app/db/feed-items.ts'
 import type { SortOrder } from '#app/db/types.ts'
+import { deleteFeedArtwork, hasFeedArtwork } from '#app/helpers/feed-artwork.ts'
 import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
-import {
-	deleteFeedArtwork,
-	hasFeedArtwork,
-} from '#app/helpers/feed-artwork.ts'
-import { reorderFeedItems } from '#app/db/feed-items.ts'
 
 /**
  * Simplified media item for the admin UI

@@ -1,5 +1,13 @@
 Default to using Bun instead of Node.js.
 
+## Linting
+
+Always run `bun run lint` before you're done working to fix any lint issues.
+
+## Formatting
+
+Always run `bun run format` before you're done working to fix any formatting issues.
+
 ## No React
 
 This application does NOT use React. We use `@remix-run/component` for UI components. Do not introduce React, Preact, or any other UI framework.

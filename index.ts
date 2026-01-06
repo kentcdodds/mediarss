@@ -2,6 +2,7 @@
 import '#app/config/init-env.ts'
 
 import { getEnv } from '#app/config/env.ts'
+import { warmMediaCache } from '#app/helpers/media.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
 import router from './app/router.tsx'
@@ -34,3 +35,8 @@ const server = Bun.serve({
 const url = `http://${server.hostname}:${server.port}`
 
 setupInteractiveCli(url)
+
+// Fire-and-forget cache warming (don't block server startup)
+warmMediaCache().catch((error) => {
+	console.error('Cache warming failed:', error)
+})

@@ -53,7 +53,7 @@ function getFeedByToken(
  * Check if a feed is a DirectoryFeed.
  */
 function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPath' in feed
+	return 'directoryPaths' in feed
 }
 
 export default {

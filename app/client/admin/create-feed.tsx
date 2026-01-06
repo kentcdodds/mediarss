@@ -414,8 +414,9 @@ export function CreateFeed(this: Handle) {
 							boxShadow: shadows.sm,
 						}}
 					>
-						<FormField label="Name" required>
+						<FormField id="directory-feed-name" label="Name" required>
 							<input
+								id="directory-feed-name"
 								type="text"
 								value={directoryForm.name}
 								placeholder="My Audiobooks"
@@ -429,8 +430,9 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField label="Description">
+						<FormField id="directory-feed-description" label="Description">
 							<textarea
+								id="directory-feed-description"
 								value={directoryForm.description}
 								placeholder="Optional description for this feed"
 								rows={3}
@@ -510,8 +512,9 @@ export function CreateFeed(this: Handle) {
 								gap: spacing.lg,
 							}}
 						>
-							<FormField label="Sort By">
+							<FormField id="directory-feed-sort-fields" label="Sort By">
 								<select
+									id="directory-feed-sort-fields"
 									value={directoryForm.sortFields}
 									css={inputStyles}
 									on={{
@@ -529,8 +532,9 @@ export function CreateFeed(this: Handle) {
 								</select>
 							</FormField>
 
-							<FormField label="Order">
+							<FormField id="directory-feed-sort-order" label="Order">
 								<select
+									id="directory-feed-sort-order"
 									value={directoryForm.sortOrder}
 									css={inputStyles}
 									on={{
@@ -570,8 +574,9 @@ export function CreateFeed(this: Handle) {
 							boxShadow: shadows.sm,
 						}}
 					>
-						<FormField label="Name" required>
+						<FormField id="curated-feed-name" label="Name" required>
 							<input
+								id="curated-feed-name"
 								type="text"
 								value={curatedForm.name}
 								placeholder="My Custom Playlist"
@@ -585,8 +590,9 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField label="Description">
+						<FormField id="curated-feed-description" label="Description">
 							<textarea
+								id="curated-feed-description"
 								value={curatedForm.description}
 								placeholder="Optional description for this feed"
 								rows={3}
@@ -644,8 +650,9 @@ export function CreateFeed(this: Handle) {
 								gap: spacing.lg,
 							}}
 						>
-							<FormField label="Sort By">
+							<FormField id="curated-feed-sort-fields" label="Sort By">
 								<select
+									id="curated-feed-sort-fields"
 									value={curatedForm.sortFields}
 									css={inputStyles}
 									on={{
@@ -664,8 +671,9 @@ export function CreateFeed(this: Handle) {
 								</select>
 							</FormField>
 
-							<FormField label="Order">
+							<FormField id="curated-feed-sort-order" label="Order">
 								<select
+									id="curated-feed-sort-order"
 									value={curatedForm.sortOrder}
 									css={inputStyles}
 									on={{
@@ -772,10 +780,12 @@ function FeedTypeButton({
 }
 
 function FormField({
+	id,
 	label,
 	required,
 	children,
 }: {
+	id?: string
 	label: string
 	required?: boolean
 	children: JSX.Element
@@ -783,6 +793,7 @@ function FormField({
 	return (
 		<div css={{ marginBottom: spacing.lg }}>
 			<label
+				for={id}
 				css={{
 					display: 'block',
 					fontSize: typography.fontSize.sm,

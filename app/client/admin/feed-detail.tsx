@@ -63,6 +63,13 @@ type LoadingState =
 	| { status: 'error'; message: string }
 	| { status: 'success'; data: FeedResponse }
 
+type EditFormState = {
+	name: string
+	description: string
+	sortFields: string
+	sortOrder: 'asc' | 'desc'
+}
+
 /**
  * Format duration in seconds to human-readable format (e.g., "1h 23m" or "45m 12s")
  */
@@ -106,6 +113,21 @@ export function FeedDetail(this: Handle) {
 	let newTokenLabel = ''
 	let createLoading = false
 	let feedId = ''
+
+	// Edit mode state
+	let isEditing = false
+	let editForm: EditFormState = {
+		name: '',
+		description: '',
+		sortFields: '',
+		sortOrder: 'asc',
+	}
+	let editLoading = false
+	let editError: string | null = null
+
+	// Delete confirmation state
+	let showDeleteConfirm = false
+	let deleteLoading = false
 
 	const fetchFeed = (id: string) => {
 		feedId = id
@@ -181,6 +203,87 @@ export function FeedDetail(this: Handle) {
 		}
 	}
 
+	const startEditing = (feed: Feed) => {
+		editForm = {
+			name: feed.name,
+			description: feed.description,
+			sortFields: feed.sortFields,
+			sortOrder: feed.sortOrder,
+		}
+		editError = null
+		isEditing = true
+		this.update()
+	}
+
+	const cancelEditing = () => {
+		isEditing = false
+		editError = null
+		this.update()
+	}
+
+	const saveEdit = async () => {
+		if (!editForm.name.trim()) {
+			editError = 'Name is required'
+			this.update()
+			return
+		}
+
+		editLoading = true
+		editError = null
+		this.update()
+
+		try {
+			const res = await fetch(`/admin/api/feeds/${feedId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: editForm.name.trim(),
+					description: editForm.description.trim(),
+					sortFields: editForm.sortFields,
+					sortOrder: editForm.sortOrder,
+				}),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			isEditing = false
+			fetchFeed(feedId)
+		} catch (err) {
+			editError = err instanceof Error ? err.message : 'Failed to update feed'
+			this.update()
+		} finally {
+			editLoading = false
+			this.update()
+		}
+	}
+
+	const deleteFeed = async () => {
+		deleteLoading = true
+		this.update()
+
+		try {
+			const res = await fetch(`/admin/api/feeds/${feedId}`, {
+				method: 'DELETE',
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Navigate back to the feed list
+			window.location.href = '/admin'
+		} catch (err) {
+			console.error('Failed to delete feed:', err)
+			deleteLoading = false
+			showDeleteConfirm = false
+			this.update()
+		}
+	}
+
 	const formatDate = (timestamp: number) => {
 		return new Date(timestamp * 1000).toLocaleDateString('en-US', {
 			year: 'numeric',
@@ -225,6 +328,21 @@ export function FeedDetail(this: Handle) {
 
 		return (
 			<div>
+				{/* Delete Confirmation Modal */}
+				{showDeleteConfirm && (
+					<DeleteConfirmModal
+						feedName={feed.name}
+						tokenCount={activeTokens.length}
+						itemCount={items.length}
+						isLoading={deleteLoading}
+						onConfirm={deleteFeed}
+						onCancel={() => {
+							showDeleteConfirm = false
+							this.update()
+						}}
+					/>
+				)}
+
 				{/* Header */}
 				<div
 					css={{
@@ -232,6 +350,7 @@ export function FeedDetail(this: Handle) {
 						alignItems: 'center',
 						gap: spacing.md,
 						marginBottom: spacing.xl,
+						flexWrap: 'wrap',
 					}}
 				>
 					<Link
@@ -272,6 +391,55 @@ export function FeedDetail(this: Handle) {
 					>
 						{feed.type}
 					</span>
+					{!isEditing && (
+						<div css={{ display: 'flex', gap: spacing.sm }}>
+							<button
+								type="button"
+								css={{
+									padding: `${spacing.xs} ${spacing.md}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.primary,
+									backgroundColor: 'transparent',
+									border: `1px solid ${colors.primary}`,
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: 'rgba(59, 130, 246, 0.1)',
+									},
+								}}
+								on={{ click: () => startEditing(feed) }}
+							>
+								Edit
+							</button>
+							<button
+								type="button"
+								css={{
+									padding: `${spacing.xs} ${spacing.md}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: '#ef4444',
+									backgroundColor: 'transparent',
+									border: '1px solid #ef4444',
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: 'rgba(239, 68, 68, 0.1)',
+									},
+								}}
+								on={{
+									click: () => {
+										showDeleteConfirm = true
+										this.update()
+									},
+								}}
+							>
+								Delete
+							</button>
+						</div>
+					)}
 				</div>
 
 				{/* Feed Info Card */}
@@ -285,50 +453,88 @@ export function FeedDetail(this: Handle) {
 						boxShadow: shadows.sm,
 					}}
 				>
-					<h3
-						css={{
-							fontSize: typography.fontSize.base,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: `0 0 ${spacing.md} 0`,
-						}}
-					>
-						Feed Details
-					</h3>
-
-					{feed.description && (
-						<p
-							css={{
-								fontSize: typography.fontSize.sm,
-								color: colors.textMuted,
-								margin: `0 0 ${spacing.md} 0`,
-							}}
-						>
-							{feed.description}
-						</p>
-					)}
-
 					<div
 						css={{
-							display: 'grid',
-							gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-							gap: spacing.md,
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							marginBottom: spacing.md,
 						}}
 					>
-						{isDirectory && (
-							<InfoItem
-								label="Directory"
-								value={(feed as DirectoryFeed).directoryPath}
-								mono
-							/>
-						)}
-						<InfoItem
-							label="Sort"
-							value={`${feed.sortFields} (${feed.sortOrder})`}
-						/>
-						<InfoItem label="Created" value={formatDate(feed.createdAt)} />
-						<InfoItem label="Updated" value={formatDate(feed.updatedAt)} />
+						<h3
+							css={{
+								fontSize: typography.fontSize.base,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+							}}
+						>
+							Feed Details
+						</h3>
 					</div>
+
+					{isEditing ? (
+						<EditForm
+							form={editForm}
+							isDirectory={isDirectory}
+							isLoading={editLoading}
+							error={editError}
+							onNameChange={(value) => {
+								editForm.name = value
+								this.update()
+							}}
+							onDescriptionChange={(value) => {
+								editForm.description = value
+								this.update()
+							}}
+							onSortFieldsChange={(value) => {
+								editForm.sortFields = value
+								this.update()
+							}}
+							onSortOrderChange={(value) => {
+								editForm.sortOrder = value
+								this.update()
+							}}
+							onSave={saveEdit}
+							onCancel={cancelEditing}
+						/>
+					) : (
+						<>
+							{feed.description && (
+								<p
+									css={{
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+										margin: `0 0 ${spacing.md} 0`,
+									}}
+								>
+									{feed.description}
+								</p>
+							)}
+
+							<div
+								css={{
+									display: 'grid',
+									gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+									gap: spacing.md,
+								}}
+							>
+								{isDirectory && (
+									<InfoItem
+										label="Directory"
+										value={(feed as DirectoryFeed).directoryPath}
+										mono
+									/>
+								)}
+								<InfoItem
+									label="Sort"
+									value={`${feed.sortFields} (${feed.sortOrder})`}
+								/>
+								<InfoItem label="Created" value={formatDate(feed.createdAt)} />
+								<InfoItem label="Updated" value={formatDate(feed.updatedAt)} />
+							</div>
+						</>
+					)}
 				</div>
 
 				{/* Media Items Section */}
@@ -929,6 +1135,385 @@ function TokenCard({
 				>
 					Revoke
 				</button>
+			</div>
+		</div>
+	)
+}
+
+const inputStyles = {
+	width: '100%',
+	padding: spacing.sm,
+	fontSize: typography.fontSize.sm,
+	color: colors.text,
+	backgroundColor: colors.background,
+	border: `1px solid ${colors.border}`,
+	borderRadius: radius.md,
+	outline: 'none',
+	transition: `border-color ${transitions.fast}`,
+	'&:focus': {
+		borderColor: colors.primary,
+	},
+	'&::placeholder': {
+		color: colors.textMuted,
+	},
+}
+
+function EditForm({
+	form,
+	isDirectory,
+	isLoading,
+	error,
+	onNameChange,
+	onDescriptionChange,
+	onSortFieldsChange,
+	onSortOrderChange,
+	onSave,
+	onCancel,
+}: {
+	form: EditFormState
+	isDirectory: boolean
+	isLoading: boolean
+	error: string | null
+	onNameChange: (value: string) => void
+	onDescriptionChange: (value: string) => void
+	onSortFieldsChange: (value: string) => void
+	onSortOrderChange: (value: 'asc' | 'desc') => void
+	onSave: () => void
+	onCancel: () => void
+}) {
+	return (
+		<div>
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-name"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Name <span css={{ color: '#ef4444' }}>*</span>
+				</label>
+				<input
+					id="edit-feed-name"
+					type="text"
+					value={form.name}
+					css={inputStyles}
+					on={{
+						input: (e) => onNameChange((e.target as HTMLInputElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-description"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Description
+				</label>
+				<textarea
+					id="edit-feed-description"
+					value={form.description}
+					rows={3}
+					css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
+					on={{
+						input: (e) =>
+							onDescriptionChange((e.target as HTMLTextAreaElement).value),
+					}}
+				/>
+			</div>
+
+			<div
+				css={{
+					display: 'grid',
+					gridTemplateColumns: '1fr 1fr',
+					gap: spacing.md,
+					marginBottom: spacing.md,
+				}}
+			>
+				<div>
+					<label
+						for="edit-feed-sort-fields"
+						css={{
+							display: 'block',
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							marginBottom: spacing.xs,
+						}}
+					>
+						Sort By
+					</label>
+					<select
+						id="edit-feed-sort-fields"
+						value={form.sortFields}
+						css={inputStyles}
+						on={{
+							change: (e) =>
+								onSortFieldsChange((e.target as HTMLSelectElement).value),
+						}}
+					>
+						{isDirectory ? (
+							<>
+								<option value="filename">Filename</option>
+								<option value="date">Date Modified</option>
+								<option value="size">File Size</option>
+							</>
+						) : (
+							<>
+								<option value="position">Manual Order</option>
+								<option value="filename">Filename</option>
+								<option value="date">Date Modified</option>
+								<option value="size">File Size</option>
+							</>
+						)}
+					</select>
+				</div>
+
+				<div>
+					<label
+						for="edit-feed-sort-order"
+						css={{
+							display: 'block',
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							marginBottom: spacing.xs,
+						}}
+					>
+						Order
+					</label>
+					<select
+						id="edit-feed-sort-order"
+						value={form.sortOrder}
+						css={inputStyles}
+						on={{
+							change: (e) =>
+								onSortOrderChange(
+									(e.target as HTMLSelectElement).value as 'asc' | 'desc',
+								),
+						}}
+					>
+						<option value="asc">Ascending</option>
+						<option value="desc">Descending</option>
+					</select>
+				</div>
+			</div>
+
+			{error && (
+				<div
+					css={{
+						padding: spacing.sm,
+						backgroundColor: 'rgba(239, 68, 68, 0.1)',
+						borderRadius: radius.md,
+						border: '1px solid rgba(239, 68, 68, 0.3)',
+						marginBottom: spacing.md,
+					}}
+				>
+					<p css={{ color: '#ef4444', margin: 0, fontSize: typography.fontSize.sm }}>
+						{error}
+					</p>
+				</div>
+			)}
+
+			<div css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}>
+				<button
+					type="button"
+					css={{
+						padding: `${spacing.sm} ${spacing.lg}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						backgroundColor: 'transparent',
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.background,
+						},
+					}}
+					on={{ click: onCancel }}
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					disabled={isLoading}
+					css={{
+						padding: `${spacing.sm} ${spacing.lg}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.background,
+						backgroundColor: isLoading ? colors.border : colors.primary,
+						border: 'none',
+						borderRadius: radius.md,
+						cursor: isLoading ? 'not-allowed' : 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': isLoading ? {} : { backgroundColor: colors.primaryHover },
+					}}
+					on={{ click: onSave }}
+				>
+					{isLoading ? 'Saving...' : 'Save Changes'}
+				</button>
+			</div>
+		</div>
+	)
+}
+
+function DeleteConfirmModal({
+	feedName,
+	tokenCount,
+	itemCount,
+	isLoading,
+	onConfirm,
+	onCancel,
+}: {
+	feedName: string
+	tokenCount: number
+	itemCount: number
+	isLoading: boolean
+	onConfirm: () => void
+	onCancel: () => void
+}) {
+	return (
+		<div
+			css={{
+				position: 'fixed',
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				backgroundColor: 'rgba(0, 0, 0, 0.5)',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				zIndex: 1000,
+				padding: spacing.lg,
+			}}
+			on={{ click: (e) => e.target === e.currentTarget && onCancel() }}
+		>
+			<div
+				css={{
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					padding: spacing.xl,
+					maxWidth: '400px',
+					width: '100%',
+					boxShadow: shadows.lg,
+				}}
+			>
+				<h3
+					css={{
+						fontSize: typography.fontSize.lg,
+						fontWeight: typography.fontWeight.semibold,
+						color: colors.text,
+						margin: `0 0 ${spacing.md} 0`,
+					}}
+				>
+					Delete Feed
+				</h3>
+
+				<p
+					css={{
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.md} 0`,
+					}}
+				>
+					Are you sure you want to delete{' '}
+					<strong css={{ color: colors.text }}>{feedName}</strong>?
+				</p>
+
+				<div
+					css={{
+						backgroundColor: 'rgba(239, 68, 68, 0.1)',
+						borderRadius: radius.md,
+						padding: spacing.md,
+						marginBottom: spacing.lg,
+					}}
+				>
+					<p
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: '#ef4444',
+							margin: 0,
+						}}
+					>
+						This action cannot be undone. The following will be permanently deleted:
+					</p>
+					<ul
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: '#ef4444',
+							margin: `${spacing.sm} 0 0 0`,
+							paddingLeft: spacing.lg,
+						}}
+					>
+						<li>The feed and all its settings</li>
+						{tokenCount > 0 && (
+							<li>
+								{tokenCount} access token{tokenCount !== 1 ? 's' : ''}
+							</li>
+						)}
+						{itemCount > 0 && (
+							<li>
+								{itemCount} media item reference{itemCount !== 1 ? 's' : ''}
+							</li>
+						)}
+					</ul>
+				</div>
+
+				<div css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}>
+					<button
+						type="button"
+						disabled={isLoading}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							backgroundColor: 'transparent',
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							cursor: isLoading ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': isLoading ? {} : { backgroundColor: colors.background },
+						}}
+						on={{ click: onCancel }}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						disabled={isLoading}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: '#fff',
+							backgroundColor: isLoading ? colors.border : '#ef4444',
+							border: 'none',
+							borderRadius: radius.md,
+							cursor: isLoading ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': isLoading ? {} : { backgroundColor: '#dc2626' },
+						}}
+						on={{ click: onConfirm }}
+					>
+						{isLoading ? 'Deleting...' : 'Delete Feed'}
+					</button>
+				</div>
 			</div>
 		</div>
 	)

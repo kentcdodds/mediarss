@@ -217,9 +217,14 @@ than app-level authentication.
    docker run -d \
      --name cloudflared \
      --restart unless-stopped \
+     --network host \
      cloudflare/cloudflared:latest \
      tunnel run --token YOUR_TUNNEL_TOKEN
    ```
+
+   > **Note:** The `--network host` flag is required so that cloudflared can reach
+   > MediaRSS via `localhost`. Without it, `localhost` would refer to the
+   > cloudflared container itself, not your NAS.
 
 4. **Configure the public hostname** in the tunnel settings:
    - Hostname: `media.yourdomain.com` (a domain name you control)

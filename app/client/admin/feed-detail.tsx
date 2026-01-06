@@ -2622,14 +2622,7 @@ function EditForm({
 	)
 }
 
-function DirectoryPathsEditor(
-	this: Handle,
-	setupProps: {
-		paths: Array<string>
-		rootsState: RootsState
-		onPathsChange: (paths: Array<string>) => void
-	},
-) {
+function DirectoryPathsEditor(this: Handle) {
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''

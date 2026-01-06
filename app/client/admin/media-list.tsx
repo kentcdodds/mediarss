@@ -2338,95 +2338,6 @@ function FeedRadioRowWithCount({
 	)
 }
 
-function FeedRadioRow({
-	feedId,
-	name,
-	updatedAt,
-	isSelected,
-	onSelect,
-}: {
-	feedId: string
-	name: string
-	updatedAt: number
-	isSelected: boolean
-	onSelect: () => void
-}) {
-	return (
-		<button
-			type="button"
-			css={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				padding: spacing.sm,
-				backgroundColor: isSelected
-					? 'rgba(59, 130, 246, 0.1)'
-					: colors.background,
-				border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-				borderRadius: radius.md,
-				cursor: 'pointer',
-				textAlign: 'left',
-				width: '100%',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					backgroundColor: isSelected
-						? 'rgba(59, 130, 246, 0.15)'
-						: colors.surface,
-				},
-			}}
-			on={{ click: onSelect }}
-		>
-			<div
-				css={{
-					width: '18px',
-					height: '18px',
-					borderRadius: '50%',
-					border: `2px solid ${isSelected ? colors.primary : colors.border}`,
-					backgroundColor: isSelected ? colors.primary : 'transparent',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					flexShrink: 0,
-				}}
-			>
-				{isSelected && (
-					<div
-						css={{
-							width: '8px',
-							height: '8px',
-							borderRadius: '50%',
-							backgroundColor: 'white',
-						}}
-					/>
-				)}
-			</div>
-			<img
-				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
-				alt=""
-				css={{
-					width: '32px',
-					height: '32px',
-					borderRadius: radius.sm,
-					objectFit: 'cover',
-					flexShrink: 0,
-				}}
-			/>
-			<span
-				css={{
-					flex: 1,
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-					overflow: 'hidden',
-					textOverflow: 'ellipsis',
-					whiteSpace: 'nowrap',
-				}}
-			>
-				{name}
-			</span>
-		</button>
-	)
-}
-
 function FeedCheckboxRow({
 	feedId,
 	name,
@@ -2485,6 +2396,8 @@ function FeedCheckboxRow({
 						viewBox="0 0 12 12"
 						fill="none"
 						css={{ flexShrink: 0 }}
+						role="img"
+						aria-label="Selected"
 					>
 						<path
 							d="M2 6L5 9L10 3"

@@ -155,6 +155,7 @@ The following environment variables can be configured:
 - `MEDIA_PATHS`: Named media roots in format `name:path,name:path`
   - Example: `shows:/media/shows,personal:/media/personal,other:/media/other`
   - Each media root has a name (used in URLs) and a path (filesystem location)
+  - **Names must be unique** - duplicate names are not allowed
   - Names should be URL-safe (alphanumeric, hyphens, underscores)
 
 ### Securing the Admin Dashboard

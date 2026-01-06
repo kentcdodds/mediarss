@@ -3,6 +3,7 @@ import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
 import { getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
+import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed } from '#app/db/curated-feeds.ts'
 import { addItemToFeed } from '#app/db/feed-items.ts'
 import type { SortOrder } from '#app/db/types.ts'
@@ -126,6 +127,12 @@ export default {
 				addItemToFeed(feed.id, path, i)
 			}
 		}
+
+		// Automatically create an access token for the new feed
+		createCuratedFeedToken({
+			feedId: feed.id,
+			label: 'Default',
+		})
 
 		return Response.json(feed, { status: 201 })
 	},

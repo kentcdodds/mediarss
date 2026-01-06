@@ -3,6 +3,7 @@ import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
 import { getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
+import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import { createDirectoryFeed } from '#app/db/directory-feeds.ts'
 import type { SortOrder } from '#app/db/types.ts'
 
@@ -105,6 +106,12 @@ export default {
 			directoryPath: resolvedPath,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
+		})
+
+		// Automatically create an access token for the new feed
+		createDirectoryFeedToken({
+			feedId: feed.id,
+			label: 'Default',
 		})
 
 		return Response.json(feed, { status: 201 })

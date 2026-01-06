@@ -35,6 +35,7 @@
     "@remix-run/response": "^0.2.1",
     "@remix-run/route-pattern": "^0.16.0",
     "@remix-run/static-middleware": "^0.4.0",
+    "close-with-grace": "^2.4.0",
     "fast-sort": "^3.4.1",
     "music-metadata": "^11.10.4",
     "p-limit": "^7.2.0",

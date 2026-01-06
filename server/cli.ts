@@ -1,3 +1,6 @@
+import type { Server } from 'bun'
+import closeWithGrace from 'close-with-grace'
+
 // Use Bun's built-in color API
 const reset = '\x1b[0m'
 const brightCode = '\x1b[1m'
@@ -30,8 +33,19 @@ const showHelp = () => {
 	)
 }
 
-export function setupInteractiveCli(url: string) {
+export function setupInteractiveCli(url: string, server: Server) {
 	console.log(`${dim('App is running on')} ${bright(url)}`)
+
+	// Use close-with-grace for robust graceful shutdown
+	// Handles SIGINT, SIGTERM, uncaught exceptions, and unhandled rejections
+	const closeListeners = closeWithGrace({ delay: 500 }, async ({ err }) => {
+		if (err) {
+			console.error('Error during shutdown:', err)
+		}
+		console.log(`\n\n${colorize('Shutting down...', 'crimson')}`)
+		server.stop(true) // true = close all idle connections immediately
+	})
+
 	const stdin = process.stdin
 	const canUseRawMode =
 		!!stdin &&
@@ -52,10 +66,10 @@ export function setupInteractiveCli(url: string) {
 
 	stdin.on('data', (key) => {
 		const char = key.toString()
-		// Handle Ctrl+C
+		// Handle Ctrl+C - trigger graceful shutdown
 		if (char === '\u0003') {
-			console.log(`\n\n${colorize('Shutting down...', 'crimson')}`)
-			process.exit(0)
+			closeListeners.close()
+			return
 		}
 
 		switch (char) {
@@ -93,8 +107,7 @@ export function setupInteractiveCli(url: string) {
 			}
 			case 'q':
 			case 'Q': {
-				console.log(`\n\n${colorize('Shutting down...', 'crimson')}`)
-				process.exit(0)
+				closeListeners.close()
 			}
 		}
 	})

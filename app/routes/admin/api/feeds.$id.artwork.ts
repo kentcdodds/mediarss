@@ -5,12 +5,12 @@ import {
 	getDirectoryFeedById,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
-import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import {
 	deleteFeedArtwork,
 	hasFeedArtwork,
 	saveFeedArtwork,
 } from '#app/helpers/feed-artwork.ts'
+import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 
 /**
  * GET /admin/api/feeds/:id/artwork

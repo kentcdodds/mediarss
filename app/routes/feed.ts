@@ -2,11 +2,11 @@ import type { Action } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
 import type { CuratedFeed } from '#app/db/types.ts'
 import { isDirectoryFeed } from '#app/db/types.ts'
-import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
+import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import type { MediaFile } from '#app/helpers/media.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
 

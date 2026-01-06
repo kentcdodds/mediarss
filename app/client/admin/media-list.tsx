@@ -217,7 +217,9 @@ export function MediaList(this: Handle) {
 		selectedItem = item
 
 		// Initialize modal with current curated feed assignments
-		const currentAssignments = state.assignments[item.path] ?? []
+		// Use the same key format as the API: "mediaRoot:relativePath"
+		const mediaPath = `${item.rootName}:${item.relativePath}`
+		const currentAssignments = state.assignments[mediaPath] ?? []
 		modalFeedIds = new Set(
 			currentAssignments
 				.filter((a) => a.feedType === 'curated')
@@ -248,11 +250,14 @@ export function MediaList(this: Handle) {
 		this.update()
 
 		try {
+			// Build the media path in the format expected by the API: "mediaRoot:relativePath"
+			const mediaPath = `${selectedItem.rootName}:${selectedItem.relativePath}`
+
 			const res = await fetch('/admin/api/media/assignments', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					filePath: selectedItem.path,
+					mediaPath,
 					feedIds: [...modalFeedIds],
 				}),
 			})
@@ -262,12 +267,12 @@ export function MediaList(this: Handle) {
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			// Update local state with new assignments
+			// Update local state with new assignments using the same key format
 			const newAssignments = [...modalFeedIds].map((feedId) => ({
 				feedId,
 				feedType: 'curated' as const,
 			}))
-			state.assignments[selectedItem.path] = newAssignments
+			state.assignments[mediaPath] = newAssignments
 
 			closeModal()
 		} catch (err) {

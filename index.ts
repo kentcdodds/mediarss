@@ -1,6 +1,7 @@
 // Initialize environment variables
 import '#app/config/init-env.ts'
 
+import getPort from 'get-port'
 import { getEnv } from '#app/config/env.ts'
 import { warmMediaCache } from '#app/helpers/media.ts'
 import { db } from './app/db/index.ts'
@@ -35,45 +36,22 @@ function startServer(port: number) {
 	})
 }
 
-function tryStartServer(desiredPort: number, maxAttempts = 10) {
-	let port = desiredPort
-
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
-		try {
-			const server = startServer(port)
-			if (port !== desiredPort) {
-				console.warn(
-					`⚠️  Port ${desiredPort} was taken, using port ${port} instead`,
-				)
-			}
-			return server
-		} catch (error) {
-			const isPortTaken =
-				error instanceof Error &&
-				(error.message.includes('EADDRINUSE') ||
-					error.message.includes('address already in use'))
-
-			if (!isPortTaken) {
-				throw error
-			}
-
-			// In production, fail immediately if port is taken
-			if (env.NODE_ENV === 'production') {
-				throw new Error(
-					`Port ${desiredPort} is already in use. In production, the server will not automatically find an alternative port.`,
-				)
-			}
-
-			port++
-		}
+async function getServerPort(desiredPort: number) {
+	// In production, use the exact port specified (fail if taken)
+	if (env.NODE_ENV === 'production') {
+		return desiredPort
 	}
 
-	throw new Error(
-		`Could not find an available port after ${maxAttempts} attempts (tried ${desiredPort}-${desiredPort + maxAttempts - 1})`,
-	)
+	// In development, find an available port
+	const port = await getPort({ port: desiredPort })
+	if (port !== desiredPort) {
+		console.warn(`⚠️  Port ${desiredPort} was taken, using port ${port} instead`)
+	}
+	return port
 }
 
-const server = tryStartServer(env.PORT)
+const port = await getServerPort(env.PORT)
+const server = startServer(port)
 
 const url = `http://${server.hostname}:${server.port}`
 

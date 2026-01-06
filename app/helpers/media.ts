@@ -3,8 +3,16 @@ import path from 'node:path'
 import { invariant } from '@epic-web/invariant'
 import { fileTypeFromFile } from 'file-type'
 import * as mm from 'music-metadata'
+import pLimit from 'p-limit'
 import { z } from 'zod'
+import { cachified, shouldRefreshCache } from '#app/cache/cache.ts'
 import { getMediaRoots } from '#app/config/env.ts'
+
+/**
+ * Concurrency limit for parallel metadata extraction.
+ * Limits how many files are processed simultaneously to avoid overwhelming I/O.
+ */
+const metadataLimit = pLimit(10)
 
 /**
  * Directories to skip when scanning (Synology NAS junk, macOS metadata, etc.)
@@ -38,6 +46,38 @@ const MediaFileSchema = z.object({
 })
 
 export type MediaFile = z.infer<typeof MediaFileSchema>
+
+/**
+ * Schema for cached media file data (handles Date serialization).
+ * Derived from MediaFileSchema with publicationDate as ISO string instead of Date.
+ */
+const CachedMediaFileSchema = MediaFileSchema.omit({ publicationDate: true }).extend({
+	publicationDate: z.string().nullable(), // ISO string in cache
+})
+
+type CachedMediaFile = z.infer<typeof CachedMediaFileSchema>
+
+/**
+ * Convert a MediaFile to a cacheable format (Date -> ISO string).
+ */
+function toCachedMediaFile(mediaFile: MediaFile): CachedMediaFile {
+	return {
+		...mediaFile,
+		publicationDate: mediaFile.publicationDate?.toISOString() ?? null,
+	}
+}
+
+/**
+ * Convert a cached MediaFile back to the regular format (ISO string -> Date).
+ */
+function fromCachedMediaFile(cached: CachedMediaFile): MediaFile {
+	return {
+		...cached,
+		publicationDate: cached.publicationDate
+			? new Date(cached.publicationDate)
+			: null,
+	}
+}
 
 /**
  * Check if a path segment is in the ignored directories list
@@ -220,11 +260,10 @@ export async function scanDirectory(directory: string): Promise<string[]> {
 }
 
 /**
- * Get full metadata for a media file
+ * Parse metadata directly from a file (no caching).
+ * This is the expensive operation that we want to cache.
  */
-export async function getFileMetadata(
-	filepath: string,
-): Promise<MediaFile | null> {
+async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 	try {
 		const absolutePath = path.resolve(filepath)
 
@@ -268,22 +307,84 @@ export async function getFileMetadata(
 }
 
 /**
- * Scan a directory and return metadata for all media files
+ * Get cached file metadata, refreshing if the file has been modified.
+ */
+async function getCachedFileMetadata(
+	filepath: string,
+	fileMtime: number,
+): Promise<MediaFile | null> {
+	const cacheKey = `media:${filepath}`
+
+	const cached = await cachified<CachedMediaFile | null>({
+		key: cacheKey,
+		ttl: 1000 * 60 * 60 * 24 * 7, // 7 days
+		forceFresh: shouldRefreshCache(cacheKey, fileMtime),
+		getFreshValue: async () => {
+			const metadata = await parseFileMetadata(filepath)
+			if (!metadata) return null
+			// Convert to cacheable format (Date -> ISO string)
+			return toCachedMediaFile(metadata)
+		},
+		checkValue: (value) => {
+			// null is valid (means not a media file)
+			if (value === null) return true
+			// Validate cached value structure
+			const result = CachedMediaFileSchema.safeParse(value)
+			return result.success
+		},
+	})
+
+	if (!cached) return null
+
+	// Convert back from cached format (ISO string -> Date)
+	return fromCachedMediaFile(cached)
+}
+
+/**
+ * Get full metadata for a media file (with caching).
+ * This is the public API for getting metadata for a single file.
+ */
+export async function getFileMetadata(
+	filepath: string,
+): Promise<MediaFile | null> {
+	try {
+		const absolutePath = path.resolve(filepath)
+		const stat = await fs.promises.stat(absolutePath)
+		return getCachedFileMetadata(absolutePath, stat.mtimeMs)
+	} catch (error) {
+		console.error(`Error getting metadata for ${filepath}:`, error)
+		return null
+	}
+}
+
+/**
+ * Scan a directory and return metadata for all media files.
+ * Uses caching and parallel processing for improved performance.
  */
 export async function scanDirectoryWithMetadata(
 	directory: string,
 ): Promise<MediaFile[]> {
 	const filePaths = await scanDirectory(directory)
-	const results: MediaFile[] = []
 
-	for (const filepath of filePaths) {
-		const metadata = await getFileMetadata(filepath)
-		if (metadata) {
-			results.push(metadata)
+	// Get mtimes for all files (Bun.file().lastModified is sync and fast ~1.3µs/call)
+	const validFileStats: Array<{ path: string; mtime: number }> = []
+	for (const p of filePaths) {
+		try {
+			const mtime = Bun.file(p).lastModified
+			validFileStats.push({ path: p, mtime })
+		} catch {
+			// File may have been deleted since scan
 		}
 	}
 
-	return results
+	// Extract metadata in parallel with concurrency limit
+	const results = await Promise.all(
+		validFileStats.map(({ path: filePath, mtime }) =>
+			metadataLimit(() => getCachedFileMetadata(filePath, mtime)),
+		),
+	)
+
+	return results.filter((r): r is MediaFile => r !== null)
 }
 
 /**
@@ -299,4 +400,26 @@ export async function scanAllMediaRoots(): Promise<MediaFile[]> {
 	}
 
 	return allFiles
+}
+
+/**
+ * Pre-warm the media cache by scanning all configured media roots.
+ * Called on server startup to populate cache before first request.
+ */
+export async function warmMediaCache(): Promise<void> {
+	const roots = getMediaRoots()
+	if (roots.length === 0) return
+
+	console.log(`🔥 Warming media cache for ${roots.length} media root(s)...`)
+	const startTime = Date.now()
+
+	let totalFiles = 0
+	for (const root of roots) {
+		const files = await scanDirectoryWithMetadata(root.path)
+		totalFiles += files.length
+		console.log(`  ✓ ${root.name}: ${files.length} files cached`)
+	}
+
+	const duration = ((Date.now() - startTime) / 1000).toFixed(1)
+	console.log(`🔥 Cache warming complete: ${totalFiles} files in ${duration}s`)
 }

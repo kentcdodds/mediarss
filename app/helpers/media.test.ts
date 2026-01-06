@@ -1,11 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 import path from 'node:path'
+import { initEnv } from '#app/config/env.ts'
 import {
 	getFileMetadata,
 	isMediaFile,
 	scanDirectory,
 	scanDirectoryWithMetadata,
 } from './media.ts'
+
+// Initialize environment for tests
+initEnv()
 
 const TEST_AUDIO_DIR = './test/fixtures/audio'
 const TEST_VIDEO_DIR = './test/fixtures/video'

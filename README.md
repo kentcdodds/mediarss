@@ -3,9 +3,14 @@
 <div align="center">
   <h1 align="center">MediaRSS</h1>
   <strong align="center">
-    An RSS feed generator for media (audio/video).
+    An RSS feed generator for audio files (audiobooks, podcasts, audio series).
   </strong>
 </div>
+
+> **Note:** While MediaRSS is primarily designed and tested for audio files
+> (MP3, M4A, M4B, etc.), video files should also work. However, video support
+> is not the primary focus and may have limitations (especially with regard to
+> performance) with certain formats.
 
 ## Self-Hosting
 
@@ -92,10 +97,9 @@ docker run -d \
   --name mediarss \
   -p 8765:8765 \
   -v /path/to/your/data:/data \
-  -v /path/to/media1:/media/shows:ro \
-  -v /path/to/media2:/media/personal:ro \
-  -v /path/to/media3:/media/other:ro \
-  -e MEDIA_PATHS=shows:/media/shows,personal:/media/personal,other:/media/other \
+  -v /path/to/audiobooks:/media/audiobooks:ro \
+  -v /path/to/audio-series:/media/audio-series:ro \
+  -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \
   [your-image-name]
 ```
 
@@ -113,34 +117,35 @@ The application requires these volume mounts:
    - Example: `-v /path/to/your/data:/data`
 
 2. **Media Volumes** (any number allowed):
-   - Purpose: Access to your media files
+   - Purpose: Access to your audio files
    - Mount point pattern: `/media/[your-name]`
    - Examples:
-     - `-v /path/to/media1:/media/shows:ro`
-     - `-v /path/to/media2:/media/personal:ro`
+     - `-v /path/to/audiobooks:/media/audiobooks:ro`
+     - `-v /path/to/audio-series:/media/audio-series:ro`
    - Should be mounted read-only (`:ro`)
    - Name the mount points anything that makes sense for your use case
 
 ### Media Directory Structure
 
 You can organize your media directories however you prefer. Here's an example
-structure:
+structure for audiobooks and audio series:
 
 ```
-/media/shows/
-├── educational/
-│   ├── course1/
-│   └── course2/
-└── entertainment/
-    ├── show1/
-    └── show2/
+/media/audiobooks/
+├── fiction/
+│   ├── Harry Potter Series/
+│   └── Lord of the Rings/
+└── non-fiction/
+    ├── Atomic Habits/
+    └── Deep Work/
 
-/media/personal/
-├── family-videos/
-└── recordings/
-
-/media/other/
-└── misc-media/
+/media/audio-series/
+├── podcasts/
+│   ├── show1/
+│   └── show2/
+└── courses/
+    ├── course1/
+    └── course2/
 ```
 
 ### Environment Variables
@@ -296,10 +301,9 @@ docker run -d \
   --name mediarss \
   -p 8765:8765 \
   -v /path/to/your/data:/data \
-  -v /path/to/media1:/media/shows:ro \
-  -v /path/to/media2:/media/personal:ro \
-  -v /path/to/media3:/media/other:ro \
-  -e MEDIA_PATHS=shows:/media/shows,personal:/media/personal,other:/media/other \
+  -v /path/to/audiobooks:/media/audiobooks:ro \
+  -v /path/to/audio-series:/media/audio-series:ro \
+  -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \
   [your-image-name]
 ```
 

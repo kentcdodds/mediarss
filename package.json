@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch index.ts",
-    "dev:test": "DATABASE_PATH=./data/test.db MEDIA_PATHS=audio:./local-test/1/audio,video:./local-test/1/video NODE_ENV=development bun run --watch index.ts",
-    "dev:test-mounted": "DATABASE_PATH=./data/mounted.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks,home-videos:/Volumes/usbshare1/video/home-videos,movies:/Volumes/usbshare1/video/movies,random:/Volumes/usbshare1/video/random,tv-shows:/Volumes/usbshare1/video/tv-shows NODE_ENV=development bun run --watch index.ts",
+    "dev:test": "DATABASE_PATH=./data/test.db CACHE_DATABASE_PATH=./data/test-cache.db MEDIA_PATHS=audio:./local-test/1/audio NODE_ENV=development bun run --watch index.ts",
+    "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development bun run --watch index.ts",
     "test": "bun test",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",
@@ -26,6 +26,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@epic-web/cachified": "^5.6.0",
     "@epic-web/invariant": "^1.0.0",
     "@remix-run/component": "^0.2.1",
     "@remix-run/fetch-router": "^0.14.0",
@@ -36,6 +37,7 @@
     "@remix-run/static-middleware": "^0.4.0",
     "fast-sort": "^3.4.1",
     "music-metadata": "^11.10.4",
+    "p-limit": "^7.2.0",
     "zod": "^4.3.5"
   }
 }

@@ -94,7 +94,7 @@ const migrations: Array<Migration> = [
 					feed_id TEXT NOT NULL REFERENCES curated_feeds(id) ON DELETE CASCADE,
 					media_root TEXT NOT NULL,
 					relative_path TEXT NOT NULL,
-					position INTEGER,
+					position REAL,
 					added_at INTEGER NOT NULL DEFAULT (unixepoch()),
 					UNIQUE(feed_id, media_root, relative_path)
 				);

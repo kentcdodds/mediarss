@@ -1,11 +1,14 @@
 import type { Action } from '@remix-run/fetch-router'
+import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
+import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { extractArtwork } from '#app/helpers/artwork.ts'
 import {
 	deleteFeedArtwork,
 	getFeedArtworkPath,
@@ -77,7 +80,25 @@ async function handleGet(feedId: string, feed: DirectoryFeed | CuratedFeed) {
 		return Response.redirect(feed.imageUrl, 302)
 	}
 
-	// Priority 3: Generated placeholder SVG
+	// Priority 3: First item's embedded artwork
+	const feedItems = getItemsForFeed(feedId)
+	if (feedItems.length > 0) {
+		const firstItem = feedItems[0]!
+		const filePath = toAbsolutePath(firstItem.mediaRoot, firstItem.relativePath)
+		if (filePath) {
+			const itemArtwork = await extractArtwork(filePath)
+			if (itemArtwork) {
+				return new Response(new Uint8Array(itemArtwork.data), {
+					headers: {
+						'Content-Type': itemArtwork.mimeType,
+						'Cache-Control': 'public, max-age=86400',
+					},
+				})
+			}
+		}
+	}
+
+	// Priority 4: Generated placeholder SVG
 	const svg = generatePlaceholderSvg(feed.name)
 	return new Response(svg, {
 		headers: {

@@ -143,7 +143,28 @@ export default {
 				})
 			}
 
-			// Priority 3: Generate placeholder
+			// Priority 3: First item's embedded artwork
+			const feedItems = getItemsForFeed(feed.id)
+			if (feedItems.length > 0) {
+				const firstItem = feedItems[0]!
+				const filePath = toAbsolutePath(
+					firstItem.mediaRoot,
+					firstItem.relativePath,
+				)
+				if (filePath) {
+					const itemArtwork = await extractArtwork(filePath)
+					if (itemArtwork) {
+						return new Response(new Uint8Array(itemArtwork.data), {
+							headers: {
+								'Content-Type': itemArtwork.mimeType,
+								'Cache-Control': 'public, max-age=86400',
+							},
+						})
+					}
+				}
+			}
+
+			// Priority 4: Generate placeholder
 			const svg = generatePlaceholderSvg(feed.name)
 			return new Response(svg, {
 				headers: {

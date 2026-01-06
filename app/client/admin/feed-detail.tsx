@@ -16,6 +16,7 @@ type DirectoryFeed = {
 	directoryPaths: string // JSON array of "mediaRoot:relativePath" strings
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	imageUrl: string | null
 	type: 'directory'
 	createdAt: number
 	updatedAt: number
@@ -27,6 +28,7 @@ type CuratedFeed = {
 	description: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	imageUrl: string | null
 	type: 'curated'
 	createdAt: number
 	updatedAt: number
@@ -122,6 +124,7 @@ type FeedResponse = {
 	feed: Feed
 	tokens: Array<Token>
 	items: Array<MediaItem>
+	hasUploadedArtwork: boolean
 }
 
 type LoadingState =
@@ -232,6 +235,14 @@ export function FeedDetail(this: Handle) {
 	let pickerRoot: string | null = null
 	let pickerPath = ''
 	let selectedFilePaths: Array<string> = []
+
+	// Artwork management state
+	let artworkUploadLoading = false
+	let artworkDeleteLoading = false
+	let artworkError: string | null = null
+	let imageUrlInput = ''
+	let imageUrlSaving = false
+	let artworkImageKey = 0 // Used to force image refresh after upload
 
 	// Fetch media roots for file picker
 	fetch('/admin/api/directories', { signal: this.signal })
@@ -376,6 +387,11 @@ export function FeedDetail(this: Handle) {
 			})
 			.then((data) => {
 				state = { status: 'success', data }
+				// Initialize imageUrl input with current value
+				imageUrlInput = data.feed.imageUrl ?? ''
+				// Use feed's updatedAt as cache buster for artwork
+				artworkImageKey = data.feed.updatedAt
+				artworkError = null
 				this.update()
 			})
 			.catch((err) => {
@@ -539,6 +555,133 @@ export function FeedDetail(this: Handle) {
 			showDeleteConfirm = false
 			this.update()
 		}
+	}
+
+	// Artwork management functions
+	const uploadArtwork = async (file: File) => {
+		artworkUploadLoading = true
+		artworkError = null
+		this.update()
+
+		try {
+			const formData = new FormData()
+			formData.append('file', file)
+
+			const res = await fetch(`/admin/api/feeds/${feedId}/artwork`, {
+				method: 'POST',
+				body: formData,
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Force image refresh and reload feed data
+			artworkImageKey++
+			fetchFeed(feedId)
+		} catch (err) {
+			artworkError =
+				err instanceof Error ? err.message : 'Failed to upload artwork'
+			this.update()
+		} finally {
+			artworkUploadLoading = false
+			this.update()
+		}
+	}
+
+	const deleteArtwork = async () => {
+		artworkDeleteLoading = true
+		artworkError = null
+		this.update()
+
+		try {
+			const res = await fetch(`/admin/api/feeds/${feedId}/artwork`, {
+				method: 'DELETE',
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Force image refresh and reload feed data
+			artworkImageKey++
+			fetchFeed(feedId)
+		} catch (err) {
+			artworkError =
+				err instanceof Error ? err.message : 'Failed to delete artwork'
+			this.update()
+		} finally {
+			artworkDeleteLoading = false
+			this.update()
+		}
+	}
+
+	const saveImageUrl = async (feed: Feed) => {
+		imageUrlSaving = true
+		artworkError = null
+		this.update()
+
+		try {
+			const newImageUrl = imageUrlInput.trim() || null
+			const res = await fetch(`/admin/api/feeds/${feedId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ imageUrl: newImageUrl }),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Force image refresh and reload feed data
+			artworkImageKey++
+			fetchFeed(feedId)
+		} catch (err) {
+			artworkError =
+				err instanceof Error ? err.message : 'Failed to save image URL'
+			this.update()
+		} finally {
+			imageUrlSaving = false
+			this.update()
+		}
+	}
+
+	const clearImageUrl = async () => {
+		imageUrlInput = ''
+		imageUrlSaving = true
+		artworkError = null
+		this.update()
+
+		try {
+			const res = await fetch(`/admin/api/feeds/${feedId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ imageUrl: null }),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Force image refresh and reload feed data
+			artworkImageKey++
+			fetchFeed(feedId)
+		} catch (err) {
+			artworkError =
+				err instanceof Error ? err.message : 'Failed to clear image URL'
+			this.update()
+		} finally {
+			imageUrlSaving = false
+			this.update()
+		}
+	}
+
+	const initImageUrlInput = (feed: Feed) => {
+		imageUrlInput = feed.imageUrl ?? ''
 	}
 
 	// Item management functions (curated feeds only)
@@ -942,6 +1085,305 @@ export function FeedDetail(this: Handle) {
 					)}
 				</div>
 
+				{/* Feed Artwork Section */}
+				<div
+					css={{
+						backgroundColor: colors.surface,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						padding: spacing.lg,
+						marginBottom: spacing.xl,
+						boxShadow: shadows.sm,
+					}}
+				>
+					<h3
+						css={{
+							fontSize: typography.fontSize.base,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: `0 0 ${spacing.md} 0`,
+						}}
+					>
+						Feed Artwork
+					</h3>
+
+					<div
+						css={{
+							display: 'flex',
+							gap: spacing.lg,
+							flexWrap: 'wrap',
+							alignItems: 'flex-start',
+						}}
+					>
+						{/* Artwork Preview */}
+						<div css={{ flexShrink: 0 }}>
+							<img
+								key={artworkImageKey}
+								src={`/admin/api/feeds/${feed.id}/artwork?t=${artworkImageKey}`}
+								alt="Feed artwork"
+								css={{
+									width: '120px',
+									height: '120px',
+									borderRadius: radius.md,
+									objectFit: 'cover',
+									backgroundColor: colors.background,
+									border: `1px solid ${colors.border}`,
+								}}
+								on={{
+									error: (e: Event) => {
+										// Fallback to placeholder if no artwork
+										const img = e.target as HTMLImageElement
+										img.src = `data:image/svg+xml,${encodeURIComponent(
+											`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" fill="#1a1a2e"/><text x="60" y="72" font-family="system-ui" font-size="48" font-weight="bold" fill="#e94560" text-anchor="middle">${feed.name.trim()[0]?.toUpperCase() ?? '?'}</text></svg>`,
+										)}`
+									},
+								}}
+							/>
+						</div>
+
+						{/* Artwork Controls */}
+						<div css={{ flex: 1, minWidth: '280px' }}>
+							{/* Current Source Indicator */}
+							<div
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									marginBottom: spacing.md,
+								}}
+							>
+								<strong>Current source:</strong>{' '}
+								{state.status === 'success' && state.data.hasUploadedArtwork
+									? 'Uploaded artwork'
+									: feed.imageUrl
+										? 'External URL'
+										: 'Generated placeholder'}
+							</div>
+
+							{/* Upload Button */}
+							<div css={{ marginBottom: spacing.md }}>
+								<input
+									type="file"
+									id="artwork-upload"
+									accept="image/jpeg,image/png,image/webp"
+									css={{ display: 'none' }}
+									on={{
+										change: (e) => {
+											const input = e.target as HTMLInputElement
+											const file = input.files?.[0]
+											if (file) {
+												uploadArtwork(file)
+												input.value = '' // Reset for re-upload
+											}
+										},
+									}}
+								/>
+								<div
+									css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}
+								>
+									<label
+										for="artwork-upload"
+										css={{
+											display: 'inline-block',
+											padding: `${spacing.xs} ${spacing.md}`,
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.background,
+											backgroundColor: artworkUploadLoading
+												? colors.border
+												: colors.primary,
+											borderRadius: radius.md,
+											cursor: artworkUploadLoading ? 'not-allowed' : 'pointer',
+											transition: `all ${transitions.fast}`,
+											'&:hover': artworkUploadLoading
+												? {}
+												: { backgroundColor: colors.primaryHover },
+										}}
+									>
+										{artworkUploadLoading ? 'Uploading...' : 'Upload Artwork'}
+									</label>
+									{state.status === 'success' &&
+										state.data.hasUploadedArtwork && (
+											<button
+												type="button"
+												disabled={artworkDeleteLoading}
+												css={{
+													padding: `${spacing.xs} ${spacing.md}`,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: '#ef4444',
+													backgroundColor: 'transparent',
+													border: '1px solid #ef4444',
+													borderRadius: radius.md,
+													cursor: artworkDeleteLoading
+														? 'not-allowed'
+														: 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': artworkDeleteLoading
+														? {}
+														: { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+												}}
+												on={{ click: deleteArtwork }}
+											>
+												{artworkDeleteLoading
+													? 'Removing...'
+													: 'Remove Uploaded'}
+											</button>
+										)}
+								</div>
+								<p
+									css={{
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										margin: `${spacing.xs} 0 0 0`,
+									}}
+								>
+									JPEG, PNG, or WebP. Max 5MB.
+								</p>
+							</div>
+
+							{/* External URL Input */}
+							<div css={{ marginBottom: spacing.sm }}>
+								<label
+									for="artwork-url"
+									css={{
+										display: 'block',
+										fontSize: typography.fontSize.sm,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.text,
+										marginBottom: spacing.xs,
+									}}
+								>
+									External URL (optional)
+								</label>
+								<div css={{ display: 'flex', gap: spacing.sm }}>
+									<input
+										id="artwork-url"
+										type="url"
+										value={imageUrlInput}
+										placeholder="https://example.com/artwork.jpg"
+										css={{
+											flex: 1,
+											padding: spacing.sm,
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+											backgroundColor: colors.background,
+											border: `1px solid ${colors.border}`,
+											borderRadius: radius.md,
+											outline: 'none',
+											'&:focus': { borderColor: colors.primary },
+											'&::placeholder': { color: colors.textMuted },
+										}}
+										on={{
+											input: (e) => {
+												imageUrlInput = (e.target as HTMLInputElement).value
+												this.update()
+											},
+											focus: () => {
+												// Initialize with current value on focus if empty
+												if (!imageUrlInput && feed.imageUrl) {
+													imageUrlInput = feed.imageUrl
+													this.update()
+												}
+											},
+										}}
+									/>
+									<button
+										type="button"
+										disabled={
+											imageUrlSaving || imageUrlInput === (feed.imageUrl ?? '')
+										}
+										css={{
+											padding: `${spacing.xs} ${spacing.md}`,
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.background,
+											backgroundColor:
+												imageUrlSaving ||
+												imageUrlInput === (feed.imageUrl ?? '')
+													? colors.border
+													: colors.primary,
+											border: 'none',
+											borderRadius: radius.md,
+											cursor:
+												imageUrlSaving ||
+												imageUrlInput === (feed.imageUrl ?? '')
+													? 'not-allowed'
+													: 'pointer',
+											transition: `all ${transitions.fast}`,
+											'&:hover':
+												imageUrlSaving ||
+												imageUrlInput === (feed.imageUrl ?? '')
+													? {}
+													: { backgroundColor: colors.primaryHover },
+										}}
+										on={{ click: () => saveImageUrl(feed) }}
+									>
+										{imageUrlSaving ? 'Saving...' : 'Save'}
+									</button>
+									{feed.imageUrl && (
+										<button
+											type="button"
+											disabled={imageUrlSaving}
+											css={{
+												padding: `${spacing.xs} ${spacing.md}`,
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+												color: '#ef4444',
+												backgroundColor: 'transparent',
+												border: '1px solid #ef4444',
+												borderRadius: radius.md,
+												cursor: imageUrlSaving ? 'not-allowed' : 'pointer',
+												transition: `all ${transitions.fast}`,
+												'&:hover': imageUrlSaving
+													? {}
+													: { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+											}}
+											on={{ click: clearImageUrl }}
+										>
+											Clear
+										</button>
+									)}
+								</div>
+							</div>
+
+							{/* Error Message */}
+							{artworkError && (
+								<div
+									css={{
+										padding: spacing.sm,
+										backgroundColor: 'rgba(239, 68, 68, 0.1)',
+										borderRadius: radius.md,
+										border: '1px solid rgba(239, 68, 68, 0.3)',
+										marginBottom: spacing.sm,
+									}}
+								>
+									<p
+										css={{
+											color: '#ef4444',
+											margin: 0,
+											fontSize: typography.fontSize.sm,
+										}}
+									>
+										{artworkError}
+									</p>
+								</div>
+							)}
+
+							{/* Priority Note */}
+							<p
+								css={{
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									margin: 0,
+									fontStyle: 'italic',
+								}}
+							>
+								Uploaded artwork takes priority over external URL.
+							</p>
+						</div>
+					</div>
+				</div>
+
 				{/* Media Items Section */}
 				<div
 					css={{
@@ -1198,43 +1640,43 @@ export function FeedDetail(this: Handle) {
 													</span>
 												</td>
 											)}
-										<td
-											css={{
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontFamily: 'monospace',
-												fontSize: typography.fontSize.xs,
-											}}
-										>
-											{index + 1}
-										</td>
-										<td css={{ padding: spacing.sm, textAlign: 'center' }}>
-											<img
-												src={`/admin/api/artwork/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
-												alt=""
-												loading="lazy"
+											<td
 												css={{
-													width: '32px',
-													height: '32px',
-													borderRadius: radius.sm,
-													objectFit: 'cover',
-													backgroundColor: colors.background,
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontFamily: 'monospace',
+													fontSize: typography.fontSize.xs,
 												}}
-											/>
-										</td>
-										<td
-											css={{
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.text,
-												maxWidth: '300px',
-												overflow: 'hidden',
-												textOverflow: 'ellipsis',
-												whiteSpace: 'nowrap',
-											}}
-											title={item.title}
-										>
-											{item.title}
-										</td>
+											>
+												{index + 1}
+											</td>
+											<td css={{ padding: spacing.sm, textAlign: 'center' }}>
+												<img
+													src={`/admin/api/artwork/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
+													alt=""
+													loading="lazy"
+													css={{
+														width: '32px',
+														height: '32px',
+														borderRadius: radius.sm,
+														objectFit: 'cover',
+														backgroundColor: colors.background,
+													}}
+												/>
+											</td>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.text,
+													maxWidth: '300px',
+													overflow: 'hidden',
+													textOverflow: 'ellipsis',
+													whiteSpace: 'nowrap',
+												}}
+												title={item.title}
+											>
+												{item.title}
+											</td>
 											<td
 												css={{
 													padding: `${spacing.sm} ${spacing.md}`,

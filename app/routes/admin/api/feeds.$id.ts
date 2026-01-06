@@ -24,6 +24,10 @@ import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
+import {
+	deleteFeedArtwork,
+	hasFeedArtwork,
+} from '#app/helpers/feed-artwork.ts'
 
 /**
  * Simplified media item for the admin UI
@@ -47,6 +51,7 @@ type UpdateFeedRequest = {
 	sortFields?: string
 	sortOrder?: SortOrder
 	directoryPaths?: Array<string> // Only for directory feeds - array of "mediaRoot:relativePath" strings
+	imageUrl?: string | null // External artwork URL
 }
 
 /**
@@ -108,10 +113,13 @@ async function handleGet(id: string) {
 			}
 		}
 
+		const hasUploadedArtwork = await hasFeedArtwork(directoryFeed.id)
+
 		return Response.json({
 			feed: { ...directoryFeed, type: 'directory' as const },
 			tokens,
 			items,
+			hasUploadedArtwork,
 		})
 	}
 
@@ -139,10 +147,13 @@ async function handleGet(id: string) {
 			}
 		}
 
+		const hasUploadedArtwork = await hasFeedArtwork(curatedFeed.id)
+
 		return Response.json({
 			feed: { ...curatedFeed, type: 'curated' as const },
 			tokens,
 			items,
+			hasUploadedArtwork,
 		})
 	}
 
@@ -236,6 +247,7 @@ async function handlePut(id: string, request: Request) {
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
 			directoryPaths: validatedPaths,
+			imageUrl: body.imageUrl,
 		})
 
 		if (!updated) {
@@ -261,6 +273,7 @@ async function handlePut(id: string, request: Request) {
 			description: body.description,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
+			imageUrl: body.imageUrl,
 		})
 
 		if (!updated) {
@@ -273,10 +286,12 @@ async function handlePut(id: string, request: Request) {
 	return Response.json({ error: 'Feed not found' }, { status: 404 })
 }
 
-function handleDelete(id: string) {
+async function handleDelete(id: string) {
 	// Try directory feed first
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) {
+		// Delete uploaded artwork first
+		await deleteFeedArtwork(id)
 		const deleted = deleteDirectoryFeed(id)
 		if (!deleted) {
 			return Response.json({ error: 'Failed to delete feed' }, { status: 500 })
@@ -287,6 +302,8 @@ function handleDelete(id: string) {
 	// Try curated feed
 	const curatedFeed = getCuratedFeedById(id)
 	if (curatedFeed) {
+		// Delete uploaded artwork first
+		await deleteFeedArtwork(id)
 		const deleted = deleteCuratedFeed(id)
 		if (!deleted) {
 			return Response.json({ error: 'Failed to delete feed' }, { status: 500 })

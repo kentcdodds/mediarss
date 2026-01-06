@@ -123,12 +123,13 @@ function getMediaUrl(baseUrl: string, token: string, filePath: string): string {
 
 /**
  * Build the URL for item artwork.
- * Uses format: /art/:token/:rootName/:relativePath
+ * Uses format: /art/:token/:rootName/:relativePath?v={cacheVersion}
  */
 function getArtworkUrl(
 	baseUrl: string,
 	token: string,
 	filePath: string,
+	cacheVersion: number,
 ): string {
 	const resolved = resolveMediaPath(filePath)
 	invariant(
@@ -136,7 +137,7 @@ function getArtworkUrl(
 		`File "${filePath}" is not within any configured media root. Check MEDIA_PATHS configuration.`,
 	)
 	const encodedRelativePath = encodeURIComponent(resolved.relativePath)
-	return `${baseUrl}/art/${token}/${resolved.root.name}/${encodedRelativePath}`
+	return `${baseUrl}/art/${token}/${resolved.root.name}/${encodedRelativePath}?v=${cacheVersion}`
 }
 
 /**
@@ -147,13 +148,14 @@ function generateItem(
 	index: number,
 	baseUrl: string,
 	token: string,
+	cacheVersion: number,
 ): string {
 	const itemId = generateItemId(item)
 	const pubDate = item.publicationDate
 		? formatRssDate(item.publicationDate)
 		: formatRssDate(getFallbackDate(index))
 	const mediaUrl = getMediaUrl(baseUrl, token, item.path)
-	const artworkUrl = getArtworkUrl(baseUrl, token, item.path)
+	const artworkUrl = getArtworkUrl(baseUrl, token, item.path, cacheVersion)
 	const duration = formatDuration(item.duration)
 
 	return `    <item>
@@ -192,9 +194,10 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	const title = escapeXml(feed.name)
 	const description = cdata(feed.description || `Podcast feed: ${feed.name}`)
 	const link = escapeXml(feed.link || feedUrl)
+	const cacheVersion = feed.updatedAt
 	const imageUrl = feed.imageUrl
 		? escapeXml(feed.imageUrl)
-		: `${baseUrl}/art/${token}/feed`
+		: `${baseUrl}/art/${token}/feed?v=${cacheVersion}`
 	const author = escapeXml(feed.author)
 	const ownerName = escapeXml(feed.ownerName || feed.author)
 	const ownerEmail = escapeXml(feed.ownerEmail)
@@ -206,7 +209,7 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 
 	// Generate items
 	const itemsXml = items
-		.map((item, index) => generateItem(item, index, baseUrl, token))
+		.map((item, index) => generateItem(item, index, baseUrl, token, cacheVersion))
 		.join('\n')
 
 	return `<?xml version="1.0" encoding="utf-8"?>

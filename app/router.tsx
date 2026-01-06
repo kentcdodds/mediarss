@@ -8,6 +8,7 @@ import { render } from '#app/helpers/render.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
+import adminApiFeedArtworkHandlers from '#app/routes/admin/api/feeds.$id.artwork.ts'
 import adminApiFeedItemsHandlers from '#app/routes/admin/api/feeds.$id.items.ts'
 import adminApiFeedTokensHandlers from '#app/routes/admin/api/feeds.$id.tokens.ts'
 import adminApiFeedHandlers from '#app/routes/admin/api/feeds.$id.ts'
@@ -98,6 +99,7 @@ router.map(
 router.map(routes.adminApiCreateCuratedFeed, adminApiCreateCuratedFeedHandlers)
 router.map(routes.adminApiFeedTokens, adminApiFeedTokensHandlers)
 router.map(routes.adminApiFeedItems, adminApiFeedItemsHandlers)
+router.map(routes.adminApiFeedArtwork, adminApiFeedArtworkHandlers)
 router.map(routes.adminApiFeed, adminApiFeedHandlers)
 router.map(routes.adminApiToken, adminApiTokenHandlers)
 router.map(routes.adminApiMedia, adminApiMediaHandlers)

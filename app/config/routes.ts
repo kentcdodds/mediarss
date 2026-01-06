@@ -16,6 +16,7 @@ export default route({
 	adminApiFeed: '/admin/api/feeds/:id',
 	adminApiFeedTokens: '/admin/api/feeds/:id/tokens',
 	adminApiFeedItems: '/admin/api/feeds/:id/items',
+	adminApiFeedArtwork: '/admin/api/feeds/:id/artwork',
 	adminApiToken: '/admin/api/tokens/:token',
 	adminApiMedia: '/admin/api/media',
 	adminApiMediaAssignments: '/admin/api/media/assignments',

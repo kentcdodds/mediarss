@@ -38,6 +38,7 @@ type CuratedFeed = {
 	id: string
 	name: string
 	imageUrl: string | null
+	updatedAt: number
 }
 
 type DirectoryFeed = {
@@ -45,6 +46,7 @@ type DirectoryFeed = {
 	name: string
 	directoryPaths: string[]
 	imageUrl: string | null
+	updatedAt: number
 }
 
 type MediaDetailResponse = {
@@ -631,8 +633,9 @@ export function MediaDetail(this: Handle) {
 										{curatedFeeds.map((feed) => (
 											<FeedToggleRow
 												key={feed.id}
+												feedId={feed.id}
 												name={feed.name}
-												imageUrl={feed.imageUrl}
+												updatedAt={feed.updatedAt}
 												isEnabled={selectedFeedIds.has(feed.id)}
 												onToggle={() => toggleFeed(feed.id)}
 											/>
@@ -680,34 +683,16 @@ export function MediaDetail(this: Handle) {
 														opacity: 0.7,
 													}}
 												>
-													{feed?.imageUrl ? (
-														<img
-															src={feed.imageUrl}
-															alt=""
-															css={{
-																width: '32px',
-																height: '32px',
-																borderRadius: radius.sm,
-																objectFit: 'cover',
-															}}
-														/>
-													) : (
-														<div
-															css={{
-																width: '32px',
-																height: '32px',
-																borderRadius: radius.sm,
-																backgroundColor: colors.border,
-																display: 'flex',
-																alignItems: 'center',
-																justifyContent: 'center',
-																fontSize: typography.fontSize.sm,
-																color: colors.textMuted,
-															}}
-														>
-															{assignment.feedName[0]?.toUpperCase()}
-														</div>
-													)}
+													<img
+														src={`/admin/api/feeds/${assignment.feedId}/artwork?t=${feed?.updatedAt ?? 0}`}
+														alt=""
+														css={{
+															width: '32px',
+															height: '32px',
+															borderRadius: radius.sm,
+															objectFit: 'cover',
+														}}
+													/>
 													<span
 														css={{
 															flex: 1,
@@ -843,13 +828,15 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 }
 
 function FeedToggleRow({
+	feedId,
 	name,
-	imageUrl,
+	updatedAt,
 	isEnabled,
 	onToggle,
 }: {
+	feedId: string
 	name: string
-	imageUrl: string | null
+	updatedAt: number
 	isEnabled: boolean
 	onToggle: () => void
 }) {
@@ -864,34 +851,16 @@ function FeedToggleRow({
 				borderRadius: radius.md,
 			}}
 		>
-			{imageUrl ? (
-				<img
-					src={imageUrl}
-					alt=""
-					css={{
-						width: '32px',
-						height: '32px',
-						borderRadius: radius.sm,
-						objectFit: 'cover',
-					}}
-				/>
-			) : (
-				<div
-					css={{
-						width: '32px',
-						height: '32px',
-						borderRadius: radius.sm,
-						backgroundColor: colors.border,
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-					}}
-				>
-					{name[0]?.toUpperCase()}
-				</div>
-			)}
+			<img
+				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+				alt=""
+				css={{
+					width: '32px',
+					height: '32px',
+					borderRadius: radius.sm,
+					objectFit: 'cover',
+				}}
+			/>
 			<span
 				css={{
 					flex: 1,

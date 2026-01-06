@@ -1,6 +1,7 @@
 import type { Handle } from '@remix-run/component'
 import {
 	colors,
+	mq,
 	radius,
 	shadows,
 	spacing,
@@ -554,6 +555,10 @@ export function MediaList(this: Handle) {
 						marginBottom: spacing.xl,
 						flexWrap: 'wrap',
 						gap: spacing.md,
+						[mq.mobile]: {
+							flexDirection: 'column',
+							alignItems: 'stretch',
+						},
 					}}
 				>
 					<div>
@@ -563,6 +568,9 @@ export function MediaList(this: Handle) {
 								fontWeight: typography.fontWeight.semibold,
 								color: colors.text,
 								margin: 0,
+								[mq.mobile]: {
+									fontSize: typography.fontSize.lg,
+								},
 							}}
 						>
 							Media Library
@@ -572,6 +580,9 @@ export function MediaList(this: Handle) {
 								fontSize: typography.fontSize.sm,
 								color: colors.textMuted,
 								margin: `${spacing.xs} 0 0 0`,
+								[mq.mobile]: {
+									fontSize: typography.fontSize.xs,
+								},
 							}}
 						>
 							{filteredMedia.length === media.length
@@ -579,7 +590,15 @@ export function MediaList(this: Handle) {
 								: `Showing ${filteredMedia.length} of ${media.length} items`}
 							{filteredMedia.length > 0 &&
 								` · ${startItem}–${endItem} on this page`}
-							{' · Click to manage feed access'}
+							<span
+								css={{
+									[mq.mobile]: {
+										display: 'none',
+									},
+								}}
+							>
+								{' · Click to manage feed access'}
+							</span>
 						</p>
 					</div>
 					<Link
@@ -589,6 +608,9 @@ export function MediaList(this: Handle) {
 							textDecoration: 'none',
 							fontSize: typography.fontSize.sm,
 							'&:hover': { color: colors.text },
+							[mq.mobile]: {
+								alignSelf: 'flex-start',
+							},
 						}}
 					>
 						← Back to Feeds
@@ -621,6 +643,9 @@ export function MediaList(this: Handle) {
 							},
 							'&::placeholder': {
 								color: colors.textMuted,
+							},
+							[mq.mobile]: {
+								maxWidth: 'none',
 							},
 						}}
 						on={{
@@ -721,6 +746,9 @@ export function MediaList(this: Handle) {
 												fontSize: typography.fontSize.xs,
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Author
@@ -735,6 +763,9 @@ export function MediaList(this: Handle) {
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
 												width: '80px',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Duration
@@ -749,6 +780,9 @@ export function MediaList(this: Handle) {
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
 												width: '80px',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Size
@@ -877,6 +911,9 @@ export function MediaList(this: Handle) {
 														overflow: 'hidden',
 														textOverflow: 'ellipsis',
 														whiteSpace: 'nowrap',
+														[mq.mobile]: {
+															display: 'none',
+														},
 													}}
 													title={item.author ?? undefined}
 												>
@@ -889,6 +926,9 @@ export function MediaList(this: Handle) {
 														textAlign: 'right',
 														fontFamily: 'monospace',
 														fontSize: typography.fontSize.xs,
+														[mq.mobile]: {
+															display: 'none',
+														},
 													}}
 												>
 													{formatDuration(item.duration)}
@@ -900,6 +940,9 @@ export function MediaList(this: Handle) {
 														textAlign: 'right',
 														fontFamily: 'monospace',
 														fontSize: typography.fontSize.xs,
+														[mq.mobile]: {
+															display: 'none',
+														},
 													}}
 												>
 													{formatFileSize(item.sizeBytes)}
@@ -1109,13 +1152,24 @@ function Pagination({
 					transition: `all ${transitions.fast}`,
 					'&:hover':
 						currentPage === 1 ? {} : { backgroundColor: colors.background },
+					[mq.mobile]: {
+						flex: 1,
+					},
 				}}
 				on={{ click: () => onPageChange(currentPage - 1) }}
 			>
 				← Previous
 			</button>
 
-			<div css={{ display: 'flex', gap: spacing.xs }}>
+			<div
+				css={{
+					display: 'flex',
+					gap: spacing.xs,
+					[mq.mobile]: {
+						display: 'none',
+					},
+				}}
+			>
 				{pageNumbers.map((page, index) =>
 					page === 'ellipsis' ? (
 						<span
@@ -1159,6 +1213,20 @@ function Pagination({
 				)}
 			</div>
 
+			{/* Mobile page indicator */}
+			<span
+				css={{
+					display: 'none',
+					fontSize: typography.fontSize.sm,
+					color: colors.textMuted,
+					[mq.mobile]: {
+						display: 'block',
+					},
+				}}
+			>
+				{currentPage} / {totalPages}
+			</span>
+
 			<button
 				type="button"
 				disabled={currentPage === totalPages}
@@ -1176,6 +1244,9 @@ function Pagination({
 						currentPage === totalPages
 							? {}
 							: { backgroundColor: colors.background },
+					[mq.mobile]: {
+						flex: 1,
+					},
 				}}
 				on={{ click: () => onPageChange(currentPage + 1) }}
 			>
@@ -1765,113 +1836,147 @@ function FloatingActionBar({
 				alignItems: 'center',
 				gap: spacing.md,
 				zIndex: 100,
+				[mq.mobile]: {
+					left: spacing.md,
+					right: spacing.md,
+					bottom: spacing.md,
+					transform: 'none',
+					flexDirection: 'column',
+					alignItems: 'stretch',
+					padding: spacing.md,
+					gap: spacing.sm,
+				},
 			}}
 		>
-			<span
+			<div
 				css={{
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.text,
-					whiteSpace: 'nowrap',
+					display: 'flex',
+					alignItems: 'center',
+					gap: spacing.md,
+					[mq.mobile]: {
+						justifyContent: 'space-between',
+					},
 				}}
 			>
-				{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-			</span>
-
-			{!allFilteredSelected && filteredCount > selectedCount && (
-				<button
-					type="button"
+				<span
 					css={{
-						padding: `${spacing.xs} ${spacing.sm}`,
 						fontSize: typography.fontSize.sm,
-						color: colors.primary,
-						backgroundColor: 'transparent',
-						border: 'none',
-						cursor: 'pointer',
-						textDecoration: 'underline',
-						'&:hover': {
-							color: colors.primaryHover,
-						},
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						whiteSpace: 'nowrap',
 					}}
-					on={{ click: onSelectAllFiltered }}
 				>
-					Select all {filteredCount}
-				</button>
-			)}
+					{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+				</span>
+
+				{!allFilteredSelected && filteredCount > selectedCount && (
+					<button
+						type="button"
+						css={{
+							padding: `${spacing.xs} ${spacing.sm}`,
+							fontSize: typography.fontSize.sm,
+							color: colors.primary,
+							backgroundColor: 'transparent',
+							border: 'none',
+							cursor: 'pointer',
+							textDecoration: 'underline',
+							'&:hover': {
+								color: colors.primaryHover,
+							},
+						}}
+						on={{ click: onSelectAllFiltered }}
+					>
+						Select all {filteredCount}
+					</button>
+				)}
+			</div>
 
 			<div
 				css={{
 					width: '1px',
 					height: '24px',
 					backgroundColor: colors.border,
+					[mq.mobile]: {
+						display: 'none',
+					},
 				}}
 			/>
 
-			<button
-				type="button"
+			<div
 				css={{
-					padding: `${spacing.sm} ${spacing.md}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.background,
-					backgroundColor: colors.primary,
-					border: 'none',
-					borderRadius: radius.md,
-					cursor: 'pointer',
-					transition: `background-color ${transitions.fast}`,
-					'&:hover': {
-						backgroundColor: colors.primaryHover,
+					display: 'flex',
+					gap: spacing.sm,
+					[mq.mobile]: {
+						flexDirection: 'column',
 					},
 				}}
-				on={{ click: onAssign }}
 			>
-				Assign to Feed
-			</button>
-
-			{hasAssignedItems && (
 				<button
 					type="button"
 					css={{
 						padding: `${spacing.sm} ${spacing.md}`,
 						fontSize: typography.fontSize.sm,
 						fontWeight: typography.fontWeight.medium,
-						color: colors.error,
+						color: colors.background,
+						backgroundColor: colors.primary,
+						border: 'none',
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						transition: `background-color ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.primaryHover,
+						},
+					}}
+					on={{ click: onAssign }}
+				>
+					Assign to Feed
+				</button>
+
+				{hasAssignedItems && (
+					<button
+						type="button"
+						css={{
+							padding: `${spacing.sm} ${spacing.md}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.error,
+							backgroundColor: 'transparent',
+							border: `1px solid ${colors.error}`,
+							borderRadius: radius.md,
+							cursor: 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							},
+						}}
+						on={{ click: onUnassign }}
+					>
+						Remove from Feed
+					</button>
+				)}
+
+				<button
+					type="button"
+					css={{
+						padding: `${spacing.sm} ${spacing.md}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.textMuted,
 						backgroundColor: 'transparent',
-						border: `1px solid ${colors.error}`,
+						border: `1px solid ${colors.border}`,
 						borderRadius: radius.md,
 						cursor: 'pointer',
 						transition: `all ${transitions.fast}`,
 						'&:hover': {
-							backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							color: colors.text,
+							backgroundColor: colors.background,
 						},
 					}}
-					on={{ click: onUnassign }}
+					on={{ click: onClearSelection }}
 				>
-					Remove from Feed
+					Clear
 				</button>
-			)}
-
-			<button
-				type="button"
-				css={{
-					padding: `${spacing.sm} ${spacing.md}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.textMuted,
-					backgroundColor: 'transparent',
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					cursor: 'pointer',
-					transition: `all ${transitions.fast}`,
-					'&:hover': {
-						color: colors.text,
-						backgroundColor: colors.background,
-					},
-				}}
-				on={{ click: onClearSelection }}
-			>
-				Clear
-			</button>
+			</div>
 		</div>
 	)
 }

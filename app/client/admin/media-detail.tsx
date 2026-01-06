@@ -1,7 +1,10 @@
 import type { Handle } from '@remix-run/component'
 import {
+	breakpoints,
 	colors,
+	mq,
 	radius,
+	responsive,
 	shadows,
 	spacing,
 	transitions,
@@ -297,8 +300,11 @@ export function MediaDetail(this: Handle) {
 					css={{
 						display: 'grid',
 						gridTemplateColumns: '1fr',
-						gap: spacing.xl,
-						'@media (min-width: 768px)': {
+						gap: responsive.spacingSection,
+						[`@media (min-width: ${breakpoints.mobile})` as const]: {
+							gridTemplateColumns: '250px 1fr',
+						},
+						[`@media (min-width: ${breakpoints.tablet})` as const]: {
 							gridTemplateColumns: '300px 1fr',
 						},
 					}}
@@ -339,6 +345,9 @@ export function MediaDetail(this: Handle) {
 									color: colors.text,
 									margin: 0,
 									lineHeight: 1.2,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.xl,
+									},
 								}}
 							>
 								{media.title}
@@ -349,6 +358,9 @@ export function MediaDetail(this: Handle) {
 										fontSize: typography.fontSize.lg,
 										color: colors.textMuted,
 										margin: `${spacing.xs} 0 0 0`,
+										[mq.mobile]: {
+											fontSize: typography.fontSize.base,
+										},
 									}}
 								>
 									by {media.author}
@@ -402,7 +414,7 @@ export function MediaDetail(this: Handle) {
 								backgroundColor: colors.surface,
 								borderRadius: radius.lg,
 								border: `1px solid ${colors.border}`,
-								padding: spacing.lg,
+								padding: responsive.spacingSection,
 								marginBottom: spacing.xl,
 								boxShadow: shadows.sm,
 							}}
@@ -537,7 +549,7 @@ export function MediaDetail(this: Handle) {
 								backgroundColor: colors.surface,
 								borderRadius: radius.lg,
 								border: `1px solid ${colors.border}`,
-								padding: spacing.lg,
+								padding: responsive.spacingSection,
 								boxShadow: shadows.sm,
 							}}
 						>

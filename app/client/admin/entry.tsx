@@ -1,5 +1,11 @@
 import { createRoot } from '@remix-run/component'
-import { colors, spacing, typography } from '#app/styles/tokens.ts'
+import {
+	colors,
+	mq,
+	responsive,
+	spacing,
+	typography,
+} from '#app/styles/tokens.ts'
 import { CreateFeed } from './create-feed.tsx'
 import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
@@ -26,10 +32,13 @@ function AdminApp() {
 			<header
 				css={{
 					borderBottom: `1px solid ${colors.border}`,
-					padding: `${spacing.md} ${spacing.xl}`,
+					padding: `${spacing.md} ${responsive.spacingHeader}`,
 					display: 'flex',
 					alignItems: 'center',
-					gap: spacing.lg,
+					gap: spacing.md,
+					[mq.mobile]: {
+						gap: spacing.sm,
+					},
 				}}
 			>
 				<Link
@@ -63,6 +72,9 @@ function AdminApp() {
 						css={{
 							fontSize: typography.fontSize.sm,
 							color: colors.textMuted,
+							[mq.mobile]: {
+								display: 'none',
+							},
 						}}
 					>
 						Admin
@@ -73,7 +85,7 @@ function AdminApp() {
 				css={{
 					maxWidth: '1200px',
 					margin: '0 auto',
-					padding: spacing['2xl'],
+					padding: responsive.spacingPage,
 				}}
 			>
 				<RouterOutlet />

@@ -1,7 +1,9 @@
 import type { Handle } from '@remix-run/component'
 import {
 	colors,
+	mq,
 	radius,
+	responsive,
 	shadows,
 	spacing,
 	transitions,
@@ -93,6 +95,10 @@ export function FeedList(this: Handle) {
 						marginBottom: spacing.xl,
 						flexWrap: 'wrap',
 						gap: spacing.md,
+						[mq.mobile]: {
+							flexDirection: 'column',
+							alignItems: 'stretch',
+						},
 					}}
 				>
 					<h2
@@ -101,16 +107,28 @@ export function FeedList(this: Handle) {
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
 							margin: 0,
+							[mq.mobile]: {
+								fontSize: typography.fontSize.lg,
+							},
 						}}
 					>
 						Your Feeds
 					</h2>
-					<div css={{ display: 'flex', gap: spacing.sm }}>
+					<div
+						css={{
+							display: 'flex',
+							gap: spacing.sm,
+							[mq.mobile]: {
+								flexDirection: 'column',
+							},
+						}}
+					>
 						<Link
 							href="/admin/media"
 							css={{
 								display: 'inline-flex',
 								alignItems: 'center',
+								justifyContent: 'center',
 								gap: spacing.sm,
 								padding: `${spacing.sm} ${spacing.lg}`,
 								fontSize: typography.fontSize.sm,
@@ -134,6 +152,7 @@ export function FeedList(this: Handle) {
 							css={{
 								display: 'inline-flex',
 								alignItems: 'center',
+								justifyContent: 'center',
 								gap: spacing.sm,
 								padding: `${spacing.sm} ${spacing.lg}`,
 								fontSize: typography.fontSize.sm,
@@ -161,8 +180,11 @@ export function FeedList(this: Handle) {
 					<div
 						css={{
 							display: 'grid',
-							gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+							gridTemplateColumns: `repeat(auto-fill, minmax(${responsive.cardMinWidth}, 1fr))`,
 							gap: spacing.lg,
+							[mq.mobile]: {
+								gap: spacing.md,
+							},
 						}}
 					>
 						{feeds.map((feed) => (

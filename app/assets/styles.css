@@ -45,6 +45,24 @@
 	/* Transitions */
 	--transition-fast: 0.15s ease;
 	--transition-normal: 0.2s ease;
+
+	/* Responsive spacing - used for page-level padding */
+	--spacing-page: var(--spacing-2xl);
+	--spacing-section: var(--spacing-xl);
+	--spacing-header: var(--spacing-xl);
+
+	/* Responsive grid minimums */
+	--card-min-width: 320px;
+}
+
+/* Mobile responsive overrides */
+@media (max-width: 640px) {
+	:root {
+		--spacing-page: var(--spacing-md);
+		--spacing-section: var(--spacing-md);
+		--spacing-header: var(--spacing-sm);
+		--card-min-width: 100%;
+	}
 }
 
 @media (prefers-color-scheme: dark) {
@@ -85,4 +103,18 @@ body {
 	line-height: 1.5;
 	color: var(--color-text);
 	background-color: var(--color-background);
+}
+
+/*
+ * Prevent iOS Safari from auto-zooming on input focus.
+ * iOS zooms when font-size < 16px on form elements.
+ * This ensures all form elements are at least 16px on mobile.
+ */
+@media (max-width: 640px) {
+	input,
+	select,
+	textarea {
+		/* biome-ignore lint/complexity/noImportantStyles: Required to override CSS-in-JS inline styles */
+		font-size: 16px !important;
+	}
 }

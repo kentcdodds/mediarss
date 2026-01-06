@@ -1,7 +1,9 @@
 import type { Handle } from '@remix-run/component'
 import {
 	colors,
+	mq,
 	radius,
+	responsive,
 	shadows,
 	spacing,
 	transitions,
@@ -384,6 +386,7 @@ export function CreateFeed(this: Handle) {
 						alignItems: 'center',
 						gap: spacing.md,
 						marginBottom: spacing.xl,
+						flexWrap: 'wrap',
 					}}
 				>
 					<Link
@@ -403,6 +406,9 @@ export function CreateFeed(this: Handle) {
 							fontWeight: typography.fontWeight.semibold,
 							color: colors.text,
 							margin: 0,
+							[mq.mobile]: {
+								fontSize: typography.fontSize.lg,
+							},
 						}}
 					>
 						Create New Feed
@@ -415,7 +421,7 @@ export function CreateFeed(this: Handle) {
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
+						padding: responsive.spacingSection,
 						marginBottom: spacing.xl,
 						boxShadow: shadows.sm,
 					}}
@@ -431,7 +437,15 @@ export function CreateFeed(this: Handle) {
 					>
 						Feed Type
 					</span>
-					<div css={{ display: 'flex', gap: spacing.md }}>
+					<div
+						css={{
+							display: 'flex',
+							gap: spacing.md,
+							[mq.mobile]: {
+								flexDirection: 'column',
+							},
+						}}
+					>
 						<FeedTypeButton
 							selected={feedType === 'directory'}
 							onClick={() => {
@@ -464,7 +478,7 @@ export function CreateFeed(this: Handle) {
 							backgroundColor: colors.surface,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
-							padding: spacing.xl,
+							padding: responsive.spacingSection,
 							boxShadow: shadows.sm,
 						}}
 					>
@@ -584,6 +598,9 @@ export function CreateFeed(this: Handle) {
 								display: 'grid',
 								gridTemplateColumns: '1fr 1fr',
 								gap: spacing.lg,
+								[mq.mobile]: {
+									gridTemplateColumns: '1fr',
+								},
 							}}
 						>
 							<FormField id="directory-feed-sort-fields" label="Sort By">
@@ -649,7 +666,7 @@ export function CreateFeed(this: Handle) {
 							backgroundColor: colors.surface,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
-							padding: spacing.xl,
+							padding: responsive.spacingSection,
 							boxShadow: shadows.sm,
 						}}
 					>
@@ -729,6 +746,9 @@ export function CreateFeed(this: Handle) {
 								display: 'grid',
 								gridTemplateColumns: '1fr 1fr',
 								gap: spacing.lg,
+								[mq.mobile]: {
+									gridTemplateColumns: '1fr',
+								},
 							}}
 						>
 							<FormField id="curated-feed-sort-fields" label="Sort By">
@@ -934,6 +954,10 @@ function FormActions({
 				marginTop: spacing.xl,
 				paddingTop: spacing.lg,
 				borderTop: `1px solid ${colors.border}`,
+				flexWrap: 'wrap',
+				[mq.mobile]: {
+					flexDirection: 'column-reverse',
+				},
 			}}
 		>
 			<Link
@@ -947,6 +971,7 @@ function FormActions({
 					border: `1px solid ${colors.border}`,
 					borderRadius: radius.md,
 					textDecoration: 'none',
+					textAlign: 'center',
 					cursor: 'pointer',
 					transition: `all ${transitions.fast}`,
 					'&:hover': {

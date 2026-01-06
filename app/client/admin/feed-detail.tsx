@@ -1,7 +1,9 @@
 import type { Handle } from '@remix-run/component'
 import {
 	colors,
+	mq,
 	radius,
+	responsive,
 	shadows,
 	spacing,
 	transitions,
@@ -888,48 +890,85 @@ export function FeedDetail(this: Handle) {
 						gap: spacing.md,
 						marginBottom: spacing.xl,
 						flexWrap: 'wrap',
+						[mq.mobile]: {
+							flexDirection: 'column',
+							alignItems: 'stretch',
+							gap: spacing.sm,
+						},
 					}}
 				>
-					<Link
-						href="/admin"
+					<div
 						css={{
-							color: colors.textMuted,
-							textDecoration: 'none',
-							fontSize: typography.fontSize.sm,
-							'&:hover': { color: colors.text },
-						}}
-					>
-						← Back
-					</Link>
-					<h2
-						css={{
-							fontSize: typography.fontSize.xl,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
 							flex: 1,
+							minWidth: 0,
+							[mq.mobile]: {
+								flexWrap: 'wrap',
+							},
 						}}
 					>
-						{feed.name}
-					</h2>
-					<span
-						css={{
-							fontSize: typography.fontSize.xs,
-							fontWeight: typography.fontWeight.medium,
-							color: isDirectory ? '#3b82f6' : '#8b5cf6',
-							backgroundColor: isDirectory
-								? 'rgba(59, 130, 246, 0.1)'
-								: 'rgba(139, 92, 246, 0.1)',
-							padding: `${spacing.xs} ${spacing.sm}`,
-							borderRadius: radius.sm,
-							textTransform: 'uppercase',
-							letterSpacing: '0.05em',
-						}}
-					>
-						{feed.type}
-					</span>
+						<Link
+							href="/admin"
+							css={{
+								color: colors.textMuted,
+								textDecoration: 'none',
+								fontSize: typography.fontSize.sm,
+								'&:hover': { color: colors.text },
+								flexShrink: 0,
+							}}
+						>
+							← Back
+						</Link>
+						<h2
+							css={{
+								fontSize: typography.fontSize.xl,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+								flex: 1,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								[mq.mobile]: {
+									fontSize: typography.fontSize.lg,
+									flex: 'none',
+									width: '100%',
+									order: 2,
+								},
+							}}
+						>
+							{feed.name}
+						</h2>
+						<span
+							css={{
+								fontSize: typography.fontSize.xs,
+								fontWeight: typography.fontWeight.medium,
+								color: isDirectory ? '#3b82f6' : '#8b5cf6',
+								backgroundColor: isDirectory
+									? 'rgba(59, 130, 246, 0.1)'
+									: 'rgba(139, 92, 246, 0.1)',
+								padding: `${spacing.xs} ${spacing.sm}`,
+								borderRadius: radius.sm,
+								textTransform: 'uppercase',
+								letterSpacing: '0.05em',
+								flexShrink: 0,
+							}}
+						>
+							{feed.type}
+						</span>
+					</div>
 					{!isEditing && (
-						<div css={{ display: 'flex', gap: spacing.sm }}>
+						<div
+							css={{
+								display: 'flex',
+								gap: spacing.sm,
+								[mq.mobile]: {
+									width: '100%',
+								},
+							}}
+						>
 							<button
 								type="button"
 								css={{
@@ -944,6 +983,9 @@ export function FeedDetail(this: Handle) {
 									transition: `all ${transitions.fast}`,
 									'&:hover': {
 										backgroundColor: 'rgba(59, 130, 246, 0.1)',
+									},
+									[mq.mobile]: {
+										flex: 1,
 									},
 								}}
 								on={{ click: () => startEditing(feed) }}
@@ -965,6 +1007,9 @@ export function FeedDetail(this: Handle) {
 									'&:hover': {
 										backgroundColor: 'rgba(239, 68, 68, 0.1)',
 									},
+									[mq.mobile]: {
+										flex: 1,
+									},
 								}}
 								on={{
 									click: () => {
@@ -985,7 +1030,7 @@ export function FeedDetail(this: Handle) {
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
+						padding: responsive.spacingSection,
 						marginBottom: spacing.xl,
 						boxShadow: shadows.sm,
 					}}
@@ -1091,7 +1136,7 @@ export function FeedDetail(this: Handle) {
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
+						padding: responsive.spacingSection,
 						marginBottom: spacing.xl,
 						boxShadow: shadows.sm,
 					}}
@@ -1390,7 +1435,7 @@ export function FeedDetail(this: Handle) {
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
+						padding: responsive.spacingSection,
 						marginBottom: spacing.xl,
 						boxShadow: shadows.sm,
 					}}
@@ -1519,6 +1564,9 @@ export function FeedDetail(this: Handle) {
 												fontSize: typography.fontSize.xs,
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Author
@@ -1533,6 +1581,9 @@ export function FeedDetail(this: Handle) {
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
 												width: '80px',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Duration
@@ -1547,6 +1598,9 @@ export function FeedDetail(this: Handle) {
 												textTransform: 'uppercase',
 												letterSpacing: '0.05em',
 												width: '80px',
+												[mq.mobile]: {
+													display: 'none',
+												},
 											}}
 										>
 											Size
@@ -1685,6 +1739,9 @@ export function FeedDetail(this: Handle) {
 													overflow: 'hidden',
 													textOverflow: 'ellipsis',
 													whiteSpace: 'nowrap',
+													[mq.mobile]: {
+														display: 'none',
+													},
 												}}
 												title={item.author ?? undefined}
 											>
@@ -1697,6 +1754,9 @@ export function FeedDetail(this: Handle) {
 													textAlign: 'right',
 													fontFamily: 'monospace',
 													fontSize: typography.fontSize.xs,
+													[mq.mobile]: {
+														display: 'none',
+													},
 												}}
 											>
 												{formatDuration(item.duration)}
@@ -1708,6 +1768,9 @@ export function FeedDetail(this: Handle) {
 													textAlign: 'right',
 													fontFamily: 'monospace',
 													fontSize: typography.fontSize.xs,
+													[mq.mobile]: {
+														display: 'none',
+													},
 												}}
 											>
 												{formatFileSize(item.sizeBytes)}
@@ -1884,7 +1947,7 @@ export function FeedDetail(this: Handle) {
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
+						padding: responsive.spacingSection,
 						boxShadow: shadows.sm,
 					}}
 				>

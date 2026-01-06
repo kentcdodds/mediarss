@@ -61,3 +61,24 @@ export const transitions = {
 	fast: 'var(--transition-fast)',
 	normal: 'var(--transition-normal)',
 } as const
+
+// Responsive tokens - these change based on screen size
+export const responsive = {
+	spacingPage: 'var(--spacing-page)',
+	spacingSection: 'var(--spacing-section)',
+	spacingHeader: 'var(--spacing-header)',
+	cardMinWidth: 'var(--card-min-width)',
+} as const
+
+// Breakpoints for CSS-in-JS media queries
+export const breakpoints = {
+	mobile: '640px',
+	tablet: '1024px',
+} as const
+
+// Helper to create media query string (mq = media query)
+export const mq = {
+	mobile: `@media (max-width: ${breakpoints.mobile})`,
+	tablet: `@media (max-width: ${breakpoints.tablet})`,
+	desktop: `@media (min-width: ${breakpoints.tablet})`,
+} as const

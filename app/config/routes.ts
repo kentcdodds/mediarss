@@ -15,5 +15,6 @@ export default route({
 	adminApiCreateCuratedFeed: '/admin/api/feeds/curated',
 	adminApiFeed: '/admin/api/feeds/:id',
 	adminApiFeedTokens: '/admin/api/feeds/:id/tokens',
+	adminApiFeedItems: '/admin/api/feeds/:id/items',
 	adminApiToken: '/admin/api/tokens/:token',
 })

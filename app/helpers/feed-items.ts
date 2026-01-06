@@ -36,7 +36,7 @@ export async function getDirectoryFeedItems(
 export async function getCuratedFeedItems(
 	feed: CuratedFeed,
 ): Promise<Array<MediaFile>> {
-	// Get feed items from database
+	// Get feed items from database (already ordered by position)
 	const feedItems = getItemsForFeed(feed.id)
 
 	// Get metadata for each item
@@ -48,7 +48,13 @@ export async function getCuratedFeedItems(
 		}
 	}
 
-	// Sort items
+	// For curated feeds with sortFields === 'position', preserve database order
+	// (items are already ordered by position from getItemsForFeed)
+	if (feed.sortFields === 'position') {
+		return items
+	}
+
+	// Sort items by specified fields
 	const sortString = `${feed.sortOrder}:${feed.sortFields}`
 	return sortMediaFiles(items, sortString)
 }

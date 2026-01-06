@@ -8,6 +8,7 @@ import {
 	test,
 } from 'bun:test'
 import fs from 'node:fs'
+import path from 'node:path'
 import { migrate } from './migrations.ts'
 import { sql } from './sql.ts'
 
@@ -18,6 +19,12 @@ const TEST_DB_PATH = './data/test-feeds.db'
 let testDb: Database
 
 beforeAll(() => {
+	// Ensure data directory exists
+	const dir = path.dirname(TEST_DB_PATH)
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir, { recursive: true })
+	}
+
 	// Ensure clean state
 	if (fs.existsSync(TEST_DB_PATH)) {
 		fs.unlinkSync(TEST_DB_PATH)

@@ -2,10 +2,13 @@ import type { Action } from '@remix-run/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import { listDirectoryFeeds, parseDirectoryPaths } from '#app/db/directory-feeds.ts'
+import {
+	listDirectoryFeeds,
+	parseDirectoryPaths,
+} from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
-import { getFileMetadata, type MediaFile } from '#app/helpers/media.ts'
+import { getFileMetadata } from '#app/helpers/media.ts'
 
 type FeedAssignment = {
 	feedId: string
@@ -199,19 +202,19 @@ export default {
 				fileModifiedAt: metadata.fileModifiedAt,
 			},
 			assignments,
-		curatedFeeds: curatedFeeds.map((f) => ({
-			id: f.id,
-			name: f.name,
-			imageUrl: f.imageUrl,
-			updatedAt: f.updatedAt,
-		})),
-		directoryFeeds: directoryFeeds.map((f) => ({
-			id: f.id,
-			name: f.name,
-			directoryPaths: JSON.parse(f.directoryPaths) as string[],
-			imageUrl: f.imageUrl,
-			updatedAt: f.updatedAt,
-		})),
+			curatedFeeds: curatedFeeds.map((f) => ({
+				id: f.id,
+				name: f.name,
+				imageUrl: f.imageUrl,
+				updatedAt: f.updatedAt,
+			})),
+			directoryFeeds: directoryFeeds.map((f) => ({
+				id: f.id,
+				name: f.name,
+				directoryPaths: JSON.parse(f.directoryPaths) as string[],
+				imageUrl: f.imageUrl,
+				updatedAt: f.updatedAt,
+			})),
 		}
 
 		return Response.json(response)

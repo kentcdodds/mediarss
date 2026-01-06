@@ -1,10 +1,8 @@
 import type { Action } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import { getCuratedFeedById, type CuratedFeed } from '#app/db/curated-feeds.ts'
-import {
-	getDirectoryFeedById,
-	type DirectoryFeed,
-} from '#app/db/directory-feeds.ts'
+import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
+import { getDirectoryFeedById } from '#app/db/directory-feeds.ts'
+import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import {
 	deleteFeedArtwork,
 	getFeedArtworkPath,
@@ -148,10 +146,7 @@ async function handleDelete(feedId: string) {
 	const deleted = await deleteFeedArtwork(feedId)
 
 	if (!deleted) {
-		return Response.json(
-			{ error: 'Failed to delete artwork' },
-			{ status: 500 },
-		)
+		return Response.json({ error: 'Failed to delete artwork' }, { status: 500 })
 	}
 
 	return Response.json({

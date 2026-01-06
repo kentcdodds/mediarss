@@ -49,17 +49,25 @@ function getCacheDb(): Database {
 	return _cacheDb
 }
 
-// Lazy prepared statements
-let _getStatement: ReturnType<Database['prepare']> | null = null
-let _setStatement: ReturnType<Database['prepare']> | null = null
-let _deleteStatement: ReturnType<Database['prepare']> | null = null
+// Type for cache row results
+type CacheRow = { metadata: string; value: string }
+
+// Lazy prepared statements with explicit types
+let _getStatement: ReturnType<
+	typeof Database.prototype.prepare<CacheRow, [string]>
+> | null = null
+let _setStatement: ReturnType<
+	typeof Database.prototype.prepare<void, [string, string, string]>
+> | null = null
+let _deleteStatement: ReturnType<
+	typeof Database.prototype.prepare<void, [string]>
+> | null = null
 
 function getGetStatement() {
 	if (!_getStatement) {
-		_getStatement = getCacheDb().prepare<
-			{ metadata: string; value: string },
-			[string]
-		>('SELECT metadata, value FROM cache WHERE key = ?')
+		_getStatement = getCacheDb().prepare<CacheRow, [string]>(
+			'SELECT metadata, value FROM cache WHERE key = ?',
+		)
 	}
 	return _getStatement
 }

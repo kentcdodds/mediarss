@@ -73,7 +73,9 @@ async function isMediaFile(filepath: string): Promise<boolean> {
 	try {
 		const fileType = await fileTypeFromFile(filepath)
 		if (!fileType) return false
-		return fileType.mime.startsWith('audio/') || fileType.mime.startsWith('video/')
+		return (
+			fileType.mime.startsWith('audio/') || fileType.mime.startsWith('video/')
+		)
 	} catch {
 		return false
 	}

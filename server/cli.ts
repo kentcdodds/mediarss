@@ -1,4 +1,8 @@
 import type { Server } from 'bun'
+
+// Server type without WebSocket data (this app doesn't use WebSockets)
+type AppServer = Server<undefined>
+
 import closeWithGrace from 'close-with-grace'
 
 // Use Bun's built-in color API
@@ -33,7 +37,7 @@ const showHelp = () => {
 	)
 }
 
-export function setupInteractiveCli(url: string, server: Server) {
+export function setupInteractiveCli(url: string, server: AppServer) {
 	console.log(`${dim('App is running on')} ${bright(url)}`)
 
 	// Use close-with-grace for robust graceful shutdown

@@ -50,6 +50,62 @@ type MediaItem = {
 	sizeBytes: number
 	filename: string
 	path: string
+	publicationDate: string | null // ISO string
+	trackNumber: number | null
+	fileModifiedAt: number // Unix timestamp
+}
+
+/**
+ * Determines if the sort field needs an extra column that's not in the default columns.
+ * Default columns: title, author, duration, size
+ */
+function getExtraSortColumn(sortFields: string): string | null {
+	const defaultColumns = ['title', 'author', 'duration', 'size', 'position']
+	if (defaultColumns.includes(sortFields)) {
+		return null
+	}
+	return sortFields
+}
+
+/**
+ * Format a value for display in the extra sort column
+ */
+function formatSortValue(item: MediaItem, sortField: string): string {
+	switch (sortField) {
+		case 'publicationDate':
+			if (!item.publicationDate) return '—'
+			return new Date(item.publicationDate).toLocaleDateString('en-US', {
+				year: '2-digit',
+				month: 'numeric',
+				day: 'numeric',
+			})
+		case 'trackNumber':
+			return item.trackNumber?.toString() ?? '—'
+		case 'filename':
+			return item.filename
+		case 'fileModifiedAt':
+			if (!item.fileModifiedAt) return '—'
+			return new Date(item.fileModifiedAt * 1000).toLocaleDateString('en-US', {
+				year: '2-digit',
+				month: 'numeric',
+				day: 'numeric',
+			})
+		default:
+			return '—'
+	}
+}
+
+/**
+ * Get a human-readable label for a sort field
+ */
+function getSortFieldLabel(sortField: string): string {
+	const labels: Record<string, string> = {
+		publicationDate: 'Date',
+		trackNumber: 'Track',
+		filename: 'File',
+		fileModifiedAt: 'Modified',
+	}
+	return labels[sortField] ?? sortField
 }
 
 type FeedResponse = {
@@ -601,6 +657,7 @@ export function FeedDetail(this: Handle) {
 		const isManualSort = isCurated && feed.sortFields === 'position'
 		const activeTokens = tokens.filter((t) => !t.revokedAt)
 		const revokedTokens = tokens.filter((t) => t.revokedAt)
+		const extraSortColumn = getExtraSortColumn(feed.sortFields)
 
 		return (
 			<div>
@@ -896,7 +953,7 @@ export function FeedDetail(this: Handle) {
 							<p css={{ margin: 0 }}>No media items found in this feed.</p>
 						</div>
 					) : (
-						<div css={{ overflowX: 'auto' }}>
+						<div css={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '400px' }}>
 							<table
 								css={{
 									width: '100%',
@@ -904,7 +961,14 @@ export function FeedDetail(this: Handle) {
 									fontSize: typography.fontSize.sm,
 								}}
 							>
-								<thead>
+								<thead
+									css={{
+										position: 'sticky',
+										top: 0,
+										backgroundColor: colors.surface,
+										zIndex: 1,
+									}}
+								>
 									<tr
 										css={{
 											borderBottom: `1px solid ${colors.border}`,
@@ -986,6 +1050,24 @@ export function FeedDetail(this: Handle) {
 										>
 											Size
 										</th>
+									{extraSortColumn && (
+										<th
+											css={{
+												textAlign: 'left',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.primary,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												backgroundColor: 'rgba(59, 130, 246, 0.1)',
+												whiteSpace: 'nowrap',
+											}}
+											title={`Sorted by ${getSortFieldLabel(extraSortColumn)}`}
+										>
+											{getSortFieldLabel(extraSortColumn)} ↓
+										</th>
+									)}
 									{isCurated && (
 										<th
 											css={{
@@ -1098,6 +1180,20 @@ export function FeedDetail(this: Handle) {
 											>
 												{formatFileSize(item.sizeBytes)}
 											</td>
+										{extraSortColumn && (
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.text,
+													fontSize: typography.fontSize.xs,
+													backgroundColor: 'rgba(59, 130, 246, 0.05)',
+													whiteSpace: 'nowrap',
+												}}
+												title={formatSortValue(item, extraSortColumn)}
+											>
+												{formatSortValue(item, extraSortColumn)}
+											</td>
+										)}
 										{isCurated && (
 											<td
 												css={{

@@ -101,7 +101,8 @@ echo "========================"
 echo ""
 
 # Build volume arguments and MEDIA_PATHS environment variable
-VOLUME_ARGS="-v ${DATA_PATH}:/data"
+# Mount /data for database and /app/data/artwork for uploaded artwork
+VOLUME_ARGS="-v ${DATA_PATH}:/data -v ${DATA_PATH}/artwork:/app/data/artwork"
 MEDIA_PATHS=""
 
 for mount in "${MEDIA_MOUNTS[@]}"; do
@@ -150,8 +151,9 @@ echo "   Port: ${HOST_PORT}"
 echo "   Data: ${DATA_PATH}"
 echo ""
 
-# Ensure data directory exists
+# Ensure data directories exist
 mkdir -p "${DATA_PATH}"
+mkdir -p "${DATA_PATH}/artwork"
 
 # Run the container
 docker run -d \
@@ -170,6 +172,8 @@ echo "🌐 Access the admin dashboard at: http://${NAS_IP}:${HOST_PORT}"
 echo ""
 echo "📝 Notes:"
 echo "   - Your data is stored at: ${DATA_PATH}"
+echo "   - Database files: ${DATA_PATH}/*.db"
+echo "   - Uploaded artwork: ${DATA_PATH}/artwork/"
 echo "   - Media directories are mounted read-only for security"
 echo "   - Container will auto-restart on reboot"
 echo ""

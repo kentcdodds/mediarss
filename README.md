@@ -52,6 +52,9 @@ If you're running this on a Synology NAS, follow these specific instructions:
      - Add a volume mount for the database:
        - Mount path: `/data`
        - Local path: `/volume1/docker-data/mediarss`
+     - Add a volume mount for artwork (to persist uploaded feed images):
+       - Mount path: `/app/data/artwork`
+       - Local path: `/volume1/docker-data/mediarss/artwork`
      - Add your media volume mounts (add as many as you need):
        - Mount path: `/media/[your-name]` (e.g., `/media/shows`,
          `/media/personal`, etc.)
@@ -100,8 +103,9 @@ docker pull [your-image-name]
    exist:
 
 ```bash
-# Create directory for database storage
+# Create directories for database and artwork storage
 mkdir -p /path/to/your/data
+mkdir -p /path/to/your/data/artwork
 
 # Your media directories should already exist
 ```
@@ -113,6 +117,7 @@ docker run -d \
   --name mediarss \
   -p 22050:22050 \
   -v /path/to/your/data:/data \
+  -v /path/to/your/data/artwork:/app/data/artwork \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \
   -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \
@@ -132,7 +137,15 @@ The application requires these volume mounts:
    - Mount point: `/data`
    - Example: `-v /path/to/your/data:/data`
 
-2. **Media Volumes** (any number allowed):
+2. **Artwork Volume** (`/app/data/artwork`):
+
+   - Purpose: Stores uploaded feed artwork images
+   - Mount point: `/app/data/artwork`
+   - Example: `-v /path/to/your/data/artwork:/app/data/artwork`
+   - **Important:** Without this mount, uploaded artwork will be lost on container
+     restart
+
+3. **Media Volumes** (any number allowed):
    - Purpose: Access to your audio files
    - Mount point pattern: `/media/[your-name]`
    - Examples:
@@ -260,30 +273,36 @@ If you only access MediaRSS from your local network and don't need remote
 access, you can skip Cloudflare Tunnel entirely. The token-based URLs for feeds
 provide sufficient security for trusted networks.
 
-### Database Persistence
+### Data Persistence
 
-The application uses SQLite for both the main database and cache storage. Both
-databases are stored in the `/data` directory inside the container:
+The application stores persistent data in two locations:
+
+**Databases** (in `/data`):
 
 - Main database: `/data/sqlite.db`
 - Cache database: `/data/cache.db`
 
+**Uploaded Artwork** (in `/app/data/artwork`):
+
+- Feed cover images uploaded through the admin dashboard
+
 To ensure your data persists between container restarts and updates, you
-**must** mount a volume or bind mount to the `/data` directory as shown in the
+**must** mount volumes to both `/data` and `/app/data/artwork` as shown in the
 run command above.
 
 ### Backup and Restore
 
-To backup your databases, simply copy the files from your mounted data
-directory. For example:
+To backup your data, simply copy the files from your mounted data directory. For
+example:
 
 ```bash
 # Stop the container before backup
 docker stop mediarss
 
-# Backup the databases
+# Backup the databases and artwork
 cp /path/to/your/data/sqlite.db /path/to/backup/sqlite.db
 cp /path/to/your/data/cache.db /path/to/backup/cache.db
+cp -r /path/to/your/data/artwork /path/to/backup/artwork
 
 # Restart the container
 docker start mediarss
@@ -295,9 +314,10 @@ To restore from backup:
 # Stop the container
 docker stop mediarss
 
-# Restore the databases
+# Restore the databases and artwork
 cp /path/to/backup/sqlite.db /path/to/your/data/sqlite.db
 cp /path/to/backup/cache.db /path/to/your/data/cache.db
+cp -r /path/to/backup/artwork /path/to/your/data/artwork
 
 # Restart the container
 docker start mediarss
@@ -322,6 +342,7 @@ docker run -d \
   --name mediarss \
   -p 22050:22050 \
   -v /path/to/your/data:/data \
+  -v /path/to/your/data/artwork:/app/data/artwork \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \
   -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \

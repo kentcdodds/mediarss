@@ -178,6 +178,209 @@ export function MediaList(this: Handle) {
 	let modalFeedIds: Set<string> = new Set()
 	let saving = false
 
+	// Bulk selection state
+	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
+	let showBulkAssignModal = false
+	let showBulkUnassignModal = false
+	let bulkSelectedFeedId: string | null = null
+	let bulkSaving = false
+
+	// Helper to get the selection key for a media item
+	const getItemKey = (item: MediaItem) =>
+		`${item.rootName}:${item.relativePath}`
+
+	// Toggle selection for a single item
+	const toggleSelection = (item: MediaItem) => {
+		const key = getItemKey(item)
+		if (selectedItems.has(key)) {
+			selectedItems.delete(key)
+		} else {
+			selectedItems.add(key)
+		}
+		this.update()
+	}
+
+	// Clear all selections
+	const clearSelection = () => {
+		selectedItems = new Set()
+		this.update()
+	}
+
+	// Select all filtered items (across all pages)
+	const selectAllFiltered = (filteredMedia: Array<MediaItem>) => {
+		for (const item of filteredMedia) {
+			selectedItems.add(getItemKey(item))
+		}
+		this.update()
+	}
+
+	// Check if all filtered items are selected
+	const areAllFilteredItemsSelected = (filteredMedia: Array<MediaItem>) => {
+		if (filteredMedia.length === 0) return false
+		return filteredMedia.every((item) => selectedItems.has(getItemKey(item)))
+	}
+
+	// Check if some (but not all) filtered items are selected
+	const areSomeFilteredItemsSelected = (filteredMedia: Array<MediaItem>) => {
+		if (filteredMedia.length === 0) return false
+		const selectedCount = filteredMedia.filter((item) =>
+			selectedItems.has(getItemKey(item)),
+		).length
+		return selectedCount > 0 && selectedCount < filteredMedia.length
+	}
+
+	// Deselect all filtered items
+	const deselectAllFiltered = (filteredMedia: Array<MediaItem>) => {
+		for (const item of filteredMedia) {
+			selectedItems.delete(getItemKey(item))
+		}
+		this.update()
+	}
+
+	// Open bulk assign modal
+	const openBulkAssignModal = () => {
+		showBulkAssignModal = true
+		bulkSelectedFeedId = null
+		this.update()
+	}
+
+	// Close bulk assign modal
+	const closeBulkAssignModal = () => {
+		showBulkAssignModal = false
+		bulkSelectedFeedId = null
+		this.update()
+	}
+
+	// Open bulk unassign modal
+	const openBulkUnassignModal = () => {
+		showBulkUnassignModal = true
+		bulkSelectedFeedId = null
+		this.update()
+	}
+
+	// Close bulk unassign modal
+	const closeBulkUnassignModal = () => {
+		showBulkUnassignModal = false
+		bulkSelectedFeedId = null
+		this.update()
+	}
+
+	// Get feeds that have at least one of the selected items assigned
+	const getFeedsWithSelectedItems = () => {
+		if (state.status !== 'success') return []
+		const feedsWithItems = new Map<
+			string,
+			{ feed: CuratedFeed; count: number }
+		>()
+
+		for (const mediaPath of selectedItems) {
+			const assignments = state.assignments[mediaPath] ?? []
+			for (const assignment of assignments) {
+				if (assignment.feedType === 'curated') {
+					const feed = state.curatedFeeds.find(
+						(f) => f.id === assignment.feedId,
+					)
+					if (feed) {
+						const existing = feedsWithItems.get(feed.id)
+						if (existing) {
+							existing.count++
+						} else {
+							feedsWithItems.set(feed.id, { feed, count: 1 })
+						}
+					}
+				}
+			}
+		}
+
+		return Array.from(feedsWithItems.values())
+	}
+
+	// Save bulk assignments (add to feed)
+	const saveBulkAssignments = async () => {
+		if (!bulkSelectedFeedId || state.status !== 'success') return
+
+		bulkSaving = true
+		this.update()
+
+		try {
+			const res = await fetch('/admin/api/media/assignments', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					mediaPaths: [...selectedItems],
+					feedId: bulkSelectedFeedId,
+					action: 'add',
+				}),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Update local state with new assignments
+			for (const mediaPath of selectedItems) {
+				const existing = state.assignments[mediaPath] ?? []
+				// Only add if not already assigned
+				if (!existing.some((a) => a.feedId === bulkSelectedFeedId)) {
+					state.assignments[mediaPath] = [
+						...existing,
+						{ feedId: bulkSelectedFeedId, feedType: 'curated' },
+					]
+				}
+			}
+
+			closeBulkAssignModal()
+			clearSelection()
+		} catch (err) {
+			console.error('Failed to save bulk assignments:', err)
+		} finally {
+			bulkSaving = false
+			this.update()
+		}
+	}
+
+	// Save bulk unassignments (remove from feed)
+	const saveBulkUnassignments = async () => {
+		if (!bulkSelectedFeedId || state.status !== 'success') return
+
+		bulkSaving = true
+		this.update()
+
+		try {
+			const res = await fetch('/admin/api/media/assignments', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					mediaPaths: [...selectedItems],
+					feedId: bulkSelectedFeedId,
+					action: 'remove',
+				}),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Update local state by removing assignments
+			for (const mediaPath of selectedItems) {
+				const existing = state.assignments[mediaPath] ?? []
+				state.assignments[mediaPath] = existing.filter(
+					(a) => a.feedId !== bulkSelectedFeedId,
+				)
+			}
+
+			closeBulkUnassignModal()
+			clearSelection()
+		} catch (err) {
+			console.error('Failed to save bulk unassignments:', err)
+		} finally {
+			bulkSaving = false
+			this.update()
+		}
+	}
+
 	// Fetch media and assignments
 	const fetchData = async () => {
 		try {
@@ -466,6 +669,28 @@ export function MediaList(this: Handle) {
 									>
 										<th
 											css={{
+												width: '48px',
+												padding: spacing.sm,
+												textAlign: 'center',
+											}}
+										>
+											<Checkbox
+												checked={areAllFilteredItemsSelected(filteredMedia)}
+												indeterminate={areSomeFilteredItemsSelected(
+													filteredMedia,
+												)}
+												onChange={() => {
+													if (areAllFilteredItemsSelected(filteredMedia)) {
+														deselectAllFiltered(filteredMedia)
+													} else {
+														selectAllFiltered(filteredMedia)
+													}
+												}}
+												title="Select all matching items"
+											/>
+										</th>
+										<th
+											css={{
 												width: '60px',
 												padding: spacing.sm,
 											}}
@@ -562,6 +787,7 @@ export function MediaList(this: Handle) {
 											directoryFeeds,
 										)
 										const feedCount = feeds.length
+										const isSelected = selectedItems.has(getItemKey(item))
 
 										return (
 											// biome-ignore lint/a11y/useSemanticElements: Using role="button" on tr for accessible clickable table rows
@@ -574,8 +800,13 @@ export function MediaList(this: Handle) {
 													'&:last-child': { borderBottom: 'none' },
 													cursor: 'pointer',
 													transition: `background-color ${transitions.fast}`,
+													backgroundColor: isSelected
+														? 'rgba(59, 130, 246, 0.08)'
+														: 'transparent',
 													'&:hover, &:focus': {
-														backgroundColor: colors.background,
+														backgroundColor: isSelected
+															? 'rgba(59, 130, 246, 0.12)'
+															: colors.background,
 														outline: 'none',
 													},
 												}}
@@ -589,6 +820,24 @@ export function MediaList(this: Handle) {
 													},
 												}}
 											>
+												<td
+													css={{
+														padding: spacing.sm,
+														textAlign: 'center',
+														width: '48px',
+													}}
+													on={{
+														click: (e: MouseEvent) => {
+															e.stopPropagation()
+															toggleSelection(item)
+														},
+													}}
+												>
+													<Checkbox
+														checked={isSelected}
+														onChange={() => toggleSelection(item)}
+													/>
+												</td>
 												<td css={{ padding: spacing.sm, textAlign: 'center' }}>
 													<img
 														src={getArtworkUrl(item)}
@@ -727,6 +976,54 @@ export function MediaList(this: Handle) {
 							currentPage = page
 							this.update()
 						}}
+					/>
+				)}
+
+				{/* Floating Action Bar for Bulk Selection */}
+				{selectedItems.size > 0 && (
+					<FloatingActionBar
+						selectedCount={selectedItems.size}
+						filteredCount={filteredMedia.length}
+						allFilteredSelected={filteredMedia.every((item) =>
+							selectedItems.has(getItemKey(item)),
+						)}
+						feedsWithSelectedItems={getFeedsWithSelectedItems()}
+						onSelectAllFiltered={() => selectAllFiltered(filteredMedia)}
+						onClearSelection={clearSelection}
+						onAssign={openBulkAssignModal}
+						onUnassign={openBulkUnassignModal}
+					/>
+				)}
+
+				{/* Bulk Assign Modal */}
+				{showBulkAssignModal && (
+					<BulkAssignModal
+						selectedCount={selectedItems.size}
+						curatedFeeds={curatedFeeds}
+						selectedFeedId={bulkSelectedFeedId}
+						saving={bulkSaving}
+						onSelectFeed={(feedId) => {
+							bulkSelectedFeedId = feedId
+							this.update()
+						}}
+						onSave={saveBulkAssignments}
+						onCancel={closeBulkAssignModal}
+					/>
+				)}
+
+				{/* Bulk Unassign Modal */}
+				{showBulkUnassignModal && (
+					<BulkUnassignModal
+						selectedCount={selectedItems.size}
+						feedsWithItems={getFeedsWithSelectedItems()}
+						selectedFeedId={bulkSelectedFeedId}
+						saving={bulkSaving}
+						onSelectFeed={(feedId) => {
+							bulkSelectedFeedId = feedId
+							this.update()
+						}}
+						onSave={saveBulkUnassignments}
+						onCancel={closeBulkUnassignModal}
 					/>
 				)}
 			</div>
@@ -1318,6 +1615,803 @@ function ToggleSwitch({
 					transform: enabled ? 'translateX(20px)' : 'translateX(0)',
 				}}
 			/>
+		</button>
+	)
+}
+
+function Checkbox({
+	checked,
+	indeterminate,
+	onChange,
+	title,
+}: {
+	checked: boolean
+	indeterminate?: boolean
+	onChange: () => void
+	title?: string
+}) {
+	return (
+		<label
+			css={{
+				width: '18px',
+				height: '18px',
+				borderRadius: radius.sm,
+				border: `2px solid ${checked || indeterminate ? colors.primary : colors.border}`,
+				backgroundColor:
+					checked || indeterminate ? colors.primary : 'transparent',
+				cursor: 'pointer',
+				padding: 0,
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				transition: `all ${transitions.fast}`,
+				position: 'relative',
+				'&:hover': {
+					borderColor: colors.primary,
+				},
+				'&:focus-within': {
+					outline: `2px solid ${colors.primary}`,
+					outlineOffset: '2px',
+				},
+			}}
+			title={title}
+			on={{
+				click: (e: MouseEvent) => {
+					e.stopPropagation()
+				},
+			}}
+		>
+			<input
+				type="checkbox"
+				checked={checked}
+				aria-label={title ?? 'Select item'}
+				css={{
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: 0,
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: 0,
+				}}
+				on={{
+					change: () => onChange(),
+					click: (e: MouseEvent) => e.stopPropagation(),
+				}}
+			/>
+			{checked && (
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 12 12"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+					aria-hidden="true"
+				>
+					<path
+						d="M2 6L5 9L10 3"
+						stroke="white"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			)}
+			{indeterminate && !checked && (
+				<svg
+					width="12"
+					height="12"
+					viewBox="0 0 12 12"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+					aria-hidden="true"
+				>
+					<path
+						d="M2 6H10"
+						stroke="white"
+						stroke-width="2"
+						stroke-linecap="round"
+					/>
+				</svg>
+			)}
+		</label>
+	)
+}
+
+function FloatingActionBar({
+	selectedCount,
+	filteredCount,
+	allFilteredSelected,
+	feedsWithSelectedItems,
+	onSelectAllFiltered,
+	onClearSelection,
+	onAssign,
+	onUnassign,
+}: {
+	selectedCount: number
+	filteredCount: number
+	allFilteredSelected: boolean
+	feedsWithSelectedItems: Array<{ feed: CuratedFeed; count: number }>
+	onSelectAllFiltered: () => void
+	onClearSelection: () => void
+	onAssign: () => void
+	onUnassign: () => void
+}) {
+	const hasAssignedItems = feedsWithSelectedItems.length > 0
+
+	return (
+		<div
+			css={{
+				position: 'fixed',
+				bottom: spacing.xl,
+				left: '50%',
+				transform: 'translateX(-50%)',
+				backgroundColor: colors.surface,
+				border: `1px solid ${colors.border}`,
+				borderRadius: radius.lg,
+				boxShadow: shadows.lg,
+				padding: `${spacing.sm} ${spacing.lg}`,
+				display: 'flex',
+				alignItems: 'center',
+				gap: spacing.md,
+				zIndex: 100,
+			}}
+		>
+			<span
+				css={{
+					fontSize: typography.fontSize.sm,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.text,
+					whiteSpace: 'nowrap',
+				}}
+			>
+				{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+			</span>
+
+			{!allFilteredSelected && filteredCount > selectedCount && (
+				<button
+					type="button"
+					css={{
+						padding: `${spacing.xs} ${spacing.sm}`,
+						fontSize: typography.fontSize.sm,
+						color: colors.primary,
+						backgroundColor: 'transparent',
+						border: 'none',
+						cursor: 'pointer',
+						textDecoration: 'underline',
+						'&:hover': {
+							color: colors.primaryHover,
+						},
+					}}
+					on={{ click: onSelectAllFiltered }}
+				>
+					Select all {filteredCount}
+				</button>
+			)}
+
+			<div
+				css={{
+					width: '1px',
+					height: '24px',
+					backgroundColor: colors.border,
+				}}
+			/>
+
+			<button
+				type="button"
+				css={{
+					padding: `${spacing.sm} ${spacing.md}`,
+					fontSize: typography.fontSize.sm,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.background,
+					backgroundColor: colors.primary,
+					border: 'none',
+					borderRadius: radius.md,
+					cursor: 'pointer',
+					transition: `background-color ${transitions.fast}`,
+					'&:hover': {
+						backgroundColor: colors.primaryHover,
+					},
+				}}
+				on={{ click: onAssign }}
+			>
+				Assign to Feed
+			</button>
+
+			{hasAssignedItems && (
+				<button
+					type="button"
+					css={{
+						padding: `${spacing.sm} ${spacing.md}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.error,
+						backgroundColor: 'transparent',
+						border: `1px solid ${colors.error}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: 'rgba(239, 68, 68, 0.1)',
+						},
+					}}
+					on={{ click: onUnassign }}
+				>
+					Remove from Feed
+				</button>
+			)}
+
+			<button
+				type="button"
+				css={{
+					padding: `${spacing.sm} ${spacing.md}`,
+					fontSize: typography.fontSize.sm,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.textMuted,
+					backgroundColor: 'transparent',
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					cursor: 'pointer',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						color: colors.text,
+						backgroundColor: colors.background,
+					},
+				}}
+				on={{ click: onClearSelection }}
+			>
+				Clear
+			</button>
+		</div>
+	)
+}
+
+function BulkAssignModal({
+	selectedCount,
+	curatedFeeds,
+	selectedFeedId,
+	saving,
+	onSelectFeed,
+	onSave,
+	onCancel,
+}: {
+	selectedCount: number
+	curatedFeeds: Array<CuratedFeed>
+	selectedFeedId: string | null
+	saving: boolean
+	onSelectFeed: (feedId: string) => void
+	onSave: () => void
+	onCancel: () => void
+}) {
+	return (
+		<div
+			css={{
+				position: 'fixed',
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				backgroundColor: 'rgba(0, 0, 0, 0.5)',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				zIndex: 1000,
+				padding: spacing.lg,
+			}}
+			on={{
+				click: (e) => {
+					if (e.target === e.currentTarget) onCancel()
+				},
+			}}
+		>
+			<div
+				css={{
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					padding: spacing.xl,
+					maxWidth: '420px',
+					width: '100%',
+					maxHeight: '80vh',
+					display: 'flex',
+					flexDirection: 'column',
+					boxShadow: shadows.lg,
+				}}
+			>
+				{/* Header */}
+				<div
+					css={{
+						marginBottom: spacing.lg,
+						paddingBottom: spacing.lg,
+						borderBottom: `1px solid ${colors.border}`,
+					}}
+				>
+					<h3
+						css={{
+							fontSize: typography.fontSize.lg,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+						}}
+					>
+						Assign to Feed
+					</h3>
+					<p
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+							margin: `${spacing.xs} 0 0 0`,
+						}}
+					>
+						Add {selectedCount} item{selectedCount !== 1 ? 's' : ''} to a
+						curated feed
+					</p>
+				</div>
+
+				{/* Feed list */}
+				<div
+					css={{
+						flex: 1,
+						minHeight: '150px',
+						maxHeight: '300px',
+						overflowY: 'auto',
+						marginBottom: spacing.lg,
+					}}
+				>
+					{curatedFeeds.length > 0 ? (
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.sm,
+							}}
+						>
+							{curatedFeeds.map((feed) => (
+								<FeedRadioRow
+									key={feed.id}
+									feedId={feed.id}
+									name={feed.name}
+									updatedAt={feed.updatedAt}
+									isSelected={selectedFeedId === feed.id}
+									onSelect={() => onSelectFeed(feed.id)}
+								/>
+							))}
+						</div>
+					) : (
+						<p
+							css={{
+								textAlign: 'center',
+								color: colors.textMuted,
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							No curated feeds available. Create a feed first.
+						</p>
+					)}
+				</div>
+
+				{/* Footer buttons */}
+				<div
+					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
+				>
+					<button
+						type="button"
+						disabled={saving}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							backgroundColor: 'transparent',
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							cursor: saving ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': saving ? {} : { backgroundColor: colors.background },
+						}}
+						on={{ click: onCancel }}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						disabled={saving || !selectedFeedId}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.background,
+							backgroundColor:
+								saving || !selectedFeedId ? colors.border : colors.primary,
+							border: 'none',
+							borderRadius: radius.md,
+							cursor: saving || !selectedFeedId ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover':
+								saving || !selectedFeedId
+									? {}
+									: { backgroundColor: colors.primaryHover },
+						}}
+						on={{ click: onSave }}
+					>
+						{saving
+							? 'Assigning...'
+							: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''}`}
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+function BulkUnassignModal({
+	selectedCount,
+	feedsWithItems,
+	selectedFeedId,
+	saving,
+	onSelectFeed,
+	onSave,
+	onCancel,
+}: {
+	selectedCount: number
+	feedsWithItems: Array<{ feed: CuratedFeed; count: number }>
+	selectedFeedId: string | null
+	saving: boolean
+	onSelectFeed: (feedId: string) => void
+	onSave: () => void
+	onCancel: () => void
+}) {
+	return (
+		<div
+			css={{
+				position: 'fixed',
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				backgroundColor: 'rgba(0, 0, 0, 0.5)',
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				zIndex: 1000,
+				padding: spacing.lg,
+			}}
+			on={{
+				click: (e) => {
+					if (e.target === e.currentTarget) onCancel()
+				},
+			}}
+		>
+			<div
+				css={{
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					padding: spacing.xl,
+					maxWidth: '420px',
+					width: '100%',
+					maxHeight: '80vh',
+					display: 'flex',
+					flexDirection: 'column',
+					boxShadow: shadows.lg,
+				}}
+			>
+				{/* Header */}
+				<div
+					css={{
+						marginBottom: spacing.lg,
+						paddingBottom: spacing.lg,
+						borderBottom: `1px solid ${colors.border}`,
+					}}
+				>
+					<h3
+						css={{
+							fontSize: typography.fontSize.lg,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+						}}
+					>
+						Remove from Feed
+					</h3>
+					<p
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+							margin: `${spacing.xs} 0 0 0`,
+						}}
+					>
+						Remove selected items from a curated feed
+					</p>
+				</div>
+
+				{/* Feed list */}
+				<div
+					css={{
+						flex: 1,
+						minHeight: '150px',
+						maxHeight: '300px',
+						overflowY: 'auto',
+						marginBottom: spacing.lg,
+					}}
+				>
+					{feedsWithItems.length > 0 ? (
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.sm,
+							}}
+						>
+							{feedsWithItems.map(({ feed, count }) => (
+								<FeedRadioRowWithCount
+									key={feed.id}
+									feedId={feed.id}
+									name={feed.name}
+									updatedAt={feed.updatedAt}
+									itemCount={count}
+									totalSelected={selectedCount}
+									isSelected={selectedFeedId === feed.id}
+									onSelect={() => onSelectFeed(feed.id)}
+								/>
+							))}
+						</div>
+					) : (
+						<p
+							css={{
+								textAlign: 'center',
+								color: colors.textMuted,
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							None of the selected items are assigned to any feeds.
+						</p>
+					)}
+				</div>
+
+				{/* Footer buttons */}
+				<div
+					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
+				>
+					<button
+						type="button"
+						disabled={saving}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							backgroundColor: 'transparent',
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							cursor: saving ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': saving ? {} : { backgroundColor: colors.background },
+						}}
+						on={{ click: onCancel }}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						disabled={saving || !selectedFeedId}
+						css={{
+							padding: `${spacing.sm} ${spacing.lg}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.background,
+							backgroundColor:
+								saving || !selectedFeedId ? colors.border : colors.error,
+							border: 'none',
+							borderRadius: radius.md,
+							cursor: saving || !selectedFeedId ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover':
+								saving || !selectedFeedId
+									? {}
+									: { backgroundColor: colors.errorHover },
+						}}
+						on={{ click: onSave }}
+					>
+						{saving ? 'Removing...' : 'Remove from Feed'}
+					</button>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+function FeedRadioRowWithCount({
+	feedId,
+	name,
+	updatedAt,
+	itemCount,
+	totalSelected,
+	isSelected,
+	onSelect,
+}: {
+	feedId: string
+	name: string
+	updatedAt: number
+	itemCount: number
+	totalSelected: number
+	isSelected: boolean
+	onSelect: () => void
+}) {
+	return (
+		<button
+			type="button"
+			css={{
+				display: 'flex',
+				alignItems: 'center',
+				gap: spacing.md,
+				padding: spacing.sm,
+				backgroundColor: isSelected
+					? 'rgba(239, 68, 68, 0.1)'
+					: colors.background,
+				border: `2px solid ${isSelected ? colors.error : 'transparent'}`,
+				borderRadius: radius.md,
+				cursor: 'pointer',
+				textAlign: 'left',
+				width: '100%',
+				transition: `all ${transitions.fast}`,
+				'&:hover': {
+					backgroundColor: isSelected
+						? 'rgba(239, 68, 68, 0.15)'
+						: colors.surface,
+				},
+			}}
+			on={{ click: onSelect }}
+		>
+			<div
+				css={{
+					width: '18px',
+					height: '18px',
+					borderRadius: '50%',
+					border: `2px solid ${isSelected ? colors.error : colors.border}`,
+					backgroundColor: isSelected ? colors.error : 'transparent',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					flexShrink: 0,
+				}}
+			>
+				{isSelected && (
+					<div
+						css={{
+							width: '8px',
+							height: '8px',
+							borderRadius: '50%',
+							backgroundColor: 'white',
+						}}
+					/>
+				)}
+			</div>
+			<img
+				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+				alt=""
+				css={{
+					width: '32px',
+					height: '32px',
+					borderRadius: radius.sm,
+					objectFit: 'cover',
+					flexShrink: 0,
+				}}
+			/>
+			<div css={{ flex: 1, minWidth: 0 }}>
+				<div
+					css={{
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+					}}
+				>
+					{name}
+				</div>
+				<div
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+					}}
+				>
+					{itemCount} of {totalSelected} selected item
+					{totalSelected !== 1 ? 's' : ''}
+				</div>
+			</div>
+		</button>
+	)
+}
+
+function FeedRadioRow({
+	feedId,
+	name,
+	updatedAt,
+	isSelected,
+	onSelect,
+}: {
+	feedId: string
+	name: string
+	updatedAt: number
+	isSelected: boolean
+	onSelect: () => void
+}) {
+	return (
+		<button
+			type="button"
+			css={{
+				display: 'flex',
+				alignItems: 'center',
+				gap: spacing.md,
+				padding: spacing.sm,
+				backgroundColor: isSelected
+					? 'rgba(59, 130, 246, 0.1)'
+					: colors.background,
+				border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+				borderRadius: radius.md,
+				cursor: 'pointer',
+				textAlign: 'left',
+				width: '100%',
+				transition: `all ${transitions.fast}`,
+				'&:hover': {
+					backgroundColor: isSelected
+						? 'rgba(59, 130, 246, 0.15)'
+						: colors.surface,
+				},
+			}}
+			on={{ click: onSelect }}
+		>
+			<div
+				css={{
+					width: '18px',
+					height: '18px',
+					borderRadius: '50%',
+					border: `2px solid ${isSelected ? colors.primary : colors.border}`,
+					backgroundColor: isSelected ? colors.primary : 'transparent',
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					flexShrink: 0,
+				}}
+			>
+				{isSelected && (
+					<div
+						css={{
+							width: '8px',
+							height: '8px',
+							borderRadius: '50%',
+							backgroundColor: 'white',
+						}}
+					/>
+				)}
+			</div>
+			<img
+				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+				alt=""
+				css={{
+					width: '32px',
+					height: '32px',
+					borderRadius: radius.sm,
+					objectFit: 'cover',
+					flexShrink: 0,
+				}}
+			/>
+			<span
+				css={{
+					flex: 1,
+					fontSize: typography.fontSize.sm,
+					color: colors.text,
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
+					whiteSpace: 'nowrap',
+				}}
+			>
+				{name}
+			</span>
 		</button>
 	)
 }

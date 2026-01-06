@@ -8,6 +8,8 @@ export const colors = {
 	text: 'var(--color-text)',
 	textMuted: 'var(--color-text-muted)',
 	border: 'var(--color-border)',
+	error: '#ef4444',
+	errorHover: '#dc2626',
 } as const
 
 // Typography tokens

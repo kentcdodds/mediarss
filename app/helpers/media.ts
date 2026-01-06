@@ -307,7 +307,10 @@ function valueToString(value: unknown): string {
 	if (typeof value === 'string') return value
 	if (typeof value === 'object') {
 		// Handle objects with text property (common in metadata)
-		if ('text' in value && typeof (value as { text: unknown }).text === 'string') {
+		if (
+			'text' in value &&
+			typeof (value as { text: unknown }).text === 'string'
+		) {
 			return (value as { text: string }).text
 		}
 		// Try to extract meaningful content
@@ -343,7 +346,10 @@ function extractDescription(
 	// 3. common.description
 	const { common } = metadata
 	if (common.description && common.description.length > 0) {
-		const desc = common.description.map(valueToString).filter(Boolean).join('\n')
+		const desc = common.description
+			.map(valueToString)
+			.filter(Boolean)
+			.join('\n')
 		if (desc) return desc
 	}
 
@@ -361,8 +367,7 @@ function extractDescription(
 
 	// 6. COMM native tag (ID3v2 comment frame)
 	const comm =
-		getNativeValue(metadata, 'COMM:comment') ??
-		getNativeValue(metadata, 'COMM')
+		getNativeValue(metadata, 'COMM:comment') ?? getNativeValue(metadata, 'COMM')
 	if (comm) {
 		return comm
 	}

@@ -28,4 +28,7 @@ export default {
 			)
 		}
 	},
-} satisfies Action<typeof routes.health.method, typeof routes.health.pattern.source>
+} satisfies Action<
+	typeof routes.health.method,
+	typeof routes.health.pattern.source
+>

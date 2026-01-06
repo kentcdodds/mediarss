@@ -5,17 +5,17 @@ import { logger } from '@remix-run/logger-middleware'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
+import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
-import adminApiFeedHandlers from '#app/routes/admin/api/feeds.$id.ts'
 import adminApiFeedItemsHandlers from '#app/routes/admin/api/feeds.$id.items.ts'
 import adminApiFeedTokensHandlers from '#app/routes/admin/api/feeds.$id.tokens.ts'
+import adminApiFeedHandlers from '#app/routes/admin/api/feeds.$id.ts'
 import adminApiCreateCuratedFeedHandlers from '#app/routes/admin/api/feeds.curated.ts'
 import adminApiCreateDirectoryFeedHandlers from '#app/routes/admin/api/feeds.directory.ts'
 import adminApiFeedsHandlers from '#app/routes/admin/api/feeds.ts'
 import adminApiMediaHandlers from '#app/routes/admin/api/media.ts'
 import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assignments.ts'
-import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
@@ -89,7 +89,10 @@ router.map(routes.art, artHandlers)
 router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
 router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
 router.map(routes.adminApiBrowse, adminApiBrowseHandlers)
-router.map(routes.adminApiCreateDirectoryFeed, adminApiCreateDirectoryFeedHandlers)
+router.map(
+	routes.adminApiCreateDirectoryFeed,
+	adminApiCreateDirectoryFeedHandlers,
+)
 router.map(routes.adminApiCreateCuratedFeed, adminApiCreateCuratedFeedHandlers)
 router.map(routes.adminApiFeedTokens, adminApiFeedTokensHandlers)
 router.map(routes.adminApiFeedItems, adminApiFeedItemsHandlers)

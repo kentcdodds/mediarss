@@ -179,7 +179,7 @@ function generateItem(
  * Check if a feed is a DirectoryFeed.
  */
 function _isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPath' in feed
+	return 'directoryPaths' in feed
 }
 
 /**

@@ -1,7 +1,11 @@
 import fs from 'node:fs'
-import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
-import { getMediaRoots } from '#app/config/env.ts'
+import {
+	getMediaRootByName,
+	parseMediaPath,
+	resolveMediaPath,
+	toAbsolutePath,
+} from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listActiveCuratedFeedTokens } from '#app/db/curated-feed-tokens.ts'
 import {
@@ -30,7 +34,8 @@ type MediaItemResponse = {
 	duration: number | null
 	sizeBytes: number
 	filename: string
-	path: string
+	mediaRoot: string
+	relativePath: string
 	publicationDate: string | null // ISO string
 	trackNumber: number | null
 	fileModifiedAt: number // Unix timestamp
@@ -41,7 +46,7 @@ type UpdateFeedRequest = {
 	description?: string
 	sortFields?: string
 	sortOrder?: SortOrder
-	directoryPath?: string // Only for directory feeds
+	directoryPaths?: Array<string> // Only for directory feeds - array of "mediaRoot:relativePath" strings
 }
 
 /**
@@ -84,17 +89,24 @@ async function handleGet(id: string) {
 	if (directoryFeed) {
 		const tokens = listDirectoryFeedTokens(directoryFeed.id)
 		const mediaFiles = await getDirectoryFeedItems(directoryFeed)
-		const items: Array<MediaItemResponse> = mediaFiles.map((file) => ({
-			title: file.title,
-			author: file.author,
-			duration: file.duration,
-			sizeBytes: file.sizeBytes,
-			filename: file.filename,
-			path: file.path,
-			publicationDate: file.publicationDate?.toISOString() ?? null,
-			trackNumber: file.trackNumber,
-			fileModifiedAt: file.fileModifiedAt,
-		}))
+		const items: Array<MediaItemResponse> = []
+		for (const file of mediaFiles) {
+			const resolved = resolveMediaPath(file.path)
+			if (resolved) {
+				items.push({
+					title: file.title,
+					author: file.author,
+					duration: file.duration,
+					sizeBytes: file.sizeBytes,
+					filename: file.filename,
+					mediaRoot: resolved.root.name,
+					relativePath: resolved.relativePath,
+					publicationDate: file.publicationDate?.toISOString() ?? null,
+					trackNumber: file.trackNumber,
+					fileModifiedAt: file.fileModifiedAt,
+				})
+			}
+		}
 
 		return Response.json({
 			feed: { ...directoryFeed, type: 'directory' as const },
@@ -108,17 +120,24 @@ async function handleGet(id: string) {
 	if (curatedFeed) {
 		const tokens = listActiveCuratedFeedTokens(curatedFeed.id)
 		const mediaFiles = await getCuratedFeedItems(curatedFeed)
-		const items: Array<MediaItemResponse> = mediaFiles.map((file) => ({
-			title: file.title,
-			author: file.author,
-			duration: file.duration,
-			sizeBytes: file.sizeBytes,
-			filename: file.filename,
-			path: file.path,
-			publicationDate: file.publicationDate?.toISOString() ?? null,
-			trackNumber: file.trackNumber,
-			fileModifiedAt: file.fileModifiedAt,
-		}))
+		const items: Array<MediaItemResponse> = []
+		for (const file of mediaFiles) {
+			const resolved = resolveMediaPath(file.path)
+			if (resolved) {
+				items.push({
+					title: file.title,
+					author: file.author,
+					duration: file.duration,
+					sizeBytes: file.sizeBytes,
+					filename: file.filename,
+					mediaRoot: resolved.root.name,
+					relativePath: resolved.relativePath,
+					publicationDate: file.publicationDate?.toISOString() ?? null,
+					trackNumber: file.trackNumber,
+					fileModifiedAt: file.fileModifiedAt,
+				})
+			}
+		}
 
 		return Response.json({
 			feed: { ...curatedFeed, type: 'curated' as const },
@@ -149,46 +168,66 @@ async function handlePut(id: string, request: Request) {
 	// Try directory feed first
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) {
-		// Validate directoryPath if provided
-		if (body.directoryPath !== undefined) {
-			const resolvedPath = nodePath.resolve(body.directoryPath)
-			const mediaRoots = getMediaRoots()
+		// Validate directoryPaths if provided
+		let validatedPaths: Array<string> | undefined
+		if (body.directoryPaths !== undefined) {
+			if (
+				!Array.isArray(body.directoryPaths) ||
+				body.directoryPaths.length === 0
+			) {
+				return Response.json(
+					{ error: 'directoryPaths must be a non-empty array' },
+					{ status: 400 },
+				)
+			}
 
-			let isWithinMediaRoot = false
-			for (const root of mediaRoots) {
-				const rootResolved = nodePath.resolve(root.path)
-				if (
-					resolvedPath.startsWith(rootResolved + nodePath.sep) ||
-					resolvedPath === rootResolved
-				) {
-					isWithinMediaRoot = true
-					break
+			validatedPaths = []
+			for (const mediaPath of body.directoryPaths) {
+				if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
+					return Response.json(
+						{ error: 'Each directoryPath must be a non-empty string' },
+						{ status: 400 },
+					)
 				}
-			}
 
-			if (!isWithinMediaRoot) {
-				return Response.json(
-					{ error: 'Directory path must be within a configured media root' },
-					{ status: 400 },
-				)
-			}
+				const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 
-			if (!fs.existsSync(resolvedPath)) {
-				return Response.json(
-					{ error: 'Directory does not exist' },
-					{ status: 400 },
-				)
-			}
+				// Validate media root exists
+				const root = getMediaRootByName(mediaRoot)
+				if (!root) {
+					return Response.json(
+						{ error: `Unknown media root: ${mediaRoot}` },
+						{ status: 400 },
+					)
+				}
 
-			const stat = fs.statSync(resolvedPath)
-			if (!stat.isDirectory()) {
-				return Response.json(
-					{ error: 'Path is not a directory' },
-					{ status: 400 },
-				)
-			}
+				// Convert to absolute path and validate
+				const absolutePath = toAbsolutePath(mediaRoot, relativePath)
+				if (!absolutePath) {
+					return Response.json(
+						{ error: `Invalid path: ${mediaPath}` },
+						{ status: 400 },
+					)
+				}
 
-			body.directoryPath = resolvedPath
+				// Check if directory exists
+				if (!fs.existsSync(absolutePath)) {
+					return Response.json(
+						{ error: `Directory does not exist: ${mediaPath}` },
+						{ status: 400 },
+					)
+				}
+
+				const stat = fs.statSync(absolutePath)
+				if (!stat.isDirectory()) {
+					return Response.json(
+						{ error: `Path is not a directory: ${mediaPath}` },
+						{ status: 400 },
+					)
+				}
+
+				validatedPaths.push(mediaPath)
+			}
 		}
 
 		const updated = updateDirectoryFeed(id, {
@@ -196,7 +235,7 @@ async function handlePut(id: string, request: Request) {
 			description: body.description,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
-			directoryPath: body.directoryPath,
+			directoryPaths: validatedPaths,
 		})
 
 		if (!updated) {
@@ -209,10 +248,10 @@ async function handlePut(id: string, request: Request) {
 	// Try curated feed
 	const curatedFeed = getCuratedFeedById(id)
 	if (curatedFeed) {
-		// Curated feeds don't have directoryPath
-		if (body.directoryPath !== undefined) {
+		// Curated feeds don't have directoryPaths
+		if (body.directoryPaths !== undefined) {
 			return Response.json(
-				{ error: 'Cannot set directoryPath on a curated feed' },
+				{ error: 'Cannot set directoryPaths on a curated feed' },
 				{ status: 400 },
 			)
 		}

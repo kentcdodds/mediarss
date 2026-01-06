@@ -47,8 +47,8 @@ beforeEach(() => {
 describe('directory_feeds table', () => {
 	test('creates a feed with default values', () => {
 		testDb.run(sql`
-			INSERT INTO directory_feeds (id, name, directory_path)
-			VALUES ('test-1', 'Test Feed', '/media/audio')
+			INSERT INTO directory_feeds (id, name, directory_paths)
+			VALUES ('test-1', 'Test Feed', '["audio:/media/audio"]')
 		`)
 
 		const feed = testDb
@@ -57,7 +57,7 @@ describe('directory_feeds table', () => {
 
 		expect(feed.name).toBe('Test Feed')
 		expect(feed.description).toBe('')
-		expect(feed.directory_path).toBe('/media/audio')
+		expect(feed.directory_paths).toBe('["audio:/media/audio"]')
 		expect(feed.sort_fields).toBe('filename')
 		expect(feed.sort_order).toBe('asc')
 		expect(feed.language).toBe('en')
@@ -76,12 +76,12 @@ describe('directory_feeds table', () => {
 	test('creates a feed with all fields', () => {
 		testDb.run(sql`
 			INSERT INTO directory_feeds (
-				id, name, description, directory_path, sort_fields, sort_order,
+				id, name, description, directory_paths, sort_fields, sort_order,
 				image_url, author, owner_name, owner_email, language, explicit,
 				category, link, filter_in, filter_out, overrides
 			)
 			VALUES (
-				'test-2', 'Full Feed', 'A description', '/media/video',
+				'test-2', 'Full Feed', 'A description', '["video:/media/video","audio:/media/audio"]',
 				'desc:pubDate,asc:title', 'desc',
 				'https://example.com/image.png', 'John Doe', 'Jane Doe', 'jane@example.com',
 				'en-US', 'clean', 'Arts > Books', 'https://example.com',
@@ -95,6 +95,9 @@ describe('directory_feeds table', () => {
 
 		expect(feed.name).toBe('Full Feed')
 		expect(feed.description).toBe('A description')
+		expect(feed.directory_paths).toBe(
+			'["video:/media/video","audio:/media/audio"]',
+		)
 		expect(feed.sort_fields).toBe('desc:pubDate,asc:title')
 		expect(feed.sort_order).toBe('desc')
 		expect(feed.image_url).toBe('https://example.com/image.png')
@@ -113,8 +116,8 @@ describe('directory_feeds table', () => {
 	test('enforces sort_order check constraint', () => {
 		expect(() => {
 			testDb.run(sql`
-				INSERT INTO directory_feeds (id, name, directory_path, sort_order)
-				VALUES ('test-3', 'Bad Feed', '/media', 'invalid')
+				INSERT INTO directory_feeds (id, name, directory_paths, sort_order)
+				VALUES ('test-3', 'Bad Feed', '["audio:/media"]', 'invalid')
 			`)
 		}).toThrow()
 	})
@@ -194,8 +197,8 @@ describe('curated_feeds table', () => {
 describe('feed updates', () => {
 	test('updates directory feed fields', () => {
 		testDb.run(sql`
-			INSERT INTO directory_feeds (id, name, directory_path)
-			VALUES ('update-test', 'Original', '/original/path')
+			INSERT INTO directory_feeds (id, name, directory_paths)
+			VALUES ('update-test', 'Original', '["audio:/original/path"]')
 		`)
 
 		testDb.run(sql`
@@ -216,14 +219,14 @@ describe('feed updates', () => {
 		expect(feed.filter_in).toBe('Chapter:title')
 		expect(feed.image_url).toBe('https://new-image.com/art.png')
 		// Unchanged fields
-		expect(feed.directory_path).toBe('/original/path')
+		expect(feed.directory_paths).toBe('["audio:/original/path"]')
 		expect(feed.language).toBe('en')
 	})
 
 	test('can set nullable fields to null', () => {
 		testDb.run(sql`
-			INSERT INTO directory_feeds (id, name, directory_path, author, filter_in)
-			VALUES ('null-test', 'Test', '/path', 'Some Author', 'Some Filter')
+			INSERT INTO directory_feeds (id, name, directory_paths, author, filter_in)
+			VALUES ('null-test', 'Test', '["audio:/path"]', 'Some Author', 'Some Filter')
 		`)
 
 		testDb.run(sql`

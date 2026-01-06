@@ -18,7 +18,7 @@ const migrations: Array<Migration> = [
 					id TEXT PRIMARY KEY,
 					name TEXT NOT NULL,
 					description TEXT NOT NULL DEFAULT '',
-					directory_path TEXT NOT NULL,
+					directory_paths TEXT NOT NULL,
 					sort_fields TEXT NOT NULL DEFAULT 'filename',
 					sort_order TEXT NOT NULL DEFAULT 'asc' CHECK (sort_order IN ('asc', 'desc')),
 					image_url TEXT,
@@ -92,10 +92,11 @@ const migrations: Array<Migration> = [
 				CREATE TABLE IF NOT EXISTS feed_items (
 					id TEXT PRIMARY KEY,
 					feed_id TEXT NOT NULL REFERENCES curated_feeds(id) ON DELETE CASCADE,
-					file_path TEXT NOT NULL,
+					media_root TEXT NOT NULL,
+					relative_path TEXT NOT NULL,
 					position INTEGER,
 					added_at INTEGER NOT NULL DEFAULT (unixepoch()),
-					UNIQUE(feed_id, file_path)
+					UNIQUE(feed_id, media_root, relative_path)
 				);
 			`)
 			db.run(sql`

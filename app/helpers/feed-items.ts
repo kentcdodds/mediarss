@@ -1,3 +1,5 @@
+import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
+import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import { filterMediaFiles } from '#app/helpers/filter.ts'
@@ -10,13 +12,24 @@ import { sortMediaFiles } from '#app/helpers/sort.ts'
 
 /**
  * Get media items for a directory feed.
- * Scans the directory, applies filters, and sorts.
+ * Scans all configured directories, applies filters, and sorts.
  */
 export async function getDirectoryFeedItems(
 	feed: DirectoryFeed,
 ): Promise<Array<MediaFile>> {
-	// Scan the directory for media files
-	const allItems = await scanDirectoryWithMetadata(feed.directoryPath)
+	// Parse the directory paths from JSON
+	const paths = parseDirectoryPaths(feed)
+
+	// Scan all directories and merge results
+	const allItems: Array<MediaFile> = []
+	for (const mediaPath of paths) {
+		const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+		const absolutePath = toAbsolutePath(mediaRoot, relativePath)
+		if (absolutePath) {
+			const items = await scanDirectoryWithMetadata(absolutePath)
+			allItems.push(...items)
+		}
+	}
 
 	// Apply filters
 	const filteredItems = filterMediaFiles(allItems, {
@@ -42,7 +55,14 @@ export async function getCuratedFeedItems(
 	// Get metadata for each item
 	const items: Array<MediaFile> = []
 	for (const feedItem of feedItems) {
-		const metadata = await getFileMetadata(feedItem.filePath)
+		// Convert mediaRoot + relativePath to absolute path
+		const absolutePath = toAbsolutePath(
+			feedItem.mediaRoot,
+			feedItem.relativePath,
+		)
+		if (!absolutePath) continue
+
+		const metadata = await getFileMetadata(absolutePath)
 		if (metadata) {
 			items.push(metadata)
 		}

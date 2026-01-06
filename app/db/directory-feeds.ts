@@ -10,7 +10,7 @@ import {
 export type CreateDirectoryFeedData = {
 	name: string
 	description?: string
-	directoryPath: string
+	directoryPaths: Array<string> // Array of "mediaRoot:relativePath" strings
 	sortFields?: string
 	sortOrder?: SortOrder
 	imageUrl?: string | null
@@ -35,13 +35,13 @@ export function createDirectoryFeed(
 	db.query(
 		sql`
 			INSERT INTO directory_feeds (
-				id, name, description, directory_path, sort_fields, sort_order,
+				id, name, description, directory_paths, sort_fields, sort_order,
 				image_url, author, owner_name, owner_email, language, explicit,
 				category, link, filter_in, filter_out, overrides,
 				created_at, updated_at
 			)
 			VALUES (
-				$id, $name, $description, $directoryPath, $sortFields, $sortOrder,
+				$id, $name, $description, $directoryPaths, $sortFields, $sortOrder,
 				$imageUrl, $author, $ownerName, $ownerEmail, $language, $explicit,
 				$category, $link, $filterIn, $filterOut, $overrides,
 				$createdAt, $updatedAt
@@ -51,7 +51,7 @@ export function createDirectoryFeed(
 		$id: id,
 		$name: data.name,
 		$description: data.description ?? '',
-		$directoryPath: data.directoryPath,
+		$directoryPaths: JSON.stringify(data.directoryPaths),
 		$sortFields: data.sortFields ?? 'filename',
 		$sortOrder: data.sortOrder ?? 'asc',
 		$imageUrl: data.imageUrl ?? null,
@@ -93,7 +93,7 @@ export function listDirectoryFeeds(): Array<DirectoryFeed> {
 export type UpdateDirectoryFeedData = {
 	name?: string
 	description?: string
-	directoryPath?: string
+	directoryPaths?: Array<string> // Array of "mediaRoot:relativePath" strings
 	sortFields?: string
 	sortOrder?: SortOrder
 	imageUrl?: string | null
@@ -121,7 +121,7 @@ export function updateDirectoryFeed(
 	db.query(
 		sql`
 			UPDATE directory_feeds
-			SET name = $name, description = $description, directory_path = $directoryPath,
+			SET name = $name, description = $description, directory_paths = $directoryPaths,
 				sort_fields = $sortFields, sort_order = $sortOrder,
 				image_url = $imageUrl, author = $author, owner_name = $ownerName,
 				owner_email = $ownerEmail, language = $language, explicit = $explicit,
@@ -133,7 +133,9 @@ export function updateDirectoryFeed(
 		$id: id,
 		$name: data.name ?? existing.name,
 		$description: data.description ?? existing.description,
-		$directoryPath: data.directoryPath ?? existing.directoryPath,
+		$directoryPaths: data.directoryPaths
+			? JSON.stringify(data.directoryPaths)
+			: existing.directoryPaths,
 		$sortFields: data.sortFields ?? existing.sortFields,
 		$sortOrder: data.sortOrder ?? existing.sortOrder,
 		$imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
@@ -162,4 +164,15 @@ export function deleteDirectoryFeed(id: string): boolean {
 		.query(sql`DELETE FROM directory_feeds WHERE id = ?;`)
 		.run(id)
 	return result.changes > 0
+}
+
+/**
+ * Parse the directoryPaths JSON string into an array.
+ */
+export function parseDirectoryPaths(feed: DirectoryFeed): Array<string> {
+	try {
+		return JSON.parse(feed.directoryPaths) as Array<string>
+	} catch {
+		return []
+	}
 }

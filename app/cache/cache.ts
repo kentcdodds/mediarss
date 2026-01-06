@@ -56,9 +56,10 @@ let _deleteStatement: ReturnType<Database['prepare']> | null = null
 
 function getGetStatement() {
 	if (!_getStatement) {
-		_getStatement = getCacheDb().prepare<{ metadata: string; value: string }, [string]>(
-			'SELECT metadata, value FROM cache WHERE key = ?',
-		)
+		_getStatement = getCacheDb().prepare<
+			{ metadata: string; value: string },
+			[string]
+		>('SELECT metadata, value FROM cache WHERE key = ?')
 	}
 	return _getStatement
 }
@@ -125,10 +126,7 @@ export const cache: Cache = {
  * Check if a cached value should be refreshed based on file modification time.
  * Returns true if the file has been modified since the cache entry was created.
  */
-export function shouldRefreshCache(
-	key: string,
-	fileMtime: number,
-): boolean {
+export function shouldRefreshCache(key: string, fileMtime: number): boolean {
 	// Direct database access for synchronous check (cache.get returns sync for our impl)
 	const row = getGetStatement().get(key)
 	if (!row) return false // No cache entry, will fetch fresh anyway

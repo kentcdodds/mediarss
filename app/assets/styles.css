@@ -55,12 +55,22 @@
 	--card-min-width: 320px;
 }
 
+/* Tablet responsive overrides */
+@media (max-width: 1024px) {
+	:root {
+		--spacing-page: var(--spacing-xl);
+		--spacing-section: var(--spacing-lg);
+		--spacing-header: var(--spacing-lg);
+		--card-min-width: 280px;
+	}
+}
+
 /* Mobile responsive overrides */
 @media (max-width: 640px) {
 	:root {
 		--spacing-page: var(--spacing-md);
 		--spacing-section: var(--spacing-md);
-		--spacing-header: var(--spacing-sm);
+		--spacing-header: var(--spacing-md);
 		--card-min-width: 100%;
 	}
 }
@@ -103,6 +113,12 @@ body {
 	line-height: 1.5;
 	color: var(--color-text);
 	background-color: var(--color-background);
+}
+
+img,
+video {
+	max-width: 100%;
+	height: auto;
 }
 
 /*

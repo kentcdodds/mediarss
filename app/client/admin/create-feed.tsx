@@ -854,9 +854,7 @@ function FeedTypeButton({
 				textAlign: 'left',
 				borderRadius: radius.md,
 				border: `2px solid ${selected ? colors.primary : colors.border}`,
-				backgroundColor: selected
-					? 'rgba(59, 130, 246, 0.05)'
-					: colors.background,
+				backgroundColor: selected ? colors.primarySoftest : colors.background,
 				cursor: 'pointer',
 				transition: `all ${transitions.fast}`,
 				'&:hover': {
@@ -1429,7 +1427,7 @@ function FilePicker({
 										css={{
 											...directoryItemStyles,
 											backgroundColor: selected
-												? 'rgba(59, 130, 246, 0.1)'
+												? colors.primarySoft
 												: 'transparent',
 										}}
 										on={{ click: () => onToggleFile(entry.name) }}

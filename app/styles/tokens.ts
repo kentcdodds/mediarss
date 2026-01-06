@@ -3,6 +3,12 @@ export const colors = {
 	primary: 'var(--color-primary)',
 	primaryHover: 'var(--color-primary-hover)',
 	primaryActive: 'var(--color-primary-active)',
+	primarySoftest: 'color-mix(in srgb, var(--color-primary) 6%, transparent)',
+	primarySoftSubtle: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+	primarySoft: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+	primarySoftStrong:
+		'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+	primarySoftHover: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
 	background: 'var(--color-background)',
 	surface: 'var(--color-surface)',
 	text: 'var(--color-text)',

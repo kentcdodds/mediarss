@@ -839,11 +839,11 @@ export function MediaList(this: Handle) {
 													cursor: 'pointer',
 													transition: `background-color ${transitions.fast}`,
 													backgroundColor: isSelected
-														? 'rgba(59, 130, 246, 0.08)'
+														? colors.primarySoftSubtle
 														: 'transparent',
 													'&:hover, &:focus': {
 														backgroundColor: isSelected
-															? 'rgba(59, 130, 246, 0.12)'
+															? colors.primarySoft
 															: colors.background,
 														outline: 'none',
 													},
@@ -961,7 +961,7 @@ export function MediaList(this: Handle) {
 																fontSize: typography.fontSize.xs,
 																fontWeight: typography.fontWeight.medium,
 																color: colors.primary,
-																backgroundColor: 'rgba(59, 130, 246, 0.1)',
+																backgroundColor: colors.primarySoft,
 																borderRadius: radius.sm,
 															}}
 														>
@@ -995,7 +995,7 @@ export function MediaList(this: Handle) {
 															border: `1px solid ${colors.primary}`,
 															borderRadius: radius.sm,
 															'&:hover': {
-																backgroundColor: 'rgba(59, 130, 246, 0.1)',
+																backgroundColor: colors.primarySoft,
 															},
 														}}
 														on={{
@@ -2464,9 +2464,7 @@ function FeedCheckboxRow({
 				alignItems: 'center',
 				gap: spacing.md,
 				padding: spacing.sm,
-				backgroundColor: isSelected
-					? 'rgba(59, 130, 246, 0.1)'
-					: colors.background,
+				backgroundColor: isSelected ? colors.primarySoft : colors.background,
 				border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
 				borderRadius: radius.md,
 				cursor: 'pointer',
@@ -2475,7 +2473,7 @@ function FeedCheckboxRow({
 				transition: `all ${transitions.fast}`,
 				'&:hover': {
 					backgroundColor: isSelected
-						? 'rgba(59, 130, 246, 0.15)'
+						? colors.primarySoftStrong
 						: colors.surface,
 				},
 			}}

@@ -982,7 +982,7 @@ export function FeedDetail(this: Handle) {
 									cursor: 'pointer',
 									transition: `all ${transitions.fast}`,
 									'&:hover': {
-										backgroundColor: 'rgba(59, 130, 246, 0.1)',
+										backgroundColor: colors.primarySoft,
 									},
 									[mq.mobile]: {
 										flex: 1,
@@ -1615,7 +1615,7 @@ export function FeedDetail(this: Handle) {
 													fontSize: typography.fontSize.xs,
 													textTransform: 'uppercase',
 													letterSpacing: '0.05em',
-													backgroundColor: 'rgba(59, 130, 246, 0.1)',
+													backgroundColor: colors.primarySoft,
 													whiteSpace: 'nowrap',
 												}}
 												title={`Sorted by ${getSortFieldLabel(extraSortColumn)}`}
@@ -1662,7 +1662,7 @@ export function FeedDetail(this: Handle) {
 												opacity: draggingIndex === index ? 0.5 : 1,
 												backgroundColor:
 													dragOverIndex === index
-														? 'rgba(59, 130, 246, 0.1)'
+														? colors.primarySoft
 														: 'transparent',
 												cursor: isManualSort ? 'grab' : 'default',
 											}}
@@ -1781,7 +1781,7 @@ export function FeedDetail(this: Handle) {
 														padding: `${spacing.sm} ${spacing.md}`,
 														color: colors.text,
 														fontSize: typography.fontSize.xs,
-														backgroundColor: 'rgba(59, 130, 246, 0.05)',
+														backgroundColor: colors.primarySoftest,
 														whiteSpace: 'nowrap',
 													}}
 													title={formatSortValue(item, extraSortColumn)}
@@ -1922,11 +1922,11 @@ export function FeedDetail(this: Handle) {
 														fontSize: typography.fontSize.xs,
 														fontWeight: typography.fontWeight.medium,
 														color: colors.primary,
-														backgroundColor: 'rgba(59, 130, 246, 0.1)',
+														backgroundColor: colors.primarySoft,
 														borderRadius: radius.sm,
 														textDecoration: 'none',
 														'&:hover': {
-															backgroundColor: 'rgba(59, 130, 246, 0.2)',
+															backgroundColor: colors.primarySoftHover,
 														},
 													}}
 												>
@@ -2391,7 +2391,7 @@ function TokenCard({
 						'&:hover': {
 							backgroundColor: isCopied
 								? 'rgba(16, 185, 129, 0.1)'
-								: 'rgba(59, 130, 246, 0.1)',
+								: colors.primarySoft,
 						},
 					}}
 					on={{ click: onCopy }}
@@ -3588,7 +3588,7 @@ function AddFilesModal({
 														css={{
 															...fileItemStyles,
 															backgroundColor: selected
-																? 'rgba(59, 130, 246, 0.1)'
+																? colors.primarySoft
 																: inFeed
 																	? 'rgba(128, 128, 128, 0.05)'
 																	: 'transparent',

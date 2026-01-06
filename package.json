@@ -13,6 +13,7 @@
     "test": "bun test",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",
+    "capture-screenshots": "bun ./scripts/capture-screenshots.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --write .",

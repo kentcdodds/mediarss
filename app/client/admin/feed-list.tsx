@@ -141,7 +141,7 @@ export function FeedList(this: Handle) {
 								cursor: 'pointer',
 								transition: `all ${transitions.fast}`,
 								'&:hover': {
-									backgroundColor: 'rgba(59, 130, 246, 0.1)',
+									backgroundColor: colors.primarySoft,
 								},
 							}}
 						>

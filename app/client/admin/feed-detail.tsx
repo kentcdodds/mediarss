@@ -1143,6 +1143,13 @@ export function FeedDetail(this: Handle) {
 												Actions
 											</th>
 										)}
+										<th
+											css={{
+												textAlign: 'center',
+												padding: `${spacing.sm} ${spacing.md}`,
+												width: '60px',
+											}}
+										/>
 									</tr>
 								</thead>
 								<tbody>
@@ -1396,6 +1403,31 @@ export function FeedDetail(this: Handle) {
 													</div>
 												</td>
 											)}
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													textAlign: 'center',
+												}}
+											>
+												<Link
+													href={`/admin/media/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
+													css={{
+														display: 'inline-block',
+														padding: `${spacing.xs} ${spacing.sm}`,
+														fontSize: typography.fontSize.xs,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.primary,
+														backgroundColor: 'rgba(59, 130, 246, 0.1)',
+														borderRadius: radius.sm,
+														textDecoration: 'none',
+														'&:hover': {
+															backgroundColor: 'rgba(59, 130, 246, 0.2)',
+														},
+													}}
+												>
+													View
+												</Link>
+											</td>
 										</tr>
 									))}
 								</tbody>

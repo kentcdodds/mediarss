@@ -9,6 +9,8 @@ import {
 } from '#app/styles/tokens.ts'
 import { Link, router } from './router.tsx'
 
+type FeedType = 'directory' | 'curated'
+
 type MediaRoot = {
 	name: string
 	path: string
@@ -19,13 +21,21 @@ type DirectoryEntry = {
 	type: 'directory' | 'file'
 }
 
-type FormState = {
+type DirectoryFormState = {
 	name: string
 	description: string
 	selectedRoot: string | null
 	currentPath: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+}
+
+type CuratedFormState = {
+	name: string
+	description: string
+	sortFields: string
+	sortOrder: 'asc' | 'desc'
+	selectedFiles: Array<{ rootName: string; rootPath: string; relativePath: string; fullPath: string; filename: string }>
 }
 
 type RootsState =
@@ -45,11 +55,14 @@ type SubmitState =
 	| { status: 'error'; message: string }
 
 /**
- * CreateFeed component - form for creating a new directory feed.
+ * CreateFeed component - form for creating a new feed (directory or curated).
  */
 export function CreateFeed(this: Handle) {
-	// Form state
-	let form: FormState = {
+	// Feed type selection
+	let feedType: FeedType = 'directory'
+
+	// Directory form state
+	let directoryForm: DirectoryFormState = {
 		name: '',
 		description: '',
 		selectedRoot: null,
@@ -57,6 +70,19 @@ export function CreateFeed(this: Handle) {
 		sortFields: 'filename',
 		sortOrder: 'asc',
 	}
+
+	// Curated form state
+	let curatedForm: CuratedFormState = {
+		name: '',
+		description: '',
+		sortFields: 'position',
+		sortOrder: 'asc',
+		selectedFiles: [],
+	}
+
+	// File picker state for curated feeds
+	let pickerRoot: string | null = null
+	let pickerPath = ''
 
 	// API states
 	let rootsState: RootsState = { status: 'loading' }
@@ -79,7 +105,7 @@ export function CreateFeed(this: Handle) {
 			this.update()
 		})
 
-	// Browse a directory (used by navigateToDir and navigateUp)
+	// Browse a directory
 	const browse = (rootName: string, path: string) => {
 		browseState = { status: 'loading' }
 		this.update()
@@ -101,60 +127,47 @@ export function CreateFeed(this: Handle) {
 			})
 	}
 
-	// Handle root selection
-	const selectRoot = (rootName: string) => {
+	// === Directory Feed Functions ===
+
+	const selectDirectoryRoot = (rootName: string) => {
 		if (rootsState.status !== 'success') return
-		form.selectedRoot = rootName
-		form.currentPath = ''
-		browseState = { status: 'loading' }
-		this.update()
-
-		const params = new URLSearchParams({ root: rootName, path: '' })
-		fetch(`/admin/api/browse?${params}`, { signal: this.signal })
-			.then((res) => {
-				if (!res.ok) throw new Error(`HTTP ${res.status}`)
-				return res.json() as Promise<{ entries: Array<DirectoryEntry> }>
-			})
-			.then((data) => {
-				browseState = { status: 'success', entries: data.entries }
-				this.update()
-			})
-			.catch((err) => {
-				if (this.signal.aborted) return
-				browseState = { status: 'error', message: err.message }
-				this.update()
-			})
+		directoryForm.selectedRoot = rootName
+		directoryForm.currentPath = ''
+		browse(rootName, '')
 	}
 
-	// Navigate into a subdirectory
-	const navigateToDir = (dirName: string) => {
-		if (!form.selectedRoot) return
-		const newPath = form.currentPath ? `${form.currentPath}/${dirName}` : dirName
-		form.currentPath = newPath
-		browse(form.selectedRoot, newPath)
+	const navigateDirectoryToDir = (dirName: string) => {
+		if (!directoryForm.selectedRoot) return
+		const newPath = directoryForm.currentPath
+			? `${directoryForm.currentPath}/${dirName}`
+			: dirName
+		directoryForm.currentPath = newPath
+		browse(directoryForm.selectedRoot, newPath)
 	}
 
-	// Navigate up one level
-	const navigateUp = () => {
-		if (!form.selectedRoot || !form.currentPath) return
-		const parts = form.currentPath.split('/')
+	const navigateDirectoryUp = () => {
+		if (!directoryForm.selectedRoot || !directoryForm.currentPath) return
+		const parts = directoryForm.currentPath.split('/')
 		parts.pop()
-		form.currentPath = parts.join('/')
-		browse(form.selectedRoot, form.currentPath)
+		directoryForm.currentPath = parts.join('/')
+		browse(directoryForm.selectedRoot, directoryForm.currentPath)
 	}
 
-	// Get the full directory path for submission
-	const getFullPath = (): string | null => {
-		if (rootsState.status !== 'success' || !form.selectedRoot) return null
-		const root = rootsState.roots.find((r) => r.name === form.selectedRoot)
+	const getDirectoryFullPath = (): string | null => {
+		if (rootsState.status !== 'success' || !directoryForm.selectedRoot)
+			return null
+		const root = rootsState.roots.find(
+			(r) => r.name === directoryForm.selectedRoot,
+		)
 		if (!root) return null
-		return form.currentPath ? `${root.path}/${form.currentPath}` : root.path
+		return directoryForm.currentPath
+			? `${root.path}/${directoryForm.currentPath}`
+			: root.path
 	}
 
-	// Handle form submission
-	const handleSubmit = async () => {
-		const directoryPath = getFullPath()
-		if (!form.name.trim() || !directoryPath) return
+	const handleDirectorySubmit = async () => {
+		const directoryPath = getDirectoryFullPath()
+		if (!directoryForm.name.trim() || !directoryPath) return
 
 		submitState = { status: 'submitting' }
 		this.update()
@@ -164,11 +177,11 @@ export function CreateFeed(this: Handle) {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: form.name.trim(),
-					description: form.description.trim() || undefined,
+					name: directoryForm.name.trim(),
+					description: directoryForm.description.trim() || undefined,
 					directoryPath,
-					sortFields: form.sortFields,
-					sortOrder: form.sortOrder,
+					sortFields: directoryForm.sortFields,
+					sortOrder: directoryForm.sortOrder,
 				}),
 			})
 
@@ -177,7 +190,117 @@ export function CreateFeed(this: Handle) {
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			// Success - navigate back to feed list
+			router.navigate('/admin')
+		} catch (err) {
+			submitState = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Unknown error',
+			}
+			this.update()
+		}
+	}
+
+	// === Curated Feed Functions ===
+
+	const selectPickerRoot = (rootName: string) => {
+		if (rootsState.status !== 'success') return
+		pickerRoot = rootName
+		pickerPath = ''
+		browse(rootName, '')
+	}
+
+	const navigatePickerToDir = (dirName: string) => {
+		if (!pickerRoot) return
+		const newPath = pickerPath ? `${pickerPath}/${dirName}` : dirName
+		pickerPath = newPath
+		browse(pickerRoot, newPath)
+	}
+
+	const navigatePickerUp = () => {
+		if (!pickerRoot || !pickerPath) return
+		const parts = pickerPath.split('/')
+		parts.pop()
+		pickerPath = parts.join('/')
+		browse(pickerRoot, pickerPath)
+	}
+
+	const toggleFileSelection = (filename: string) => {
+		if (rootsState.status !== 'success' || !pickerRoot) return
+		const root = rootsState.roots.find((r) => r.name === pickerRoot)
+		if (!root) return
+
+		const relativePath = pickerPath ? `${pickerPath}/${filename}` : filename
+		const fullPath = `${root.path}/${relativePath}`
+
+		const existingIndex = curatedForm.selectedFiles.findIndex(
+			(f) => f.fullPath === fullPath,
+		)
+
+		if (existingIndex >= 0) {
+			// Remove from selection
+			curatedForm.selectedFiles.splice(existingIndex, 1)
+		} else {
+			// Add to selection
+			curatedForm.selectedFiles.push({
+				rootName: pickerRoot,
+				rootPath: root.path,
+				relativePath,
+				fullPath,
+				filename,
+			})
+		}
+		this.update()
+	}
+
+	const isFileSelected = (filename: string): boolean => {
+		if (rootsState.status !== 'success' || !pickerRoot) return false
+		const root = rootsState.roots.find((r) => r.name === pickerRoot)
+		if (!root) return false
+
+		const relativePath = pickerPath ? `${pickerPath}/${filename}` : filename
+		const fullPath = `${root.path}/${relativePath}`
+
+		return curatedForm.selectedFiles.some((f) => f.fullPath === fullPath)
+	}
+
+	const removeSelectedFile = (fullPath: string) => {
+		const index = curatedForm.selectedFiles.findIndex(
+			(f) => f.fullPath === fullPath,
+		)
+		if (index >= 0) {
+			curatedForm.selectedFiles.splice(index, 1)
+			this.update()
+		}
+	}
+
+	const handleCuratedSubmit = async () => {
+		if (
+			!curatedForm.name.trim() ||
+			curatedForm.selectedFiles.length === 0
+		)
+			return
+
+		submitState = { status: 'submitting' }
+		this.update()
+
+		try {
+			const res = await fetch('/admin/api/feeds/curated', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: curatedForm.name.trim(),
+					description: curatedForm.description.trim() || undefined,
+					sortFields: curatedForm.sortFields,
+					sortOrder: curatedForm.sortOrder,
+					items: curatedForm.selectedFiles.map((f) => f.fullPath),
+				}),
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
 			router.navigate('/admin')
 		} catch (err) {
 			submitState = {
@@ -189,9 +312,14 @@ export function CreateFeed(this: Handle) {
 	}
 
 	return () => {
-		const canSubmit =
-			form.name.trim() &&
-			form.selectedRoot &&
+		const canSubmitDirectory =
+			directoryForm.name.trim() &&
+			directoryForm.selectedRoot &&
+			submitState.status !== 'submitting'
+
+		const canSubmitCurated =
+			curatedForm.name.trim() &&
+			curatedForm.selectedFiles.length > 0 &&
 			submitState.status !== 'submitting'
 
 		return (
@@ -223,233 +351,355 @@ export function CreateFeed(this: Handle) {
 							margin: 0,
 						}}
 					>
-						Create Directory Feed
+						Create New Feed
 					</h2>
 				</div>
 
+				{/* Feed Type Selector */}
 				<div
 					css={{
 						backgroundColor: colors.surface,
 						borderRadius: radius.lg,
 						border: `1px solid ${colors.border}`,
-						padding: spacing.xl,
+						padding: spacing.lg,
+						marginBottom: spacing.xl,
 						boxShadow: shadows.sm,
 					}}
 				>
-					{/* Name field */}
-					<FormField label="Name" required>
-						<input
-							type="text"
-							value={form.name}
-							placeholder="My Audiobooks"
-							css={inputStyles}
-							on={{
-								input: (e) => {
-									form.name = (e.target as HTMLInputElement).value
-									this.update()
-								},
-							}}
-						/>
-					</FormField>
-
-					{/* Description field */}
-					<FormField label="Description">
-						<textarea
-							value={form.description}
-							placeholder="Optional description for this feed"
-							rows={3}
-							css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
-							on={{
-								input: (e) => {
-									form.description = (e.target as HTMLTextAreaElement).value
-									this.update()
-								},
-							}}
-						/>
-					</FormField>
-
-					{/* Media Root Selection */}
-					<FormField label="Media Root" required>
-						{rootsState.status === 'loading' && (
-							<p css={{ color: colors.textMuted, margin: 0 }}>
-								Loading media roots...
-							</p>
-						)}
-						{rootsState.status === 'error' && (
-							<p css={{ color: '#ef4444', margin: 0 }}>
-								Error: {rootsState.message}
-							</p>
-						)}
-						{rootsState.status === 'success' && (
-							<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
-								{rootsState.roots.map((root) => (
-									<button
-										key={root.name}
-										type="button"
-										css={{
-											padding: `${spacing.sm} ${spacing.md}`,
-											fontSize: typography.fontSize.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${form.selectedRoot === root.name ? colors.primary : colors.border}`,
-											backgroundColor:
-												form.selectedRoot === root.name
-													? colors.primary
-													: colors.background,
-											color:
-												form.selectedRoot === root.name
-													? colors.background
-													: colors.text,
-											cursor: 'pointer',
-											transition: `all ${transitions.fast}`,
-											'&:hover': {
-												borderColor: colors.primary,
-											},
-										}}
-										on={{ click: () => selectRoot(root.name) }}
-									>
-										{root.name}
-									</button>
-								))}
-							</div>
-						)}
-					</FormField>
-
-					{/* Directory Browser */}
-					{form.selectedRoot && (
-						<FormField label="Directory">
-							<DirectoryBrowser
-								rootName={form.selectedRoot}
-								currentPath={form.currentPath}
-								browseState={browseState}
-								onNavigateUp={navigateUp}
-								onNavigateToDir={navigateToDir}
-							/>
-						</FormField>
-					)}
-
-					{/* Sort Options */}
-					<div
+					<label
 						css={{
-							display: 'grid',
-							gridTemplateColumns: '1fr 1fr',
-							gap: spacing.lg,
+							display: 'block',
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							marginBottom: spacing.md,
 						}}
 					>
-						<FormField label="Sort By">
-							<select
-								value={form.sortFields}
-								css={inputStyles}
-								on={{
-									change: (e) => {
-										form.sortFields = (e.target as HTMLSelectElement).value
-										this.update()
-									},
-								}}
-							>
-								<option value="filename">Filename</option>
-								<option value="date">Date Modified</option>
-								<option value="size">File Size</option>
-							</select>
-						</FormField>
-
-						<FormField label="Order">
-							<select
-								value={form.sortOrder}
-								css={inputStyles}
-								on={{
-									change: (e) => {
-										form.sortOrder = (e.target as HTMLSelectElement).value as
-											| 'asc'
-											| 'desc'
-										this.update()
-									},
-								}}
-							>
-								<option value="asc">Ascending</option>
-								<option value="desc">Descending</option>
-							</select>
-						</FormField>
-					</div>
-
-					{/* Error message */}
-					{submitState.status === 'error' && (
-						<div
-							css={{
-								padding: spacing.md,
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
-								borderRadius: radius.md,
-								border: '1px solid rgba(239, 68, 68, 0.3)',
-								marginTop: spacing.lg,
+						Feed Type
+					</label>
+					<div css={{ display: 'flex', gap: spacing.md }}>
+						<FeedTypeButton
+							selected={feedType === 'directory'}
+							onClick={() => {
+								feedType = 'directory'
+								browseState = { status: 'idle' }
+								this.update()
 							}}
-						>
-							<p css={{ color: '#ef4444', margin: 0 }}>
-								{submitState.message}
-							</p>
-						</div>
-					)}
-
-					{/* Actions */}
-					<div
-						css={{
-							display: 'flex',
-							gap: spacing.md,
-							justifyContent: 'flex-end',
-							marginTop: spacing.xl,
-							paddingTop: spacing.lg,
-							borderTop: `1px solid ${colors.border}`,
-						}}
-					>
-						<Link
-							href="/admin"
-							css={{
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.text,
-								backgroundColor: colors.background,
-								border: `1px solid ${colors.border}`,
-								borderRadius: radius.md,
-								textDecoration: 'none',
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: colors.surface,
-								},
+							title="Directory Feed"
+							description="Automatically includes all media files from a folder"
+						/>
+						<FeedTypeButton
+							selected={feedType === 'curated'}
+							onClick={() => {
+								feedType = 'curated'
+								browseState = { status: 'idle' }
+								pickerRoot = null
+								pickerPath = ''
+								this.update()
 							}}
-						>
-							Cancel
-						</Link>
-						<button
-							type="button"
-							disabled={!canSubmit}
-							css={{
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.background,
-								backgroundColor: canSubmit ? colors.primary : colors.border,
-								border: 'none',
-								borderRadius: radius.md,
-								cursor: canSubmit ? 'pointer' : 'not-allowed',
-								transition: `all ${transitions.fast}`,
-								'&:hover': canSubmit
-									? { backgroundColor: colors.primaryHover }
-									: {},
-							}}
-							on={{ click: handleSubmit }}
-						>
-							{submitState.status === 'submitting'
-								? 'Creating...'
-								: 'Create Feed'}
-						</button>
+							title="Curated Feed"
+							description="Manually select specific files to include"
+						/>
 					</div>
 				</div>
+
+				{/* Directory Feed Form */}
+				{feedType === 'directory' && (
+					<div
+						css={{
+							backgroundColor: colors.surface,
+							borderRadius: radius.lg,
+							border: `1px solid ${colors.border}`,
+							padding: spacing.xl,
+							boxShadow: shadows.sm,
+						}}
+					>
+						<FormField label="Name" required>
+							<input
+								type="text"
+								value={directoryForm.name}
+								placeholder="My Audiobooks"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										directoryForm.name = (e.target as HTMLInputElement).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField label="Description">
+							<textarea
+								value={directoryForm.description}
+								placeholder="Optional description for this feed"
+								rows={3}
+								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
+								on={{
+									input: (e) => {
+										directoryForm.description = (
+											e.target as HTMLTextAreaElement
+										).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField label="Media Root" required>
+							{rootsState.status === 'loading' && (
+								<p css={{ color: colors.textMuted, margin: 0 }}>
+									Loading media roots...
+								</p>
+							)}
+							{rootsState.status === 'error' && (
+								<p css={{ color: '#ef4444', margin: 0 }}>
+									Error: {rootsState.message}
+								</p>
+							)}
+							{rootsState.status === 'success' && (
+								<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+									{rootsState.roots.map((root) => (
+										<button
+											key={root.name}
+											type="button"
+											css={{
+												padding: `${spacing.sm} ${spacing.md}`,
+												fontSize: typography.fontSize.sm,
+												borderRadius: radius.md,
+												border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
+												backgroundColor:
+													directoryForm.selectedRoot === root.name
+														? colors.primary
+														: colors.background,
+												color:
+													directoryForm.selectedRoot === root.name
+														? colors.background
+														: colors.text,
+												cursor: 'pointer',
+												transition: `all ${transitions.fast}`,
+												'&:hover': {
+													borderColor: colors.primary,
+												},
+											}}
+											on={{ click: () => selectDirectoryRoot(root.name) }}
+										>
+											{root.name}
+										</button>
+									))}
+								</div>
+							)}
+						</FormField>
+
+						{directoryForm.selectedRoot && (
+							<FormField label="Directory">
+								<DirectoryBrowser
+									rootName={directoryForm.selectedRoot}
+									currentPath={directoryForm.currentPath}
+									browseState={browseState}
+									onNavigateUp={navigateDirectoryUp}
+									onNavigateToDir={navigateDirectoryToDir}
+								/>
+							</FormField>
+						)}
+
+						<div
+							css={{
+								display: 'grid',
+								gridTemplateColumns: '1fr 1fr',
+								gap: spacing.lg,
+							}}
+						>
+							<FormField label="Sort By">
+								<select
+									value={directoryForm.sortFields}
+									css={inputStyles}
+									on={{
+										change: (e) => {
+											directoryForm.sortFields = (
+												e.target as HTMLSelectElement
+											).value
+											this.update()
+										},
+									}}
+								>
+									<option value="filename">Filename</option>
+									<option value="date">Date Modified</option>
+									<option value="size">File Size</option>
+								</select>
+							</FormField>
+
+							<FormField label="Order">
+								<select
+									value={directoryForm.sortOrder}
+									css={inputStyles}
+									on={{
+										change: (e) => {
+											directoryForm.sortOrder = (e.target as HTMLSelectElement)
+												.value as 'asc' | 'desc'
+											this.update()
+										},
+									}}
+								>
+									<option value="asc">Ascending</option>
+									<option value="desc">Descending</option>
+								</select>
+							</FormField>
+						</div>
+
+						{submitState.status === 'error' && (
+							<ErrorBox message={submitState.message} />
+						)}
+
+						<FormActions
+							canSubmit={canSubmitDirectory}
+							isSubmitting={submitState.status === 'submitting'}
+							onSubmit={handleDirectorySubmit}
+						/>
+					</div>
+				)}
+
+				{/* Curated Feed Form */}
+				{feedType === 'curated' && (
+					<div
+						css={{
+							backgroundColor: colors.surface,
+							borderRadius: radius.lg,
+							border: `1px solid ${colors.border}`,
+							padding: spacing.xl,
+							boxShadow: shadows.sm,
+						}}
+					>
+						<FormField label="Name" required>
+							<input
+								type="text"
+								value={curatedForm.name}
+								placeholder="My Custom Playlist"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										curatedForm.name = (e.target as HTMLInputElement).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField label="Description">
+							<textarea
+								value={curatedForm.description}
+								placeholder="Optional description for this feed"
+								rows={3}
+								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
+								on={{
+									input: (e) => {
+										curatedForm.description = (
+											e.target as HTMLTextAreaElement
+										).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField label="Select Files" required>
+							{rootsState.status === 'loading' && (
+								<p css={{ color: colors.textMuted, margin: 0 }}>
+									Loading media roots...
+								</p>
+							)}
+							{rootsState.status === 'error' && (
+								<p css={{ color: '#ef4444', margin: 0 }}>
+									Error: {rootsState.message}
+								</p>
+							)}
+							{rootsState.status === 'success' && (
+								<FilePicker
+									roots={rootsState.roots}
+									pickerRoot={pickerRoot}
+									pickerPath={pickerPath}
+									browseState={browseState}
+									onSelectRoot={selectPickerRoot}
+									onNavigateToDir={navigatePickerToDir}
+									onNavigateUp={navigatePickerUp}
+									onToggleFile={toggleFileSelection}
+									isFileSelected={isFileSelected}
+								/>
+							)}
+						</FormField>
+
+						{curatedForm.selectedFiles.length > 0 && (
+							<FormField label={`Selected Files (${curatedForm.selectedFiles.length})`}>
+								<SelectedFilesList
+									files={curatedForm.selectedFiles}
+									onRemove={removeSelectedFile}
+								/>
+							</FormField>
+						)}
+
+						<div
+							css={{
+								display: 'grid',
+								gridTemplateColumns: '1fr 1fr',
+								gap: spacing.lg,
+							}}
+						>
+							<FormField label="Sort By">
+								<select
+									value={curatedForm.sortFields}
+									css={inputStyles}
+									on={{
+										change: (e) => {
+											curatedForm.sortFields = (
+												e.target as HTMLSelectElement
+											).value
+											this.update()
+										},
+									}}
+								>
+									<option value="position">Manual Order</option>
+									<option value="filename">Filename</option>
+									<option value="date">Date Modified</option>
+									<option value="size">File Size</option>
+								</select>
+							</FormField>
+
+							<FormField label="Order">
+								<select
+									value={curatedForm.sortOrder}
+									css={inputStyles}
+									on={{
+										change: (e) => {
+											curatedForm.sortOrder = (e.target as HTMLSelectElement)
+												.value as 'asc' | 'desc'
+											this.update()
+										},
+									}}
+								>
+									<option value="asc">Ascending</option>
+									<option value="desc">Descending</option>
+								</select>
+							</FormField>
+						</div>
+
+						{submitState.status === 'error' && (
+							<ErrorBox message={submitState.message} />
+						)}
+
+						<FormActions
+							canSubmit={canSubmitCurated}
+							isSubmitting={submitState.status === 'submitting'}
+							onSubmit={handleCuratedSubmit}
+						/>
+					</div>
+				)}
 			</div>
 		)
 	}
 }
 
-// Shared input styles
+// === Shared Styles ===
+
 const inputStyles = {
 	width: '100%',
 	padding: spacing.sm,
@@ -468,7 +718,59 @@ const inputStyles = {
 	},
 }
 
-// Form field wrapper component
+// === Helper Components ===
+
+function FeedTypeButton({
+	selected,
+	onClick,
+	title,
+	description,
+}: {
+	selected: boolean
+	onClick: () => void
+	title: string
+	description: string
+}) {
+	return (
+		<button
+			type="button"
+			css={{
+				flex: 1,
+				padding: spacing.lg,
+				textAlign: 'left',
+				borderRadius: radius.md,
+				border: `2px solid ${selected ? colors.primary : colors.border}`,
+				backgroundColor: selected ? 'rgba(59, 130, 246, 0.05)' : colors.background,
+				cursor: 'pointer',
+				transition: `all ${transitions.fast}`,
+				'&:hover': {
+					borderColor: colors.primary,
+				},
+			}}
+			on={{ click: onClick }}
+		>
+			<div
+				css={{
+					fontSize: typography.fontSize.base,
+					fontWeight: typography.fontWeight.semibold,
+					color: colors.text,
+					marginBottom: spacing.xs,
+				}}
+			>
+				{title}
+			</div>
+			<div
+				css={{
+					fontSize: typography.fontSize.sm,
+					color: colors.textMuted,
+				}}
+			>
+				{description}
+			</div>
+		</button>
+	)
+}
+
 function FormField({
 	label,
 	required,
@@ -497,7 +799,85 @@ function FormField({
 	)
 }
 
-// Directory browser component
+function ErrorBox({ message }: { message: string }) {
+	return (
+		<div
+			css={{
+				padding: spacing.md,
+				backgroundColor: 'rgba(239, 68, 68, 0.1)',
+				borderRadius: radius.md,
+				border: '1px solid rgba(239, 68, 68, 0.3)',
+				marginTop: spacing.lg,
+			}}
+		>
+			<p css={{ color: '#ef4444', margin: 0 }}>{message}</p>
+		</div>
+	)
+}
+
+function FormActions({
+	canSubmit,
+	isSubmitting,
+	onSubmit,
+}: {
+	canSubmit: boolean
+	isSubmitting: boolean
+	onSubmit: () => void
+}) {
+	return (
+		<div
+			css={{
+				display: 'flex',
+				gap: spacing.md,
+				justifyContent: 'flex-end',
+				marginTop: spacing.xl,
+				paddingTop: spacing.lg,
+				borderTop: `1px solid ${colors.border}`,
+			}}
+		>
+			<Link
+				href="/admin"
+				css={{
+					padding: `${spacing.sm} ${spacing.lg}`,
+					fontSize: typography.fontSize.sm,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.text,
+					backgroundColor: colors.background,
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					textDecoration: 'none',
+					cursor: 'pointer',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						backgroundColor: colors.surface,
+					},
+				}}
+			>
+				Cancel
+			</Link>
+			<button
+				type="button"
+				disabled={!canSubmit}
+				css={{
+					padding: `${spacing.sm} ${spacing.lg}`,
+					fontSize: typography.fontSize.sm,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.background,
+					backgroundColor: canSubmit ? colors.primary : colors.border,
+					border: 'none',
+					borderRadius: radius.md,
+					cursor: canSubmit ? 'pointer' : 'not-allowed',
+					transition: `all ${transitions.fast}`,
+					'&:hover': canSubmit ? { backgroundColor: colors.primaryHover } : {},
+				}}
+				on={{ click: onSubmit }}
+			>
+				{isSubmitting ? 'Creating...' : 'Create Feed'}
+			</button>
+		</div>
+	)
+}
+
 function DirectoryBrowser({
 	rootName,
 	currentPath,
@@ -521,7 +901,6 @@ function DirectoryBrowser({
 				overflow: 'hidden',
 			}}
 		>
-			{/* Path breadcrumb */}
 			<div
 				css={{
 					padding: spacing.sm,
@@ -545,7 +924,6 @@ function DirectoryBrowser({
 				{!currentPath && <span css={{ color: colors.textMuted }}>/</span>}
 			</div>
 
-			{/* Directory listing */}
 			<div
 				css={{
 					maxHeight: '300px',
@@ -567,7 +945,6 @@ function DirectoryBrowser({
 
 				{browseState.status === 'success' && (
 					<div>
-						{/* Parent directory link */}
 						{currentPath && (
 							<button
 								type="button"
@@ -579,7 +956,6 @@ function DirectoryBrowser({
 							</button>
 						)}
 
-						{/* Directory entries */}
 						{browseState.entries.length === 0 && !currentPath && (
 							<div
 								css={{
@@ -606,7 +982,6 @@ function DirectoryBrowser({
 								</button>
 							))}
 
-						{/* Show file count */}
 						{browseState.entries.filter((e) => e.type === 'file').length > 0 && (
 							<div
 								css={{
@@ -623,6 +998,294 @@ function DirectoryBrowser({
 					</div>
 				)}
 			</div>
+		</div>
+	)
+}
+
+function FilePicker({
+	roots,
+	pickerRoot,
+	pickerPath,
+	browseState,
+	onSelectRoot,
+	onNavigateToDir,
+	onNavigateUp,
+	onToggleFile,
+	isFileSelected,
+}: {
+	roots: Array<MediaRoot>
+	pickerRoot: string | null
+	pickerPath: string
+	browseState: BrowseState
+	onSelectRoot: (name: string) => void
+	onNavigateToDir: (name: string) => void
+	onNavigateUp: () => void
+	onToggleFile: (filename: string) => void
+	isFileSelected: (filename: string) => boolean
+}) {
+	const pathParts = pickerPath ? pickerPath.split('/') : []
+
+	return (
+		<div
+			css={{
+				border: `1px solid ${colors.border}`,
+				borderRadius: radius.md,
+				overflow: 'hidden',
+			}}
+		>
+			{/* Root selector */}
+			<div
+				css={{
+					padding: spacing.sm,
+					backgroundColor: colors.background,
+					borderBottom: `1px solid ${colors.border}`,
+					display: 'flex',
+					gap: spacing.sm,
+					flexWrap: 'wrap',
+				}}
+			>
+				{roots.map((root) => (
+					<button
+						key={root.name}
+						type="button"
+						css={{
+							padding: `${spacing.xs} ${spacing.sm}`,
+							fontSize: typography.fontSize.xs,
+							borderRadius: radius.sm,
+							border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+							backgroundColor:
+								pickerRoot === root.name ? colors.primary : 'transparent',
+							color:
+								pickerRoot === root.name ? colors.background : colors.text,
+							cursor: 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								borderColor: colors.primary,
+							},
+						}}
+						on={{ click: () => onSelectRoot(root.name) }}
+					>
+						{root.name}
+					</button>
+				))}
+			</div>
+
+			{/* Path breadcrumb */}
+			{pickerRoot && (
+				<div
+					css={{
+						padding: spacing.sm,
+						backgroundColor: colors.background,
+						borderBottom: `1px solid ${colors.border}`,
+						fontSize: typography.fontSize.sm,
+						fontFamily: 'monospace',
+						color: colors.textMuted,
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.xs,
+					}}
+				>
+					<span css={{ color: colors.primary }}>{pickerRoot}</span>
+					{pathParts.map((part, i) => (
+						<span key={i}>
+							<span css={{ color: colors.textMuted }}>/</span>
+							<span>{part}</span>
+						</span>
+					))}
+					{!pickerPath && <span css={{ color: colors.textMuted }}>/</span>}
+				</div>
+			)}
+
+			{/* File listing */}
+			<div
+				css={{
+					maxHeight: '300px',
+					overflowY: 'auto',
+					backgroundColor: colors.surface,
+				}}
+			>
+				{!pickerRoot && (
+					<div
+						css={{
+							padding: spacing.lg,
+							textAlign: 'center',
+							color: colors.textMuted,
+						}}
+					>
+						Select a media root to browse files
+					</div>
+				)}
+
+				{pickerRoot && browseState.status === 'loading' && (
+					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+						<span css={{ color: colors.textMuted }}>Loading...</span>
+					</div>
+				)}
+
+				{pickerRoot && browseState.status === 'error' && (
+					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+						<span css={{ color: '#ef4444' }}>{browseState.message}</span>
+					</div>
+				)}
+
+				{pickerRoot && browseState.status === 'success' && (
+					<div>
+						{pickerPath && (
+							<button
+								type="button"
+								css={directoryItemStyles}
+								on={{ click: onNavigateUp }}
+							>
+								<span css={{ marginRight: spacing.sm }}>📁</span>
+								<span>..</span>
+							</button>
+						)}
+
+						{browseState.entries.length === 0 && !pickerPath && (
+							<div
+								css={{
+									padding: spacing.lg,
+									textAlign: 'center',
+									color: colors.textMuted,
+								}}
+							>
+								Empty directory
+							</div>
+						)}
+
+						{/* Directories */}
+						{browseState.entries
+							.filter((e) => e.type === 'directory')
+							.map((entry) => (
+								<button
+									key={entry.name}
+									type="button"
+									css={directoryItemStyles}
+									on={{ click: () => onNavigateToDir(entry.name) }}
+								>
+									<span css={{ marginRight: spacing.sm }}>📁</span>
+									<span>{entry.name}</span>
+								</button>
+							))}
+
+						{/* Files with checkboxes */}
+						{browseState.entries
+							.filter((e) => e.type === 'file')
+							.map((entry) => {
+								const selected = isFileSelected(entry.name)
+								return (
+									<button
+										key={entry.name}
+										type="button"
+										css={{
+											...directoryItemStyles,
+											backgroundColor: selected
+												? 'rgba(59, 130, 246, 0.1)'
+												: 'transparent',
+										}}
+										on={{ click: () => onToggleFile(entry.name) }}
+									>
+										<span
+											css={{
+												marginRight: spacing.sm,
+												width: '16px',
+												height: '16px',
+												border: `1px solid ${selected ? colors.primary : colors.border}`,
+												borderRadius: radius.sm,
+												backgroundColor: selected ? colors.primary : 'transparent',
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												fontSize: '12px',
+												color: colors.background,
+											}}
+										>
+											{selected && '✓'}
+										</span>
+										<span css={{ marginRight: spacing.sm }}>📄</span>
+										<span>{entry.name}</span>
+									</button>
+								)
+							})}
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}
+
+function SelectedFilesList({
+	files,
+	onRemove,
+}: {
+	files: Array<{ rootName: string; relativePath: string; fullPath: string; filename: string }>
+	onRemove: (fullPath: string) => void
+}) {
+	return (
+		<div
+			css={{
+				border: `1px solid ${colors.border}`,
+				borderRadius: radius.md,
+				maxHeight: '200px',
+				overflowY: 'auto',
+			}}
+		>
+			{files.map((file, index) => (
+				<div
+					key={file.fullPath}
+					css={{
+						display: 'flex',
+						alignItems: 'center',
+						padding: `${spacing.sm} ${spacing.md}`,
+						borderBottom:
+							index < files.length - 1 ? `1px solid ${colors.border}` : 'none',
+						backgroundColor: colors.background,
+					}}
+				>
+					<span
+						css={{
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							marginRight: spacing.sm,
+							minWidth: '24px',
+						}}
+					>
+						{index + 1}.
+					</span>
+					<span
+						css={{
+							flex: 1,
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap',
+						}}
+					>
+						<span css={{ color: colors.primary }}>{file.rootName}</span>
+						<span css={{ color: colors.textMuted }}>/{file.relativePath}</span>
+					</span>
+					<button
+						type="button"
+						css={{
+							padding: `${spacing.xs} ${spacing.sm}`,
+							fontSize: typography.fontSize.xs,
+							color: '#ef4444',
+							backgroundColor: 'transparent',
+							border: 'none',
+							borderRadius: radius.sm,
+							cursor: 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							},
+						}}
+						on={{ click: () => onRemove(file.fullPath) }}
+					>
+						Remove
+					</button>
+				</div>
+			))}
 		</div>
 	)
 }

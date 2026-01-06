@@ -43,15 +43,58 @@ type Token = {
 	revokedAt: number | null
 }
 
+type MediaItem = {
+	title: string
+	author: string | null
+	duration: number | null
+	sizeBytes: number
+	filename: string
+	path: string
+}
+
 type FeedResponse = {
 	feed: Feed
 	tokens: Array<Token>
+	items: Array<MediaItem>
 }
 
 type LoadingState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
 	| { status: 'success'; data: FeedResponse }
+
+/**
+ * Format duration in seconds to human-readable format (e.g., "1h 23m" or "45m 12s")
+ */
+function formatDuration(seconds: number | null): string {
+	if (seconds === null || seconds === 0) return '—'
+
+	const hours = Math.floor(seconds / 3600)
+	const minutes = Math.floor((seconds % 3600) / 60)
+	const secs = Math.floor(seconds % 60)
+
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`
+	}
+	if (minutes > 0) {
+		return `${minutes}m ${secs}s`
+	}
+	return `${secs}s`
+}
+
+/**
+ * Format file size in bytes to human-readable format (e.g., "1.2 GB" or "456 MB")
+ */
+function formatFileSize(bytes: number): string {
+	if (bytes === 0) return '0 B'
+
+	const units = ['B', 'KB', 'MB', 'GB', 'TB']
+	const k = 1024
+	const i = Math.floor(Math.log(bytes) / Math.log(k))
+	const size = bytes / Math.pow(k, i)
+
+	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
+}
 
 /**
  * FeedDetail component - displays feed information and manages tokens.
@@ -175,7 +218,7 @@ export function FeedDetail(this: Handle) {
 			return <ErrorMessage message={state.message} />
 		}
 
-		const { feed, tokens } = state.data
+		const { feed, tokens, items } = state.data
 		const isDirectory = feed.type === 'directory'
 		const activeTokens = tokens.filter((t) => !t.revokedAt)
 		const revokedTokens = tokens.filter((t) => t.revokedAt)
@@ -286,6 +329,201 @@ export function FeedDetail(this: Handle) {
 						<InfoItem label="Created" value={formatDate(feed.createdAt)} />
 						<InfoItem label="Updated" value={formatDate(feed.updatedAt)} />
 					</div>
+				</div>
+
+				{/* Media Items Section */}
+				<div
+					css={{
+						backgroundColor: colors.surface,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						padding: spacing.lg,
+						marginBottom: spacing.xl,
+						boxShadow: shadows.sm,
+					}}
+				>
+					<h3
+						css={{
+							fontSize: typography.fontSize.base,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: `0 0 ${spacing.lg} 0`,
+						}}
+					>
+						Media Items ({items.length})
+					</h3>
+
+					{items.length === 0 ? (
+						<div
+							css={{
+								textAlign: 'center',
+								padding: spacing.xl,
+								color: colors.textMuted,
+							}}
+						>
+							<p css={{ margin: 0 }}>No media items found in this feed.</p>
+						</div>
+					) : (
+						<div css={{ overflowX: 'auto' }}>
+							<table
+								css={{
+									width: '100%',
+									borderCollapse: 'collapse',
+									fontSize: typography.fontSize.sm,
+								}}
+							>
+								<thead>
+									<tr
+										css={{
+											borderBottom: `1px solid ${colors.border}`,
+										}}
+									>
+										<th
+											css={{
+												textAlign: 'left',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												width: '40px',
+											}}
+										>
+											#
+										</th>
+										<th
+											css={{
+												textAlign: 'left',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+											}}
+										>
+											Title
+										</th>
+										<th
+											css={{
+												textAlign: 'left',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+											}}
+										>
+											Author
+										</th>
+										<th
+											css={{
+												textAlign: 'right',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												width: '80px',
+											}}
+										>
+											Duration
+										</th>
+										<th
+											css={{
+												textAlign: 'right',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												width: '80px',
+											}}
+										>
+											Size
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{items.map((item, index) => (
+										<tr
+											key={item.path}
+											css={{
+												borderBottom: `1px solid ${colors.border}`,
+												'&:last-child': { borderBottom: 'none' },
+												'&:hover': {
+													backgroundColor: colors.background,
+												},
+											}}
+										>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontFamily: 'monospace',
+													fontSize: typography.fontSize.xs,
+												}}
+											>
+												{index + 1}
+											</td>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.text,
+													maxWidth: '300px',
+													overflow: 'hidden',
+													textOverflow: 'ellipsis',
+													whiteSpace: 'nowrap',
+												}}
+												title={item.title}
+											>
+												{item.title}
+											</td>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													maxWidth: '200px',
+													overflow: 'hidden',
+													textOverflow: 'ellipsis',
+													whiteSpace: 'nowrap',
+												}}
+												title={item.author ?? undefined}
+											>
+												{item.author || '—'}
+											</td>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													textAlign: 'right',
+													fontFamily: 'monospace',
+													fontSize: typography.fontSize.xs,
+												}}
+											>
+												{formatDuration(item.duration)}
+											</td>
+											<td
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													textAlign: 'right',
+													fontFamily: 'monospace',
+													fontSize: typography.fontSize.xs,
+												}}
+											>
+												{formatFileSize(item.sizeBytes)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
 				</div>
 
 				{/* Tokens Section */}

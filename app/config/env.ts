@@ -62,7 +62,7 @@ const EnvSchema = z.object({
 	PORT: z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 44100)),
+		.transform((val) => (val ? parseInt(val, 10) : 22050)),
 	DATABASE_PATH: z.string().default('./data/sqlite.db'),
 	CACHE_DATABASE_PATH: z.string().default('./data/cache.db'),
 	MEDIA_PATHS: MediaPathsSchema,

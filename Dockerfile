@@ -18,12 +18,12 @@ RUN mkdir -p /data
 
 # Default environment variables
 ENV NODE_ENV=production
-ENV PORT=44100
+ENV PORT=22050
 ENV DATABASE_PATH=/data/sqlite.db
 ENV CACHE_DATABASE_PATH=/data/cache.db
 
-# Expose the default port
-EXPOSE 44100
+# Expose the default port (22050 = audiobook sample rate 🎧)
+EXPOSE 22050
 
 # Run the application
 CMD ["bun", "run", "start"]

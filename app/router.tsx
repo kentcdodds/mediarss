@@ -70,8 +70,8 @@ const router = createRouter({
 					? 'public, max-age=31536000, immutable'
 					: 'no-cache',
 		}),
-		...(Bun.env.NODE_ENV === 'development' ? [logger()] : []),
-	].filter(Boolean),
+		logger(),
+	],
 	defaultHandler() {
 		return render(
 			Layout({

@@ -39,12 +39,21 @@ type UpdateAssignmentsRequest = {
 	feedIds: Array<string>
 }
 
+type BulkAssignRequest = {
+	mediaPaths: Array<string> // Array of "mediaRoot:relativePath" strings
+	feedId: string
+	action: 'add' | 'remove'
+}
+
 /**
  * GET /admin/api/media/assignments
  * Returns feed assignments for all media files plus available feeds.
  *
  * PUT /admin/api/media/assignments
  * Updates curated feed assignments for a single file.
+ *
+ * POST /admin/api/media/assignments
+ * Bulk assign multiple media files to a single feed.
  */
 export default {
 	middleware: [],
@@ -55,6 +64,10 @@ export default {
 
 		if (context.method === 'PUT') {
 			return handlePut(context.request)
+		}
+
+		if (context.method === 'POST') {
+			return handlePost(context.request)
 		}
 
 		return Response.json({ error: 'Method not allowed' }, { status: 405 })
@@ -209,5 +222,108 @@ async function handlePut(request: Request): Promise<Response> {
 	return Response.json({
 		added: toAdd.length,
 		removed: toRemove.length,
+	})
+}
+
+async function handlePost(request: Request): Promise<Response> {
+	let body: BulkAssignRequest
+	try {
+		body = await request.json()
+	} catch {
+		return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
+	}
+
+	const { mediaPaths, feedId, action } = body
+
+	if (!Array.isArray(mediaPaths) || mediaPaths.length === 0) {
+		return Response.json(
+			{ error: 'mediaPaths must be a non-empty array' },
+			{ status: 400 },
+		)
+	}
+
+	if (typeof feedId !== 'string' || !feedId.trim()) {
+		return Response.json(
+			{ error: 'feedId is required and must be a non-empty string' },
+			{ status: 400 },
+		)
+	}
+
+	if (action !== 'add' && action !== 'remove') {
+		return Response.json(
+			{ error: 'action is required and must be "add" or "remove"' },
+			{ status: 400 },
+		)
+	}
+
+	// Validate the feed exists and is a curated feed
+	const curatedFeeds = listCuratedFeeds()
+	const feed = curatedFeeds.find((f) => f.id === feedId)
+	if (!feed) {
+		return Response.json(
+			{ error: `Feed ID "${feedId}" is not a valid curated feed` },
+			{ status: 400 },
+		)
+	}
+
+	// Get current items in the feed
+	const currentItems = getItemsForFeed(feedId)
+	let maxPosition = currentItems.reduce(
+		(max, item) => Math.max(max, item.position ?? 0),
+		-1,
+	)
+
+	let processed = 0
+	let skipped = 0
+	const errors: Array<string> = []
+
+	for (const mediaPath of mediaPaths) {
+		if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
+			errors.push(`Invalid media path: ${mediaPath}`)
+			continue
+		}
+
+		try {
+			const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+			const root = getMediaRootByName(mediaRoot)
+			if (!root) {
+				errors.push(`Unknown media root in path: ${mediaPath}`)
+				continue
+			}
+
+			// Check if already assigned
+			const alreadyAssigned = currentItems.some(
+				(item) =>
+					item.mediaRoot === mediaRoot && item.relativePath === relativePath,
+			)
+
+			if (action === 'add') {
+				if (alreadyAssigned) {
+					skipped++
+				} else {
+					maxPosition++
+					addItemToFeed(feedId, mediaRoot, relativePath, maxPosition)
+					processed++
+				}
+			} else {
+				// action === 'remove'
+				if (alreadyAssigned) {
+					removeItemFromFeed(feedId, mediaRoot, relativePath)
+					processed++
+				} else {
+					skipped++
+				}
+			}
+		} catch (err) {
+			errors.push(
+				`Failed to process ${mediaPath}: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			)
+		}
+	}
+
+	return Response.json({
+		[action === 'add' ? 'added' : 'removed']: processed,
+		skipped,
+		errors: errors.length > 0 ? errors : undefined,
 	})
 }

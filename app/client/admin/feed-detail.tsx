@@ -3272,7 +3272,68 @@ function AddFilesModal({
 						</div>
 					)}
 
-					{rootsState.status === 'success' && (
+					{rootsState.status === 'success' && rootsState.roots.length === 0 && (
+						<div
+							css={{
+								padding: spacing.xl,
+								textAlign: 'center',
+								color: colors.textMuted,
+							}}
+						>
+							<div
+								css={{
+									width: '48px',
+									height: '48px',
+									margin: `0 auto ${spacing.md}`,
+									borderRadius: radius.md,
+									backgroundColor: colors.background,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									fontSize: '24px',
+								}}
+							>
+								📂
+							</div>
+							<p
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									margin: `0 0 ${spacing.sm} 0`,
+								}}
+							>
+								No media files available
+							</p>
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: 0,
+									maxWidth: '400px',
+									marginLeft: 'auto',
+									marginRight: 'auto',
+								}}
+							>
+								To add files to this feed, first add media files to one of your
+								configured media path directories. Check your{' '}
+								<code
+									css={{
+										fontSize: typography.fontSize.xs,
+										backgroundColor: colors.background,
+										padding: `${spacing.xs} ${spacing.xs}`,
+										borderRadius: radius.sm,
+										fontFamily: 'monospace',
+									}}
+								>
+									MEDIA_PATHS
+								</code>{' '}
+								environment variable to see where media should be stored.
+							</p>
+						</div>
+					)}
+
+					{rootsState.status === 'success' && rootsState.roots.length > 0 && (
 						<>
 							<div
 								css={{
@@ -3393,12 +3454,56 @@ function AddFilesModal({
 										{browseState.entries.length === 0 && !pickerPath && (
 											<div
 												css={{
-													padding: spacing.lg,
+													padding: spacing.xl,
 													textAlign: 'center',
 													color: colors.textMuted,
 												}}
 											>
-												Empty directory
+												<div
+													css={{
+														width: '40px',
+														height: '40px',
+														margin: `0 auto ${spacing.sm}`,
+														borderRadius: radius.md,
+														backgroundColor: colors.background,
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontSize: '20px',
+													}}
+												>
+													📂
+												</div>
+												<p
+													css={{
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+														margin: `0 0 ${spacing.xs} 0`,
+													}}
+												>
+													No files in this directory
+												</p>
+												<p
+													css={{
+														fontSize: typography.fontSize.xs,
+														color: colors.textMuted,
+														margin: 0,
+													}}
+												>
+													Add media files to{' '}
+													<code
+														css={{
+															fontFamily: 'monospace',
+															backgroundColor: colors.background,
+															padding: `0 ${spacing.xs}`,
+															borderRadius: radius.sm,
+														}}
+													>
+														{pickerRoot}
+													</code>{' '}
+													to see them here.
+												</p>
 											</div>
 										)}
 

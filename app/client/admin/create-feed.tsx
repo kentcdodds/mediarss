@@ -104,6 +104,7 @@ export function CreateFeed(this: Handle) {
 	// File picker state for curated feeds
 	let pickerRoot: string | null = null
 	let pickerPath = ''
+	let pickerSearch = ''
 
 	// API states
 	let rootsState: RootsState = { status: 'loading' }
@@ -267,6 +268,7 @@ export function CreateFeed(this: Handle) {
 		if (rootsState.status !== 'success') return
 		pickerRoot = rootName
 		pickerPath = ''
+		pickerSearch = ''
 		browse(rootName, '')
 	}
 
@@ -274,6 +276,7 @@ export function CreateFeed(this: Handle) {
 		if (!pickerRoot) return
 		const newPath = pickerPath ? `${pickerPath}/${dirName}` : dirName
 		pickerPath = newPath
+		pickerSearch = ''
 		browse(pickerRoot, newPath)
 	}
 
@@ -282,6 +285,7 @@ export function CreateFeed(this: Handle) {
 		const parts = pickerPath.split('/')
 		parts.pop()
 		pickerPath = parts.join('/')
+		pickerSearch = ''
 		browse(pickerRoot, pickerPath)
 	}
 
@@ -721,6 +725,11 @@ export function CreateFeed(this: Handle) {
 									pickerRoot={pickerRoot}
 									pickerPath={pickerPath}
 									browseState={browseState}
+									searchFilter={pickerSearch}
+									onSearchChange={(value) => {
+										pickerSearch = value
+										this.update()
+									}}
 									onSelectRoot={selectPickerRoot}
 									onNavigateToDir={navigatePickerToDir}
 									onNavigateUp={navigatePickerUp}
@@ -1255,6 +1264,8 @@ function FilePicker({
 	pickerRoot,
 	pickerPath,
 	browseState,
+	searchFilter,
+	onSearchChange,
 	onSelectRoot,
 	onNavigateToDir,
 	onNavigateUp,
@@ -1265,6 +1276,8 @@ function FilePicker({
 	pickerRoot: string | null
 	pickerPath: string
 	browseState: BrowseState
+	searchFilter: string
+	onSearchChange: (value: string) => void
 	onSelectRoot: (name: string) => void
 	onNavigateToDir: (name: string) => void
 	onNavigateUp: () => void
@@ -1272,6 +1285,7 @@ function FilePicker({
 	isFileSelected: (filename: string) => boolean
 }) {
 	const pathParts = pickerPath ? pickerPath.split('/') : []
+	const searchLower = searchFilter.toLowerCase()
 
 	return (
 		<div
@@ -1343,6 +1357,44 @@ function FilePicker({
 				</div>
 			)}
 
+			{/* Search input */}
+			{pickerRoot && browseState.status === 'success' && (
+				<div
+					css={{
+						padding: spacing.sm,
+						backgroundColor: colors.background,
+						borderBottom: `1px solid ${colors.border}`,
+					}}
+				>
+					<input
+						type="text"
+						placeholder="Search files..."
+						value={searchFilter}
+						css={{
+							width: '100%',
+							padding: spacing.sm,
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							backgroundColor: colors.surface,
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							outline: 'none',
+							transition: `border-color ${transitions.fast}`,
+							'&:focus': {
+								borderColor: colors.primary,
+							},
+							'&::placeholder': {
+								color: colors.textMuted,
+							},
+						}}
+						on={{
+							input: (e) =>
+								onSearchChange((e.target as HTMLInputElement).value),
+						}}
+					/>
+				</div>
+			)}
+
 			{/* File listing */}
 			<div
 				css={{
@@ -1402,7 +1454,11 @@ function FilePicker({
 
 						{/* Directories */}
 						{browseState.entries
-							.filter((e) => e.type === 'directory')
+							.filter(
+								(e) =>
+									e.type === 'directory' &&
+									e.name.toLowerCase().includes(searchLower),
+							)
 							.map((entry) => (
 								<button
 									key={entry.name}
@@ -1417,7 +1473,11 @@ function FilePicker({
 
 						{/* Files with checkboxes */}
 						{browseState.entries
-							.filter((e) => e.type === 'file')
+							.filter(
+								(e) =>
+									e.type === 'file' &&
+									e.name.toLowerCase().includes(searchLower),
+							)
 							.map((entry) => {
 								const selected = isFileSelected(entry.name)
 								return (

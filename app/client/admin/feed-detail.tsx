@@ -1728,15 +1728,25 @@ function EditForm({
 					>
 						{isDirectory ? (
 							<>
+								<option value="publicationDate">Publication Date</option>
+								<option value="title">Title</option>
+								<option value="author">Author</option>
+								<option value="trackNumber">Track Number</option>
+								<option value="duration">Duration</option>
 								<option value="filename">Filename</option>
-								<option value="date">Date Modified</option>
+								<option value="fileModifiedAt">Date Modified</option>
 								<option value="size">File Size</option>
 							</>
 						) : (
 							<>
+								<option value="publicationDate">Publication Date</option>
+								<option value="title">Title</option>
+								<option value="author">Author</option>
+								<option value="trackNumber">Track Number</option>
+								<option value="duration">Duration</option>
 								<option value="position">Manual Order</option>
 								<option value="filename">Filename</option>
-								<option value="date">Date Modified</option>
+								<option value="fileModifiedAt">Date Modified</option>
 								<option value="size">File Size</option>
 							</>
 						)}
@@ -1767,8 +1777,8 @@ function EditForm({
 								),
 						}}
 					>
-						<option value="asc">Ascending</option>
 						<option value="desc">Descending</option>
+						<option value="asc">Ascending</option>
 					</select>
 				</div>
 			</div>

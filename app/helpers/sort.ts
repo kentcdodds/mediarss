@@ -51,6 +51,7 @@ function parseSortString(sortString: string): Array<SortOption> {
 				sizeBytes: 'sizeBytes',
 				trackNumber: 'trackNumber',
 				fileModifiedAt: 'fileModifiedAt',
+				date: 'fileModifiedAt', // backward compatibility alias
 			}
 
 			const mappedProp = propMap[prop] ?? (prop as keyof MediaFile)

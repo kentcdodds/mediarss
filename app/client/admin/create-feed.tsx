@@ -67,16 +67,16 @@ export function CreateFeed(this: Handle) {
 		description: '',
 		selectedRoot: null,
 		currentPath: '',
-		sortFields: 'filename',
-		sortOrder: 'asc',
+		sortFields: 'publicationDate',
+		sortOrder: 'desc',
 	}
 
 	// Curated form state
 	let curatedForm: CuratedFormState = {
 		name: '',
 		description: '',
-		sortFields: 'position',
-		sortOrder: 'asc',
+		sortFields: 'publicationDate',
+		sortOrder: 'desc',
 		selectedFiles: [],
 	}
 
@@ -526,8 +526,13 @@ export function CreateFeed(this: Handle) {
 										},
 									}}
 								>
+									<option value="publicationDate">Publication Date</option>
+									<option value="title">Title</option>
+									<option value="author">Author</option>
+									<option value="trackNumber">Track Number</option>
+									<option value="duration">Duration</option>
 									<option value="filename">Filename</option>
-									<option value="date">Date Modified</option>
+									<option value="fileModifiedAt">Date Modified</option>
 									<option value="size">File Size</option>
 								</select>
 							</FormField>
@@ -545,8 +550,8 @@ export function CreateFeed(this: Handle) {
 										},
 									}}
 								>
-									<option value="asc">Ascending</option>
 									<option value="desc">Descending</option>
+									<option value="asc">Ascending</option>
 								</select>
 							</FormField>
 						</div>
@@ -664,9 +669,14 @@ export function CreateFeed(this: Handle) {
 										},
 									}}
 								>
+									<option value="publicationDate">Publication Date</option>
+									<option value="title">Title</option>
+									<option value="author">Author</option>
+									<option value="trackNumber">Track Number</option>
+									<option value="duration">Duration</option>
 									<option value="position">Manual Order</option>
 									<option value="filename">Filename</option>
-									<option value="date">Date Modified</option>
+									<option value="fileModifiedAt">Date Modified</option>
 									<option value="size">File Size</option>
 								</select>
 							</FormField>
@@ -684,8 +694,8 @@ export function CreateFeed(this: Handle) {
 										},
 									}}
 								>
-									<option value="asc">Ascending</option>
 									<option value="desc">Descending</option>
+									<option value="asc">Ascending</option>
 								</select>
 							</FormField>
 						</div>

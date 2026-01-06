@@ -412,7 +412,7 @@ export function FeedDetail(this: Handle) {
 				this.update()
 			}, 2000)
 		} catch {
-			console.error('Failed to copy to clipboard')
+			console.error('Failed to copy to clipboard text:', url)
 		}
 	}
 

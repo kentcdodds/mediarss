@@ -13,13 +13,13 @@
     "test": "bun test",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",
-    "capture-screenshots": "bun ./scripts/capture-screenshots.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --write .",
     "lint:check": "biome lint .",
     "check": "biome check --write .",
-    "check:ci": "biome check ."
+    "check:ci": "biome check .",
+    "validate": "bun run check:ci && bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",

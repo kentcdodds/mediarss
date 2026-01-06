@@ -14,23 +14,65 @@ const env = getEnv()
 // Initialize database and run migrations
 migrate(db)
 
-const server = Bun.serve({
-	port: env.PORT,
-	routes: createBundlingRoutes(import.meta.dirname),
+function startServer(port: number) {
+	return Bun.serve({
+		port,
+		routes: createBundlingRoutes(import.meta.dirname),
 
-	async fetch(request) {
-		try {
-			const url = new URL(request.url)
-			if (url.pathname === '/') {
-				return Response.redirect(new URL('/admin', request.url), 302)
+		async fetch(request) {
+			try {
+				const url = new URL(request.url)
+				if (url.pathname === '/') {
+					return Response.redirect(new URL('/admin', request.url), 302)
+				}
+				return await router.fetch(request)
+			} catch (error) {
+				console.error(error)
+				return new Response('Internal Server Error', { status: 500 })
 			}
-			return await router.fetch(request)
+		},
+	})
+}
+
+function tryStartServer(desiredPort: number, maxAttempts = 10) {
+	let port = desiredPort
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		try {
+			const server = startServer(port)
+			if (port !== desiredPort) {
+				console.warn(
+					`⚠️  Port ${desiredPort} was taken, using port ${port} instead`,
+				)
+			}
+			return server
 		} catch (error) {
-			console.error(error)
-			return new Response('Internal Server Error', { status: 500 })
+			const isPortTaken =
+				error instanceof Error &&
+				(error.message.includes('EADDRINUSE') ||
+					error.message.includes('address already in use'))
+
+			if (!isPortTaken) {
+				throw error
+			}
+
+			// In production, fail immediately if port is taken
+			if (env.NODE_ENV === 'production') {
+				throw new Error(
+					`Port ${desiredPort} is already in use. In production, the server will not automatically find an alternative port.`,
+				)
+			}
+
+			port++
 		}
-	},
-})
+	}
+
+	throw new Error(
+		`Could not find an available port after ${maxAttempts} attempts (tried ${desiredPort}-${desiredPort + maxAttempts - 1})`,
+	)
+}
+
+const server = tryStartServer(env.PORT)
 
 const url = `http://${server.hostname}:${server.port}`
 

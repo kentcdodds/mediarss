@@ -17,6 +17,7 @@ migrate(db)
 function startServer(port: number) {
 	return Bun.serve({
 		port,
+		idleTimeout: 30, // seconds
 		routes: createBundlingRoutes(import.meta.dirname),
 
 		async fetch(request) {

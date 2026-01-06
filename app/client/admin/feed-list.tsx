@@ -13,8 +13,10 @@ type DirectoryFeed = {
 	id: string
 	name: string
 	description: string
-	directoryPath: string
+	directoryPaths: string // JSON array of paths
 	tokenCount: number
+	itemCount: number
+	lastAccessedAt: number | null
 	type: 'directory'
 	createdAt: number
 }
@@ -24,6 +26,8 @@ type CuratedFeed = {
 	name: string
 	description: string
 	tokenCount: number
+	itemCount: number
+	lastAccessedAt: number | null
 	type: 'curated'
 	createdAt: number
 }
@@ -255,8 +259,50 @@ function EmptyState() {
 	)
 }
 
+/**
+ * Parse directory paths from JSON string
+ */
+function parseDirectoryPaths(pathsJson: string): Array<string> {
+	try {
+		return JSON.parse(pathsJson) as Array<string>
+	} catch {
+		return []
+	}
+}
+
+/**
+ * Format a relative time string (e.g., "2 hours ago", "3 days ago")
+ */
+function formatRelativeTime(timestamp: number): string {
+	const now = Math.floor(Date.now() / 1000)
+	const diff = now - timestamp
+
+	if (diff < 60) return 'just now'
+	if (diff < 3600) {
+		const mins = Math.floor(diff / 60)
+		return `${mins} min${mins !== 1 ? 's' : ''} ago`
+	}
+	if (diff < 86400) {
+		const hours = Math.floor(diff / 3600)
+		return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+	}
+	if (diff < 604800) {
+		const days = Math.floor(diff / 86400)
+		return `${days} day${days !== 1 ? 's' : ''} ago`
+	}
+	if (diff < 2592000) {
+		const weeks = Math.floor(diff / 604800)
+		return `${weeks} week${weeks !== 1 ? 's' : ''} ago`
+	}
+	const months = Math.floor(diff / 2592000)
+	return `${months} month${months !== 1 ? 's' : ''} ago`
+}
+
 function FeedCard({ feed }: { feed: Feed }) {
 	const isDirectory = feed.type === 'directory'
+	const directoryPaths = isDirectory
+		? parseDirectoryPaths((feed as DirectoryFeed).directoryPaths)
+		: []
 
 	return (
 		<div
@@ -339,29 +385,42 @@ function FeedCard({ feed }: { feed: Feed }) {
 				</p>
 			)}
 
-			{isDirectory && (
-				<p
+			{isDirectory && directoryPaths.length > 0 && (
+				<div
 					css={{
 						fontSize: typography.fontSize.xs,
 						color: colors.textMuted,
-						margin: 0,
 						fontFamily: 'monospace',
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: spacing.xs,
 					}}
 				>
-					{(feed as DirectoryFeed).directoryPath}
-				</p>
+					{directoryPaths.map((path) => (
+						<span
+							key={path}
+							css={{
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+							}}
+						>
+							{path}
+						</span>
+					))}
+				</div>
 			)}
 
 			<div
 				css={{
 					display: 'flex',
 					alignItems: 'center',
+					justifyContent: 'space-between',
 					marginTop: 'auto',
 					paddingTop: spacing.sm,
 					borderTop: `1px solid ${colors.border}`,
+					gap: spacing.md,
+					flexWrap: 'wrap',
 				}}
 			>
 				<span
@@ -370,12 +429,24 @@ function FeedCard({ feed }: { feed: Feed }) {
 						color: colors.textMuted,
 					}}
 				>
-					{feed.tokenCount === 0 ? (
-						<span css={{ color: '#f59e0b' }}>No tokens</span>
+					{feed.itemCount === 0 ? (
+						<span css={{ color: '#f59e0b' }}>No files</span>
 					) : (
 						<>
-							{feed.tokenCount} token{feed.tokenCount !== 1 ? 's' : ''}
+							{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
 						</>
+					)}
+				</span>
+				<span
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+					}}
+				>
+					{feed.lastAccessedAt ? (
+						<>Accessed {formatRelativeTime(feed.lastAccessedAt)}</>
+					) : (
+						<span css={{ fontStyle: 'italic' }}>Never accessed</span>
 					)}
 				</span>
 			</div>

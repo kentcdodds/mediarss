@@ -77,7 +77,7 @@ const server = tryStartServer(env.PORT)
 
 const url = `http://${server.hostname}:${server.port}`
 
-setupInteractiveCli(url)
+setupInteractiveCli(url, server)
 
 // Fire-and-forget cache warming (don't block server startup)
 warmMediaCache().catch((error) => {

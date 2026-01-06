@@ -1,9 +1,10 @@
 import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
-import { toAbsolutePath } from '#app/config/env.ts'
+import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedByToken } from '#app/db/curated-feed-tokens.ts'
 import { getDirectoryFeedByToken } from '#app/db/directory-feed-tokens.ts'
+import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { DirectoryFeed, Feed } from '#app/db/types.ts'
 
@@ -31,14 +32,16 @@ function getFeedByToken(
  * Check if a feed is a DirectoryFeed.
  */
 function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPath' in feed
+	return 'directoryPaths' in feed
 }
 
 /**
  * Parse the path parameter into root name and relative path.
  * Format: "rootName/relative/path/to/file.mp3"
  */
-function parsePathParam(pathParam: string): { rootName: string; relativePath: string } | null {
+function parsePathParam(
+	pathParam: string,
+): { rootName: string; relativePath: string } | null {
 	const firstSlash = pathParam.indexOf('/')
 	if (firstSlash === -1) {
 		// No slash means no relative path - invalid
@@ -54,24 +57,41 @@ function parsePathParam(pathParam: string): { rootName: string; relativePath: st
 
 /**
  * Validate that a file path is allowed for the given feed.
- * For directory feeds, the file must be within the feed's directory.
+ * For directory feeds, the file must be within one of the feed's directories.
  * For curated feeds, the file must be in the feed's item list.
  */
 function isFileAllowed(
 	feed: Feed,
 	type: 'directory' | 'curated',
-	filePath: string,
+	rootName: string,
+	relativePath: string,
 ): boolean {
 	if (type === 'directory' && isDirectoryFeed(feed)) {
-		// File must be within the feed's directory
-		const feedDir = nodePath.resolve(feed.directoryPath)
-		const resolvedPath = nodePath.resolve(filePath)
-		return resolvedPath.startsWith(feedDir + nodePath.sep)
+		// File must be within one of the feed's directories
+		const paths = parseDirectoryPaths(feed)
+		const filePath = toAbsolutePath(rootName, relativePath)
+		if (!filePath) return false
+
+		for (const mediaPath of paths) {
+			const { mediaRoot, relativePath: dirRelativePath } =
+				parseMediaPath(mediaPath)
+			const dirPath = toAbsolutePath(mediaRoot, dirRelativePath)
+			if (!dirPath) continue
+
+			const resolvedDir = nodePath.resolve(dirPath)
+			const resolvedFile = nodePath.resolve(filePath)
+			if (resolvedFile.startsWith(resolvedDir + nodePath.sep)) {
+				return true
+			}
+		}
+		return false
 	}
 
 	// For curated feeds, check if the file is in the item list
 	const feedItems = getItemsForFeed(feed.id)
-	return feedItems.some((item) => item.filePath === filePath)
+	return feedItems.some(
+		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
+	)
 }
 
 /**
@@ -134,7 +154,7 @@ export default {
 		const { feed, type } = result
 
 		// Validate file is allowed for this feed
-		if (!isFileAllowed(feed, type, filePath)) {
+		if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
 			return new Response('Not found', { status: 404 })
 		}
 

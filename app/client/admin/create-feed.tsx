@@ -21,11 +21,18 @@ type DirectoryEntry = {
 	type: 'directory' | 'file'
 }
 
+type SelectedDirectory = {
+	mediaRoot: string
+	relativePath: string
+	displayPath: string // For UI display
+}
+
 type DirectoryFormState = {
 	name: string
 	description: string
 	selectedRoot: string | null
 	currentPath: string
+	selectedDirectories: Array<SelectedDirectory>
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
 }
@@ -35,7 +42,12 @@ type CuratedFormState = {
 	description: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
-	selectedFiles: Array<{ rootName: string; rootPath: string; relativePath: string; fullPath: string; filename: string }>
+	selectedFiles: Array<{
+		rootName: string
+		relativePath: string
+		mediaPath: string // "rootName:relativePath" format
+		filename: string
+	}>
 }
 
 type RootsState =
@@ -67,6 +79,7 @@ export function CreateFeed(this: Handle) {
 		description: '',
 		selectedRoot: null,
 		currentPath: '',
+		selectedDirectories: [],
 		sortFields: 'publicationDate',
 		sortOrder: 'desc',
 	}
@@ -153,33 +166,66 @@ export function CreateFeed(this: Handle) {
 		browse(directoryForm.selectedRoot, directoryForm.currentPath)
 	}
 
-	const getDirectoryFullPath = (): string | null => {
-		if (rootsState.status !== 'success' || !directoryForm.selectedRoot)
-			return null
-		const root = rootsState.roots.find(
-			(r) => r.name === directoryForm.selectedRoot,
+	const addCurrentDirectory = () => {
+		if (!directoryForm.selectedRoot) return
+
+		const mediaRoot = directoryForm.selectedRoot
+		const relativePath = directoryForm.currentPath
+		const displayPath = relativePath
+			? `${mediaRoot}:${relativePath}`
+			: mediaRoot
+
+		// Check if already selected
+		const exists = directoryForm.selectedDirectories.some(
+			(d) => d.mediaRoot === mediaRoot && d.relativePath === relativePath,
 		)
-		if (!root) return null
-		return directoryForm.currentPath
-			? `${root.path}/${directoryForm.currentPath}`
-			: root.path
+		if (exists) return
+
+		directoryForm.selectedDirectories.push({
+			mediaRoot,
+			relativePath,
+			displayPath,
+		})
+		this.update()
+	}
+
+	const removeDirectory = (index: number) => {
+		directoryForm.selectedDirectories.splice(index, 1)
+		this.update()
+	}
+
+	const isCurrentDirectorySelected = (): boolean => {
+		if (!directoryForm.selectedRoot) return false
+		return directoryForm.selectedDirectories.some(
+			(d) =>
+				d.mediaRoot === directoryForm.selectedRoot &&
+				d.relativePath === directoryForm.currentPath,
+		)
 	}
 
 	const handleDirectorySubmit = async () => {
-		const directoryPath = getDirectoryFullPath()
-		if (!directoryForm.name.trim() || !directoryPath) return
+		if (
+			!directoryForm.name.trim() ||
+			directoryForm.selectedDirectories.length === 0
+		)
+			return
 
 		submitState = { status: 'submitting' }
 		this.update()
 
 		try {
+			// Convert to "mediaRoot:relativePath" format
+			const directoryPaths = directoryForm.selectedDirectories.map((d) =>
+				d.relativePath ? `${d.mediaRoot}:${d.relativePath}` : d.mediaRoot,
+			)
+
 			const res = await fetch('/admin/api/feeds/directory', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: directoryForm.name.trim(),
 					description: directoryForm.description.trim() || undefined,
-					directoryPath,
+					directoryPaths,
 					sortFields: directoryForm.sortFields,
 					sortOrder: directoryForm.sortOrder,
 				}),
@@ -225,15 +271,15 @@ export function CreateFeed(this: Handle) {
 	}
 
 	const toggleFileSelection = (filename: string) => {
-		if (rootsState.status !== 'success' || !pickerRoot) return
-		const root = rootsState.roots.find((r) => r.name === pickerRoot)
-		if (!root) return
+		if (!pickerRoot) return
 
 		const relativePath = pickerPath ? `${pickerPath}/${filename}` : filename
-		const fullPath = `${root.path}/${relativePath}`
+		const mediaPath = relativePath
+			? `${pickerRoot}:${relativePath}`
+			: pickerRoot
 
 		const existingIndex = curatedForm.selectedFiles.findIndex(
-			(f) => f.fullPath === fullPath,
+			(f) => f.mediaPath === mediaPath,
 		)
 
 		if (existingIndex >= 0) {
@@ -243,9 +289,8 @@ export function CreateFeed(this: Handle) {
 			// Add to selection
 			curatedForm.selectedFiles.push({
 				rootName: pickerRoot,
-				rootPath: root.path,
 				relativePath,
-				fullPath,
+				mediaPath,
 				filename,
 			})
 		}
@@ -253,19 +298,19 @@ export function CreateFeed(this: Handle) {
 	}
 
 	const isFileSelected = (filename: string): boolean => {
-		if (rootsState.status !== 'success' || !pickerRoot) return false
-		const root = rootsState.roots.find((r) => r.name === pickerRoot)
-		if (!root) return false
+		if (!pickerRoot) return false
 
 		const relativePath = pickerPath ? `${pickerPath}/${filename}` : filename
-		const fullPath = `${root.path}/${relativePath}`
+		const mediaPath = relativePath
+			? `${pickerRoot}:${relativePath}`
+			: pickerRoot
 
-		return curatedForm.selectedFiles.some((f) => f.fullPath === fullPath)
+		return curatedForm.selectedFiles.some((f) => f.mediaPath === mediaPath)
 	}
 
-	const removeSelectedFile = (fullPath: string) => {
+	const removeSelectedFile = (mediaPath: string) => {
 		const index = curatedForm.selectedFiles.findIndex(
-			(f) => f.fullPath === fullPath,
+			(f) => f.mediaPath === mediaPath,
 		)
 		if (index >= 0) {
 			curatedForm.selectedFiles.splice(index, 1)
@@ -274,10 +319,7 @@ export function CreateFeed(this: Handle) {
 	}
 
 	const handleCuratedSubmit = async () => {
-		if (
-			!curatedForm.name.trim() ||
-			curatedForm.selectedFiles.length === 0
-		)
+		if (!curatedForm.name.trim() || curatedForm.selectedFiles.length === 0)
 			return
 
 		submitState = { status: 'submitting' }
@@ -292,7 +334,7 @@ export function CreateFeed(this: Handle) {
 					description: curatedForm.description.trim() || undefined,
 					sortFields: curatedForm.sortFields,
 					sortOrder: curatedForm.sortOrder,
-					items: curatedForm.selectedFiles.map((f) => f.fullPath),
+					items: curatedForm.selectedFiles.map((f) => f.mediaPath),
 				}),
 			})
 
@@ -312,15 +354,17 @@ export function CreateFeed(this: Handle) {
 	}
 
 	return () => {
-		const canSubmitDirectory =
+		const canSubmitDirectory = Boolean(
 			directoryForm.name.trim() &&
-			directoryForm.selectedRoot &&
-			submitState.status !== 'submitting'
+				directoryForm.selectedDirectories.length > 0 &&
+				submitState.status !== 'submitting',
+		)
 
-		const canSubmitCurated =
+		const canSubmitCurated = Boolean(
 			curatedForm.name.trim() &&
-			curatedForm.selectedFiles.length > 0 &&
-			submitState.status !== 'submitting'
+				curatedForm.selectedFiles.length > 0 &&
+				submitState.status !== 'submitting',
+		)
 
 		return (
 			<div>
@@ -366,7 +410,7 @@ export function CreateFeed(this: Handle) {
 						boxShadow: shadows.sm,
 					}}
 				>
-					<label
+					<span
 						css={{
 							display: 'block',
 							fontSize: typography.fontSize.sm,
@@ -376,7 +420,7 @@ export function CreateFeed(this: Handle) {
 						}}
 					>
 						Feed Type
-					</label>
+					</span>
 					<div css={{ display: 'flex', gap: spacing.md }}>
 						<FeedTypeButton
 							selected={feedType === 'directory'}
@@ -386,7 +430,7 @@ export function CreateFeed(this: Handle) {
 								this.update()
 							}}
 							title="Directory Feed"
-							description="Automatically includes all media files from a folder"
+							description="Automatically includes all media files from one or more folders"
 						/>
 						<FeedTypeButton
 							selected={feedType === 'curated'}
@@ -448,7 +492,7 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField label="Media Root" required>
+						<FormField label="Select Directories" required>
 							{rootsState.status === 'loading' && (
 								<p css={{ color: colors.textMuted, margin: 0 }}>
 									Loading media roots...
@@ -460,47 +504,67 @@ export function CreateFeed(this: Handle) {
 								</p>
 							)}
 							{rootsState.status === 'success' && (
-								<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
-									{rootsState.roots.map((root) => (
-										<button
-											key={root.name}
-											type="button"
-											css={{
-												padding: `${spacing.sm} ${spacing.md}`,
-												fontSize: typography.fontSize.sm,
-												borderRadius: radius.md,
-												border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
-												backgroundColor:
-													directoryForm.selectedRoot === root.name
-														? colors.primary
-														: colors.background,
-												color:
-													directoryForm.selectedRoot === root.name
-														? colors.background
-														: colors.text,
-												cursor: 'pointer',
-												transition: `all ${transitions.fast}`,
-												'&:hover': {
-													borderColor: colors.primary,
-												},
-											}}
-											on={{ click: () => selectDirectoryRoot(root.name) }}
-										>
-											{root.name}
-										</button>
-									))}
+								<div>
+									<div
+										css={{
+											display: 'flex',
+											gap: spacing.sm,
+											flexWrap: 'wrap',
+											marginBottom: spacing.md,
+										}}
+									>
+										{rootsState.roots.map((root) => (
+											<button
+												key={root.name}
+												type="button"
+												css={{
+													padding: `${spacing.sm} ${spacing.md}`,
+													fontSize: typography.fontSize.sm,
+													borderRadius: radius.md,
+													border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
+													backgroundColor:
+														directoryForm.selectedRoot === root.name
+															? colors.primary
+															: colors.background,
+													color:
+														directoryForm.selectedRoot === root.name
+															? colors.background
+															: colors.text,
+													cursor: 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': {
+														borderColor: colors.primary,
+													},
+												}}
+												on={{ click: () => selectDirectoryRoot(root.name) }}
+											>
+												{root.name}
+											</button>
+										))}
+									</div>
+
+									{directoryForm.selectedRoot && (
+										<DirectoryBrowserWithAdd
+											rootName={directoryForm.selectedRoot}
+											currentPath={directoryForm.currentPath}
+											browseState={browseState}
+											onNavigateUp={navigateDirectoryUp}
+											onNavigateToDir={navigateDirectoryToDir}
+											onAddDirectory={addCurrentDirectory}
+											isCurrentSelected={isCurrentDirectorySelected()}
+										/>
+									)}
 								</div>
 							)}
 						</FormField>
 
-						{directoryForm.selectedRoot && (
-							<FormField label="Directory">
-								<DirectoryBrowser
-									rootName={directoryForm.selectedRoot}
-									currentPath={directoryForm.currentPath}
-									browseState={browseState}
-									onNavigateUp={navigateDirectoryUp}
-									onNavigateToDir={navigateDirectoryToDir}
+						{directoryForm.selectedDirectories.length > 0 && (
+							<FormField
+								label={`Selected Directories (${directoryForm.selectedDirectories.length})`}
+							>
+								<SelectedDirectoriesList
+									directories={directoryForm.selectedDirectories}
+									onRemove={removeDirectory}
 								/>
 							</FormField>
 						)}
@@ -640,7 +704,9 @@ export function CreateFeed(this: Handle) {
 						</FormField>
 
 						{curatedForm.selectedFiles.length > 0 && (
-							<FormField label={`Selected Files (${curatedForm.selectedFiles.length})`}>
+							<FormField
+								label={`Selected Files (${curatedForm.selectedFiles.length})`}
+							>
 								<SelectedFilesList
 									files={curatedForm.selectedFiles}
 									onRemove={removeSelectedFile}
@@ -758,7 +824,9 @@ function FeedTypeButton({
 				textAlign: 'left',
 				borderRadius: radius.md,
 				border: `2px solid ${selected ? colors.primary : colors.border}`,
-				backgroundColor: selected ? 'rgba(59, 130, 246, 0.05)' : colors.background,
+				backgroundColor: selected
+					? 'rgba(59, 130, 246, 0.05)'
+					: colors.background,
 				cursor: 'pointer',
 				transition: `all ${transitions.fast}`,
 				'&:hover': {
@@ -813,7 +881,9 @@ function FormField({
 				}}
 			>
 				{label}
-				{required && <span css={{ color: '#ef4444', marginLeft: '4px' }}>*</span>}
+				{required && (
+					<span css={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
+				)}
 			</label>
 			{children}
 		</div>
@@ -899,18 +969,22 @@ function FormActions({
 	)
 }
 
-function DirectoryBrowser({
+function DirectoryBrowserWithAdd({
 	rootName,
 	currentPath,
 	browseState,
 	onNavigateUp,
 	onNavigateToDir,
+	onAddDirectory,
+	isCurrentSelected,
 }: {
 	rootName: string
 	currentPath: string
 	browseState: BrowseState
 	onNavigateUp: () => void
 	onNavigateToDir: (name: string) => void
+	onAddDirectory: () => void
+	isCurrentSelected: boolean
 }) {
 	const pathParts = currentPath ? currentPath.split('/') : []
 
@@ -932,17 +1006,40 @@ function DirectoryBrowser({
 					color: colors.textMuted,
 					display: 'flex',
 					alignItems: 'center',
-					gap: spacing.xs,
+					justifyContent: 'space-between',
 				}}
 			>
-				<span css={{ color: colors.primary }}>{rootName}</span>
-				{pathParts.map((part, i) => (
-					<span key={i}>
-						<span css={{ color: colors.textMuted }}>/</span>
-						<span>{part}</span>
-					</span>
-				))}
-				{!currentPath && <span css={{ color: colors.textMuted }}>/</span>}
+				<div css={{ display: 'flex', alignItems: 'center', gap: spacing.xs }}>
+					<span css={{ color: colors.primary }}>{rootName}</span>
+					{pathParts.map((part, i) => (
+						<span key={i}>
+							<span css={{ color: colors.textMuted }}>/</span>
+							<span>{part}</span>
+						</span>
+					))}
+					{!currentPath && <span css={{ color: colors.textMuted }}>/</span>}
+				</div>
+				<button
+					type="button"
+					disabled={isCurrentSelected}
+					css={{
+						padding: `${spacing.xs} ${spacing.sm}`,
+						fontSize: typography.fontSize.xs,
+						fontWeight: typography.fontWeight.medium,
+						borderRadius: radius.sm,
+						border: 'none',
+						backgroundColor: isCurrentSelected ? colors.border : colors.primary,
+						color: colors.background,
+						cursor: isCurrentSelected ? 'not-allowed' : 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': isCurrentSelected
+							? {}
+							: { backgroundColor: colors.primaryHover },
+					}}
+					on={{ click: onAddDirectory }}
+				>
+					{isCurrentSelected ? 'Added' : '+ Add This Directory'}
+				</button>
 			</div>
 
 			<div
@@ -1003,7 +1100,8 @@ function DirectoryBrowser({
 								</button>
 							))}
 
-						{browseState.entries.filter((e) => e.type === 'file').length > 0 && (
+						{browseState.entries.filter((e) => e.type === 'file').length >
+							0 && (
 							<div
 								css={{
 									padding: `${spacing.sm} ${spacing.md}`,
@@ -1019,6 +1117,87 @@ function DirectoryBrowser({
 					</div>
 				)}
 			</div>
+		</div>
+	)
+}
+
+function SelectedDirectoriesList({
+	directories,
+	onRemove,
+}: {
+	directories: Array<SelectedDirectory>
+	onRemove: (index: number) => void
+}) {
+	return (
+		<div
+			css={{
+				border: `1px solid ${colors.border}`,
+				borderRadius: radius.md,
+				maxHeight: '200px',
+				overflowY: 'auto',
+			}}
+		>
+			{directories.map((dir, index) => (
+				<div
+					key={dir.displayPath}
+					css={{
+						display: 'flex',
+						alignItems: 'center',
+						padding: `${spacing.sm} ${spacing.md}`,
+						borderBottom:
+							index < directories.length - 1
+								? `1px solid ${colors.border}`
+								: 'none',
+						backgroundColor: colors.background,
+					}}
+				>
+					<span
+						css={{
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							marginRight: spacing.sm,
+							minWidth: '24px',
+						}}
+					>
+						{index + 1}.
+					</span>
+					<span
+						css={{
+							flex: 1,
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap',
+							fontFamily: 'monospace',
+						}}
+					>
+						<span css={{ color: colors.primary }}>{dir.mediaRoot}</span>
+						{dir.relativePath && (
+							<span css={{ color: colors.textMuted }}>:{dir.relativePath}</span>
+						)}
+					</span>
+					<button
+						type="button"
+						css={{
+							padding: `${spacing.xs} ${spacing.sm}`,
+							fontSize: typography.fontSize.xs,
+							color: '#ef4444',
+							backgroundColor: 'transparent',
+							border: 'none',
+							borderRadius: radius.sm,
+							cursor: 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							},
+						}}
+						on={{ click: () => onRemove(index) }}
+					>
+						Remove
+					</button>
+				</div>
+			))}
 		</div>
 	)
 }
@@ -1076,8 +1255,7 @@ function FilePicker({
 							border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
 							backgroundColor:
 								pickerRoot === root.name ? colors.primary : 'transparent',
-							color:
-								pickerRoot === root.name ? colors.background : colors.text,
+							color: pickerRoot === root.name ? colors.background : colors.text,
 							cursor: 'pointer',
 							transition: `all ${transitions.fast}`,
 							'&:hover': {
@@ -1213,7 +1391,9 @@ function FilePicker({
 												height: '16px',
 												border: `1px solid ${selected ? colors.primary : colors.border}`,
 												borderRadius: radius.sm,
-												backgroundColor: selected ? colors.primary : 'transparent',
+												backgroundColor: selected
+													? colors.primary
+													: 'transparent',
 												display: 'inline-flex',
 												alignItems: 'center',
 												justifyContent: 'center',
@@ -1239,8 +1419,13 @@ function SelectedFilesList({
 	files,
 	onRemove,
 }: {
-	files: Array<{ rootName: string; relativePath: string; fullPath: string; filename: string }>
-	onRemove: (fullPath: string) => void
+	files: Array<{
+		rootName: string
+		relativePath: string
+		mediaPath: string
+		filename: string
+	}>
+	onRemove: (mediaPath: string) => void
 }) {
 	return (
 		<div
@@ -1253,7 +1438,7 @@ function SelectedFilesList({
 		>
 			{files.map((file, index) => (
 				<div
-					key={file.fullPath}
+					key={file.mediaPath}
 					css={{
 						display: 'flex',
 						alignItems: 'center',
@@ -1281,10 +1466,15 @@ function SelectedFilesList({
 							overflow: 'hidden',
 							textOverflow: 'ellipsis',
 							whiteSpace: 'nowrap',
+							fontFamily: 'monospace',
 						}}
 					>
 						<span css={{ color: colors.primary }}>{file.rootName}</span>
-						<span css={{ color: colors.textMuted }}>/{file.relativePath}</span>
+						{file.relativePath && (
+							<span css={{ color: colors.textMuted }}>
+								:{file.relativePath}
+							</span>
+						)}
 					</span>
 					<button
 						type="button"
@@ -1301,7 +1491,7 @@ function SelectedFilesList({
 								backgroundColor: 'rgba(239, 68, 68, 0.1)',
 							},
 						}}
-						on={{ click: () => onRemove(file.fullPath) }}
+						on={{ click: () => onRemove(file.mediaPath) }}
 					>
 						Remove
 					</button>

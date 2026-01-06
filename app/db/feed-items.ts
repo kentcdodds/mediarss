@@ -5,7 +5,8 @@ import { type FeedItem, FeedItemSchema } from './types.ts'
 
 export function addItemToFeed(
 	feedId: string,
-	filePath: string,
+	mediaRoot: string,
+	relativePath: string,
 	position?: number,
 ): FeedItem {
 	const id = generateId()
@@ -13,28 +14,34 @@ export function addItemToFeed(
 
 	db.query(
 		sql`
-			INSERT INTO feed_items (id, feed_id, file_path, position, added_at)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (feed_id, file_path) DO UPDATE SET
+			INSERT INTO feed_items (id, feed_id, media_root, relative_path, position, added_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT (feed_id, media_root, relative_path) DO UPDATE SET
 				position = excluded.position,
 				added_at = feed_items.added_at;
 		`,
-	).run(id, feedId, filePath, position ?? null, now)
+	).run(id, feedId, mediaRoot, relativePath, position ?? null, now)
 
 	// Return the item (could be newly inserted or existing)
 	const row = db
-		.query<Record<string, unknown>, [string, string]>(
-			sql`SELECT * FROM feed_items WHERE feed_id = ? AND file_path = ?;`,
+		.query<Record<string, unknown>, [string, string, string]>(
+			sql`SELECT * FROM feed_items WHERE feed_id = ? AND media_root = ? AND relative_path = ?;`,
 		)
-		.get(feedId, filePath)
+		.get(feedId, mediaRoot, relativePath)
 
 	return parseRow(FeedItemSchema, row!)
 }
 
-export function removeItemFromFeed(feedId: string, filePath: string): boolean {
+export function removeItemFromFeed(
+	feedId: string,
+	mediaRoot: string,
+	relativePath: string,
+): boolean {
 	const result = db
-		.query(sql`DELETE FROM feed_items WHERE feed_id = ? AND file_path = ?;`)
-		.run(feedId, filePath)
+		.query(
+			sql`DELETE FROM feed_items WHERE feed_id = ? AND media_root = ? AND relative_path = ?;`,
+		)
+		.run(feedId, mediaRoot, relativePath)
 	return result.changes > 0
 }
 
@@ -47,20 +54,25 @@ export function getItemsForFeed(feedId: string): Array<FeedItem> {
 	return parseRows(FeedItemSchema, rows)
 }
 
+export type ReorderItem = {
+	mediaRoot: string
+	relativePath: string
+}
+
 export function reorderFeedItems(
 	feedId: string,
-	filePaths: Array<string>,
+	items: Array<ReorderItem>,
 ): void {
-	// Update positions based on the order of filePaths array
+	// Update positions based on the order of items array
 	const updateStmt = db.query(
-		sql`UPDATE feed_items SET position = ? WHERE feed_id = ? AND file_path = ?;`,
+		sql`UPDATE feed_items SET position = ? WHERE feed_id = ? AND media_root = ? AND relative_path = ?;`,
 	)
 
 	db.transaction(() => {
-		for (let i = 0; i < filePaths.length; i++) {
-			const filePath = filePaths[i]
-			if (filePath) {
-				updateStmt.run(i, feedId, filePath)
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i]
+			if (item) {
+				updateStmt.run(i, feedId, item.mediaRoot, item.relativePath)
 			}
 		}
 	})()
@@ -68,13 +80,14 @@ export function reorderFeedItems(
 
 export function getItemByPath(
 	feedId: string,
-	filePath: string,
+	mediaRoot: string,
+	relativePath: string,
 ): FeedItem | undefined {
 	const row = db
-		.query<Record<string, unknown>, [string, string]>(
-			sql`SELECT * FROM feed_items WHERE feed_id = ? AND file_path = ?;`,
+		.query<Record<string, unknown>, [string, string, string]>(
+			sql`SELECT * FROM feed_items WHERE feed_id = ? AND media_root = ? AND relative_path = ?;`,
 		)
-		.get(feedId, filePath)
+		.get(feedId, mediaRoot, relativePath)
 	return row ? parseRow(FeedItemSchema, row) : undefined
 }
 

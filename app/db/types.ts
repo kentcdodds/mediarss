@@ -7,7 +7,7 @@ export const DirectoryFeedSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string(),
-	directoryPath: z.string(),
+	directoryPaths: z.string(), // JSON array of "mediaRoot:relativePath" strings
 	sortFields: z.string(),
 	sortOrder: SortOrderSchema,
 	imageUrl: z.string().nullable(),
@@ -49,7 +49,8 @@ export type CuratedFeed = z.infer<typeof CuratedFeedSchema>
 export const FeedItemSchema = z.object({
 	id: z.string(),
 	feedId: z.string(),
-	filePath: z.string(),
+	mediaRoot: z.string(),
+	relativePath: z.string(),
 	position: z.number().nullable(),
 	addedAt: z.number(),
 })
@@ -98,12 +99,12 @@ export type FeedToken = z.infer<typeof FeedTokenSchema>
  * Type guard to check if a feed is a DirectoryFeed
  */
 export function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPath' in feed
+	return 'directoryPaths' in feed
 }
 
 /**
  * Type guard to check if a feed is a CuratedFeed
  */
 export function isCuratedFeed(feed: Feed): feed is CuratedFeed {
-	return !('directoryPath' in feed)
+	return !('directoryPaths' in feed)
 }

@@ -13,7 +13,7 @@ type DirectoryFeed = {
 	id: string
 	name: string
 	description: string
-	directoryPath: string
+	directoryPaths: string // JSON array of "mediaRoot:relativePath" strings
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
 	type: 'directory'
@@ -49,10 +49,20 @@ type MediaItem = {
 	duration: number | null
 	sizeBytes: number
 	filename: string
-	path: string
+	mediaRoot: string
+	relativePath: string
 	publicationDate: string | null // ISO string
 	trackNumber: number | null
 	fileModifiedAt: number // Unix timestamp
+}
+
+/**
+ * Convert mediaRoot and relativePath to mediaRoot:relativePath format
+ */
+function toMediaPath(item: MediaItem): string {
+	return item.relativePath
+		? `${item.mediaRoot}:${item.relativePath}`
+		: item.mediaRoot
 }
 
 /**
@@ -124,6 +134,7 @@ type EditFormState = {
 	description: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	directoryPaths: Array<string> // Only used for directory feeds
 }
 
 type MediaRoot = {
@@ -198,6 +209,7 @@ export function FeedDetail(this: Handle) {
 		description: '',
 		sortFields: '',
 		sortOrder: 'asc',
+		directoryPaths: [],
 	}
 	let editLoading = false
 	let editError: string | null = null
@@ -281,38 +293,44 @@ export function FeedDetail(this: Handle) {
 		browse(pickerRoot, pickerPath)
 	}
 
-	const getFullPath = (filename: string): string | null => {
-		if (rootsState.status !== 'success' || !pickerRoot) return null
-		const root = rootsState.roots.find((r) => r.name === pickerRoot)
-		if (!root) return null
+	const getMediaPathForFile = (filename: string): string | null => {
+		if (!pickerRoot) return null
 		const relativePath = pickerPath ? `${pickerPath}/${filename}` : filename
-		return `${root.path}/${relativePath}`
+		return relativePath ? `${pickerRoot}:${relativePath}` : pickerRoot
 	}
 
-	const toggleFileSelection = (filename: string, currentItems: Array<MediaItem>) => {
-		const fullPath = getFullPath(filename)
-		if (!fullPath) return
+	const toggleFileSelection = (
+		filename: string,
+		currentItems: Array<MediaItem>,
+	) => {
+		const mediaPath = getMediaPathForFile(filename)
+		if (!mediaPath) return
 
-		const existingIndex = selectedFilePaths.indexOf(fullPath)
+		const existingIndex = selectedFilePaths.indexOf(mediaPath)
 		if (existingIndex >= 0) {
 			selectedFilePaths.splice(existingIndex, 1)
 		} else {
 			// Don't allow selecting files already in the feed
-			if (!currentItems.some((item) => item.path === fullPath)) {
-				selectedFilePaths.push(fullPath)
+			if (!currentItems.some((item) => toMediaPath(item) === mediaPath)) {
+				selectedFilePaths.push(mediaPath)
 			}
 		}
 		this.update()
 	}
 
 	const isFileSelected = (filename: string): boolean => {
-		const fullPath = getFullPath(filename)
-		return fullPath ? selectedFilePaths.includes(fullPath) : false
+		const mediaPath = getMediaPathForFile(filename)
+		return mediaPath ? selectedFilePaths.includes(mediaPath) : false
 	}
 
-	const isFileInFeed = (filename: string, currentItems: Array<MediaItem>): boolean => {
-		const fullPath = getFullPath(filename)
-		return fullPath ? currentItems.some((item) => item.path === fullPath) : false
+	const isFileInFeed = (
+		filename: string,
+		currentItems: Array<MediaItem>,
+	): boolean => {
+		const mediaPath = getMediaPathForFile(filename)
+		return mediaPath
+			? currentItems.some((item) => toMediaPath(item) === mediaPath)
+			: false
 	}
 
 	const openAddFilesModal = () => {
@@ -421,11 +439,20 @@ export function FeedDetail(this: Handle) {
 	}
 
 	const startEditing = (feed: Feed) => {
+		let directoryPaths: Array<string> = []
+		if ('directoryPaths' in feed) {
+			try {
+				directoryPaths = JSON.parse(feed.directoryPaths) as Array<string>
+			} catch {
+				directoryPaths = []
+			}
+		}
 		editForm = {
 			name: feed.name,
 			description: feed.description,
 			sortFields: feed.sortFields,
 			sortOrder: feed.sortOrder,
+			directoryPaths,
 		}
 		editError = null
 		isEditing = true
@@ -438,9 +465,15 @@ export function FeedDetail(this: Handle) {
 		this.update()
 	}
 
-	const saveEdit = async () => {
+	const saveEdit = async (isDirectory: boolean) => {
 		if (!editForm.name.trim()) {
 			editError = 'Name is required'
+			this.update()
+			return
+		}
+
+		if (isDirectory && editForm.directoryPaths.length === 0) {
+			editError = 'At least one directory is required'
 			this.update()
 			return
 		}
@@ -450,15 +483,22 @@ export function FeedDetail(this: Handle) {
 		this.update()
 
 		try {
+			const body: Record<string, unknown> = {
+				name: editForm.name.trim(),
+				description: editForm.description.trim(),
+				sortFields: editForm.sortFields,
+				sortOrder: editForm.sortOrder,
+			}
+
+			// Include directoryPaths only for directory feeds
+			if (isDirectory) {
+				body.directoryPaths = editForm.directoryPaths
+			}
+
 			const res = await fetch(`/admin/api/feeds/${feedId}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: editForm.name.trim(),
-					description: editForm.description.trim(),
-					sortFields: editForm.sortFields,
-					sortOrder: editForm.sortOrder,
-				}),
+				body: JSON.stringify(body),
 			})
 
 			if (!res.ok) {
@@ -502,7 +542,7 @@ export function FeedDetail(this: Handle) {
 	}
 
 	// Item management functions (curated feeds only)
-	const removeItem = async (path: string) => {
+	const removeItem = async (item: MediaItem) => {
 		itemActionLoading = true
 		this.update()
 
@@ -510,7 +550,7 @@ export function FeedDetail(this: Handle) {
 			const res = await fetch(`/admin/api/feeds/${feedId}/items`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ items: [path] }),
+				body: JSON.stringify({ items: [toMediaPath(item)] }),
 			})
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			fetchFeed(feedId)
@@ -522,14 +562,18 @@ export function FeedDetail(this: Handle) {
 		}
 	}
 
-	const moveItem = async (items: Array<MediaItem>, fromIndex: number, toIndex: number) => {
+	const moveItem = async (
+		items: Array<MediaItem>,
+		fromIndex: number,
+		toIndex: number,
+	) => {
 		if (toIndex < 0 || toIndex >= items.length) return
 
 		itemActionLoading = true
 		this.update()
 
 		// Create new order with swapped positions
-		const newOrder = items.map((item) => item.path)
+		const newOrder = items.map((item) => toMediaPath(item))
 		const [removed] = newOrder.splice(fromIndex, 1)
 		if (removed) newOrder.splice(toIndex, 0, removed)
 
@@ -638,9 +682,10 @@ export function FeedDetail(this: Handle) {
 
 	return (renderProps: { params: Record<string, string> }) => {
 		// Fetch on first render or if id changes
-		if (renderProps.params.id && renderProps.params.id !== feedId) {
+		const paramId = renderProps.params.id
+		if (paramId && paramId !== feedId) {
 			// Use setTimeout to avoid updating during render
-			setTimeout(() => fetchFeed(renderProps.params.id), 0)
+			setTimeout(() => fetchFeed(paramId), 0)
 		}
 
 		if (state.status === 'loading') {
@@ -685,7 +730,6 @@ export function FeedDetail(this: Handle) {
 						pickerPath={pickerPath}
 						selectedCount={selectedFilePaths.length}
 						isLoading={itemActionLoading}
-						currentItems={items}
 						onSelectRoot={selectPickerRoot}
 						onNavigateToDir={navigatePickerToDir}
 						onNavigateUp={navigatePickerUp}
@@ -849,7 +893,16 @@ export function FeedDetail(this: Handle) {
 								editForm.sortOrder = value
 								this.update()
 							}}
-							onSave={saveEdit}
+							onSave={() => saveEdit(isDirectory)}
+							onDirectoryPathsChange={
+								isDirectory
+									? (paths) => {
+											editForm.directoryPaths = paths
+											this.update()
+										}
+									: undefined
+							}
+							rootsState={rootsState}
 							onCancel={cancelEditing}
 						/>
 					) : (
@@ -874,10 +927,8 @@ export function FeedDetail(this: Handle) {
 								}}
 							>
 								{isDirectory && (
-									<InfoItem
-										label="Directory"
-										value={(feed as DirectoryFeed).directoryPath}
-										mono
+									<DirectoriesInfo
+										directoryPaths={(feed as DirectoryFeed).directoryPaths}
 									/>
 								)}
 								<InfoItem
@@ -953,7 +1004,9 @@ export function FeedDetail(this: Handle) {
 							<p css={{ margin: 0 }}>No media items found in this feed.</p>
 						</div>
 					) : (
-						<div css={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '400px' }}>
+						<div
+							css={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '400px' }}
+						>
 							<table
 								css={{
 									width: '100%',
@@ -974,28 +1027,28 @@ export function FeedDetail(this: Handle) {
 											borderBottom: `1px solid ${colors.border}`,
 										}}
 									>
-									{isManualSort && (
+										{isManualSort && (
+											<th
+												css={{
+													width: '32px',
+													padding: `${spacing.sm} ${spacing.xs}`,
+												}}
+											/>
+										)}
 										<th
 											css={{
-												width: '32px',
-												padding: `${spacing.sm} ${spacing.xs}`,
+												textAlign: 'left',
+												padding: `${spacing.sm} ${spacing.md}`,
+												color: colors.textMuted,
+												fontWeight: typography.fontWeight.medium,
+												fontSize: typography.fontSize.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												width: '40px',
 											}}
-										/>
-									)}
-									<th
-										css={{
-											textAlign: 'left',
-											padding: `${spacing.sm} ${spacing.md}`,
-											color: colors.textMuted,
-											fontWeight: typography.fontWeight.medium,
-											fontSize: typography.fontSize.xs,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-											width: '40px',
-										}}
-									>
-										#
-									</th>
+										>
+											#
+										</th>
 										<th
 											css={{
 												textAlign: 'left',
@@ -1050,78 +1103,88 @@ export function FeedDetail(this: Handle) {
 										>
 											Size
 										</th>
-									{extraSortColumn && (
-										<th
-											css={{
-												textAlign: 'left',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.primary,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												backgroundColor: 'rgba(59, 130, 246, 0.1)',
-												whiteSpace: 'nowrap',
-											}}
-											title={`Sorted by ${getSortFieldLabel(extraSortColumn)}`}
-										>
-											{getSortFieldLabel(extraSortColumn)} ↓
-										</th>
-									)}
-									{isCurated && (
-										<th
-											css={{
-												textAlign: 'center',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												width: isManualSort ? '120px' : '60px',
-											}}
-										>
-											Actions
-										</th>
-									)}
+										{extraSortColumn && (
+											<th
+												css={{
+													textAlign: 'left',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.primary,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													backgroundColor: 'rgba(59, 130, 246, 0.1)',
+													whiteSpace: 'nowrap',
+												}}
+												title={`Sorted by ${getSortFieldLabel(extraSortColumn)}`}
+											>
+												{getSortFieldLabel(extraSortColumn)} ↓
+											</th>
+										)}
+										{isCurated && (
+											<th
+												css={{
+													textAlign: 'center',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													width: isManualSort ? '120px' : '60px',
+												}}
+											>
+												Actions
+											</th>
+										)}
 									</tr>
 								</thead>
 								<tbody>
-								{items.map((item, index) => (
-									<tr
-										key={item.path}
-										draggable={isManualSort}
-										css={{
-											borderBottom: `1px solid ${colors.border}`,
-											'&:last-child': { borderBottom: 'none' },
-											'&:hover': {
-												backgroundColor: colors.background,
-											},
-											opacity: draggingIndex === index ? 0.5 : 1,
-											backgroundColor: dragOverIndex === index ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-											cursor: isManualSort ? 'grab' : 'default',
-										}}
-										on={isManualSort ? {
-											dragstart: () => handleDragStart(index),
-											dragover: (e: DragEvent) => handleDragOver(e, index),
-											dragleave: handleDragLeave,
-											drop: () => handleDrop(items, index),
-											dragend: handleDragEnd,
-										} : undefined}
-									>
-										{isManualSort && (
-											<td
-												css={{
-													padding: `${spacing.sm} ${spacing.xs}`,
-													color: colors.textMuted,
-													cursor: 'grab',
-													textAlign: 'center',
-													userSelect: 'none',
-												}}
-											>
-												<span css={{ fontSize: typography.fontSize.sm }}>⋮⋮</span>
-											</td>
-										)}
+									{items.map((item, index) => (
+										<tr
+											key={toMediaPath(item)}
+											draggable={isManualSort}
+											css={{
+												borderBottom: `1px solid ${colors.border}`,
+												'&:last-child': { borderBottom: 'none' },
+												'&:hover': {
+													backgroundColor: colors.background,
+												},
+												opacity: draggingIndex === index ? 0.5 : 1,
+												backgroundColor:
+													dragOverIndex === index
+														? 'rgba(59, 130, 246, 0.1)'
+														: 'transparent',
+												cursor: isManualSort ? 'grab' : 'default',
+											}}
+											on={
+												isManualSort
+													? {
+															dragstart: () => handleDragStart(index),
+															dragover: (e: DragEvent) =>
+																handleDragOver(e, index),
+															dragleave: handleDragLeave,
+															drop: () => handleDrop(items, index),
+															dragend: handleDragEnd,
+														}
+													: undefined
+											}
+										>
+											{isManualSort && (
+												<td
+													css={{
+														padding: `${spacing.sm} ${spacing.xs}`,
+														color: colors.textMuted,
+														cursor: 'grab',
+														textAlign: 'center',
+														userSelect: 'none',
+													}}
+												>
+													<span css={{ fontSize: typography.fontSize.sm }}>
+														⋮⋮
+													</span>
+												</td>
+											)}
 											<td
 												css={{
 													padding: `${spacing.sm} ${spacing.md}`,
@@ -1180,110 +1243,139 @@ export function FeedDetail(this: Handle) {
 											>
 												{formatFileSize(item.sizeBytes)}
 											</td>
-										{extraSortColumn && (
-											<td
-												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													color: colors.text,
-													fontSize: typography.fontSize.xs,
-													backgroundColor: 'rgba(59, 130, 246, 0.05)',
-													whiteSpace: 'nowrap',
-												}}
-												title={formatSortValue(item, extraSortColumn)}
-											>
-												{formatSortValue(item, extraSortColumn)}
-											</td>
-										)}
-										{isCurated && (
-											<td
-												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													textAlign: 'center',
-												}}
-											>
-												<div
+											{extraSortColumn && (
+												<td
 													css={{
-														display: 'flex',
-														gap: spacing.xs,
-														justifyContent: 'center',
-														alignItems: 'center',
+														padding: `${spacing.sm} ${spacing.md}`,
+														color: colors.text,
+														fontSize: typography.fontSize.xs,
+														backgroundColor: 'rgba(59, 130, 246, 0.05)',
+														whiteSpace: 'nowrap',
+													}}
+													title={formatSortValue(item, extraSortColumn)}
+												>
+													{formatSortValue(item, extraSortColumn)}
+												</td>
+											)}
+											{isCurated && (
+												<td
+													css={{
+														padding: `${spacing.sm} ${spacing.md}`,
+														textAlign: 'center',
 													}}
 												>
-													{isManualSort && (
-														<>
-															<button
-																type="button"
-																disabled={index === 0 || itemActionLoading}
-																title="Move up"
-																css={{
-																	padding: spacing.xs,
-																	fontSize: typography.fontSize.sm,
-																	color: index === 0 ? colors.border : colors.textMuted,
-																	backgroundColor: 'transparent',
-																	border: `1px solid ${index === 0 ? colors.border : colors.border}`,
-																	borderRadius: radius.sm,
-																	cursor: index === 0 ? 'not-allowed' : 'pointer',
-																	transition: `all ${transitions.fast}`,
-																	lineHeight: 1,
-																	'&:hover': index === 0 ? {} : {
-																		color: colors.text,
-																		borderColor: colors.text,
-																	},
-																}}
-																on={{ click: () => moveItem(items, index, index - 1) }}
-															>
-																↑
-															</button>
-															<button
-																type="button"
-																disabled={index === items.length - 1 || itemActionLoading}
-																title="Move down"
-																css={{
-																	padding: spacing.xs,
-																	fontSize: typography.fontSize.sm,
-																	color: index === items.length - 1 ? colors.border : colors.textMuted,
-																	backgroundColor: 'transparent',
-																	border: `1px solid ${index === items.length - 1 ? colors.border : colors.border}`,
-																	borderRadius: radius.sm,
-																	cursor: index === items.length - 1 ? 'not-allowed' : 'pointer',
-																	transition: `all ${transitions.fast}`,
-																	lineHeight: 1,
-																	'&:hover': index === items.length - 1 ? {} : {
-																		color: colors.text,
-																		borderColor: colors.text,
-																	},
-																}}
-																on={{ click: () => moveItem(items, index, index + 1) }}
-															>
-																↓
-															</button>
-														</>
-													)}
-													<button
-														type="button"
-														disabled={itemActionLoading}
-														title="Remove"
+													<div
 														css={{
-															padding: spacing.xs,
-															fontSize: typography.fontSize.sm,
-															color: '#ef4444',
-															backgroundColor: 'transparent',
-															border: '1px solid #ef4444',
-															borderRadius: radius.sm,
-															cursor: itemActionLoading ? 'not-allowed' : 'pointer',
-															transition: `all ${transitions.fast}`,
-															lineHeight: 1,
-															'&:hover': itemActionLoading ? {} : {
-																backgroundColor: 'rgba(239, 68, 68, 0.1)',
-															},
+															display: 'flex',
+															gap: spacing.xs,
+															justifyContent: 'center',
+															alignItems: 'center',
 														}}
-														on={{ click: () => removeItem(item.path) }}
 													>
-														×
-													</button>
-												</div>
-											</td>
-										)}
+														{isManualSort && (
+															<>
+																<button
+																	type="button"
+																	disabled={index === 0 || itemActionLoading}
+																	title="Move up"
+																	css={{
+																		padding: spacing.xs,
+																		fontSize: typography.fontSize.sm,
+																		color:
+																			index === 0
+																				? colors.border
+																				: colors.textMuted,
+																		backgroundColor: 'transparent',
+																		border: `1px solid ${index === 0 ? colors.border : colors.border}`,
+																		borderRadius: radius.sm,
+																		cursor:
+																			index === 0 ? 'not-allowed' : 'pointer',
+																		transition: `all ${transitions.fast}`,
+																		lineHeight: 1,
+																		'&:hover':
+																			index === 0
+																				? {}
+																				: {
+																						color: colors.text,
+																						borderColor: colors.text,
+																					},
+																	}}
+																	on={{
+																		click: () =>
+																			moveItem(items, index, index - 1),
+																	}}
+																>
+																	↑
+																</button>
+																<button
+																	type="button"
+																	disabled={
+																		index === items.length - 1 ||
+																		itemActionLoading
+																	}
+																	title="Move down"
+																	css={{
+																		padding: spacing.xs,
+																		fontSize: typography.fontSize.sm,
+																		color:
+																			index === items.length - 1
+																				? colors.border
+																				: colors.textMuted,
+																		backgroundColor: 'transparent',
+																		border: `1px solid ${index === items.length - 1 ? colors.border : colors.border}`,
+																		borderRadius: radius.sm,
+																		cursor:
+																			index === items.length - 1
+																				? 'not-allowed'
+																				: 'pointer',
+																		transition: `all ${transitions.fast}`,
+																		lineHeight: 1,
+																		'&:hover':
+																			index === items.length - 1
+																				? {}
+																				: {
+																						color: colors.text,
+																						borderColor: colors.text,
+																					},
+																	}}
+																	on={{
+																		click: () =>
+																			moveItem(items, index, index + 1),
+																	}}
+																>
+																	↓
+																</button>
+															</>
+														)}
+														<button
+															type="button"
+															disabled={itemActionLoading}
+															title="Remove"
+															css={{
+																padding: spacing.xs,
+																fontSize: typography.fontSize.sm,
+																color: '#ef4444',
+																backgroundColor: 'transparent',
+																border: '1px solid #ef4444',
+																borderRadius: radius.sm,
+																cursor: itemActionLoading
+																	? 'not-allowed'
+																	: 'pointer',
+																transition: `all ${transitions.fast}`,
+																lineHeight: 1,
+																'&:hover': itemActionLoading
+																	? {}
+																	: {
+																			backgroundColor: 'rgba(239, 68, 68, 0.1)',
+																		},
+															}}
+															on={{ click: () => removeItem(item) }}
+														>
+															×
+														</button>
+													</div>
+												</td>
+											)}
 										</tr>
 									))}
 								</tbody>
@@ -1601,6 +1693,80 @@ function InfoItem({
 	)
 }
 
+function DirectoriesInfo({ directoryPaths }: { directoryPaths: string }) {
+	let paths: Array<string> = []
+	try {
+		paths = JSON.parse(directoryPaths) as Array<string>
+	} catch {
+		paths = []
+	}
+
+	return (
+		<div css={{ gridColumn: paths.length > 1 ? '1 / -1' : undefined }}>
+			<dt
+				css={{
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
+				}}
+			>
+				{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
+			</dt>
+			<dd css={{ margin: 0 }}>
+				{paths.length === 0 ? (
+					<span
+						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
+					>
+						No directories configured
+					</span>
+				) : paths.length === 1 ? (
+					<span
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							fontFamily: 'monospace',
+							wordBreak: 'break-all',
+						}}
+					>
+						{paths[0]}
+					</span>
+				) : (
+					<ul
+						css={{
+							listStyle: 'none',
+							padding: 0,
+							margin: 0,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: spacing.xs,
+						}}
+					>
+						{paths.map((path, _index) => (
+							<li
+								key={path}
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+									fontFamily: 'monospace',
+									wordBreak: 'break-all',
+									padding: `${spacing.xs} ${spacing.sm}`,
+									backgroundColor: colors.background,
+									borderRadius: radius.sm,
+									border: `1px solid ${colors.border}`,
+								}}
+							>
+								{path}
+							</li>
+						))}
+					</ul>
+				)}
+			</dd>
+		</div>
+	)
+}
+
 function TokenCard({
 	token,
 	isCopied,
@@ -1727,6 +1893,8 @@ function EditForm({
 	onDescriptionChange,
 	onSortFieldsChange,
 	onSortOrderChange,
+	onDirectoryPathsChange,
+	rootsState,
 	onSave,
 	onCancel,
 }: {
@@ -1738,6 +1906,8 @@ function EditForm({
 	onDescriptionChange: (value: string) => void
 	onSortFieldsChange: (value: string) => void
 	onSortOrderChange: (value: 'asc' | 'desc') => void
+	onDirectoryPathsChange?: (paths: Array<string>) => void
+	rootsState: RootsState
 	onSave: () => void
 	onCancel: () => void
 }) {
@@ -1791,6 +1961,14 @@ function EditForm({
 					}}
 				/>
 			</div>
+
+			{isDirectory && onDirectoryPathsChange && (
+				<DirectoryPathsEditor
+					paths={form.directoryPaths}
+					rootsState={rootsState}
+					onPathsChange={onDirectoryPathsChange}
+				/>
+			)}
 
 			<div
 				css={{
@@ -1889,13 +2067,21 @@ function EditForm({
 						marginBottom: spacing.md,
 					}}
 				>
-					<p css={{ color: '#ef4444', margin: 0, fontSize: typography.fontSize.sm }}>
+					<p
+						css={{
+							color: '#ef4444',
+							margin: 0,
+							fontSize: typography.fontSize.sm,
+						}}
+					>
 						{error}
 					</p>
 				</div>
 			)}
 
-			<div css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}>
+			<div
+				css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
+			>
 				<button
 					type="button"
 					css={{
@@ -1929,7 +2115,9 @@ function EditForm({
 						borderRadius: radius.md,
 						cursor: isLoading ? 'not-allowed' : 'pointer',
 						transition: `all ${transitions.fast}`,
-						'&:hover': isLoading ? {} : { backgroundColor: colors.primaryHover },
+						'&:hover': isLoading
+							? {}
+							: { backgroundColor: colors.primaryHover },
 					}}
 					on={{ click: onSave }}
 				>
@@ -1938,6 +2126,374 @@ function EditForm({
 			</div>
 		</div>
 	)
+}
+
+function DirectoryPathsEditor(
+	this: Handle,
+	setupProps: {
+		paths: Array<string>
+		rootsState: RootsState
+		onPathsChange: (paths: Array<string>) => void
+	},
+) {
+	let browseState: BrowseState = { status: 'idle' }
+	let selectedRoot: string | null = null
+	let currentPath = ''
+	let entries: Array<DirectoryEntry> = []
+
+	const fetchDirectory = async (root: string, path: string) => {
+		browseState = { status: 'loading' }
+		this.update()
+
+		try {
+			const res = await fetch(
+				`/admin/api/browse?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`,
+			)
+			if (!res.ok) {
+				throw new Error(`HTTP ${res.status}`)
+			}
+			const data = await res.json()
+			entries = data.entries || []
+			browseState = { status: 'success', entries }
+		} catch (err) {
+			browseState = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Failed to browse',
+			}
+		}
+		this.update()
+	}
+
+	const selectRoot = (rootName: string) => {
+		selectedRoot = rootName
+		currentPath = ''
+		fetchDirectory(rootName, '')
+	}
+
+	const navigateToDir = (dirName: string) => {
+		currentPath = currentPath ? `${currentPath}/${dirName}` : dirName
+		if (selectedRoot) {
+			fetchDirectory(selectedRoot, currentPath)
+		}
+	}
+
+	const navigateUp = () => {
+		const parts = currentPath.split('/').filter(Boolean)
+		parts.pop()
+		currentPath = parts.join('/')
+		if (selectedRoot) {
+			fetchDirectory(selectedRoot, currentPath)
+		}
+	}
+
+	const addCurrentDirectory = () => {
+		if (!selectedRoot) return
+		const mediaPath = currentPath
+			? `${selectedRoot}:${currentPath}`
+			: selectedRoot
+		setupProps.onPathsChange([...setupProps.paths, mediaPath])
+		// Reset browser state
+		selectedRoot = null
+		currentPath = ''
+		browseState = { status: 'idle' }
+		this.update()
+	}
+
+	return (renderProps: {
+		paths: Array<string>
+		rootsState: RootsState
+		onPathsChange: (paths: Array<string>) => void
+	}) => {
+		const { paths, rootsState, onPathsChange } = renderProps
+
+		const removePath = (index: number) => {
+			const newPaths = paths.filter((_, i) => i !== index)
+			onPathsChange(newPaths)
+		}
+
+		const isPathAdded = (mediaPath: string) => paths.includes(mediaPath)
+		const currentMediaPath = selectedRoot
+			? currentPath
+				? `${selectedRoot}:${currentPath}`
+				: selectedRoot
+			: null
+
+		return (
+			<div css={{ marginBottom: spacing.md }}>
+				<span
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Directories <span css={{ color: '#ef4444' }}>*</span>
+				</span>
+
+				{/* Selected paths list */}
+				{paths.length > 0 && (
+					<div
+						css={{
+							marginBottom: spacing.sm,
+							padding: spacing.sm,
+							backgroundColor: colors.background,
+							borderRadius: radius.md,
+							border: `1px solid ${colors.border}`,
+						}}
+					>
+						<div
+							css={{
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								marginBottom: spacing.xs,
+							}}
+						>
+							Selected ({paths.length})
+						</div>
+						{paths.map((path, index) => (
+							<div
+								key={path}
+								css={{
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									padding: `${spacing.xs} ${spacing.sm}`,
+									backgroundColor: colors.surface,
+									borderRadius: radius.sm,
+									marginBottom: index < paths.length - 1 ? spacing.xs : 0,
+								}}
+							>
+								<span
+									css={{
+										fontFamily: 'monospace',
+										fontSize: typography.fontSize.sm,
+										color: colors.primary,
+									}}
+								>
+									{path}
+								</span>
+								<button
+									type="button"
+									css={{
+										color: '#ef4444',
+										backgroundColor: 'transparent',
+										border: 'none',
+										cursor: 'pointer',
+										fontSize: typography.fontSize.sm,
+										'&:hover': {
+											textDecoration: 'underline',
+										},
+									}}
+									on={{ click: () => removePath(index) }}
+								>
+									Remove
+								</button>
+							</div>
+						))}
+					</div>
+				)}
+
+				{/* Media root buttons */}
+				{rootsState.status === 'success' && (
+					<div css={{ marginBottom: spacing.sm }}>
+						<div css={{ display: 'flex', gap: spacing.xs, flexWrap: 'wrap' }}>
+							{rootsState.roots.map((root) => (
+								<button
+									key={root.name}
+									type="button"
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										backgroundColor:
+											selectedRoot === root.name
+												? colors.primary
+												: colors.surface,
+										color:
+											selectedRoot === root.name
+												? colors.background
+												: colors.text,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:hover': {
+											backgroundColor:
+												selectedRoot === root.name
+													? colors.primary
+													: colors.background,
+										},
+									}}
+									on={{ click: () => selectRoot(root.name) }}
+								>
+									{root.name}
+								</button>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Directory browser */}
+				{selectedRoot && (
+					<div
+						css={{
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							overflow: 'hidden',
+						}}
+					>
+						<div
+							css={{
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'space-between',
+								padding: spacing.sm,
+								backgroundColor: colors.surface,
+								borderBottom: `1px solid ${colors.border}`,
+							}}
+						>
+							<span
+								css={{
+									fontFamily: 'monospace',
+									fontSize: typography.fontSize.sm,
+									color: colors.primary,
+								}}
+							>
+								{selectedRoot}/{currentPath}
+							</span>
+							{currentMediaPath && !isPathAdded(currentMediaPath) ? (
+								<button
+									type="button"
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										backgroundColor: colors.primary,
+										color: colors.background,
+										border: 'none',
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:hover': {
+											backgroundColor: colors.primaryHover,
+										},
+									}}
+									on={{ click: addCurrentDirectory }}
+								>
+									+ Add This Directory
+								</button>
+							) : (
+								<span
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+									}}
+								>
+									Added
+								</span>
+							)}
+						</div>
+
+						<div
+							css={{
+								maxHeight: '200px',
+								overflowY: 'auto',
+								backgroundColor: colors.background,
+							}}
+						>
+							{browseState.status === 'loading' && (
+								<div
+									css={{
+										padding: spacing.md,
+										textAlign: 'center',
+										color: colors.textMuted,
+									}}
+								>
+									Loading...
+								</div>
+							)}
+
+							{browseState.status === 'error' && (
+								<div
+									css={{
+										padding: spacing.md,
+										textAlign: 'center',
+										color: '#ef4444',
+									}}
+								>
+									{browseState.message}
+								</div>
+							)}
+
+							{browseState.status === 'success' && (
+								<>
+									{currentPath && (
+										<button
+											type="button"
+											css={{
+												display: 'block',
+												width: '100%',
+												textAlign: 'left',
+												padding: spacing.sm,
+												backgroundColor: 'transparent',
+												border: 'none',
+												borderBottom: `1px solid ${colors.border}`,
+												cursor: 'pointer',
+												color: colors.textMuted,
+												'&:hover': {
+													backgroundColor: colors.surface,
+												},
+											}}
+											on={{ click: navigateUp }}
+										>
+											📁 ..
+										</button>
+									)}
+									{entries
+										.filter((e) => e.type === 'directory')
+										.map((entry) => (
+											<button
+												key={entry.name}
+												type="button"
+												css={{
+													display: 'block',
+													width: '100%',
+													textAlign: 'left',
+													padding: spacing.sm,
+													backgroundColor: 'transparent',
+													border: 'none',
+													borderBottom: `1px solid ${colors.border}`,
+													cursor: 'pointer',
+													color: colors.text,
+													'&:hover': {
+														backgroundColor: colors.surface,
+													},
+												}}
+												on={{ click: () => navigateToDir(entry.name) }}
+											>
+												📁 {entry.name}
+											</button>
+										))}
+									{entries.filter((e) => e.type === 'directory').length ===
+										0 && (
+										<div
+											css={{
+												padding: spacing.md,
+												textAlign: 'center',
+												color: colors.textMuted,
+												fontSize: typography.fontSize.sm,
+											}}
+										>
+											No subdirectories
+										</div>
+									)}
+								</>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
+		)
+	}
 }
 
 function DeleteConfirmModal({
@@ -1970,7 +2526,11 @@ function DeleteConfirmModal({
 				zIndex: 1000,
 				padding: spacing.lg,
 			}}
-			on={{ click: (e) => e.target === e.currentTarget && onCancel() }}
+			on={{
+				click: (e) => {
+					if (e.target === e.currentTarget) onCancel()
+				},
+			}}
 		>
 			<div
 				css={{
@@ -2020,7 +2580,8 @@ function DeleteConfirmModal({
 							margin: 0,
 						}}
 					>
-						This action cannot be undone. The following will be permanently deleted:
+						This action cannot be undone. The following will be permanently
+						deleted:
 					</p>
 					<ul
 						css={{
@@ -2044,7 +2605,9 @@ function DeleteConfirmModal({
 					</ul>
 				</div>
 
-				<div css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}>
+				<div
+					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
+				>
 					<button
 						type="button"
 						disabled={isLoading}
@@ -2058,7 +2621,9 @@ function DeleteConfirmModal({
 							borderRadius: radius.md,
 							cursor: isLoading ? 'not-allowed' : 'pointer',
 							transition: `all ${transitions.fast}`,
-							'&:hover': isLoading ? {} : { backgroundColor: colors.background },
+							'&:hover': isLoading
+								? {}
+								: { backgroundColor: colors.background },
 						}}
 						on={{ click: onCancel }}
 					>
@@ -2096,7 +2661,6 @@ function AddFilesModal({
 	pickerPath,
 	selectedCount,
 	isLoading,
-	currentItems,
 	onSelectRoot,
 	onNavigateToDir,
 	onNavigateUp,
@@ -2112,7 +2676,6 @@ function AddFilesModal({
 	pickerPath: string
 	selectedCount: number
 	isLoading: boolean
-	currentItems: Array<MediaItem>
 	onSelectRoot: (name: string) => void
 	onNavigateToDir: (name: string) => void
 	onNavigateUp: () => void
@@ -2139,7 +2702,11 @@ function AddFilesModal({
 				zIndex: 1000,
 				padding: spacing.lg,
 			}}
-			on={{ click: (e) => e.target === e.currentTarget && onCancel() }}
+			on={{
+				click: (e) => {
+					if (e.target === e.currentTarget) onCancel()
+				},
+			}}
 		>
 			<div
 				css={{
@@ -2173,7 +2740,8 @@ function AddFilesModal({
 						margin: `0 0 ${spacing.lg} 0`,
 					}}
 				>
-					Select media files to add to this feed. Files already in the feed are shown but disabled.
+					Select media files to add to this feed. Files already in the feed are
+					shown but disabled.
 				</p>
 
 				{/* File picker */}
@@ -2192,13 +2760,17 @@ function AddFilesModal({
 					{/* Root selector */}
 					{rootsState.status === 'loading' && (
 						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: colors.textMuted }}>Loading media roots...</span>
+							<span css={{ color: colors.textMuted }}>
+								Loading media roots...
+							</span>
 						</div>
 					)}
 
 					{rootsState.status === 'error' && (
 						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: '#ef4444' }}>Error: {rootsState.message}</span>
+							<span css={{ color: '#ef4444' }}>
+								Error: {rootsState.message}
+							</span>
 						</div>
 					)}
 
@@ -2224,9 +2796,13 @@ function AddFilesModal({
 											borderRadius: radius.sm,
 											border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
 											backgroundColor:
-												pickerRoot === root.name ? colors.primary : 'transparent',
+												pickerRoot === root.name
+													? colors.primary
+													: 'transparent',
 											color:
-												pickerRoot === root.name ? colors.background : colors.text,
+												pickerRoot === root.name
+													? colors.background
+													: colors.text,
 											cursor: 'pointer',
 											transition: `all ${transitions.fast}`,
 											'&:hover': {
@@ -2262,7 +2838,9 @@ function AddFilesModal({
 											<span>{part}</span>
 										</span>
 									))}
-									{!pickerPath && <span css={{ color: colors.textMuted }}>/</span>}
+									{!pickerPath && (
+										<span css={{ color: colors.textMuted }}>/</span>
+									)}
 								</div>
 							)}
 
@@ -2295,7 +2873,9 @@ function AddFilesModal({
 
 								{pickerRoot && browseState.status === 'error' && (
 									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-										<span css={{ color: '#ef4444' }}>{browseState.message}</span>
+										<span css={{ color: '#ef4444' }}>
+											{browseState.message}
+										</span>
 									</div>
 								)}
 
@@ -2360,7 +2940,11 @@ function AddFilesModal({
 															opacity: inFeed ? 0.5 : 1,
 															cursor: inFeed ? 'not-allowed' : 'pointer',
 														}}
-														on={{ click: () => !inFeed && onToggleFile(entry.name) }}
+														on={{
+															click: () => {
+																if (!inFeed) onToggleFile(entry.name)
+															},
+														}}
 													>
 														<span
 															css={{
@@ -2407,8 +2991,17 @@ function AddFilesModal({
 				</div>
 
 				{/* Footer */}
-				<div css={{ display: 'flex', gap: spacing.sm, justifyContent: 'space-between', alignItems: 'center' }}>
-					<span css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}>
+				<div
+					css={{
+						display: 'flex',
+						gap: spacing.sm,
+						justifyContent: 'space-between',
+						alignItems: 'center',
+					}}
+				>
+					<span
+						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
+					>
 						{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
 					</span>
 					<div css={{ display: 'flex', gap: spacing.sm }}>
@@ -2425,7 +3018,9 @@ function AddFilesModal({
 								borderRadius: radius.md,
 								cursor: isLoading ? 'not-allowed' : 'pointer',
 								transition: `all ${transitions.fast}`,
-								'&:hover': isLoading ? {} : { backgroundColor: colors.background },
+								'&:hover': isLoading
+									? {}
+									: { backgroundColor: colors.background },
 							}}
 							on={{ click: onCancel }}
 						>
@@ -2439,16 +3034,25 @@ function AddFilesModal({
 								fontSize: typography.fontSize.sm,
 								fontWeight: typography.fontWeight.medium,
 								color: colors.background,
-								backgroundColor: isLoading || selectedCount === 0 ? colors.border : colors.primary,
+								backgroundColor:
+									isLoading || selectedCount === 0
+										? colors.border
+										: colors.primary,
 								border: 'none',
 								borderRadius: radius.md,
-								cursor: isLoading || selectedCount === 0 ? 'not-allowed' : 'pointer',
+								cursor:
+									isLoading || selectedCount === 0 ? 'not-allowed' : 'pointer',
 								transition: `all ${transitions.fast}`,
-								'&:hover': isLoading || selectedCount === 0 ? {} : { backgroundColor: colors.primaryHover },
+								'&:hover':
+									isLoading || selectedCount === 0
+										? {}
+										: { backgroundColor: colors.primaryHover },
 							}}
 							on={{ click: onConfirm }}
 						>
-							{isLoading ? 'Adding...' : `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
+							{isLoading
+								? 'Adding...'
+								: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
 						</button>
 					</div>
 				</div>

@@ -5,24 +5,22 @@ import { z } from 'zod'
  * Schema for a single media root entry.
  * Format: "name:path" (e.g., "shows:/media/shows")
  */
-const MediaRootSchema = z
-	.string()
-	.transform((entry) => {
-		const colonIndex = entry.indexOf(':')
-		if (colonIndex === -1) {
-			throw new Error(
-				`Invalid media root format: "${entry}". Expected "name:path" (e.g., "shows:/media/shows")`,
-			)
-		}
-		const name = entry.slice(0, colonIndex).trim()
-		const path = entry.slice(colonIndex + 1).trim()
-		if (!name || !path) {
-			throw new Error(
-				`Invalid media root format: "${entry}". Both name and path are required.`,
-			)
-		}
-		return { name, path }
-	})
+const MediaRootSchema = z.string().transform((entry) => {
+	const colonIndex = entry.indexOf(':')
+	if (colonIndex === -1) {
+		throw new Error(
+			`Invalid media root format: "${entry}". Expected "name:path" (e.g., "shows:/media/shows")`,
+		)
+	}
+	const name = entry.slice(0, colonIndex).trim()
+	const path = entry.slice(colonIndex + 1).trim()
+	if (!name || !path) {
+		throw new Error(
+			`Invalid media root format: "${entry}". Both name and path are required.`,
+		)
+	}
+	return { name, path }
+})
 
 /**
  * Schema for MEDIA_PATHS environment variable.
@@ -158,4 +156,32 @@ export function toAbsolutePath(
 	const root = getMediaRootByName(rootName)
 	if (!root) return null
 	return nodePath.join(root.path, relativePath)
+}
+
+/**
+ * Convert absolute path to mediaRoot:relativePath format.
+ */
+export function toMediaPath(absolutePath: string): string | null {
+	const resolved = resolveMediaPath(absolutePath)
+	if (!resolved) return null
+	return resolved.relativePath
+		? `${resolved.root.name}:${resolved.relativePath}`
+		: resolved.root.name
+}
+
+/**
+ * Parse mediaRoot:relativePath format to components.
+ */
+export function parseMediaPath(mediaPath: string): {
+	mediaRoot: string
+	relativePath: string
+} {
+	const colonIndex = mediaPath.indexOf(':')
+	if (colonIndex === -1) {
+		return { mediaRoot: mediaPath, relativePath: '' }
+	}
+	return {
+		mediaRoot: mediaPath.slice(0, colonIndex),
+		relativePath: mediaPath.slice(colonIndex + 1),
+	}
 }

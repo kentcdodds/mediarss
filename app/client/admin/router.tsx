@@ -55,6 +55,8 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		history.pushState(null, '', path)
 		this.#currentPath = path
 		this.dispatchEvent(new Event('navigate'))
+		// TODO: force refresh because there's a bug in Remix
+		window.location.reload()
 	}
 
 	/**

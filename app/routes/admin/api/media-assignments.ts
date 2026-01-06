@@ -1,4 +1,5 @@
 import type { Action } from '@remix-run/fetch-router'
+import { getMediaRootByName, parseMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import { listDirectoryFeeds } from '#app/db/directory-feeds.ts'
@@ -22,13 +23,13 @@ type AssignmentsResponse = {
 	directoryFeeds: Array<{
 		id: string
 		name: string
-		directoryPath: string
+		directoryPaths: Array<string> // Array of "mediaRoot:relativePath" strings
 		imageUrl: string | null
 	}>
 }
 
 type UpdateAssignmentsRequest = {
-	filePath: string
+	mediaPath: string // "mediaRoot:relativePath" format
 	feedIds: Array<string>
 }
 
@@ -64,26 +65,25 @@ function handleGet(): Response {
 	// Get all feed items from the database
 	const allFeedItems = parseRows(
 		FeedItemSchema,
-		db
-			.query<Record<string, unknown>, []>(
-				sql`SELECT * FROM feed_items;`,
-			)
-			.all(),
+		db.query<Record<string, unknown>, []>(sql`SELECT * FROM feed_items;`).all(),
 	)
 
-	// Build assignments map
+	// Build assignments map using mediaRoot:relativePath as key
 	const assignments: Record<string, Array<FeedAssignment>> = {}
 
 	// Add curated feed assignments from feed_items table
 	for (const item of allFeedItems) {
-		const existing = assignments[item.filePath]
+		const mediaPath = item.relativePath
+			? `${item.mediaRoot}:${item.relativePath}`
+			: item.mediaRoot
+		const existing = assignments[mediaPath]
 		if (existing) {
 			existing.push({
 				feedId: item.feedId,
 				feedType: 'curated',
 			})
 		} else {
-			assignments[item.filePath] = [
+			assignments[mediaPath] = [
 				{
 					feedId: item.feedId,
 					feedType: 'curated',
@@ -94,7 +94,7 @@ function handleGet(): Response {
 
 	// Note: Directory feed assignments are computed on-the-fly in the client
 	// based on file paths, since we don't have all file paths here.
-	// The client will match files against directoryFeeds[].directoryPath
+	// The client will match files against directoryFeeds[].directoryPaths
 
 	return Response.json({
 		assignments,
@@ -106,7 +106,7 @@ function handleGet(): Response {
 		directoryFeeds: directoryFeeds.map((f) => ({
 			id: f.id,
 			name: f.name,
-			directoryPath: f.directoryPath,
+			directoryPaths: JSON.parse(f.directoryPaths) as Array<string>,
 			imageUrl: f.imageUrl,
 		})),
 	} satisfies AssignmentsResponse)
@@ -120,11 +120,24 @@ async function handlePut(request: Request): Promise<Response> {
 		return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
 	}
 
-	const { filePath, feedIds } = body
+	const { mediaPath, feedIds } = body
 
-	if (typeof filePath !== 'string' || !filePath.trim()) {
+	if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
 		return Response.json(
-			{ error: 'filePath is required and must be a non-empty string' },
+			{
+				error:
+					'mediaPath is required and must be a non-empty string in mediaRoot:relativePath format',
+			},
+			{ status: 400 },
+		)
+	}
+
+	// Parse and validate the mediaPath
+	const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+	const root = getMediaRootByName(mediaRoot)
+	if (!root) {
+		return Response.json(
+			{ error: `Unknown media root: ${mediaRoot}` },
 			{ status: 400 },
 		)
 	}
@@ -154,7 +167,12 @@ async function handlePut(request: Request): Promise<Response> {
 	const currentAssignments = new Set<string>()
 	for (const feed of curatedFeeds) {
 		const items = getItemsForFeed(feed.id)
-		if (items.some((item) => item.filePath === filePath)) {
+		if (
+			items.some(
+				(item) =>
+					item.mediaRoot === mediaRoot && item.relativePath === relativePath,
+			)
+		) {
 			currentAssignments.add(feed.id)
 		}
 	}
@@ -173,11 +191,11 @@ async function handlePut(request: Request): Promise<Response> {
 			(max, item) => Math.max(max, item.position ?? 0),
 			-1,
 		)
-		addItemToFeed(feedId, filePath, maxPosition + 1)
+		addItemToFeed(feedId, mediaRoot, relativePath, maxPosition + 1)
 	}
 
 	for (const feedId of toRemove) {
-		removeItemFromFeed(feedId, filePath)
+		removeItemFromFeed(feedId, mediaRoot, relativePath)
 	}
 
 	return Response.json({

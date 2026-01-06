@@ -1,7 +1,10 @@
 import fs from 'node:fs'
-import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
-import { getMediaRoots } from '#app/config/env.ts'
+import {
+	getMediaRootByName,
+	parseMediaPath,
+	toAbsolutePath,
+} from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed } from '#app/db/curated-feeds.ts'
@@ -13,7 +16,7 @@ type CreateCuratedFeedRequest = {
 	description?: string
 	sortFields?: string
 	sortOrder?: SortOrder
-	items: Array<string> // Array of absolute file paths
+	items: Array<string> // Array of "mediaRoot:relativePath" strings
 }
 
 /**
@@ -44,7 +47,7 @@ export default {
 
 		if (!Array.isArray(body.items)) {
 			return Response.json(
-				{ error: 'Items must be an array of file paths' },
+				{ error: 'Items must be an array of mediaRoot:relativePath strings' },
 				{ status: 400 },
 			)
 		}
@@ -57,59 +60,58 @@ export default {
 			)
 		}
 
-		// Validate each file path
-		const mediaRoots = getMediaRoots()
-		const validatedPaths: Array<string> = []
+		// Validate each file path and parse to mediaRoot + relativePath
+		const validatedItems: Array<{ mediaRoot: string; relativePath: string }> =
+			[]
 
-		for (const filePath of body.items) {
-			if (typeof filePath !== 'string' || !filePath.trim()) {
-				return Response.json(
-					{ error: 'Each item must be a non-empty string path' },
-					{ status: 400 },
-				)
-			}
-
-			const resolvedPath = nodePath.resolve(filePath)
-
-			// Check if file is within a configured media root
-			let isWithinMediaRoot = false
-			for (const root of mediaRoots) {
-				const rootResolved = nodePath.resolve(root.path)
-				if (
-					resolvedPath.startsWith(rootResolved + nodePath.sep) ||
-					resolvedPath === rootResolved
-				) {
-					isWithinMediaRoot = true
-					break
-				}
-			}
-
-			if (!isWithinMediaRoot) {
+		for (const mediaPath of body.items) {
+			if (typeof mediaPath !== 'string' || !mediaPath.trim()) {
 				return Response.json(
 					{
-						error: `File path must be within a configured media root: ${filePath}`,
+						error:
+							'Each item must be a non-empty string in mediaRoot:relativePath format',
 					},
 					{ status: 400 },
 				)
 			}
 
-			// Check if file exists
-			if (!fs.existsSync(resolvedPath)) {
+			const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+
+			// Validate media root exists
+			const root = getMediaRootByName(mediaRoot)
+			if (!root) {
 				return Response.json(
-					{ error: `File does not exist: ${filePath}` },
+					{ error: `Unknown media root: ${mediaRoot}` },
 					{ status: 400 },
 				)
 			}
 
-			const stat = fs.statSync(resolvedPath)
+			// Convert to absolute path and validate
+			const absolutePath = toAbsolutePath(mediaRoot, relativePath)
+			if (!absolutePath) {
+				return Response.json(
+					{ error: `Invalid path: ${mediaPath}` },
+					{ status: 400 },
+				)
+			}
+
+			// Check if file exists
+			if (!fs.existsSync(absolutePath)) {
+				return Response.json(
+					{ error: `File does not exist: ${mediaPath}` },
+					{ status: 400 },
+				)
+			}
+
+			const stat = fs.statSync(absolutePath)
 			if (!stat.isFile()) {
 				return Response.json(
-					{ error: `Path is not a file: ${filePath}` },
+					{ error: `Path is not a file: ${mediaPath}` },
 					{ status: 400 },
 				)
 			}
 
-			validatedPaths.push(resolvedPath)
+			validatedItems.push({ mediaRoot, relativePath })
 		}
 
 		// Create the feed
@@ -121,10 +123,10 @@ export default {
 		})
 
 		// Add items to the feed with positions
-		for (let i = 0; i < validatedPaths.length; i++) {
-			const path = validatedPaths[i]
-			if (path) {
-				addItemToFeed(feed.id, path, i)
+		for (let i = 0; i < validatedItems.length; i++) {
+			const item = validatedItems[i]
+			if (item) {
+				addItemToFeed(feed.id, item.mediaRoot, item.relativePath, i)
 			}
 		}
 

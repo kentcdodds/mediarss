@@ -17,6 +17,8 @@ export type RSSGeneratorOptions = {
 	token: string
 	/** The full URL to the feed itself */
 	feedUrl: string
+	/** The admin URL for managing this feed */
+	adminUrl: string
 }
 
 /**
@@ -188,12 +190,12 @@ function _isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
  * Generate a complete RSS feed XML string.
  */
 export function generateRssFeed(options: RSSGeneratorOptions): string {
-	const { feed, items, baseUrl, token, feedUrl } = options
+	const { feed, items, baseUrl, token, feedUrl, adminUrl } = options
 
 	// Get feed metadata
 	const title = escapeXml(feed.name)
 	const description = cdata(feed.description || `Podcast feed: ${feed.name}`)
-	const link = escapeXml(feed.link || feedUrl)
+	const link = escapeXml(feed.link || adminUrl)
 	const cacheVersion = feed.updatedAt
 	const imageUrl = feed.imageUrl
 		? escapeXml(feed.imageUrl)

@@ -94,9 +94,9 @@ jobs:
 
           # Wait for the container to be ready (max 30 seconds)
           for i in {1..30}; do
-            if curl -sf http://localhost:22050/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:22050/admin/health > /dev/null 2>&1; then
               echo "✅ Health check passed!"
-              curl -s http://localhost:22050/health | jq .
+              curl -s http://localhost:22050/admin/health | jq .
               docker stop smoke-test
               docker rm smoke-test
               exit 0

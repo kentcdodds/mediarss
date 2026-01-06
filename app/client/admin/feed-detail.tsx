@@ -2680,25 +2680,25 @@ function DirectoryPathsEditor(
 		}
 	}
 
-	const addCurrentDirectory = () => {
-		if (!selectedRoot) return
-		const mediaPath = currentPath
-			? `${selectedRoot}:${currentPath}`
-			: selectedRoot
-		setupProps.onPathsChange([...setupProps.paths, mediaPath])
-		// Reset browser state
-		selectedRoot = null
-		currentPath = ''
-		browseState = { status: 'idle' }
-		this.update()
-	}
-
 	return (renderProps: {
 		paths: Array<string>
 		rootsState: RootsState
 		onPathsChange: (paths: Array<string>) => void
 	}) => {
 		const { paths, rootsState, onPathsChange } = renderProps
+
+		const addCurrentDirectory = () => {
+			if (!selectedRoot) return
+			const mediaPath = currentPath
+				? `${selectedRoot}:${currentPath}`
+				: selectedRoot
+			onPathsChange([...paths, mediaPath])
+			// Reset browser state
+			selectedRoot = null
+			currentPath = ''
+			browseState = { status: 'idle' }
+			this.update()
+		}
 
 		const removePath = (index: number) => {
 			const newPaths = paths.filter((_, i) => i !== index)

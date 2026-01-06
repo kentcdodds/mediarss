@@ -28,6 +28,94 @@ const IGNORED_DIRECTORIES = new Set([
 ])
 
 /**
+ * Type for Audible's json64 metadata (base64-encoded JSON in TXXX:json64 tag)
+ */
+type AudibleJson64 = {
+	title?: string
+	summary?: string
+	description?: string
+	author?: string
+	copyright?: string
+	duration?: string // Format: "HH:MM:SS" e.g. "24:32:00"
+	narrated_by?: string
+	genre?: string
+	release_date?: string
+}
+
+/**
+ * Parse Audible's HH:MM:SS duration format to seconds.
+ * Returns null if the format is invalid.
+ */
+function parseAudibleDuration(duration: string | undefined): number | null {
+	if (!duration) return null
+
+	const parts = duration.split(':').map(Number)
+	if (parts.length === 3) {
+		// HH:MM:SS
+		const [hours, minutes, seconds] = parts
+		if (
+			!Number.isNaN(hours) &&
+			!Number.isNaN(minutes) &&
+			!Number.isNaN(seconds)
+		) {
+			return hours! * 3600 + minutes! * 60 + seconds!
+		}
+	} else if (parts.length === 2) {
+		// MM:SS
+		const [minutes, seconds] = parts
+		if (!Number.isNaN(minutes) && !Number.isNaN(seconds)) {
+			return minutes! * 60 + seconds!
+		}
+	}
+
+	return null
+}
+
+/**
+ * Extract a value from native ID3 tags by tag ID.
+ * Searches through all native tag formats (ID3v2.3, ID3v2.4, etc.)
+ */
+function getNativeValue(
+	metadata: mm.IAudioMetadata,
+	nativeId: string,
+): string | undefined {
+	for (const nativeMetadata of Object.values(metadata.native)) {
+		const foundItem = nativeMetadata.find(
+			(item) => item.id.toLowerCase() === nativeId.toLowerCase(),
+		)
+		if (foundItem) {
+			if (
+				typeof foundItem.value === 'object' &&
+				foundItem.value !== null &&
+				'text' in foundItem.value
+			) {
+				return (foundItem.value as { text: string }).text
+			}
+			return foundItem.value as string
+		}
+	}
+	return undefined
+}
+
+/**
+ * Parse Audible's json64 metadata from the TXXX:json64 native tag.
+ * Returns null if not present or invalid.
+ */
+function parseAudibleJson64(metadata: mm.IAudioMetadata): AudibleJson64 | null {
+	const json64 = getNativeValue(metadata, 'TXXX:json64')
+	if (!json64) return null
+
+	try {
+		// Decode base64 and parse JSON
+		const decoded = atob(json64)
+		return JSON.parse(decoded) as AudibleJson64
+	} catch {
+		// Sometimes the json64 data is incomplete or corrupted
+		return null
+	}
+}
+
+/**
  * Schema for validating MediaFile data
  */
 const MediaFileSchema = z.object({
@@ -40,6 +128,9 @@ const MediaFileSchema = z.object({
 	publicationDate: z.date().nullable(),
 	trackNumber: z.number().nullable(),
 	description: z.string().nullable(),
+	narrators: z.array(z.string()).nullable(),
+	genres: z.array(z.string()).nullable(),
+	copyright: z.string().nullable(),
 	sizeBytes: z.number(),
 	mimeType: z.string(),
 	fileModifiedAt: z.number(),
@@ -51,7 +142,9 @@ export type MediaFile = z.infer<typeof MediaFileSchema>
  * Schema for cached media file data (handles Date serialization).
  * Derived from MediaFileSchema with publicationDate as ISO string instead of Date.
  */
-const CachedMediaFileSchema = MediaFileSchema.omit({ publicationDate: true }).extend({
+const CachedMediaFileSchema = MediaFileSchema.omit({
+	publicationDate: true,
+}).extend({
 	publicationDate: z.string().nullable(), // ISO string in cache
 })
 
@@ -134,11 +227,42 @@ function parseAsFullDate(value: string | number): Date | null {
 }
 
 /**
- * Extract publication date from metadata
+ * Extract publication date from metadata with fallback chain:
+ * 1. json64.release_date (e.g. "2023-11-07")
+ * 2. TXXX:year (may contain full date like "2023-11-07")
+ * 3. TXXX:date
+ * 4. common.date
+ * 5. common.year
+ *
  * Handles edge cases where date/year fields may be swapped or contain unexpected formats
  */
-function extractPublicationDate(common: mm.ICommonTagsResult): Date | null {
-	// First, try to get a full date from the date field
+function extractPublicationDate(
+	metadata: mm.IAudioMetadata,
+	audible: AudibleJson64 | null,
+): Date | null {
+	const { common } = metadata
+
+	// 1. Audible release_date (e.g. "2023-11-07")
+	if (audible?.release_date) {
+		const fullDate = parseAsFullDate(audible.release_date)
+		if (fullDate) return fullDate
+	}
+
+	// 2. TXXX:year native tag (may contain full date)
+	const txxxYear = getNativeValue(metadata, 'TXXX:year')
+	if (txxxYear) {
+		const fullDate = parseAsFullDate(txxxYear)
+		if (fullDate) return fullDate
+	}
+
+	// 3. TXXX:date native tag
+	const txxxDate = getNativeValue(metadata, 'TXXX:date')
+	if (txxxDate) {
+		const fullDate = parseAsFullDate(txxxDate)
+		if (fullDate) return fullDate
+	}
+
+	// 4. common.date
 	if (common.date) {
 		const fullDate = parseAsFullDate(common.date)
 		if (fullDate) return fullDate
@@ -155,6 +279,12 @@ function extractPublicationDate(common: mm.ICommonTagsResult): Date | null {
 	}
 
 	// Fall back to year-only dates
+	// Check TXXX:year for year-only
+	if (txxxYear && isYearString(txxxYear)) {
+		const year = parseInt(txxxYear, 10)
+		return new Date(year, 0, 1)
+	}
+
 	// Check if date field contains just a year
 	if (common.date && isYearString(common.date)) {
 		const year = parseInt(common.date, 10)
@@ -187,15 +317,172 @@ function valueToString(value: unknown): string {
 }
 
 /**
- * Extract description from metadata
+ * Extract description from metadata with fallback chain:
+ * 1. json64.summary (Audible's main description)
+ * 2. TXXX:description (native tag)
+ * 3. common.description
+ * 4. TXXX:comment
+ * 5. common.comment
+ * 6. COMM native tag
  */
-function extractDescription(common: mm.ICommonTagsResult): string | null {
+function extractDescription(
+	metadata: mm.IAudioMetadata,
+	audible: AudibleJson64 | null,
+): string | null {
+	// 1. Audible summary (preferred for audiobooks)
+	if (audible?.summary) {
+		return audible.summary
+	}
+
+	// 2. TXXX:description native tag
+	const txxxDescription = getNativeValue(metadata, 'TXXX:description')
+	if (txxxDescription) {
+		return txxxDescription
+	}
+
+	// 3. common.description
+	const { common } = metadata
 	if (common.description && common.description.length > 0) {
-		return common.description.map(valueToString).filter(Boolean).join('\n')
+		const desc = common.description.map(valueToString).filter(Boolean).join('\n')
+		if (desc) return desc
 	}
+
+	// 4. TXXX:comment native tag
+	const txxxComment = getNativeValue(metadata, 'TXXX:comment')
+	if (txxxComment) {
+		return txxxComment
+	}
+
+	// 5. common.comment
 	if (common.comment && common.comment.length > 0) {
-		return common.comment.map(valueToString).filter(Boolean).join('\n')
+		const comment = common.comment.map(valueToString).filter(Boolean).join('\n')
+		if (comment) return comment
 	}
+
+	// 6. COMM native tag (ID3v2 comment frame)
+	const comm =
+		getNativeValue(metadata, 'COMM:comment') ??
+		getNativeValue(metadata, 'COMM')
+	if (comm) {
+		return comm
+	}
+
+	return null
+}
+
+/**
+ * Extract narrators from metadata with fallback chain:
+ * 1. json64.narrated_by (comma-separated)
+ * 2. TXXX:narrated_by
+ * 3. ----:com.apple.iTunes:PERFORMER_NAME
+ */
+function extractNarrators(
+	metadata: mm.IAudioMetadata,
+	audible: AudibleJson64 | null,
+): string[] | null {
+	// 1. Audible narrated_by (comma-separated)
+	if (audible?.narrated_by) {
+		const narrators = audible.narrated_by
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 2. TXXX:narrated_by native tag
+	const txxxNarrator = getNativeValue(metadata, 'TXXX:narrated_by')
+	if (txxxNarrator) {
+		const narrators = txxxNarrator
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 3. Apple iTunes performer name
+	const performer = getNativeValue(
+		metadata,
+		'----:com.apple.iTunes:PERFORMER_NAME',
+	)
+	if (performer) {
+		const narrators = performer
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	return null
+}
+
+/**
+ * Extract genres from metadata with fallback chain:
+ * 1. json64.genre (colon-separated like "Teen & Young Adult:Literature & Fiction")
+ * 2. common.genre (array)
+ * 3. TXXX:book_genre
+ * 4. TXXX:genre
+ */
+function extractGenres(
+	metadata: mm.IAudioMetadata,
+	audible: AudibleJson64 | null,
+): string[] | null {
+	// 1. Audible genre (colon-separated)
+	if (audible?.genre) {
+		const genres = audible.genre
+			.split(':')
+			.map((g) => g.trim())
+			.filter(Boolean)
+		if (genres.length > 0) return genres
+	}
+
+	// 2. common.genre (already an array)
+	const { common } = metadata
+	if (common.genre && common.genre.length > 0) {
+		return common.genre
+	}
+
+	// 3. TXXX:book_genre native tag
+	const bookGenre = getNativeValue(metadata, 'TXXX:book_genre')
+	if (bookGenre) {
+		const genres = bookGenre
+			.split(':')
+			.map((g) => g.trim())
+			.filter(Boolean)
+		if (genres.length > 0) return genres
+	}
+
+	// 4. TXXX:genre native tag
+	const txxxGenre = getNativeValue(metadata, 'TXXX:genre')
+	if (txxxGenre) {
+		const genres = txxxGenre
+			.split(':')
+			.map((g) => g.trim())
+			.filter(Boolean)
+		if (genres.length > 0) return genres
+	}
+
+	return null
+}
+
+/**
+ * Extract copyright from metadata with fallback chain:
+ * 1. json64.copyright
+ * 2. common.copyright
+ */
+function extractCopyright(
+	metadata: mm.IAudioMetadata,
+	audible: AudibleJson64 | null,
+): string | null {
+	// 1. Audible copyright
+	if (audible?.copyright) {
+		return audible.copyright
+	}
+
+	// 2. common.copyright
+	if (metadata.common.copyright) {
+		return metadata.common.copyright
+	}
+
 	return null
 }
 
@@ -280,6 +567,9 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			skipCovers: true,
 		})
 
+		// Parse Audible json64 metadata if present
+		const audible = parseAudibleJson64(metadata)
+
 		const filename = path.basename(absolutePath)
 		const directory = path.dirname(absolutePath)
 
@@ -287,12 +577,18 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			path: absolutePath,
 			filename,
 			directory,
-			title: metadata.common.title ?? filename,
-			author: metadata.common.artist ?? null,
-			duration: metadata.format.duration ?? null,
-			publicationDate: extractPublicationDate(metadata.common),
+			title: audible?.title ?? metadata.common.title ?? filename,
+			author: audible?.author ?? metadata.common.artist ?? null,
+			duration:
+				parseAudibleDuration(audible?.duration) ??
+				metadata.format.duration ??
+				null,
+			publicationDate: extractPublicationDate(metadata, audible),
 			trackNumber: metadata.common.track?.no ?? null,
-			description: extractDescription(metadata.common),
+			description: extractDescription(metadata, audible),
+			narrators: extractNarrators(metadata, audible),
+			genres: extractGenres(metadata, audible),
+			copyright: extractCopyright(metadata, audible),
 			sizeBytes: stat.size,
 			mimeType: fileType.mime,
 			fileModifiedAt: Math.floor(stat.mtimeMs / 1000),

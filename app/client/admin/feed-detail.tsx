@@ -1076,7 +1076,11 @@ export function FeedDetail(this: Handle) {
 								)}
 								<InfoItem
 									label="Sort"
-									value={`${feed.sortFields} (${feed.sortOrder})`}
+									value={
+										feed.sortFields === 'position'
+											? 'position (manual)'
+											: `${feed.sortFields} (${feed.sortOrder})`
+									}
 								/>
 								<InfoItem label="Created" value={formatDate(feed.createdAt)} />
 								<InfoItem label="Updated" value={formatDate(feed.updatedAt)} />

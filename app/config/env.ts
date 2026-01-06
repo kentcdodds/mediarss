@@ -39,21 +39,18 @@ const MediaPathsSchema = z
 			.filter(Boolean)
 	})
 	.pipe(z.array(MediaRootSchema))
-	.refine(
-		(roots) => {
-			const names = roots.map((r) => r.name)
-			return new Set(names).size === names.length
-		},
-		(roots) => {
-			const names = roots.map((r) => r.name)
+	.superRefine((roots, ctx) => {
+		const names = roots.map((r) => r.name)
+		if (new Set(names).size !== names.length) {
 			const duplicates = names.filter(
 				(name, index) => names.indexOf(name) !== index,
 			)
-			return {
+			ctx.addIssue({
+				code: 'custom',
 				message: `Duplicate media path names are not allowed. Found duplicates: ${[...new Set(duplicates)].join(', ')}`,
-			}
-		},
-	)
+			})
+		}
+	})
 
 /**
  * Environment variable schema for MediaRSS.

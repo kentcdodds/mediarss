@@ -199,17 +199,19 @@ export default {
 				fileModifiedAt: metadata.fileModifiedAt,
 			},
 			assignments,
-			curatedFeeds: curatedFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				imageUrl: f.imageUrl,
-			})),
-			directoryFeeds: directoryFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				directoryPaths: JSON.parse(f.directoryPaths) as string[],
-				imageUrl: f.imageUrl,
-			})),
+		curatedFeeds: curatedFeeds.map((f) => ({
+			id: f.id,
+			name: f.name,
+			imageUrl: f.imageUrl,
+			updatedAt: f.updatedAt,
+		})),
+		directoryFeeds: directoryFeeds.map((f) => ({
+			id: f.id,
+			name: f.name,
+			directoryPaths: JSON.parse(f.directoryPaths) as string[],
+			imageUrl: f.imageUrl,
+			updatedAt: f.updatedAt,
+		})),
 		}
 
 		return Response.json(response)

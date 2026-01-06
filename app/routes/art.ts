@@ -8,6 +8,7 @@ import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { DirectoryFeed, Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
+import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 
 /**
  * Look up a feed by token without touching last_used_at.
@@ -122,7 +123,19 @@ export default {
 
 		// Special case: "/art/:token/feed" returns the feed's artwork
 		if (splatParam === 'feed') {
-			// If feed has an imageUrl, redirect to it
+			// Priority 1: Check for uploaded artwork file
+			const uploadedArtwork = await getFeedArtworkPath(feed.id)
+			if (uploadedArtwork) {
+				const artworkFile = Bun.file(uploadedArtwork.path)
+				return new Response(artworkFile.stream(), {
+					headers: {
+						'Content-Type': uploadedArtwork.mimeType,
+						'Cache-Control': 'public, max-age=86400',
+					},
+				})
+			}
+
+			// Priority 2: Check for external imageUrl
 			if (feed.imageUrl) {
 				return new Response(null, {
 					status: 302,
@@ -130,7 +143,7 @@ export default {
 				})
 			}
 
-			// Generate placeholder
+			// Priority 3: Generate placeholder
 			const svg = generatePlaceholderSvg(feed.name)
 			return new Response(svg, {
 				headers: {
@@ -184,6 +197,19 @@ export default {
 		}
 
 		// No embedded artwork - fall back to feed artwork or placeholder
+		// Priority 1: Check for uploaded feed artwork
+		const uploadedFeedArtwork = await getFeedArtworkPath(feed.id)
+		if (uploadedFeedArtwork) {
+			const artworkFile = Bun.file(uploadedFeedArtwork.path)
+			return new Response(artworkFile.stream(), {
+				headers: {
+					'Content-Type': uploadedFeedArtwork.mimeType,
+					'Cache-Control': 'public, max-age=86400',
+				},
+			})
+		}
+
+		// Priority 2: Check for external imageUrl
 		if (feed.imageUrl) {
 			return new Response(null, {
 				status: 302,
@@ -191,7 +217,7 @@ export default {
 			})
 		}
 
-		// Generate placeholder based on filename
+		// Priority 3: Generate placeholder based on filename
 		const filename = nodePath.basename(filePath)
 		const svg = generatePlaceholderSvg(filename)
 		return new Response(svg, {

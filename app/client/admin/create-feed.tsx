@@ -21,6 +21,12 @@ type DirectoryEntry = {
 	type: 'directory' | 'file'
 }
 
+type BrowseStats = {
+	filesInDirectory: number
+	filesInSubdirectories: number
+	totalFiles: number
+}
+
 type SelectedDirectory = {
 	mediaRoot: string
 	relativePath: string
@@ -59,7 +65,7 @@ type BrowseState =
 	| { status: 'idle' }
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
-	| { status: 'success'; entries: Array<DirectoryEntry> }
+	| { status: 'success'; entries: Array<DirectoryEntry>; stats: BrowseStats }
 
 type SubmitState =
 	| { status: 'idle' }
@@ -127,10 +133,17 @@ export function CreateFeed(this: Handle) {
 		fetch(`/admin/api/browse?${params}`, { signal: this.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
-				return res.json() as Promise<{ entries: Array<DirectoryEntry> }>
+				return res.json() as Promise<{
+					entries: Array<DirectoryEntry>
+					stats: BrowseStats
+				}>
 			})
 			.then((data) => {
-				browseState = { status: 'success', entries: data.entries }
+				browseState = {
+					status: 'success',
+					entries: data.entries,
+					stats: data.stats,
+				}
 				this.update()
 			})
 			.catch((err) => {
@@ -1097,8 +1110,7 @@ function DirectoryBrowserWithAdd({
 								</button>
 							))}
 
-						{browseState.entries.filter((e) => e.type === 'file').length >
-							0 && (
+						{browseState.stats.totalFiles > 0 && (
 							<div
 								css={{
 									padding: `${spacing.sm} ${spacing.md}`,
@@ -1107,8 +1119,24 @@ function DirectoryBrowserWithAdd({
 									borderTop: `1px solid ${colors.border}`,
 								}}
 							>
-								{browseState.entries.filter((e) => e.type === 'file').length}{' '}
-								file(s) in this directory
+								{browseState.stats.filesInDirectory > 0 &&
+								browseState.stats.filesInSubdirectories > 0 ? (
+									<span>
+										{browseState.stats.totalFiles} file(s) total (
+										{browseState.stats.filesInDirectory} here,{' '}
+										{browseState.stats.filesInSubdirectories} in subdirectories)
+									</span>
+								) : browseState.stats.filesInDirectory > 0 ? (
+									<span>
+										{browseState.stats.filesInDirectory} file(s) in this
+										directory
+									</span>
+								) : (
+									<span>
+										{browseState.stats.filesInSubdirectories} file(s) in
+										subdirectories
+									</span>
+								)}
 							</div>
 						)}
 					</div>
@@ -1405,6 +1433,37 @@ function FilePicker({
 									</button>
 								)
 							})}
+
+						{/* File count stats */}
+						{browseState.stats.totalFiles > 0 && (
+							<div
+								css={{
+									padding: `${spacing.sm} ${spacing.md}`,
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									borderTop: `1px solid ${colors.border}`,
+								}}
+							>
+								{browseState.stats.filesInDirectory > 0 &&
+								browseState.stats.filesInSubdirectories > 0 ? (
+									<span>
+										{browseState.stats.totalFiles} file(s) total (
+										{browseState.stats.filesInDirectory} here,{' '}
+										{browseState.stats.filesInSubdirectories} in subdirectories)
+									</span>
+								) : browseState.stats.filesInDirectory > 0 ? (
+									<span>
+										{browseState.stats.filesInDirectory} file(s) in this
+										directory
+									</span>
+								) : (
+									<span>
+										{browseState.stats.filesInSubdirectories} file(s) in
+										subdirectories
+									</span>
+								)}
+							</div>
+						)}
 					</div>
 				)}
 			</div>

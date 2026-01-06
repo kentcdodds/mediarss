@@ -28,6 +28,7 @@ import {
 	deleteFeedArtwork,
 	hasFeedArtwork,
 } from '#app/helpers/feed-artwork.ts'
+import { reorderFeedItems } from '#app/db/feed-items.ts'
 
 /**
  * Simplified media item for the admin UI
@@ -266,6 +267,33 @@ async function handlePut(id: string, request: Request) {
 				{ error: 'Cannot set directoryPaths on a curated feed' },
 				{ status: 400 },
 			)
+		}
+
+		// If switching to manual sort (position), preserve the current order
+		// by setting position values based on the current sorted order
+		const switchingToManualSort =
+			body.sortFields === 'position' && curatedFeed.sortFields !== 'position'
+
+		if (switchingToManualSort) {
+			// Get items in their current sorted order (before changing sort)
+			const items = await getCuratedFeedItems(curatedFeed)
+
+			// Set positions for each item to preserve the current order
+			const reorderItems = items
+				.map((item) => {
+					const resolved = resolveMediaPath(item.path)
+					if (!resolved) return null
+					return {
+						mediaRoot: resolved.root.name,
+						relativePath: resolved.relativePath,
+					}
+				})
+				.filter(
+					(item): item is { mediaRoot: string; relativePath: string } =>
+						item !== null,
+				)
+
+			reorderFeedItems(curatedFeed.id, reorderItems)
 		}
 
 		const updated = updateCuratedFeed(id, {

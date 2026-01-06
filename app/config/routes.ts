@@ -1,11 +1,11 @@
 import { route } from '@remix-run/fetch-router'
 
 export default route({
-	health: '/health',
 	feed: '/feed/:token',
 	media: '/media/:token/*path',
 	art: '/art/:token/*path',
 	// Admin routes
+	adminHealth: '/admin/health',
 	admin: '/admin',
 	adminCatchAll: '/admin/*path',
 	adminApiFeeds: '/admin/api/feeds',

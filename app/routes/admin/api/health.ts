@@ -29,6 +29,6 @@ export default {
 		}
 	},
 } satisfies Action<
-	typeof routes.health.method,
-	typeof routes.health.pattern.source
+	typeof routes.adminHealth.method,
+	typeof routes.adminHealth.pattern.source
 >

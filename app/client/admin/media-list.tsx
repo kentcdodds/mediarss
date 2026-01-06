@@ -35,7 +35,7 @@ type CuratedFeed = {
 type DirectoryFeed = {
 	id: string
 	name: string
-	directoryPath: string
+	directoryPaths: Array<string>
 	imageUrl: string | null
 }
 
@@ -94,16 +94,32 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
- * Check if a file path is within a directory path
+ * Check if a media item is within any of the directory paths.
+ * Directory paths are in "mediaRoot:relativePath" format.
  */
-function isFileInDirectory(filePath: string, directoryPath: string): boolean {
-	// Normalize paths for comparison
-	const normalizedFile = filePath.replace(/\\/g, '/')
-	const normalizedDir = directoryPath.replace(/\\/g, '/')
-	return (
-		normalizedFile.startsWith(normalizedDir + '/') ||
-		normalizedFile === normalizedDir
-	)
+function isMediaInDirectoryFeed(
+	item: MediaItem,
+	directoryPaths: Array<string>,
+): boolean {
+	// Build the media path key in the same format as directory paths
+	const mediaPath = `${item.rootName}:${item.relativePath}`
+
+	for (const dirPath of directoryPaths) {
+		// Normalize paths for comparison
+		const normalizedFile = mediaPath.replace(/\\/g, '/')
+		const normalizedDir = dirPath.replace(/\\/g, '/')
+
+		// Check if the file is within this directory
+		if (
+			normalizedFile.startsWith(normalizedDir + '/') ||
+			normalizedFile === normalizedDir ||
+			// Also check if the directory path is a prefix (for root-level matches)
+			normalizedFile.startsWith(normalizedDir)
+		) {
+			return true
+		}
+	}
+	return false
 }
 
 /**
@@ -120,8 +136,11 @@ function getMediaFeeds(
 		name: string
 	}> = []
 
+	// Build the media path key in the same format as assignments
+	const mediaPath = `${item.rootName}:${item.relativePath}`
+
 	// Add curated feed assignments
-	const curatedAssignments = assignments[item.path] ?? []
+	const curatedAssignments = assignments[mediaPath] ?? []
 	for (const assignment of curatedAssignments) {
 		feeds.push({
 			feedId: assignment.feedId,
@@ -132,7 +151,7 @@ function getMediaFeeds(
 
 	// Add directory feed matches
 	for (const dirFeed of directoryFeeds) {
-		if (isFileInDirectory(item.path, dirFeed.directoryPath)) {
+		if (isMediaInDirectoryFeed(item, dirFeed.directoryPaths)) {
 			feeds.push({
 				feedId: dirFeed.id,
 				feedType: 'directory',
@@ -897,7 +916,7 @@ function ManageAccessModal({
 }) {
 	// Find directory feeds that contain this file
 	const matchingDirectoryFeeds = directoryFeeds.filter((feed) =>
-		isFileInDirectory(item.path, feed.directoryPath),
+		isMediaInDirectoryFeed(item, feed.directoryPaths),
 	)
 
 	return (

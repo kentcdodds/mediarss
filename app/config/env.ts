@@ -28,6 +28,7 @@ const MediaRootSchema = z
  * Schema for MEDIA_PATHS environment variable.
  * Format: "name1:path1,name2:path2,name3:path3"
  * Example: "shows:/media/shows,personal:/media/personal,other:/media/other"
+ * Note: Each name must be unique - duplicate names are not allowed.
  */
 const MediaPathsSchema = z
 	.string()
@@ -40,6 +41,21 @@ const MediaPathsSchema = z
 			.filter(Boolean)
 	})
 	.pipe(z.array(MediaRootSchema))
+	.refine(
+		(roots) => {
+			const names = roots.map((r) => r.name)
+			return new Set(names).size === names.length
+		},
+		(roots) => {
+			const names = roots.map((r) => r.name)
+			const duplicates = names.filter(
+				(name, index) => names.indexOf(name) !== index,
+			)
+			return {
+				message: `Duplicate media path names are not allowed. Found duplicates: ${[...new Set(duplicates)].join(', ')}`,
+			}
+		},
+	)
 
 /**
  * Environment variable schema for MediaRSS.

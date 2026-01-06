@@ -200,6 +200,8 @@ This command:
 - Sets `MEDIA_PATHS=audio:./local-test/1/audio,video:./local-test/1/video`
 - Runs the dev server with watch mode
 
+**Important:** Each media path name must be unique. Duplicate names are not allowed and will cause a validation error at startup.
+
 The `local-test/1` directory contains sample media files:
 - `audio/` - Audiobook files (.m4b, .m4a, .mp3)
 - `video/` - Video files (.mkv)

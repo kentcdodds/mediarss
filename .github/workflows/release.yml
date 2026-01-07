@@ -35,8 +35,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "kcdbot"
+          git config user.email "me+bot@kentcdodds.com"
 
       - name: Run release script
         env:

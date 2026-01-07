@@ -224,8 +224,12 @@ export function FeedDetail(this: Handle) {
 	let editForm: EditFormState = {
 		name: '',
 		description: '',
+		subtitle: '',
 		sortFields: '',
 		sortOrder: 'asc',
+		feedType: 'episodic',
+		link: '',
+		copyright: '',
 		directoryPaths: [],
 	}
 	let editLoading = false

@@ -50,7 +50,7 @@ async function main() {
 	console.log('✓ Staged package.json')
 
 	// Create commit
-	await $`git commit -m ${`release: ${tagName}\n\n[skip ci]`}`
+	await $`git commit -m ${'release: ' + tagName}`
 	console.log(`✓ Created commit: release: ${tagName}`)
 
 	// Create tag

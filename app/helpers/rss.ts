@@ -315,6 +315,12 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	// Get feed metadata
 	const title = escapeXml(feed.name)
 	const description = cdata(feed.description || `Podcast feed: ${feed.name}`)
+	// Subtitle is a short tagline (max 255 chars) shown in podcast apps
+	// Fall back to truncated description if no subtitle is set
+	const subtitle = cdata(
+		feed.subtitle ||
+			(feed.description ? feed.description.slice(0, 255) : feed.name),
+	)
 	const link = escapeXml(feed.link || adminUrl)
 	const cacheVersion = feed.updatedAt
 	const imageUrl = feed.imageUrl
@@ -326,6 +332,9 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	const language = escapeXml(feed.language || 'en')
 	const explicit = escapeXml(feed.explicit || 'no')
 	const category = escapeXml(feed.category)
+	const copyright = escapeXml(feed.copyright)
+	// Feed type: "episodic" (default) or "serial" - affects episode ordering in apps
+	const feedType = escapeXml(feed.feedType || 'episodic')
 
 	const lastBuildDate = formatRssDate(new Date())
 
@@ -357,12 +366,15 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <language>${language}</language>
     <generator>MediaRSS</generator>
+    ${copyright ? `<copyright>${copyright}</copyright>` : ''}
     
     <!-- iTunes/Apple Podcasts metadata -->
     <itunes:title>${title}</itunes:title>
+    <itunes:subtitle>${subtitle}</itunes:subtitle>
     ${author ? `<itunes:author>${author}</itunes:author>` : ''}
     <itunes:summary>${description}</itunes:summary>
     <itunes:explicit>${explicit}</itunes:explicit>
+    <itunes:type>${feedType}</itunes:type>
     ${category ? `<itunes:category text="${category}" />` : ''}
     <itunes:image href="${imageUrl}" />
     ${

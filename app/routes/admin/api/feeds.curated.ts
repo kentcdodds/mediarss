@@ -14,9 +14,19 @@ import type { SortOrder } from '#app/db/types.ts'
 type CreateCuratedFeedRequest = {
 	name: string
 	description?: string
+	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
 	items: Array<string> // Array of "mediaRoot:relativePath" strings
+	author?: string | null
+	ownerName?: string | null
+	ownerEmail?: string | null
+	language?: string
+	explicit?: string
+	category?: string | null
+	link?: string | null
+	copyright?: string | null
+	feedType?: 'episodic' | 'serial'
 }
 
 /**
@@ -56,6 +66,14 @@ export default {
 		if (body.sortOrder && !['asc', 'desc'].includes(body.sortOrder)) {
 			return Response.json(
 				{ error: 'sortOrder must be "asc" or "desc"' },
+				{ status: 400 },
+			)
+		}
+
+		// Validate feedType if provided
+		if (body.feedType && !['episodic', 'serial'].includes(body.feedType)) {
+			return Response.json(
+				{ error: 'feedType must be "episodic" or "serial"' },
 				{ status: 400 },
 			)
 		}
@@ -118,8 +136,18 @@ export default {
 		const feed = createCuratedFeed({
 			name: body.name.trim(),
 			description: body.description?.trim(),
+			subtitle: body.subtitle,
 			sortFields: body.sortFields ?? 'position',
 			sortOrder: body.sortOrder ?? 'asc',
+			author: body.author,
+			ownerName: body.ownerName,
+			ownerEmail: body.ownerEmail,
+			language: body.language,
+			explicit: body.explicit,
+			category: body.category,
+			link: body.link,
+			copyright: body.copyright,
+			feedType: body.feedType,
 		})
 
 		// Add items to the feed with positions

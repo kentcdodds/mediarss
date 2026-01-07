@@ -6,6 +6,7 @@ import { type CuratedFeed, CuratedFeedSchema, type SortOrder } from './types.ts'
 export type CreateCuratedFeedData = {
 	name: string
 	description?: string
+	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
 	imageUrl?: string | null
@@ -16,6 +17,8 @@ export type CreateCuratedFeedData = {
 	explicit?: string
 	category?: string | null
 	link?: string | null
+	copyright?: string | null
+	feedType?: 'episodic' | 'serial'
 	overrides?: string | null
 }
 
@@ -26,15 +29,15 @@ export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
 	db.query(
 		sql`
 			INSERT INTO curated_feeds (
-				id, name, description, sort_fields, sort_order,
+				id, name, description, subtitle, sort_fields, sort_order,
 				image_url, author, owner_name, owner_email, language, explicit,
-				category, link, overrides,
+				category, link, copyright, feed_type, overrides,
 				created_at, updated_at
 			)
 			VALUES (
-				$id, $name, $description, $sortFields, $sortOrder,
+				$id, $name, $description, $subtitle, $sortFields, $sortOrder,
 				$imageUrl, $author, $ownerName, $ownerEmail, $language, $explicit,
-				$category, $link, $overrides,
+				$category, $link, $copyright, $feedType, $overrides,
 				$createdAt, $updatedAt
 			);
 		`,
@@ -42,6 +45,7 @@ export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
 		$id: id,
 		$name: data.name,
 		$description: data.description ?? '',
+		$subtitle: data.subtitle ?? null,
 		$sortFields: data.sortFields ?? 'position',
 		$sortOrder: data.sortOrder ?? 'asc',
 		$imageUrl: data.imageUrl ?? null,
@@ -52,6 +56,8 @@ export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
 		$explicit: data.explicit ?? 'no',
 		$category: data.category ?? null,
 		$link: data.link ?? null,
+		$copyright: data.copyright ?? null,
+		$feedType: data.feedType ?? 'episodic',
 		$overrides: data.overrides ?? null,
 		$createdAt: now,
 		$updatedAt: now,
@@ -81,6 +87,7 @@ export function listCuratedFeeds(): Array<CuratedFeed> {
 export type UpdateCuratedFeedData = {
 	name?: string
 	description?: string
+	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
 	imageUrl?: string | null
@@ -91,6 +98,8 @@ export type UpdateCuratedFeedData = {
 	explicit?: string
 	category?: string | null
 	link?: string | null
+	copyright?: string | null
+	feedType?: 'episodic' | 'serial'
 	overrides?: string | null
 }
 
@@ -106,10 +115,11 @@ export function updateCuratedFeed(
 	db.query(
 		sql`
 			UPDATE curated_feeds
-			SET name = $name, description = $description, sort_fields = $sortFields,
-				sort_order = $sortOrder, image_url = $imageUrl, author = $author,
-				owner_name = $ownerName, owner_email = $ownerEmail, language = $language,
-				explicit = $explicit, category = $category, link = $link,
+			SET name = $name, description = $description, subtitle = $subtitle,
+				sort_fields = $sortFields, sort_order = $sortOrder, image_url = $imageUrl,
+				author = $author, owner_name = $ownerName, owner_email = $ownerEmail,
+				language = $language, explicit = $explicit, category = $category,
+				link = $link, copyright = $copyright, feed_type = $feedType,
 				overrides = $overrides, updated_at = $updatedAt
 			WHERE id = $id;
 		`,
@@ -117,6 +127,7 @@ export function updateCuratedFeed(
 		$id: id,
 		$name: data.name ?? existing.name,
 		$description: data.description ?? existing.description,
+		$subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
 		$sortFields: data.sortFields ?? existing.sortFields,
 		$sortOrder: data.sortOrder ?? existing.sortOrder,
 		$imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
@@ -129,6 +140,9 @@ export function updateCuratedFeed(
 		$explicit: data.explicit ?? existing.explicit,
 		$category: data.category !== undefined ? data.category : existing.category,
 		$link: data.link !== undefined ? data.link : existing.link,
+		$copyright:
+			data.copyright !== undefined ? data.copyright : existing.copyright,
+		$feedType: data.feedType ?? existing.feedType,
 		$overrides:
 			data.overrides !== undefined ? data.overrides : existing.overrides,
 		$updatedAt: now,

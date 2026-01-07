@@ -46,10 +46,20 @@ type MediaItemResponse = {
 type UpdateFeedRequest = {
 	name?: string
 	description?: string
+	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
 	directoryPaths?: Array<string> // Only for directory feeds - array of "mediaRoot:relativePath" strings
 	imageUrl?: string | null // External artwork URL
+	author?: string | null
+	ownerName?: string | null
+	ownerEmail?: string | null
+	language?: string
+	explicit?: string
+	category?: string | null
+	link?: string | null
+	copyright?: string | null
+	feedType?: 'episodic' | 'serial'
 }
 
 /**
@@ -174,6 +184,14 @@ async function handlePut(id: string, request: Request) {
 		)
 	}
 
+	// Validate feedType if provided
+	if (body.feedType && !['episodic', 'serial'].includes(body.feedType)) {
+		return Response.json(
+			{ error: 'feedType must be "episodic" or "serial"' },
+			{ status: 400 },
+		)
+	}
+
 	// Try directory feed first
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) {
@@ -242,10 +260,20 @@ async function handlePut(id: string, request: Request) {
 		const updated = updateDirectoryFeed(id, {
 			name: body.name,
 			description: body.description,
+			subtitle: body.subtitle,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
 			directoryPaths: validatedPaths,
 			imageUrl: body.imageUrl,
+			author: body.author,
+			ownerName: body.ownerName,
+			ownerEmail: body.ownerEmail,
+			language: body.language,
+			explicit: body.explicit,
+			category: body.category,
+			link: body.link,
+			copyright: body.copyright,
+			feedType: body.feedType,
 		})
 
 		if (!updated) {
@@ -296,9 +324,19 @@ async function handlePut(id: string, request: Request) {
 		const updated = updateCuratedFeed(id, {
 			name: body.name,
 			description: body.description,
+			subtitle: body.subtitle,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
 			imageUrl: body.imageUrl,
+			author: body.author,
+			ownerName: body.ownerName,
+			ownerEmail: body.ownerEmail,
+			language: body.language,
+			explicit: body.explicit,
+			category: body.category,
+			link: body.link,
+			copyright: body.copyright,
+			feedType: body.feedType,
 		})
 
 		if (!updated) {

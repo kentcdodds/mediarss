@@ -1,5 +1,7 @@
 # dependencies
 /node_modules
+# we use bun
+package-lock.json
 
 # dotenv environment variable files
 .env

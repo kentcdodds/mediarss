@@ -7,6 +7,7 @@ export default route({
 	// OAuth routes (public)
 	oauthToken: '/oauth/token',
 	oauthJwks: '/oauth/jwks',
+	oauthServerMetadata: '/.well-known/oauth-authorization-server',
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',

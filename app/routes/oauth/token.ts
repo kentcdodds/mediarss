@@ -3,8 +3,8 @@ import type routes from '#app/config/routes.ts'
 import {
 	consumeAuthorizationCode,
 	generateAccessToken,
-	getClient,
 	getValidAuthorizationCode,
+	resolveClient,
 	verifyCodeChallenge,
 } from '#app/oauth/index.ts'
 
@@ -76,6 +76,9 @@ async function parseTokenRequest(
  * POST /oauth/token - Token endpoint
  * Exchanges an authorization code for an access token.
  * Requires PKCE code_verifier.
+ *
+ * Supports both static client IDs and URL-based Client ID Metadata Documents
+ * per MCP 2025-11-25 spec.
  */
 async function handlePost(context: RequestContext): Promise<Response> {
 	const tokenRequest = await parseTokenRequest(context.request)
@@ -100,7 +103,8 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		return errorResponse('invalid_request', 'client_id is required.')
 	}
 
-	const client = getClient(tokenRequest.client_id)
+	// Resolve client (supports both static clients and URL-based metadata documents)
+	const client = await resolveClient(tokenRequest.client_id)
 	if (!client) {
 		return errorResponse('invalid_client', 'Unknown client.', 401)
 	}

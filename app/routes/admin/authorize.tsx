@@ -5,9 +5,9 @@ import type routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
 import {
 	createAuthorizationCode,
-	getClient,
+	isValidClientRedirectUri,
 	isValidCodeChallenge,
-	isValidRedirectUri,
+	resolveClient,
 } from '#app/oauth/index.ts'
 
 interface AuthorizeParams {
@@ -116,8 +116,11 @@ function renderAuthorizePage(
  * GET /admin/authorize - Show authorization page
  * This endpoint is protected by Cloudflare Access.
  * If the user can reach this page, they are already authenticated.
+ *
+ * Supports both static client IDs and URL-based Client ID Metadata Documents
+ * per MCP 2025-11-25 spec.
  */
-function handleGet(context: RequestContext): Response {
+async function handleGet(context: RequestContext): Promise<Response> {
 	const params = parseAuthorizeParams(context.url)
 
 	// Validate response_type
@@ -128,19 +131,19 @@ function handleGet(context: RequestContext): Response {
 		)
 	}
 
-	// Validate client
-	const client = getClient(params.client_id)
+	// Validate client (supports both static clients and URL-based metadata documents)
+	const client = await resolveClient(params.client_id)
 	if (!client) {
 		return renderError(
 			'Invalid Client',
-			'The specified client_id is not registered.',
+			'The specified client_id is not registered or could not be resolved.',
 		)
 	}
 
-	// Validate redirect_uri
+	// Validate redirect_uri against the client's allowed URIs
 	if (
 		!params.redirect_uri ||
-		!isValidRedirectUri(client, params.redirect_uri)
+		!isValidClientRedirectUri(client, params.redirect_uri)
 	) {
 		return renderError(
 			'Invalid Redirect URI',
@@ -176,8 +179,11 @@ function handleGet(context: RequestContext): Response {
 /**
  * POST /admin/authorize - Process authorization and redirect with code
  * This endpoint is protected by Cloudflare Access.
+ *
+ * Supports both static client IDs and URL-based Client ID Metadata Documents
+ * per MCP 2025-11-25 spec.
  */
-function handlePost(context: RequestContext): Response {
+async function handlePost(context: RequestContext): Promise<Response> {
 	const params = parseAuthorizeParams(context.url)
 
 	// Re-validate everything (defense in depth)
@@ -188,17 +194,18 @@ function handlePost(context: RequestContext): Response {
 		)
 	}
 
-	const client = getClient(params.client_id)
+	// Resolve client (supports both static clients and URL-based metadata documents)
+	const client = await resolveClient(params.client_id)
 	if (!client) {
 		return renderError(
 			'Invalid Client',
-			'The specified client_id is not registered.',
+			'The specified client_id is not registered or could not be resolved.',
 		)
 	}
 
 	if (
 		!params.redirect_uri ||
-		!isValidRedirectUri(client, params.redirect_uri)
+		!isValidClientRedirectUri(client, params.redirect_uri)
 	) {
 		return renderError(
 			'Invalid Redirect URI',
@@ -218,6 +225,7 @@ function handlePost(context: RequestContext): Response {
 	}
 
 	// Create authorization code
+	// For URL-based clients, the client_id is the full URL
 	const authCode = createAuthorizationCode({
 		clientId: client.id,
 		redirectUri: params.redirect_uri,
@@ -243,7 +251,7 @@ function handlePost(context: RequestContext): Response {
 
 export default {
 	middleware: [],
-	action(context: RequestContext) {
+	async action(context: RequestContext) {
 		if (context.method === 'POST') {
 			return handlePost(context)
 		}

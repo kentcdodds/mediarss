@@ -29,6 +29,7 @@ import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
 import mediaHandlers from '#app/routes/media.ts'
 import oauthJwksHandlers from '#app/routes/oauth/jwks.ts'
+import oauthServerMetadataHandlers from '#app/routes/oauth/server-metadata.ts'
 import oauthTokenHandlers from '#app/routes/oauth/token.ts'
 
 /**
@@ -96,6 +97,7 @@ router.map(routes.art, artHandlers)
 // OAuth routes (public, before admin routes)
 router.map(routes.oauthToken, oauthTokenHandlers)
 router.map(routes.oauthJwks, oauthJwksHandlers)
+router.map(routes.oauthServerMetadata, oauthServerMetadataHandlers)
 
 // Admin routes - API routes first (more specific), then catch-all
 router.map(routes.adminHealth, adminApiHealthHandlers)

@@ -160,13 +160,31 @@ const migrations: Array<Migration> = [
 
 			// OAuth signing keys table (stores RS256 keypair)
 			db.run(sql`
-				CREATE TABLE IF NOT EXISTS oauth_signing_keys (
-					id TEXT PRIMARY KEY,
-					public_key_jwk TEXT NOT NULL,
-					private_key_jwk TEXT NOT NULL,
-					created_at INTEGER NOT NULL DEFAULT (unixepoch())
-				);
-			`)
+			CREATE TABLE IF NOT EXISTS oauth_signing_keys (
+				id TEXT PRIMARY KEY,
+				public_key_jwk TEXT NOT NULL,
+				private_key_jwk TEXT NOT NULL,
+				created_at INTEGER NOT NULL DEFAULT (unixepoch())
+			);
+		`)
+		},
+	},
+	{
+		version: 4,
+		name: 'add_client_metadata_cache',
+		up: (db) => {
+			// Client metadata cache for URL-based client IDs (MCP 2025-11-25 spec)
+			db.run(sql`
+			CREATE TABLE IF NOT EXISTS client_metadata_cache (
+				client_id TEXT PRIMARY KEY,
+				metadata_json TEXT NOT NULL,
+				cached_at INTEGER NOT NULL DEFAULT (unixepoch()),
+				expires_at INTEGER NOT NULL
+			);
+		`)
+			db.run(sql`
+			CREATE INDEX IF NOT EXISTS idx_client_metadata_cache_expires_at ON client_metadata_cache(expires_at);
+		`)
 		},
 	},
 ]

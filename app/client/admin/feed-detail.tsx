@@ -487,7 +487,7 @@ export function FeedDetail(this: Handle) {
 			subtitle: feed.subtitle ?? '',
 			sortFields: feed.sortFields,
 			sortOrder: feed.sortOrder,
-			feedType: feed.feedType,
+			feedType: feed.feedType ?? 'episodic',
 			link: feed.link ?? '',
 			copyright: feed.copyright ?? '',
 			directoryPaths,

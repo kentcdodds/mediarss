@@ -2514,6 +2514,16 @@ function EditForm({
 				>
 					Description
 				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					Falls back to subtitle if not provided.
+				</p>
 				<textarea
 					id="edit-feed-description"
 					value={form.description}
@@ -2547,7 +2557,7 @@ function EditForm({
 						lineHeight: 1.5,
 					}}
 				>
-					A short tagline shown in podcast apps (max 255 characters). Defaults
+					A short tagline shown in podcast apps (max 255 characters). Falls back
 					to a truncated description if not provided.
 				</p>
 				<input

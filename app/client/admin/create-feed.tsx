@@ -526,7 +526,11 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField id="directory-feed-description" label="Description">
+						<FormField
+							id="directory-feed-description"
+							label="Description"
+							description="Falls back to subtitle if not provided."
+						>
 							<textarea
 								id="directory-feed-description"
 								value={directoryForm.description}
@@ -547,7 +551,7 @@ export function CreateFeed(this: Handle) {
 						<FormField
 							id="directory-feed-subtitle"
 							label="Subtitle"
-							description="A short tagline shown in podcast apps (max 255 characters). Defaults to a truncated description if not provided."
+							description="A short tagline shown in podcast apps (max 255 characters). Falls back to a truncated description if not provided."
 						>
 							<input
 								id="directory-feed-subtitle"
@@ -801,7 +805,11 @@ export function CreateFeed(this: Handle) {
 							/>
 						</FormField>
 
-						<FormField id="curated-feed-description" label="Description">
+						<FormField
+							id="curated-feed-description"
+							label="Description"
+							description="Falls back to subtitle if not provided."
+						>
 							<textarea
 								id="curated-feed-description"
 								value={curatedForm.description}
@@ -822,7 +830,7 @@ export function CreateFeed(this: Handle) {
 						<FormField
 							id="curated-feed-subtitle"
 							label="Subtitle"
-							description="A short tagline shown in podcast apps (max 255 characters). Defaults to a truncated description if not provided."
+							description="A short tagline shown in podcast apps (max 255 characters). Falls back to a truncated description if not provided."
 						>
 							<input
 								id="curated-feed-subtitle"

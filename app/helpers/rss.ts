@@ -282,7 +282,10 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 
 	// Get feed metadata
 	const title = escapeXml(feed.name)
-	const description = cdata(feed.description || `Podcast feed: ${feed.name}`)
+	// Description falls back to subtitle, then to a generic message
+	const description = cdata(
+		feed.description || feed.subtitle || `Podcast feed: ${feed.name}`,
+	)
 	// Subtitle is a short tagline (max 255 chars) shown in podcast apps
 	// Fall back to truncated description if no subtitle is set
 	const subtitle = cdata(

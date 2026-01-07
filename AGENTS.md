@@ -235,6 +235,7 @@ Uncaught NotFoundError: Failed to execute 'insertBefore' on 'Node': The node bef
 - Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
 - Use `bun run <script>`
 - Bun automatically loads .env, so don't use dotenv.
+- Use `Bun.env` instead of `process.env` to access environment variables. Runtime changes to `process.env` may not be reflected in `Bun.env`, so always use `Bun.env` for consistency.
 
 ## Build
 

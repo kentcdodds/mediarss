@@ -12,8 +12,9 @@ const TEST_RATE_LIMITS = {
 }
 
 // Set environment variables BEFORE importing source code
+// Use Bun.env instead of process.env for consistency with Bun runtime
 for (const [key, value] of Object.entries(TEST_RATE_LIMITS)) {
-	process.env[key] = value
+	Bun.env[key] = value
 }
 
 // Dynamic imports ensure env vars are set before modules are loaded

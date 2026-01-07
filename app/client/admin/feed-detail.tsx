@@ -15,9 +15,13 @@ type DirectoryFeed = {
 	id: string
 	name: string
 	description: string
+	subtitle: string | null
 	directoryPaths: string // JSON array of "mediaRoot:relativePath" strings
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	feedType: 'episodic' | 'serial'
+	link: string | null
+	copyright: string | null
 	imageUrl: string | null
 	type: 'directory'
 	createdAt: number
@@ -28,8 +32,12 @@ type CuratedFeed = {
 	id: string
 	name: string
 	description: string
+	subtitle: string | null
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	feedType: 'episodic' | 'serial'
+	link: string | null
+	copyright: string | null
 	imageUrl: string | null
 	type: 'curated'
 	createdAt: number
@@ -137,8 +145,12 @@ type LoadingState =
 type EditFormState = {
 	name: string
 	description: string
+	subtitle: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	feedType: 'episodic' | 'serial'
+	link: string
+	copyright: string
 	directoryPaths: Array<string> // Only used for directory feeds
 }
 
@@ -468,8 +480,12 @@ export function FeedDetail(this: Handle) {
 		editForm = {
 			name: feed.name,
 			description: feed.description,
+			subtitle: feed.subtitle ?? '',
 			sortFields: feed.sortFields,
 			sortOrder: feed.sortOrder,
+			feedType: feed.feedType,
+			link: feed.link ?? '',
+			copyright: feed.copyright ?? '',
 			directoryPaths,
 		}
 		editError = null
@@ -504,8 +520,12 @@ export function FeedDetail(this: Handle) {
 			const body: Record<string, unknown> = {
 				name: editForm.name.trim(),
 				description: editForm.description.trim(),
+				subtitle: editForm.subtitle.trim() || null,
 				sortFields: editForm.sortFields,
 				sortOrder: editForm.sortOrder,
+				feedType: editForm.feedType,
+				link: editForm.link.trim() || null,
+				copyright: editForm.copyright.trim() || null,
 			}
 
 			// Include directoryPaths only for directory feeds
@@ -1069,12 +1089,28 @@ export function FeedDetail(this: Handle) {
 								editForm.description = value
 								this.update()
 							}}
+							onSubtitleChange={(value) => {
+								editForm.subtitle = value
+								this.update()
+							}}
 							onSortFieldsChange={(value) => {
 								editForm.sortFields = value
 								this.update()
 							}}
 							onSortOrderChange={(value) => {
 								editForm.sortOrder = value
+								this.update()
+							}}
+							onFeedTypeChange={(value) => {
+								editForm.feedType = value
+								this.update()
+							}}
+							onLinkChange={(value) => {
+								editForm.link = value
+								this.update()
+							}}
+							onCopyrightChange={(value) => {
+								editForm.copyright = value
 								this.update()
 							}}
 							onSave={() => saveEdit(isDirectory)}
@@ -2448,8 +2484,12 @@ function EditForm({
 	error,
 	onNameChange,
 	onDescriptionChange,
+	onSubtitleChange,
 	onSortFieldsChange,
 	onSortOrderChange,
+	onFeedTypeChange,
+	onLinkChange,
+	onCopyrightChange,
 	onDirectoryPathsChange,
 	rootsState,
 	onSave,
@@ -2461,8 +2501,12 @@ function EditForm({
 	error: string | null
 	onNameChange: (value: string) => void
 	onDescriptionChange: (value: string) => void
+	onSubtitleChange: (value: string) => void
 	onSortFieldsChange: (value: string) => void
 	onSortOrderChange: (value: 'asc' | 'desc') => void
+	onFeedTypeChange: (value: 'episodic' | 'serial') => void
+	onLinkChange: (value: string) => void
+	onCopyrightChange: (value: string) => void
 	onDirectoryPathsChange?: (paths: Array<string>) => void
 	rootsState: RootsState
 	onSave: () => void
@@ -2515,6 +2559,157 @@ function EditForm({
 					on={{
 						input: (e) =>
 							onDescriptionChange((e.target as HTMLTextAreaElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-subtitle"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Subtitle
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					A short tagline shown in podcast apps (max 255 characters). Defaults
+					to a truncated description if not provided.
+				</p>
+				<input
+					id="edit-feed-subtitle"
+					type="text"
+					value={form.subtitle}
+					placeholder="Optional short tagline"
+					maxLength={255}
+					css={inputStyles}
+					on={{
+						input: (e) =>
+							onSubtitleChange((e.target as HTMLInputElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-type"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Feed Type
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					Episodic: Episodes can be listened to in any order (default for most
+					podcasts). Serial: Episodes should be listened to in sequence (like
+					audiobooks or story-driven series).
+				</p>
+				<select
+					id="edit-feed-type"
+					value={form.feedType}
+					css={inputStyles}
+					on={{
+						change: (e) =>
+							onFeedTypeChange(
+								(e.target as HTMLSelectElement).value as 'episodic' | 'serial',
+							),
+					}}
+				>
+					<option value="episodic">Episodic</option>
+					<option value="serial">Serial</option>
+				</select>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-link"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Website Link
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					A link to the podcast's website. Defaults to the feed page if not
+					provided.
+				</p>
+				<input
+					id="edit-feed-link"
+					type="url"
+					value={form.link}
+					placeholder="https://example.com"
+					css={inputStyles}
+					on={{
+						input: (e) => onLinkChange((e.target as HTMLInputElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-copyright"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Copyright
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					Copyright notice for the feed content.
+				</p>
+				<input
+					id="edit-feed-copyright"
+					type="text"
+					value={form.copyright}
+					placeholder="© 2024 Your Name"
+					css={inputStyles}
+					on={{
+						input: (e) =>
+							onCopyrightChange((e.target as HTMLInputElement).value),
 					}}
 				/>
 			</div>

@@ -38,18 +38,26 @@ type SelectedDirectory = {
 type DirectoryFormState = {
 	name: string
 	description: string
+	subtitle: string
 	selectedRoot: string | null
 	currentPath: string
 	selectedDirectories: Array<SelectedDirectory>
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	feedType: 'episodic' | 'serial'
+	link: string
+	copyright: string
 }
 
 type CuratedFormState = {
 	name: string
 	description: string
+	subtitle: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
+	feedType: 'episodic' | 'serial'
+	link: string
+	copyright: string
 	selectedFiles: Array<{
 		rootName: string
 		relativePath: string
@@ -85,19 +93,27 @@ export function CreateFeed(this: Handle) {
 	let directoryForm: DirectoryFormState = {
 		name: '',
 		description: '',
+		subtitle: '',
 		selectedRoot: null,
 		currentPath: '',
 		selectedDirectories: [],
 		sortFields: 'publicationDate',
 		sortOrder: 'desc',
+		feedType: 'episodic',
+		link: '',
+		copyright: '',
 	}
 
 	// Curated form state
 	let curatedForm: CuratedFormState = {
 		name: '',
 		description: '',
+		subtitle: '',
 		sortFields: 'publicationDate',
 		sortOrder: 'desc',
+		feedType: 'episodic',
+		link: '',
+		copyright: '',
 		selectedFiles: [],
 	}
 
@@ -241,9 +257,13 @@ export function CreateFeed(this: Handle) {
 				body: JSON.stringify({
 					name: directoryForm.name.trim(),
 					description: directoryForm.description.trim() || undefined,
+					subtitle: directoryForm.subtitle.trim() || undefined,
 					directoryPaths,
 					sortFields: directoryForm.sortFields,
 					sortOrder: directoryForm.sortOrder,
+					feedType: directoryForm.feedType,
+					link: directoryForm.link.trim() || undefined,
+					copyright: directoryForm.copyright.trim() || undefined,
 				}),
 			})
 
@@ -350,8 +370,12 @@ export function CreateFeed(this: Handle) {
 				body: JSON.stringify({
 					name: curatedForm.name.trim(),
 					description: curatedForm.description.trim() || undefined,
+					subtitle: curatedForm.subtitle.trim() || undefined,
 					sortFields: curatedForm.sortFields,
 					sortOrder: curatedForm.sortOrder,
+					feedType: curatedForm.feedType,
+					link: curatedForm.link.trim() || undefined,
+					copyright: curatedForm.copyright.trim() || undefined,
 					items: curatedForm.selectedFiles.map((f) => f.mediaPath),
 				}),
 			})
@@ -513,6 +537,93 @@ export function CreateFeed(this: Handle) {
 									input: (e) => {
 										directoryForm.description = (
 											e.target as HTMLTextAreaElement
+										).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="directory-feed-subtitle"
+							label="Subtitle"
+							description="A short tagline shown in podcast apps (max 255 characters). Defaults to a truncated description if not provided."
+						>
+							<input
+								id="directory-feed-subtitle"
+								type="text"
+								value={directoryForm.subtitle}
+								placeholder="Optional short tagline"
+								maxLength={255}
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										directoryForm.subtitle = (
+											e.target as HTMLInputElement
+										).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="directory-feed-type"
+							label="Feed Type"
+							description="Episodic: Episodes can be listened to in any order (default for most podcasts). Serial: Episodes should be listened to in sequence (like audiobooks or story-driven series)."
+						>
+							<select
+								id="directory-feed-type"
+								value={directoryForm.feedType}
+								css={inputStyles}
+								on={{
+									change: (e) => {
+										directoryForm.feedType = (e.target as HTMLSelectElement)
+											.value as 'episodic' | 'serial'
+										this.update()
+									},
+								}}
+							>
+								<option value="episodic">Episodic</option>
+								<option value="serial">Serial</option>
+							</select>
+						</FormField>
+
+						<FormField
+							id="directory-feed-link"
+							label="Website Link"
+							description="A link to the podcast's website. Defaults to the feed page if not provided."
+						>
+							<input
+								id="directory-feed-link"
+								type="url"
+								value={directoryForm.link}
+								placeholder="https://example.com"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										directoryForm.link = (e.target as HTMLInputElement).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="directory-feed-copyright"
+							label="Copyright"
+							description="Copyright notice for the feed content."
+						>
+							<input
+								id="directory-feed-copyright"
+								type="text"
+								value={directoryForm.copyright}
+								placeholder="© 2024 Your Name"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										directoryForm.copyright = (
+											e.target as HTMLInputElement
 										).value
 										this.update()
 									},
@@ -702,6 +813,89 @@ export function CreateFeed(this: Handle) {
 										curatedForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="curated-feed-subtitle"
+							label="Subtitle"
+							description="A short tagline shown in podcast apps (max 255 characters). Defaults to a truncated description if not provided."
+						>
+							<input
+								id="curated-feed-subtitle"
+								type="text"
+								value={curatedForm.subtitle}
+								placeholder="Optional short tagline"
+								maxLength={255}
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										curatedForm.subtitle = (e.target as HTMLInputElement).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="curated-feed-type"
+							label="Feed Type"
+							description="Episodic: Episodes can be listened to in any order (default for most podcasts). Serial: Episodes should be listened to in sequence (like audiobooks or story-driven series)."
+						>
+							<select
+								id="curated-feed-type"
+								value={curatedForm.feedType}
+								css={inputStyles}
+								on={{
+									change: (e) => {
+										curatedForm.feedType = (e.target as HTMLSelectElement)
+											.value as 'episodic' | 'serial'
+										this.update()
+									},
+								}}
+							>
+								<option value="episodic">Episodic</option>
+								<option value="serial">Serial</option>
+							</select>
+						</FormField>
+
+						<FormField
+							id="curated-feed-link"
+							label="Website Link"
+							description="A link to the podcast's website. Defaults to the feed page if not provided."
+						>
+							<input
+								id="curated-feed-link"
+								type="url"
+								value={curatedForm.link}
+								placeholder="https://example.com"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										curatedForm.link = (e.target as HTMLInputElement).value
+										this.update()
+									},
+								}}
+							/>
+						</FormField>
+
+						<FormField
+							id="curated-feed-copyright"
+							label="Copyright"
+							description="Copyright notice for the feed content."
+						>
+							<input
+								id="curated-feed-copyright"
+								type="text"
+								value={curatedForm.copyright}
+								placeholder="© 2024 Your Name"
+								css={inputStyles}
+								on={{
+									input: (e) => {
+										curatedForm.copyright = (e.target as HTMLInputElement).value
 										this.update()
 									},
 								}}
@@ -898,11 +1092,13 @@ function FormField({
 	id,
 	label,
 	required,
+	description,
 	children,
 }: {
 	id?: string
 	label: string
 	required?: boolean
+	description?: string
 	children: JSX.Element
 }) {
 	return (
@@ -914,7 +1110,7 @@ function FormField({
 					fontSize: typography.fontSize.sm,
 					fontWeight: typography.fontWeight.medium,
 					color: colors.text,
-					marginBottom: spacing.sm,
+					marginBottom: spacing.xs,
 				}}
 			>
 				{label}
@@ -922,6 +1118,18 @@ function FormField({
 					<span css={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
 				)}
 			</label>
+			{description && (
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					{description}
+				</p>
+			)}
 			{children}
 		</div>
 	)

@@ -97,7 +97,7 @@ test('formatDate returns dash for null', () => {
 })
 
 test('formatDate handles ISO string input', () => {
-	const result = formatDate('2026-01-07T12:00:00Z', 'date')
+	const result = formatDate('2026-01-07T12:00:00Z', { style: 'date' })
 	expect(result).toContain('2026')
 	expect(result).toContain('January')
 	expect(result).toContain('7')
@@ -106,18 +106,18 @@ test('formatDate handles ISO string input', () => {
 test('formatDate handles unix timestamp in seconds', () => {
 	// Jan 7, 2026 12:00:00 UTC
 	const timestamp = 1767787200
-	const result = formatDate(timestamp, 'date')
+	const result = formatDate(timestamp, { style: 'date' })
 	expect(result).toContain('2026')
 })
 
 test('formatDate handles Date object', () => {
 	const date = new Date('2026-01-07T12:00:00Z')
-	const result = formatDate(date, 'date')
+	const result = formatDate(date, { style: 'date' })
 	expect(result).toContain('2026')
 })
 
 test('formatDate short style returns abbreviated month', () => {
-	const result = formatDate('2026-01-07T12:00:00Z', 'short')
+	const result = formatDate('2026-01-07T12:00:00Z', { style: 'short' })
 	expect(result).toContain('Jan')
 	expect(result).toContain('2026')
 })

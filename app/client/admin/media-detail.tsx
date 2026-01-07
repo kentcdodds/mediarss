@@ -340,7 +340,7 @@ export function MediaDetail(this: Handle) {
 								<MetadataItem label="Format" value={media.mimeType} />
 								<MetadataItem
 									label="Published"
-									value={formatDate(media.publicationDate, 'date')}
+									value={formatDate(media.publicationDate, { style: 'date' })}
 								/>
 								{media.trackNumber && (
 									<MetadataItem label="Track" value={`#${media.trackNumber}`} />

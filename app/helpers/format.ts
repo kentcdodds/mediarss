@@ -97,7 +97,7 @@ export function formatFileSize(bytes: number): string {
  * Format a date to a readable string.
  *
  * @param date - Date object, ISO string, or unix timestamp (seconds)
- * @param style - Formatting style:
+ * @param options.style - Formatting style:
  *   - 'full': "January 7, 2026, 10:30:45 AM"
  *   - 'date': "January 7, 2026"
  *   - 'short': "Jan 7, 2026"
@@ -105,8 +105,9 @@ export function formatFileSize(bytes: number): string {
  */
 export function formatDate(
 	date: Date | string | number | null,
-	style: 'full' | 'date' | 'short' | 'datetime' = 'datetime',
+	options: { style?: 'full' | 'date' | 'short' | 'datetime' } = {},
 ): string {
+	const { style = 'datetime' } = options
 	if (date === null) return '—'
 
 	let dateObj: Date

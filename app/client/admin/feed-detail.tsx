@@ -1076,11 +1076,11 @@ export function FeedDetail(this: Handle) {
 								/>
 								<InfoItem
 									label="Created"
-									value={formatDate(feed.createdAt, 'short')}
+									value={formatDate(feed.createdAt, { style: 'short' })}
 								/>
 								<InfoItem
 									label="Updated"
-									value={formatDate(feed.updatedAt, 'short')}
+									value={formatDate(feed.updatedAt, { style: 'short' })}
 								/>
 							</div>
 						</>
@@ -2080,8 +2080,6 @@ export function FeedDetail(this: Handle) {
 									isCopied={copiedToken === token.token}
 									onCopy={() => copyFeedUrl(token.token)}
 									onRevoke={() => revokeToken(token.token)}
-									formatDate={formatDate}
-									formatRelativeTime={formatRelativeTime}
 								/>
 							))}
 						</div>
@@ -2286,15 +2284,11 @@ function TokenCard({
 	isCopied,
 	onCopy,
 	onRevoke,
-	formatDate,
-	formatRelativeTime,
 }: {
 	token: Token
 	isCopied: boolean
 	onCopy: () => void
 	onRevoke: () => void
-	formatDate: (ts: number) => string
-	formatRelativeTime: (ts: number | null) => string
 }) {
 	return (
 		<div
@@ -2328,7 +2322,7 @@ function TokenCard({
 						flexWrap: 'wrap',
 					}}
 				>
-					<span>Created {formatDate(token.createdAt, 'short')}</span>
+					<span>Created {formatDate(token.createdAt, { style: 'short' })}</span>
 					<span>Last used: {formatRelativeTime(token.lastUsedAt)}</span>
 				</div>
 			</div>

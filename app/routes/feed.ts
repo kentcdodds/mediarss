@@ -50,6 +50,7 @@ export default {
 			token,
 			feedUrl,
 			adminUrl,
+			sortFields: feed.sortFields,
 		})
 
 		return new Response(rssXml, {

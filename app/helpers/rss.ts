@@ -188,6 +188,39 @@ function getArtworkUrl(
 }
 
 /**
+ * Format a date in a human-readable format for display in descriptions.
+ */
+function formatHumanDate(date: Date): string {
+	return date.toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+	})
+}
+
+/**
+ * Build the description with optional original publication date appended.
+ * When using synthetic dates, we preserve the actual publication date in the
+ * description so users can still see when the content was originally published.
+ */
+function buildDescription(
+	description: string | null | undefined,
+	originalPubDate: Date | null,
+	useSyntheticDates: boolean,
+): string {
+	const baseDescription = description || ''
+
+	// Only append original date if we're using synthetic dates and have an actual date
+	if (useSyntheticDates && originalPubDate) {
+		const dateStr = formatHumanDate(originalPubDate)
+		const separator = baseDescription ? '\n\n' : ''
+		return `${baseDescription}${separator}Originally published: ${dateStr}`
+	}
+
+	return baseDescription
+}
+
+/**
  * Generate a single RSS item element.
  *
  * @param item - The media file to generate an item for
@@ -222,6 +255,13 @@ function generateItem(
 			: formatRssDate(getFallbackDate(index))
 	}
 
+	// Build description, potentially with original publication date appended
+	const description = buildDescription(
+		item.description,
+		item.publicationDate,
+		useSyntheticDates,
+	)
+
 	const mediaUrl = getMediaUrl(baseUrl, token, item.path)
 	const artworkUrl = getArtworkUrl(baseUrl, token, item.path, cacheVersion)
 	const duration = formatDuration(item.duration)
@@ -229,17 +269,17 @@ function generateItem(
 	return `    <item>
       <guid isPermaLink="false">${escapeXml(itemId)}</guid>
       <title>${escapeXml(item.title)}</title>
-      <description>${cdata(item.description)}</description>
+      <description>${cdata(description)}</description>
       <pubDate>${pubDate}</pubDate>
       ${item.author ? `<author>${escapeXml(item.author)}</author>` : ''}
-      <content:encoded>${cdata(item.description)}</content:encoded>
+      <content:encoded>${cdata(description)}</content:encoded>
       <enclosure url="${escapeXml(mediaUrl)}" length="${item.sizeBytes}" type="${escapeXml(item.mimeType)}" />
       <itunes:title>${escapeXml(item.title)}</itunes:title>
       ${item.author ? `<itunes:author>${escapeXml(item.author)}</itunes:author>` : ''}
       ${duration ? `<itunes:duration>${duration}</itunes:duration>` : ''}
       <itunes:image href="${escapeXml(artworkUrl)}" />
-      <itunes:summary>${cdata(item.description)}</itunes:summary>
-      <itunes:subtitle>${cdata(item.description?.slice(0, 255))}</itunes:subtitle>
+      <itunes:summary>${cdata(description)}</itunes:summary>
+      <itunes:subtitle>${cdata(description?.slice(0, 255))}</itunes:subtitle>
       <itunes:explicit>no</itunes:explicit>
       <itunes:episodeType>full</itunes:episodeType>
     </item>`
@@ -290,7 +330,14 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	// Generate items
 	const itemsXml = items
 		.map((item, index) =>
-			generateItem(item, index, baseUrl, token, cacheVersion, useSyntheticDates),
+			generateItem(
+				item,
+				index,
+				baseUrl,
+				token,
+				cacheVersion,
+				useSyntheticDates,
+			),
 		)
 		.join('\n')
 

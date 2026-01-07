@@ -5,6 +5,7 @@ import { logger } from '@remix-run/logger-middleware'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
+import { rateLimit } from '#app/middleware/rate-limit.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
@@ -63,6 +64,7 @@ function bunStaticFiles(
 
 const router = createRouter({
 	middleware: [
+		rateLimit(),
 		bunStaticFiles('./app', {
 			filter: (p) => p.startsWith('assets/'),
 			cacheControl:

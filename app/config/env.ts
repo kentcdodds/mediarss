@@ -53,19 +53,32 @@ const MediaPathsSchema = z
 	})
 
 /**
+ * Helper to parse optional integer env vars with defaults.
+ */
+function optionalInt(defaultValue: number) {
+	return z
+		.string()
+		.optional()
+		.transform((val) => (val ? parseInt(val, 10) : defaultValue))
+}
+
+/**
  * Environment variable schema for MediaRSS.
  */
 const EnvSchema = z.object({
 	NODE_ENV: z
 		.enum(['production', 'development', 'test'])
 		.default('development'),
-	PORT: z
-		.string()
-		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 22050)),
+	PORT: optionalInt(22050),
 	DATABASE_PATH: z.string().default('./data/sqlite.db'),
 	CACHE_DATABASE_PATH: z.string().default('./data/cache.db'),
 	MEDIA_PATHS: MediaPathsSchema,
+
+	// Rate limiting (requests per minute per IP)
+	RATE_LIMIT_ADMIN_READ: optionalInt(1000),
+	RATE_LIMIT_ADMIN_WRITE: optionalInt(30),
+	RATE_LIMIT_MEDIA: optionalInt(300),
+	RATE_LIMIT_DEFAULT: optionalInt(1000),
 })
 
 export type Env = z.infer<typeof EnvSchema>
@@ -180,5 +193,18 @@ export function parseMediaPath(mediaPath: string): {
 	return {
 		mediaRoot: mediaPath.slice(0, colonIndex),
 		relativePath: mediaPath.slice(colonIndex + 1),
+	}
+}
+
+/**
+ * Get rate limit configuration (requests per minute per IP).
+ */
+export function getRateLimitConfig() {
+	const env = getEnv()
+	return {
+		adminRead: env.RATE_LIMIT_ADMIN_READ,
+		adminWrite: env.RATE_LIMIT_ADMIN_WRITE,
+		media: env.RATE_LIMIT_MEDIA,
+		default: env.RATE_LIMIT_DEFAULT,
 	}
 }

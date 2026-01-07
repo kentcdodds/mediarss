@@ -1,0 +1,214 @@
+import { expect, test } from 'bun:test'
+import { invariant } from '@epic-web/invariant'
+import type { RequestContext } from '@remix-run/fetch-router'
+import { initEnv } from '#app/config/env.ts'
+import { rateLimit } from './rate-limit.ts'
+
+// Initialize environment for tests
+initEnv()
+
+/**
+ * Helper to call the rate limit middleware with a request.
+ * Returns the response (may be undefined for skipped paths).
+ */
+async function callRateLimiter(
+	pathname: string,
+	options: { method?: string; ip?: string } = {},
+) {
+	const { method = 'GET', ip } = options
+	const headers: Record<string, string> = {}
+	if (ip) headers['X-Forwarded-For'] = ip
+
+	const request = new Request(`http://localhost${pathname}`, {
+		method,
+		headers,
+	})
+	const context = {
+		request,
+		url: new URL(request.url),
+		method: request.method,
+		params: {},
+	} as RequestContext
+
+	const middleware = rateLimit()
+	const next = () => Promise.resolve(new Response('OK', { status: 200 }))
+	return middleware(context, next)
+}
+
+// Skip path tests
+
+test('rate limiter skips /admin/health (health check endpoint)', async () => {
+	const response = await callRateLimiter('/admin/health')
+	invariant(response, 'Expected response')
+
+	// Should not have rate limit headers (skipped)
+	expect(response.headers.has('X-RateLimit-Limit')).toBe(false)
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter skips /assets/* (static files)', async () => {
+	const response = await callRateLimiter('/assets/styles.css')
+	invariant(response, 'Expected response')
+
+	// Should not have rate limit headers (skipped)
+	expect(response.headers.has('X-RateLimit-Limit')).toBe(false)
+	expect(response.status).toBe(200)
+})
+
+// IP extraction tests
+
+test('rate limiter extracts IP from X-Forwarded-For header (uses first IP)', async () => {
+	const response = await callRateLimiter('/admin', {
+		ip: '192.168.1.100, 10.0.0.1',
+	})
+	invariant(response, 'Expected response')
+
+	expect(response.status).toBe(200)
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+test('rate limiter extracts IP from X-Real-IP header', async () => {
+	const request = new Request('http://localhost/admin', {
+		headers: { 'X-Real-IP': '192.168.1.100' },
+	})
+	const context = {
+		request,
+		url: new URL(request.url),
+		method: request.method,
+		params: {},
+	} as RequestContext
+
+	const middleware = rateLimit()
+	const next = () => Promise.resolve(new Response('OK', { status: 200 }))
+	const response = await middleware(context, next)
+	invariant(response, 'Expected response')
+
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter falls back to 127.0.0.1 when no IP headers present', async () => {
+	const response = await callRateLimiter('/admin')
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+// Route-based limiter selection tests
+
+test('rate limiter uses 1000 req/min limit for GET /admin/*', async () => {
+	const response = await callRateLimiter('/admin/api/feeds')
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+test('rate limiter uses 1000 req/min limit for HEAD /admin/*', async () => {
+	const response = await callRateLimiter('/admin', { method: 'HEAD' })
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+test('rate limiter uses 1000 req/min limit for OPTIONS /admin/*', async () => {
+	const response = await callRateLimiter('/admin', { method: 'OPTIONS' })
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+test('rate limiter uses 30 req/min limit for POST /admin/*', async () => {
+	const response = await callRateLimiter('/admin/api/feeds', { method: 'POST' })
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+})
+
+test('rate limiter uses 30 req/min limit for PUT /admin/*', async () => {
+	const response = await callRateLimiter('/admin/api/feeds/1', {
+		method: 'PUT',
+	})
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+})
+
+test('rate limiter uses 30 req/min limit for DELETE /admin/*', async () => {
+	const response = await callRateLimiter('/admin/api/feeds/1', {
+		method: 'DELETE',
+	})
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+})
+
+test('rate limiter uses 300 req/min limit for /media/* routes', async () => {
+	const response = await callRateLimiter('/media/token123/path/to/file.mp3')
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('300')
+})
+
+test('rate limiter uses 1000 req/min limit for /feed/* routes', async () => {
+	const response = await callRateLimiter('/feed/token123')
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+test('rate limiter uses 1000 req/min limit for /art/* routes', async () => {
+	const response = await callRateLimiter('/art/token123/path')
+	invariant(response, 'Expected response')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+})
+
+// Rate limiting behavior tests
+
+test('rate limiter adds X-RateLimit-* headers to successful responses', async () => {
+	const response = await callRateLimiter('/feed/token', { ip: '10.0.0.1' })
+	invariant(response, 'Expected response')
+
+	expect(response.headers.has('X-RateLimit-Limit')).toBe(true)
+	expect(response.headers.has('X-RateLimit-Remaining')).toBe(true)
+})
+
+test('rate limiter returns 429 with Retry-After when limit exceeded', async () => {
+	const uniqueIp = `rate-limit-test-${Date.now()}`
+
+	// Make 30 POST requests to admin (the limit)
+	for (let i = 0; i < 30; i++) {
+		await callRateLimiter('/admin/api/feeds', { method: 'POST', ip: uniqueIp })
+	}
+
+	// 31st request should be blocked
+	const response = await callRateLimiter('/admin/api/feeds', {
+		method: 'POST',
+		ip: uniqueIp,
+	})
+	invariant(response, 'Expected response')
+
+	expect(response.status).toBe(429)
+	expect(response.headers.has('Retry-After')).toBe(true)
+	expect(response.headers.get('X-RateLimit-Remaining')).toBe('0')
+})
+
+test('rate limiter tracks different route types separately (admin-write exhausted, admin-read and media still work)', async () => {
+	const uniqueIp = `separate-limits-test-${Date.now()}`
+
+	// Exhaust admin-write limit (30 requests)
+	for (let i = 0; i < 30; i++) {
+		await callRateLimiter('/admin/api/feeds', { method: 'POST', ip: uniqueIp })
+	}
+
+	// Admin POST should be blocked
+	const adminPostResponse = await callRateLimiter('/admin/api/feeds', {
+		method: 'POST',
+		ip: uniqueIp,
+	})
+	invariant(adminPostResponse, 'Expected response')
+	expect(adminPostResponse.status).toBe(429)
+
+	// But admin GET should still work (different limiter)
+	const adminGetResponse = await callRateLimiter('/admin/api/feeds', {
+		ip: uniqueIp,
+	})
+	invariant(adminGetResponse, 'Expected response')
+	expect(adminGetResponse.status).toBe(200)
+
+	// And media routes should still work
+	const mediaResponse = await callRateLimiter('/media/token/file.mp3', {
+		ip: uniqueIp,
+	})
+	invariant(mediaResponse, 'Expected response')
+	expect(mediaResponse.status).toBe(200)
+})

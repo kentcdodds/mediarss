@@ -23,10 +23,13 @@ import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assign
 import adminApiMediaStreamHandlers from '#app/routes/admin/api/media-stream.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
 import adminApiVersionHandlers from '#app/routes/admin/api/version.ts'
+import adminAuthorizeHandlers from '#app/routes/admin/authorize.tsx'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
 import mediaHandlers from '#app/routes/media.ts'
+import oauthJwksHandlers from '#app/routes/oauth/jwks.ts'
+import oauthTokenHandlers from '#app/routes/oauth/token.ts'
 
 /**
  * Bun-native static file middleware that uses Bun.file() for proper lazy file handling.
@@ -90,9 +93,14 @@ router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)
 
+// OAuth routes (public, before admin routes)
+router.map(routes.oauthToken, oauthTokenHandlers)
+router.map(routes.oauthJwks, oauthJwksHandlers)
+
 // Admin routes - API routes first (more specific), then catch-all
 router.map(routes.adminHealth, adminApiHealthHandlers)
 router.map(routes.adminApiVersion, adminApiVersionHandlers)
+router.map(routes.adminAuthorize, adminAuthorizeHandlers)
 router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
 router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
 router.map(routes.adminApiBrowse, adminApiBrowseHandlers)

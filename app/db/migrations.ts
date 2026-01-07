@@ -123,6 +123,52 @@ const migrations: Array<Migration> = [
 			)
 		},
 	},
+	{
+		version: 3,
+		name: 'add_oauth_tables',
+		up: (db) => {
+			// OAuth clients table
+			db.run(sql`
+				CREATE TABLE IF NOT EXISTS oauth_clients (
+					id TEXT PRIMARY KEY,
+					name TEXT NOT NULL,
+					redirect_uris TEXT NOT NULL,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+
+			// Authorization codes table (short-lived, single-use)
+			db.run(sql`
+				CREATE TABLE IF NOT EXISTS authorization_codes (
+					code TEXT PRIMARY KEY,
+					client_id TEXT NOT NULL REFERENCES oauth_clients(id) ON DELETE CASCADE,
+					redirect_uri TEXT NOT NULL,
+					scope TEXT NOT NULL DEFAULT '',
+					code_challenge TEXT NOT NULL,
+					code_challenge_method TEXT NOT NULL DEFAULT 'S256',
+					expires_at INTEGER NOT NULL,
+					used_at INTEGER,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_authorization_codes_client_id ON authorization_codes(client_id);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_authorization_codes_expires_at ON authorization_codes(expires_at);
+			`)
+
+			// OAuth signing keys table (stores RS256 keypair)
+			db.run(sql`
+				CREATE TABLE IF NOT EXISTS oauth_signing_keys (
+					id TEXT PRIMARY KEY,
+					public_key_jwk TEXT NOT NULL,
+					private_key_jwk TEXT NOT NULL,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+		},
+	},
 ]
 
 /**

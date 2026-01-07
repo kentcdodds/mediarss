@@ -557,7 +557,14 @@ export function MediaList(this: Handle) {
 		const endItem = Math.min(startIndex + ITEMS_PER_PAGE, filteredMedia.length)
 
 		return (
-			<div>
+			<div
+				css={{
+					paddingBottom: selectedItems.size > 0 ? '100px' : 0,
+					[mq.mobile]: {
+						paddingBottom: selectedItems.size > 0 ? '220px' : 0,
+					},
+				}}
+			>
 				{/* Modal */}
 				{selectedItem && (
 					<ManageAccessModal

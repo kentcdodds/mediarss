@@ -3092,7 +3092,6 @@ function DeleteConfirmModal({
 					if (e.key === 'Escape') onCancel()
 				},
 			}}
-			ref={(el: HTMLDivElement | null) => el?.focus()}
 		>
 			<div
 				css={{
@@ -3119,6 +3118,7 @@ function DeleteConfirmModal({
 				<button
 					type="button"
 					aria-label="Close"
+					autofocus
 					css={{
 						position: 'absolute',
 						top: spacing.md,
@@ -3322,7 +3322,6 @@ function AddFilesModal({
 					if (e.key === 'Escape') onCancel()
 				},
 			}}
-			ref={(el: HTMLDivElement | null) => el?.focus()}
 		>
 			<div
 				css={{
@@ -3350,6 +3349,7 @@ function AddFilesModal({
 				<button
 					type="button"
 					aria-label="Close"
+					autofocus
 					css={{
 						position: 'absolute',
 						top: spacing.md,

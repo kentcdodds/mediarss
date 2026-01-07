@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import path from 'node:path'
 import { initEnv } from '#app/config/env.ts'
+import { consoleError, consoleWarn } from '#test/setup.ts'
 import {
 	getFileMetadata,
 	isMediaFile,
@@ -69,11 +70,21 @@ test('scanDirectory finds video files in test directory', async () => {
 })
 
 test('scanDirectory returns empty array for non-existent directory', async () => {
+	// scanDirectory logs a warning for non-existent directories
+	// (may be deferred due to SWR caching, so we wait a tick for it to complete)
+	consoleWarn.mockImplementation(() => {})
+
 	const files = await scanDirectory('/nonexistent/directory')
 	expect(files).toEqual([])
+
+	// Wait for SWR background revalidation to complete
+	await new Promise((resolve) => setTimeout(resolve, 10))
 })
 
 test('scanDirectory returns empty array for empty directory', async () => {
+	// SWR background revalidation may warn after cleanup deletes the directory
+	consoleWarn.mockImplementation(() => {})
+
 	// Create temp empty dir
 	const tempDir = './test/fixtures/empty-test-dir'
 	await Bun.write(`${tempDir}/.gitkeep`, '')
@@ -84,6 +95,9 @@ test('scanDirectory returns empty array for empty directory', async () => {
 
 	// Cleanup
 	await Bun.$`rm -rf ${tempDir}`
+
+	// Wait for SWR background revalidation to complete
+	await new Promise((resolve) => setTimeout(resolve, 10))
 })
 
 // getFileMetadata tests
@@ -130,8 +144,14 @@ test('getFileMetadata extracts metadata from mkv video', async () => {
 })
 
 test('getFileMetadata returns null for non-existent file', async () => {
+	consoleError.mockImplementation(() => {})
+
 	const metadata = await getFileMetadata('/nonexistent/file.mp3')
 	expect(metadata).toBeNull()
+	expect(consoleError).toHaveBeenCalledTimes(1)
+	expect(consoleError.mock.calls[0]?.[0]).toBe(
+		'Error getting metadata for /nonexistent/file.mp3:',
+	)
 })
 
 test('getFileMetadata returns null for non-media file', async () => {

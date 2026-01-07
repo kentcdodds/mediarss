@@ -5,7 +5,8 @@
   "type": "module",
   "private": true,
   "imports": {
-    "#app/*": "./app/*"
+    "#app/*": "./app/*",
+    "#test/*": "./test/*"
   },
   "scripts": {
     "dev": "NODE_ENV=development bun run --watch index.ts",

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import { invariant } from '@epic-web/invariant'
 import type { RequestContext } from '@remix-run/fetch-router'
+import { consoleWarn } from '#test/setup.ts'
 
 // Configure lower rate limits for faster tests BEFORE importing any source code
 // These values are much lower than production defaults to reduce test iterations
@@ -200,6 +201,9 @@ test('rate limiter adds X-RateLimit-* headers to successful responses', async ()
 })
 
 test('rate limiter returns 429 with Retry-After when limit exceeded', async () => {
+	// Rate limit blocking logs a warning, which is expected
+	consoleWarn.mockImplementation(() => {})
+
 	const uniqueIp = `rate-limit-test-${Date.now()}`
 	const adminWriteLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE, 10)
 
@@ -218,9 +222,13 @@ test('rate limiter returns 429 with Retry-After when limit exceeded', async () =
 	expect(response.status).toBe(429)
 	expect(response.headers.has('Retry-After')).toBe(true)
 	expect(response.headers.get('X-RateLimit-Remaining')).toBe('0')
+	expect(consoleWarn).toHaveBeenCalled()
 })
 
 test('rate limiter tracks different route types separately (admin-write exhausted, admin-read and media still work)', async () => {
+	// Rate limit blocking logs a warning, which is expected
+	consoleWarn.mockImplementation(() => {})
+
 	const uniqueIp = `separate-limits-test-${Date.now()}`
 	const adminWriteLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE, 10)
 
@@ -236,6 +244,7 @@ test('rate limiter tracks different route types separately (admin-write exhauste
 	})
 	invariant(adminPostResponse, 'Expected response')
 	expect(adminPostResponse.status).toBe(429)
+	expect(consoleWarn).toHaveBeenCalled()
 
 	// But admin GET should still work (different limiter)
 	const adminGetResponse = await callRateLimiter('/admin/api/feeds', {

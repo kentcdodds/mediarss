@@ -13,9 +13,19 @@ import type { SortOrder } from '#app/db/types.ts'
 type CreateDirectoryFeedRequest = {
 	name: string
 	description?: string
+	subtitle?: string | null
 	directoryPaths: Array<string> // Array of "mediaRoot:relativePath" strings
 	sortFields?: string
 	sortOrder?: SortOrder
+	author?: string | null
+	ownerName?: string | null
+	ownerEmail?: string | null
+	language?: string
+	explicit?: string
+	category?: string | null
+	link?: string | null
+	copyright?: string | null
+	feedType?: 'episodic' | 'serial'
 }
 
 /**
@@ -111,13 +121,31 @@ export default {
 			)
 		}
 
+		// Validate feedType if provided
+		if (body.feedType && !['episodic', 'serial'].includes(body.feedType)) {
+			return Response.json(
+				{ error: 'feedType must be "episodic" or "serial"' },
+				{ status: 400 },
+			)
+		}
+
 		// Create the feed
 		const feed = createDirectoryFeed({
 			name: body.name.trim(),
 			description: body.description?.trim(),
+			subtitle: body.subtitle,
 			directoryPaths: validatedPaths,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
+			author: body.author,
+			ownerName: body.ownerName,
+			ownerEmail: body.ownerEmail,
+			language: body.language,
+			explicit: body.explicit,
+			category: body.category,
+			link: body.link,
+			copyright: body.copyright,
+			feedType: body.feedType,
 		})
 
 		// Automatically create an access token for the new feed

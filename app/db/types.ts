@@ -3,10 +3,14 @@ import { z } from 'zod'
 export const SortOrderSchema = z.enum(['asc', 'desc'])
 export type SortOrder = z.infer<typeof SortOrderSchema>
 
+export const FeedTypeSchema = z.enum(['episodic', 'serial'])
+export type FeedType = z.infer<typeof FeedTypeSchema>
+
 export const DirectoryFeedSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string(),
+	subtitle: z.string().nullable(),
 	directoryPaths: z.string(), // JSON array of "mediaRoot:relativePath" strings
 	sortFields: z.string(),
 	sortOrder: SortOrderSchema,
@@ -18,6 +22,8 @@ export const DirectoryFeedSchema = z.object({
 	explicit: z.string(),
 	category: z.string().nullable(),
 	link: z.string().nullable(),
+	copyright: z.string().nullable(),
+	feedType: FeedTypeSchema.nullable(),
 	filterIn: z.string().nullable(),
 	filterOut: z.string().nullable(),
 	overrides: z.string().nullable(),
@@ -30,6 +36,7 @@ export const CuratedFeedSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string(),
+	subtitle: z.string().nullable(),
 	sortFields: z.string(),
 	sortOrder: SortOrderSchema,
 	imageUrl: z.string().nullable(),
@@ -40,6 +47,8 @@ export const CuratedFeedSchema = z.object({
 	explicit: z.string(),
 	category: z.string().nullable(),
 	link: z.string().nullable(),
+	copyright: z.string().nullable(),
+	feedType: FeedTypeSchema.nullable(),
 	overrides: z.string().nullable(),
 	createdAt: z.number(),
 	updatedAt: z.number(),

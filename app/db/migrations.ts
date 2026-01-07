@@ -104,6 +104,25 @@ const migrations: Array<Migration> = [
 			`)
 		},
 	},
+	{
+		version: 2,
+		name: 'add_feed_properties',
+		up: (db) => {
+			// Add subtitle, copyright, and feed_type columns (all nullable)
+			// feed_type defaults to 'episodic' at the application layer when null
+			db.run(sql`ALTER TABLE directory_feeds ADD COLUMN subtitle TEXT;`)
+			db.run(sql`ALTER TABLE directory_feeds ADD COLUMN copyright TEXT;`)
+			db.run(
+				sql`ALTER TABLE directory_feeds ADD COLUMN feed_type TEXT CHECK (feed_type IN ('episodic', 'serial'));`,
+			)
+
+			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN subtitle TEXT;`)
+			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN copyright TEXT;`)
+			db.run(
+				sql`ALTER TABLE curated_feeds ADD COLUMN feed_type TEXT CHECK (feed_type IN ('episodic', 'serial'));`,
+			)
+		},
+	},
 ]
 
 /**

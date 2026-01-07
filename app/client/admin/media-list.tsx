@@ -534,11 +534,11 @@ export function MediaList(this: Handle) {
 							threshold: rankings.CONTAINS,
 							maxRanking: rankings.CONTAINS,
 						},
-						// Description for content-based search - strict contains, cap ranking low
+						// Description for content-based search - matches but ranks lower than other fields
 						{
 							key: 'description',
 							threshold: rankings.CONTAINS,
-							maxRanking: rankings.ACRONYM,
+							maxRanking: rankings.CONTAINS,
 						},
 					],
 					// Don't match on just any characters - require at least contains

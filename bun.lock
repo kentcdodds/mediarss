@@ -9,6 +9,7 @@
         "@epic-web/invariant": "^1.0.0",
         "@remix-run/component": "^0.2.1",
         "@remix-run/fetch-router": "^0.14.0",
+        "@remix-run/html-template": "^0.3.0",
         "@remix-run/interaction": "^0.3.0",
         "@remix-run/logger-middleware": "^0.1.0",
         "@remix-run/response": "^0.2.1",
@@ -64,7 +65,7 @@
 
     "@remix-run/headers": ["@remix-run/headers@0.12.0", "", {}, "sha512-eqVSL5UOIyqVx0NTqgtNKMKVokE9jPchkZHl/N13KKPQYw/leS8VCoX5zRhkB1UvcLyfj113LX0OvEcuNbc5Hg=="],
 
-    "@remix-run/html-template": ["@remix-run/html-template@0.2.0", "", {}, "sha512-CwmFgbUroD2082lK6ALHCryqOxrn3FtMf7uf554fN8Zq5H9aDafPYWpEZ01GvpaKuPVlWwyojhqcs1nOOgLwpA=="],
+    "@remix-run/html-template": ["@remix-run/html-template@0.3.0", "", {}, "sha512-aAMx68udtIk0fmCpCXHYscVeCDsRVEmEgh4XvtusPr3vkHu3jn4gx5oAxgsPXPdDmmD/d75SYyI0m/F+aLz5iQ=="],
 
     "@remix-run/interaction": ["@remix-run/interaction@0.3.0", "", {}, "sha512-lJ/wOkXJOa6913j7x9LSfx7q+5b3FQCd+uzh36G3oUjL0/4AcI1Ch3LiJmHTNmrlHgKHlb3D9idHjpOrpbljyA=="],
 

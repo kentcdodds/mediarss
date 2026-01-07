@@ -1439,6 +1439,10 @@ function ManageAccessModal({
 
 	return (
 		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="manage-access-modal-title"
+			tabIndex={-1}
 			css={{
 				position: 'fixed',
 				top: 0,
@@ -1451,15 +1455,23 @@ function ManageAccessModal({
 				justifyContent: 'center',
 				zIndex: 1000,
 				padding: spacing.lg,
+				outline: 'none',
+				[mq.mobile]: {
+					padding: 0,
+				},
 			}}
 			on={{
 				click: (e) => {
 					if (e.target === e.currentTarget) onCancel()
 				},
+				keydown: (e: KeyboardEvent) => {
+					if (e.key === 'Escape') onCancel()
+				},
 			}}
 		>
 			<div
 				css={{
+					position: 'relative',
 					backgroundColor: colors.surface,
 					borderRadius: radius.lg,
 					border: `1px solid ${colors.border}`,
@@ -1470,8 +1482,46 @@ function ManageAccessModal({
 					display: 'flex',
 					flexDirection: 'column',
 					boxShadow: shadows.lg,
+					[mq.mobile]: {
+						maxWidth: 'none',
+						maxHeight: 'none',
+						height: '100%',
+						borderRadius: 0,
+						border: 'none',
+					},
 				}}
 			>
+				{/* Close button */}
+				<button
+					type="button"
+					aria-label="Close"
+					autofocus
+					css={{
+						position: 'absolute',
+						top: spacing.md,
+						right: spacing.md,
+						width: '32px',
+						height: '32px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						backgroundColor: colors.background,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.lg,
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.surface,
+							color: colors.text,
+						},
+					}}
+					on={{ click: onCancel }}
+				>
+					×
+				</button>
+
 				{/* Header with media info */}
 				<div
 					css={{
@@ -1480,6 +1530,7 @@ function ManageAccessModal({
 						marginBottom: spacing.lg,
 						paddingBottom: spacing.lg,
 						borderBottom: `1px solid ${colors.border}`,
+						paddingRight: spacing.xl,
 					}}
 				>
 					<img
@@ -1496,6 +1547,7 @@ function ManageAccessModal({
 					/>
 					<div css={{ minWidth: 0 }}>
 						<h3
+							id="manage-access-modal-title"
 							css={{
 								fontSize: typography.fontSize.lg,
 								fontWeight: typography.fontWeight.semibold,
@@ -2096,6 +2148,10 @@ function BulkAssignModal({
 
 	return (
 		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="bulk-assign-modal-title"
+			tabIndex={-1}
 			css={{
 				position: 'fixed',
 				top: 0,
@@ -2108,15 +2164,23 @@ function BulkAssignModal({
 				justifyContent: 'center',
 				zIndex: 1000,
 				padding: spacing.lg,
+				outline: 'none',
+				[mq.mobile]: {
+					padding: 0,
+				},
 			}}
 			on={{
 				click: (e) => {
 					if (e.target === e.currentTarget) onCancel()
 				},
+				keydown: (e: KeyboardEvent) => {
+					if (e.key === 'Escape') onCancel()
+				},
 			}}
 		>
 			<div
 				css={{
+					position: 'relative',
 					backgroundColor: colors.surface,
 					borderRadius: radius.lg,
 					border: `1px solid ${colors.border}`,
@@ -2127,17 +2191,57 @@ function BulkAssignModal({
 					display: 'flex',
 					flexDirection: 'column',
 					boxShadow: shadows.lg,
+					[mq.mobile]: {
+						maxWidth: 'none',
+						maxHeight: 'none',
+						height: '100%',
+						borderRadius: 0,
+						border: 'none',
+					},
 				}}
 			>
+				{/* Close button */}
+				<button
+					type="button"
+					aria-label="Close"
+					autofocus
+					css={{
+						position: 'absolute',
+						top: spacing.md,
+						right: spacing.md,
+						width: '32px',
+						height: '32px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						backgroundColor: colors.background,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.lg,
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.surface,
+							color: colors.text,
+						},
+					}}
+					on={{ click: onCancel }}
+				>
+					×
+				</button>
+
 				{/* Header */}
 				<div
 					css={{
 						marginBottom: spacing.lg,
 						paddingBottom: spacing.lg,
 						borderBottom: `1px solid ${colors.border}`,
+						paddingRight: spacing.xl,
 					}}
 				>
 					<h3
+						id="bulk-assign-modal-title"
 						css={{
 							fontSize: typography.fontSize.lg,
 							fontWeight: typography.fontWeight.semibold,
@@ -2274,6 +2378,10 @@ function BulkUnassignModal({
 }) {
 	return (
 		<div
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="bulk-unassign-modal-title"
+			tabIndex={-1}
 			css={{
 				position: 'fixed',
 				top: 0,
@@ -2286,15 +2394,23 @@ function BulkUnassignModal({
 				justifyContent: 'center',
 				zIndex: 1000,
 				padding: spacing.lg,
+				outline: 'none',
+				[mq.mobile]: {
+					padding: 0,
+				},
 			}}
 			on={{
 				click: (e) => {
 					if (e.target === e.currentTarget) onCancel()
 				},
+				keydown: (e: KeyboardEvent) => {
+					if (e.key === 'Escape') onCancel()
+				},
 			}}
 		>
 			<div
 				css={{
+					position: 'relative',
 					backgroundColor: colors.surface,
 					borderRadius: radius.lg,
 					border: `1px solid ${colors.border}`,
@@ -2305,17 +2421,57 @@ function BulkUnassignModal({
 					display: 'flex',
 					flexDirection: 'column',
 					boxShadow: shadows.lg,
+					[mq.mobile]: {
+						maxWidth: 'none',
+						maxHeight: 'none',
+						height: '100%',
+						borderRadius: 0,
+						border: 'none',
+					},
 				}}
 			>
+				{/* Close button */}
+				<button
+					type="button"
+					aria-label="Close"
+					autofocus
+					css={{
+						position: 'absolute',
+						top: spacing.md,
+						right: spacing.md,
+						width: '32px',
+						height: '32px',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						backgroundColor: colors.background,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.lg,
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.surface,
+							color: colors.text,
+						},
+					}}
+					on={{ click: onCancel }}
+				>
+					×
+				</button>
+
 				{/* Header */}
 				<div
 					css={{
 						marginBottom: spacing.lg,
 						paddingBottom: spacing.lg,
 						borderBottom: `1px solid ${colors.border}`,
+						paddingRight: spacing.xl,
 					}}
 				>
 					<h3
+						id="bulk-unassign-modal-title"
 						css={{
 							fontSize: typography.fontSize.lg,
 							fontWeight: typography.fontWeight.semibold,

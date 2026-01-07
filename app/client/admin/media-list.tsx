@@ -21,6 +21,9 @@ type MediaItem = {
 	sizeBytes: number
 	filename: string
 	publicationDate: string | null
+	narrators: string[] | null
+	genres: string[] | null
+	description: string | null
 }
 
 type FeedAssignment = {
@@ -510,7 +513,7 @@ export function MediaList(this: Handle) {
 		const { media, assignments, curatedFeeds, directoryFeeds } = state
 
 		// Filter media by search query using match-sorter
-		// Keys are ordered by relevance: title > author > rootName > filename
+		// Keys are ordered by relevance - most important fields first
 		// Rankings are configured to prioritize meaningful matches and avoid over-matching
 		const filteredMedia = searchQuery.trim()
 			? matchSorter(media, searchQuery.trim(), {
@@ -519,16 +522,26 @@ export function MediaList(this: Handle) {
 						{ key: 'title', threshold: rankings.CONTAINS },
 						// Author is important for audiobooks - allow word starts
 						{ key: 'author', threshold: rankings.WORD_STARTS_WITH },
+						// Narrators are very relevant for audiobooks (array field)
+						{ key: 'narrators', threshold: rankings.WORD_STARTS_WITH },
+						// Genres help find media by category (array field)
+						{ key: 'genres', threshold: rankings.WORD_STARTS_WITH },
 						// Root name (media source folder) - useful for filtering by source
 						{ key: 'rootName', threshold: rankings.WORD_STARTS_WITH },
-						// Filename as fallback - only match if contains
+						// Filename as fallback - only match if contains, cap ranking
 						{
 							key: 'filename',
 							threshold: rankings.CONTAINS,
 							maxRanking: rankings.CONTAINS,
 						},
+						// Description for content-based search - strict contains, cap ranking low
+						{
+							key: 'description',
+							threshold: rankings.CONTAINS,
+							maxRanking: rankings.ACRONYM,
+						},
 					],
-					// Don't match on just any characters - require at least word boundaries
+					// Don't match on just any characters - require at least contains
 					threshold: rankings.CONTAINS,
 				})
 			: media
@@ -649,7 +662,7 @@ export function MediaList(this: Handle) {
 					>
 						<input
 							type="text"
-							placeholder="Search by title, author, source, or filename..."
+							placeholder="Search by title, author, narrator, genre..."
 							value={searchQuery}
 							css={{
 								width: '100%',

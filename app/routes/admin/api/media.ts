@@ -13,6 +13,9 @@ type MediaItem = {
 	sizeBytes: number
 	filename: string
 	publicationDate: string | null
+	narrators: string[] | null
+	genres: string[] | null
+	description: string | null
 }
 
 /**
@@ -32,6 +35,9 @@ function toMediaItem(file: MediaFile): MediaItem | null {
 		sizeBytes: file.sizeBytes,
 		filename: file.filename,
 		publicationDate: file.publicationDate?.toISOString() ?? null,
+		narrators: file.narrators,
+		genres: file.genres,
+		description: file.description,
 	}
 }
 

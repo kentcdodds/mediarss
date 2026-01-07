@@ -150,6 +150,73 @@ function DataLoader(this: Handle) {
 }
 ```
 
+#### The `connect` Prop (No refs!)
+
+Remix components do **NOT** support React-style refs. Instead, use the `connect` prop to detect when an element has been added to the screen and get a reference to the DOM node.
+
+```tsx
+function MyComponent() {
+	return (
+		<div connect={(node, signal) => {
+			// This runs when the element is added to the DOM
+			console.log('Element added to screen:', node)
+			
+			// The signal is aborted when the element is removed
+			signal.addEventListener('abort', () => {
+				console.log('Element removed from screen')
+			})
+		}}>
+			Hello World
+		</div>
+	)
+}
+```
+
+**Key features:**
+
+- **Automatic cleanup**: The `AbortSignal` is automatically aborted when the element is removed from the DOM
+- **Flexible signature**: You can use either `(node)` or `(node, signal)` depending on whether you need cleanup logic
+- **Scheduled execution**: The callback runs after the element is inserted into the DOM
+
+**Example with DOM manipulation:**
+
+```tsx
+function AutoFocusInput(this: Handle) {
+	return () => (
+		<input
+			type="text"
+			connect={(input: HTMLInputElement) => {
+				input.focus()
+			}}
+		/>
+	)
+}
+```
+
+**Example with cleanup:**
+
+```tsx
+function ResizeAware(this: Handle) {
+	let width = 0
+
+	return () => (
+		<div connect={(node: HTMLDivElement, signal) => {
+			const observer = new ResizeObserver((entries) => {
+				width = entries[0].contentRect.width
+				this.update()
+			})
+			observer.observe(node)
+			
+			signal.addEventListener('abort', () => {
+				observer.disconnect()
+			})
+		}}>
+			Width: {width}px
+		</div>
+	)
+}
+```
+
 #### Known Bug: DOM insertBefore Error
 
 There's a known bug in Remix components where navigating with the client-side router can sometimes cause this console error:

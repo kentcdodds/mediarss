@@ -1,4 +1,5 @@
 import type { Handle } from '@remix-run/component'
+import { matchSorter, rankings } from 'match-sorter'
 import {
 	colors,
 	mq,
@@ -20,6 +21,9 @@ type MediaItem = {
 	sizeBytes: number
 	filename: string
 	publicationDate: string | null
+	narrators: string[] | null
+	genres: string[] | null
+	description: string | null
 }
 
 type FeedAssignment = {
@@ -508,15 +512,38 @@ export function MediaList(this: Handle) {
 
 		const { media, assignments, curatedFeeds, directoryFeeds } = state
 
-		// Filter media by search query
+		// Filter media by search query using match-sorter
+		// Keys are ordered by relevance - most important fields first
+		// Rankings are configured to prioritize meaningful matches and avoid over-matching
 		const filteredMedia = searchQuery.trim()
-			? media.filter(
-					(item) =>
-						item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						(item.author?.toLowerCase().includes(searchQuery.toLowerCase()) ??
-							false) ||
-						item.filename.toLowerCase().includes(searchQuery.toLowerCase()),
-				)
+			? matchSorter(media, searchQuery.trim(), {
+					keys: [
+						// Title is the primary search field - allow word starts and contains
+						{ key: 'title', threshold: rankings.CONTAINS },
+						// Author is important for audiobooks - allow word starts
+						{ key: 'author', threshold: rankings.WORD_STARTS_WITH },
+						// Narrators are very relevant for audiobooks (array field)
+						{ key: 'narrators', threshold: rankings.WORD_STARTS_WITH },
+						// Genres help find media by category (array field)
+						{ key: 'genres', threshold: rankings.WORD_STARTS_WITH },
+						// Root name (media source folder) - useful for filtering by source
+						{ key: 'rootName', threshold: rankings.WORD_STARTS_WITH },
+						// Filename as fallback - only match if contains, cap ranking
+						{
+							key: 'filename',
+							threshold: rankings.CONTAINS,
+							maxRanking: rankings.CONTAINS,
+						},
+						// Description for content-based search - matches but ranks lower than other fields
+						{
+							key: 'description',
+							threshold: rankings.CONTAINS,
+							maxRanking: rankings.CONTAINS,
+						},
+					],
+					// No global threshold - let each key's threshold control matching
+					// Match-sorter will rank results by relevance (best matches first)
+				})
 			: media
 
 		// Paginate filtered results
@@ -623,39 +650,98 @@ export function MediaList(this: Handle) {
 						marginBottom: spacing.lg,
 					}}
 				>
-					<input
-						type="text"
-						placeholder="Search by title, author, or filename..."
-						value={searchQuery}
+					<div
 						css={{
+							position: 'relative',
 							width: '100%',
 							maxWidth: '400px',
-							padding: spacing.sm,
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-							backgroundColor: colors.surface,
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							outline: 'none',
-							transition: `border-color ${transitions.fast}`,
-							'&:focus': {
-								borderColor: colors.primary,
-							},
-							'&::placeholder': {
-								color: colors.textMuted,
-							},
 							[mq.mobile]: {
 								maxWidth: 'none',
 							},
 						}}
-						on={{
-							input: (e) => {
-								searchQuery = (e.target as HTMLInputElement).value
-								currentPage = 1 // Reset to first page on search
-								this.update()
-							},
-						}}
-					/>
+					>
+						<input
+							type="text"
+							placeholder="Search by title, author, narrator, genre..."
+							value={searchQuery}
+							css={{
+								width: '100%',
+								padding: spacing.sm,
+								paddingRight: searchQuery ? '36px' : spacing.sm,
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+								backgroundColor: colors.surface,
+								border: `1px solid ${colors.border}`,
+								borderRadius: radius.md,
+								outline: 'none',
+								transition: `border-color ${transitions.fast}`,
+								'&:focus': {
+									borderColor: colors.primary,
+								},
+								'&::placeholder': {
+									color: colors.textMuted,
+								},
+							}}
+							on={{
+								input: (e) => {
+									searchQuery = (e.target as HTMLInputElement).value
+									currentPage = 1 // Reset to first page on search
+									this.update()
+								},
+							}}
+						/>
+						{searchQuery && (
+							<button
+								type="button"
+								aria-label="Clear search"
+								css={{
+									position: 'absolute',
+									right: '8px',
+									top: '50%',
+									transform: 'translateY(-50%)',
+									width: '20px',
+									height: '20px',
+									padding: 0,
+									border: 'none',
+									borderRadius: '50%',
+									backgroundColor: colors.border,
+									color: colors.textMuted,
+									cursor: 'pointer',
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: colors.textMuted,
+										color: colors.surface,
+									},
+								}}
+								on={{
+									click: () => {
+										searchQuery = ''
+										currentPage = 1
+										this.update()
+									},
+								}}
+							>
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 12 12"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+									aria-hidden="true"
+								>
+									<path
+										d="M2 2L10 10M10 2L2 10"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</button>
+						)}
+					</div>
 				</div>
 
 				{/* Media Table */}

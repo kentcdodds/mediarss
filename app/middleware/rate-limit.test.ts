@@ -1,10 +1,27 @@
 import { expect, test } from 'bun:test'
 import { invariant } from '@epic-web/invariant'
 import type { RequestContext } from '@remix-run/fetch-router'
-import { initEnv } from '#app/config/env.ts'
-import { rateLimit } from './rate-limit.ts'
 
-// Initialize environment for tests
+// Configure lower rate limits for faster tests BEFORE importing any source code
+// These values are much lower than production defaults to reduce test iterations
+const TEST_RATE_LIMITS = {
+	RATE_LIMIT_ADMIN_READ: '10',
+	RATE_LIMIT_ADMIN_WRITE: '5',
+	RATE_LIMIT_MEDIA: '10',
+	RATE_LIMIT_DEFAULT: '10',
+}
+
+// Set environment variables BEFORE importing source code
+// Use Bun.env instead of process.env for consistency with Bun runtime
+for (const [key, value] of Object.entries(TEST_RATE_LIMITS)) {
+	Bun.env[key] = value
+}
+
+// Dynamic imports ensure env vars are set before modules are loaded
+const { initEnv } = await import('#app/config/env.ts')
+const { rateLimit } = await import('./rate-limit.ts')
+
+// Initialize environment for tests (will use our lower rate limits)
 initEnv()
 
 /**
@@ -64,7 +81,9 @@ test('rate limiter extracts IP from X-Forwarded-For header (uses first IP)', asy
 	invariant(response, 'Expected response')
 
 	expect(response.status).toBe(200)
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ,
+	)
 })
 
 test('rate limiter extracts IP from X-Real-IP header', async () => {
@@ -94,62 +113,80 @@ test('rate limiter falls back to 127.0.0.1 when no IP headers present', async ()
 
 // Route-based limiter selection tests
 
-test('rate limiter uses 1000 req/min limit for GET /admin/*', async () => {
+test('rate limiter uses admin-read limit for GET /admin/*', async () => {
 	const response = await callRateLimiter('/admin/api/feeds')
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ,
+	)
 })
 
-test('rate limiter uses 1000 req/min limit for HEAD /admin/*', async () => {
+test('rate limiter uses admin-read limit for HEAD /admin/*', async () => {
 	const response = await callRateLimiter('/admin', { method: 'HEAD' })
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ,
+	)
 })
 
-test('rate limiter uses 1000 req/min limit for OPTIONS /admin/*', async () => {
+test('rate limiter uses admin-read limit for OPTIONS /admin/*', async () => {
 	const response = await callRateLimiter('/admin', { method: 'OPTIONS' })
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ,
+	)
 })
 
-test('rate limiter uses 30 req/min limit for POST /admin/*', async () => {
+test('rate limiter uses admin-write limit for POST /admin/*', async () => {
 	const response = await callRateLimiter('/admin/api/feeds', { method: 'POST' })
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE,
+	)
 })
 
-test('rate limiter uses 30 req/min limit for PUT /admin/*', async () => {
+test('rate limiter uses admin-write limit for PUT /admin/*', async () => {
 	const response = await callRateLimiter('/admin/api/feeds/1', {
 		method: 'PUT',
 	})
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE,
+	)
 })
 
-test('rate limiter uses 30 req/min limit for DELETE /admin/*', async () => {
+test('rate limiter uses admin-write limit for DELETE /admin/*', async () => {
 	const response = await callRateLimiter('/admin/api/feeds/1', {
 		method: 'DELETE',
 	})
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('30')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE,
+	)
 })
 
-test('rate limiter uses 300 req/min limit for /media/* routes', async () => {
+test('rate limiter uses media limit for /media/* routes', async () => {
 	const response = await callRateLimiter('/media/token123/path/to/file.mp3')
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('300')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_MEDIA,
+	)
 })
 
-test('rate limiter uses 1000 req/min limit for /feed/* routes', async () => {
+test('rate limiter uses default limit for /feed/* routes', async () => {
 	const response = await callRateLimiter('/feed/token123')
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_DEFAULT,
+	)
 })
 
-test('rate limiter uses 1000 req/min limit for /art/* routes', async () => {
+test('rate limiter uses default limit for /art/* routes', async () => {
 	const response = await callRateLimiter('/art/token123/path')
 	invariant(response, 'Expected response')
-	expect(response.headers.get('X-RateLimit-Limit')).toBe('1000')
+	expect(response.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_DEFAULT,
+	)
 })
 
 // Rate limiting behavior tests
@@ -164,13 +201,14 @@ test('rate limiter adds X-RateLimit-* headers to successful responses', async ()
 
 test('rate limiter returns 429 with Retry-After when limit exceeded', async () => {
 	const uniqueIp = `rate-limit-test-${Date.now()}`
+	const adminWriteLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE, 10)
 
-	// Make 30 POST requests to admin (the limit)
-	for (let i = 0; i < 30; i++) {
+	// Make requests up to the limit
+	for (let i = 0; i < adminWriteLimit; i++) {
 		await callRateLimiter('/admin/api/feeds', { method: 'POST', ip: uniqueIp })
 	}
 
-	// 31st request should be blocked
+	// Next request should be blocked
 	const response = await callRateLimiter('/admin/api/feeds', {
 		method: 'POST',
 		ip: uniqueIp,
@@ -184,9 +222,10 @@ test('rate limiter returns 429 with Retry-After when limit exceeded', async () =
 
 test('rate limiter tracks different route types separately (admin-write exhausted, admin-read and media still work)', async () => {
 	const uniqueIp = `separate-limits-test-${Date.now()}`
+	const adminWriteLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE, 10)
 
-	// Exhaust admin-write limit (30 requests)
-	for (let i = 0; i < 30; i++) {
+	// Exhaust admin-write limit
+	for (let i = 0; i < adminWriteLimit; i++) {
 		await callRateLimiter('/admin/api/feeds', { method: 'POST', ip: uniqueIp })
 	}
 

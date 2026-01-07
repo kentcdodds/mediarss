@@ -166,3 +166,27 @@ export function getDefaultLimiter(): RateLimiter {
 	}
 	return _defaultLimiter
 }
+
+/**
+ * Reset all rate limiter singletons.
+ * This is primarily useful for testing to ensure fresh instances
+ * are created with the current environment configuration.
+ */
+export function resetRateLimiters(): void {
+	if (_adminWriteLimiter) {
+		_adminWriteLimiter.destroy()
+		_adminWriteLimiter = null
+	}
+	if (_adminReadLimiter) {
+		_adminReadLimiter.destroy()
+		_adminReadLimiter = null
+	}
+	if (_mediaLimiter) {
+		_mediaLimiter.destroy()
+		_mediaLimiter = null
+	}
+	if (_defaultLimiter) {
+		_defaultLimiter.destroy()
+		_defaultLimiter = null
+	}
+}

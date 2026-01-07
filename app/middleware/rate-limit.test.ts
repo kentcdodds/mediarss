@@ -20,10 +20,14 @@ for (const [key, value] of Object.entries(TEST_RATE_LIMITS)) {
 
 // Dynamic imports ensure env vars are set before modules are loaded
 const { initEnv } = await import('#app/config/env.ts')
+const { resetRateLimiters } = await import('#app/helpers/rate-limiter.ts')
 const { rateLimit } = await import('./rate-limit.ts')
 
 // Initialize environment for tests (will use our lower rate limits)
 initEnv()
+
+// Reset any previously created rate limiters so they pick up the test config
+resetRateLimiters()
 
 /**
  * Helper to call the rate limit middleware with a request.

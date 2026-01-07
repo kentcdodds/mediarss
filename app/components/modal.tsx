@@ -96,7 +96,7 @@ const sizeMap: Record<ModalSize, string> = {
  * )}
  * ```
  */
-export function Modal(this: Handle, setupProps: ModalProps) {
+export function Modal(this: Handle, _setupProps: ModalProps) {
 	// Store reference to the modal container for focus management
 	let modalRef: HTMLElement | null = null
 	let previouslyFocusedElement: Element | null = null
@@ -105,47 +105,47 @@ export function Modal(this: Handle, setupProps: ModalProps) {
 	const titleId = `modal-title-${Math.random().toString(36).slice(2, 9)}`
 	const subtitleId = `modal-subtitle-${Math.random().toString(36).slice(2, 9)}`
 
-	// Focus trap: keep focus within the modal
-	const handleKeyDown = (e: KeyboardEvent) => {
-		if (e.key === 'Escape') {
-			e.preventDefault()
-			setupProps.onClose()
-			return
-		}
+	return (renderProps: ModalProps) => {
+		// Focus trap: keep focus within the modal
+		// Defined inside render function to always use the latest onClose callback
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				e.preventDefault()
+				renderProps.onClose()
+				return
+			}
 
-		if (e.key === 'Tab' && modalRef) {
-			const focusableElements = modalRef.querySelectorAll<HTMLElement>(
-				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-			)
-			const firstElement = focusableElements[0]
-			const lastElement = focusableElements[focusableElements.length - 1]
+			if (e.key === 'Tab' && modalRef) {
+				const focusableElements = modalRef.querySelectorAll<HTMLElement>(
+					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+				)
+				const firstElement = focusableElements[0]
+				const lastElement = focusableElements[focusableElements.length - 1]
 
-			if (!firstElement || !lastElement) return
+				if (!firstElement || !lastElement) return
 
-			if (e.shiftKey) {
-				// Shift+Tab: if focus is on first element, wrap to last
-				if (document.activeElement === firstElement) {
-					e.preventDefault()
-					lastElement.focus()
-				}
-			} else {
-				// Tab: if focus is on last element, wrap to first
-				if (document.activeElement === lastElement) {
-					e.preventDefault()
-					firstElement.focus()
+				if (e.shiftKey) {
+					// Shift+Tab: if focus is on first element, wrap to last
+					if (document.activeElement === firstElement) {
+						e.preventDefault()
+						lastElement.focus()
+					}
+				} else {
+					// Tab: if focus is on last element, wrap to first
+					if (document.activeElement === lastElement) {
+						e.preventDefault()
+						firstElement.focus()
+					}
 				}
 			}
 		}
-	}
 
-	// Handle backdrop click
-	const handleBackdropClick = (e: MouseEvent) => {
-		if (e.target === e.currentTarget) {
-			setupProps.onClose()
+		// Handle backdrop click
+		const handleBackdropClick = (e: MouseEvent) => {
+			if (e.target === e.currentTarget) {
+				renderProps.onClose()
+			}
 		}
-	}
-
-	return (renderProps: ModalProps) => {
 		const {
 			title,
 			subtitle,

@@ -123,29 +123,6 @@ let _adminReadLimiter: RateLimiter | null = null
 let _mediaLimiter: RateLimiter | null = null
 let _defaultLimiter: RateLimiter | null = null
 
-/**
- * Reset all rate limiter singletons.
- * This is useful for testing when you need to change rate limit configuration.
- */
-export function resetRateLimiters(): void {
-	if (_adminWriteLimiter) {
-		_adminWriteLimiter.destroy()
-		_adminWriteLimiter = null
-	}
-	if (_adminReadLimiter) {
-		_adminReadLimiter.destroy()
-		_adminReadLimiter = null
-	}
-	if (_mediaLimiter) {
-		_mediaLimiter.destroy()
-		_mediaLimiter = null
-	}
-	if (_defaultLimiter) {
-		_defaultLimiter.destroy()
-		_defaultLimiter = null
-	}
-}
-
 /** Admin write operations (POST/PUT/DELETE/PATCH) */
 export function getAdminWriteLimiter(): RateLimiter {
 	if (!_adminWriteLimiter) {

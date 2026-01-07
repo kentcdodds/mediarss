@@ -1,9 +1,8 @@
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import { invariant } from '@epic-web/invariant'
 import type { RequestContext } from '@remix-run/fetch-router'
-import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 
-// Configure lower rate limits for faster tests BEFORE importing env
+// Configure lower rate limits for faster tests BEFORE importing any source code
 // These values are much lower than production defaults to reduce test iterations
 const TEST_RATE_LIMITS = {
 	RATE_LIMIT_ADMIN_READ: '10',
@@ -12,27 +11,17 @@ const TEST_RATE_LIMITS = {
 	RATE_LIMIT_DEFAULT: '10',
 }
 
-// Set environment variables before initializing env
+// Set environment variables BEFORE importing source code
 for (const [key, value] of Object.entries(TEST_RATE_LIMITS)) {
 	process.env[key] = value
 }
 
-// Now import and initialize env with our test values
-import { initEnv } from '#app/config/env.ts'
-import { rateLimit } from './rate-limit.ts'
+// Dynamic imports ensure env vars are set before modules are loaded
+const { initEnv } = await import('#app/config/env.ts')
+const { rateLimit } = await import('./rate-limit.ts')
 
 // Initialize environment for tests (will use our lower rate limits)
 initEnv()
-
-// Ensure rate limiters are reset before tests to pick up new config
-beforeAll(() => {
-	resetRateLimiters()
-})
-
-// Clean up rate limiters after all tests
-afterAll(() => {
-	resetRateLimiters()
-})
 
 /**
  * Helper to call the rate limit middleware with a request.

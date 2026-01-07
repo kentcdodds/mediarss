@@ -4,6 +4,7 @@ import {
 	consumeAuthorizationCode,
 	generateAccessToken,
 	getClient,
+	getValidAuthorizationCode,
 	verifyCodeChallenge,
 } from '#app/oauth/index.ts'
 
@@ -109,8 +110,10 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		return errorResponse('invalid_request', 'code is required.')
 	}
 
-	// Consume the authorization code (marks it as used)
-	const authCode = consumeAuthorizationCode(tokenRequest.code)
+	// Get the authorization code WITHOUT consuming it first
+	// This prevents an attacker from invalidating a legitimate code by submitting
+	// it with wrong parameters (client_id, redirect_uri, or PKCE verifier)
+	const authCode = getValidAuthorizationCode(tokenRequest.code)
 	if (!authCode) {
 		return errorResponse(
 			'invalid_grant',
@@ -147,6 +150,17 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	if (!pkceValid) {
 		return errorResponse('invalid_grant', 'PKCE verification failed.')
+	}
+
+	// All validations passed - now atomically consume the authorization code
+	// This uses an atomic UPDATE to prevent race conditions
+	const consumedCode = consumeAuthorizationCode(tokenRequest.code)
+	if (!consumedCode) {
+		// Code was consumed by another request between validation and consumption
+		return errorResponse(
+			'invalid_grant',
+			'Authorization code is invalid, expired, or has already been used.',
+		)
 	}
 
 	// Generate access token

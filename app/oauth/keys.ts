@@ -135,3 +135,13 @@ export async function getKeyId(): Promise<string> {
 export function clearKeyCache(): void {
 	cachedKeyPair = null
 }
+
+/**
+ * Initialize the signing keypair at startup.
+ * This prevents race conditions when multiple concurrent requests
+ * arrive before any key exists - without this, multiple keys could
+ * be generated and tokens signed with overwritten keys would fail verification.
+ */
+export async function ensureSigningKey(): Promise<void> {
+	await getSigningKeyPair()
+}

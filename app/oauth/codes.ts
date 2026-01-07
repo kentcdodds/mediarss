@@ -70,7 +70,8 @@ export function createAuthorizationCode(params: {
 }
 
 /**
- * Get an authorization code if it exists, is not expired, and has not been used.
+ * Get an authorization code by its code string.
+ * Returns the code regardless of expiry or usage status.
  */
 export function getAuthorizationCode(code: string): AuthorizationCode | null {
 	const row = db
@@ -97,10 +98,10 @@ export function getAuthorizationCode(code: string): AuthorizationCode | null {
 }
 
 /**
- * Consume an authorization code (mark it as used).
- * Returns the code if successful, null if already used or not found.
+ * Get an authorization code only if it is valid (exists, not expired, not used).
+ * Does NOT consume the code - use this for validation before consuming.
  */
-export function consumeAuthorizationCode(
+export function getValidAuthorizationCode(
 	code: string,
 ): AuthorizationCode | null {
 	const authCode = getAuthorizationCode(code)
@@ -116,21 +117,44 @@ export function consumeAuthorizationCode(
 		return null
 	}
 
-	// Check if already used (single-use enforcement)
+	// Check if already used
 	if (authCode.usedAt !== null) {
 		return null
 	}
 
-	// Mark as used
-	db.query(sql`UPDATE authorization_codes SET used_at = ? WHERE code = ?;`).run(
-		now,
-		code,
-	)
+	return authCode
+}
 
-	return {
-		...authCode,
-		usedAt: now,
+/**
+ * Atomically consume an authorization code (mark it as used).
+ * Uses a conditional UPDATE to prevent TOCTOU race conditions.
+ * Returns the code if successful, null if invalid, expired, or already used.
+ */
+export function consumeAuthorizationCode(
+	code: string,
+): AuthorizationCode | null {
+	const now = Math.floor(Date.now() / 1000)
+
+	// Atomically mark as used only if valid, not expired, and not already used
+	// This prevents race conditions where two requests could both consume the same code
+	const result = db
+		.query(
+			sql`UPDATE authorization_codes SET used_at = ? WHERE code = ? AND used_at IS NULL AND expires_at >= ?;`,
+		)
+		.run(now, code, now)
+
+	// If no rows were affected, the code was invalid, expired, or already used
+	if (result.changes === 0) {
+		return null
 	}
+
+	// Fetch the updated row to return full details
+	const authCode = getAuthorizationCode(code)
+	if (!authCode) {
+		return null
+	}
+
+	return authCode
 }
 
 /**

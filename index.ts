@@ -7,6 +7,7 @@ import { warmMediaCache } from '#app/helpers/media.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
 import { ensureDefaultClient } from './app/oauth/clients.ts'
+import { ensureSigningKey } from './app/oauth/keys.ts'
 import router from './app/router.tsx'
 import { createBundlingRoutes } from './server/bundling.ts'
 import { setupInteractiveCli } from './server/cli.ts'
@@ -18,6 +19,10 @@ migrate(db)
 
 // Ensure default OAuth client exists
 ensureDefaultClient()
+
+// Initialize OAuth signing key at startup to prevent race conditions
+// when multiple concurrent requests arrive before any key exists
+await ensureSigningKey()
 
 function startServer(port: number) {
 	return Bun.serve({

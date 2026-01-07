@@ -17,6 +17,20 @@ interface ClientRow {
 }
 
 /**
+ * Safely parse redirect URIs from JSON.
+ * Falls back to empty array if parsing fails.
+ */
+function parseRedirectUris(json: string): string[] {
+	try {
+		const parsed = JSON.parse(json)
+		return Array.isArray(parsed) ? parsed : []
+	} catch {
+		console.error('Failed to parse redirect_uris:', json)
+		return []
+	}
+}
+
+/**
  * Get an OAuth client by ID.
  */
 export function getClient(clientId: string): OAuthClient | null {
@@ -31,7 +45,7 @@ export function getClient(clientId: string): OAuthClient | null {
 	return {
 		id: row.id,
 		name: row.name,
-		redirectUris: JSON.parse(row.redirect_uris) as string[],
+		redirectUris: parseRedirectUris(row.redirect_uris),
 		createdAt: row.created_at,
 	}
 }
@@ -91,7 +105,7 @@ export function listClients(): OAuthClient[] {
 	return rows.map((row) => ({
 		id: row.id,
 		name: row.name,
-		redirectUris: JSON.parse(row.redirect_uris) as string[],
+		redirectUris: parseRedirectUris(row.redirect_uris),
 		createdAt: row.created_at,
 	}))
 }
@@ -106,8 +120,7 @@ export function ensureDefaultClient(): OAuthClient {
 
 	if (!client) {
 		const createdAt = Math.floor(Date.now() / 1000)
-		// Default MCP client accepts any localhost redirect for development
-		// and any HTTPS redirect for production
+		// Default MCP client accepts localhost redirects for development
 		db.query(
 			sql`INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?);`,
 		).run(

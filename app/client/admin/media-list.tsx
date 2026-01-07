@@ -1375,7 +1375,6 @@ function ManageAccessModal({
 					if (e.key === 'Escape') onCancel()
 				},
 			}}
-			ref={(el: HTMLDivElement | null) => el?.focus()}
 		>
 			<div
 				css={{
@@ -1403,6 +1402,7 @@ function ManageAccessModal({
 				<button
 					type="button"
 					aria-label="Close"
+					autofocus
 					css={{
 						position: 'absolute',
 						top: spacing.md,
@@ -2084,7 +2084,6 @@ function BulkAssignModal({
 					if (e.key === 'Escape') onCancel()
 				},
 			}}
-			ref={(el: HTMLDivElement | null) => el?.focus()}
 		>
 			<div
 				css={{
@@ -2112,6 +2111,7 @@ function BulkAssignModal({
 				<button
 					type="button"
 					aria-label="Close"
+					autofocus
 					css={{
 						position: 'absolute',
 						top: spacing.md,
@@ -2314,7 +2314,6 @@ function BulkUnassignModal({
 					if (e.key === 'Escape') onCancel()
 				},
 			}}
-			ref={(el: HTMLDivElement | null) => el?.focus()}
 		>
 			<div
 				css={{
@@ -2342,6 +2341,7 @@ function BulkUnassignModal({
 				<button
 					type="button"
 					aria-label="Close"
+					autofocus
 					css={{
 						position: 'absolute',
 						top: spacing.md,

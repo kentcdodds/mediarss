@@ -1,5 +1,12 @@
 import type { Handle } from '@remix-run/component'
 import { matchSorter, rankings } from 'match-sorter'
+import {
+	Modal,
+	ModalButton,
+	ModalFooter,
+	ModalList,
+	ModalSection,
+} from '#app/components/modal.tsx'
 import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
 import {
 	colors,
@@ -1406,315 +1413,138 @@ function ManageAccessModal({
 	)
 
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="manage-access-modal-title"
-			tabIndex={-1}
-			css={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: spacing.lg,
-				outline: 'none',
-				[mq.mobile]: {
-					padding: 0,
-				},
-			}}
-			on={{
-				click: (e) => {
-					if (e.target === e.currentTarget) onCancel()
-				},
-				keydown: (e: KeyboardEvent) => {
-					if (e.key === 'Escape') onCancel()
-				},
-			}}
+		<Modal
+			title={item.title}
+			subtitle={item.author ?? undefined}
+			size="md"
+			onClose={onCancel}
+			footer={
+				<ModalFooter>
+					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
+						Cancel
+					</ModalButton>
+					<ModalButton variant="primary" disabled={saving} onClick={onSave}>
+						{saving ? 'Saving...' : 'Done'}
+					</ModalButton>
+				</ModalFooter>
+			}
 		>
+			{/* Media info header */}
 			<div
 				css={{
-					position: 'relative',
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.xl,
-					maxWidth: '480px',
-					width: '100%',
-					maxHeight: '80vh',
 					display: 'flex',
-					flexDirection: 'column',
-					boxShadow: shadows.lg,
-					[mq.mobile]: {
-						maxWidth: 'none',
-						maxHeight: 'none',
-						height: '100%',
-						borderRadius: 0,
-						border: 'none',
-					},
+					gap: spacing.md,
+					marginBottom: spacing.lg,
+					paddingBottom: spacing.lg,
+					borderBottom: `1px solid ${colors.border}`,
 				}}
 			>
-				{/* Close button */}
-				<button
-					type="button"
-					aria-label="Close"
-					autofocus
+				<img
+					src={getArtworkUrl(item)}
+					alt=""
 					css={{
-						position: 'absolute',
-						top: spacing.md,
-						right: spacing.md,
-						width: '32px',
-						height: '32px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
+						width: '64px',
+						height: '64px',
 						borderRadius: radius.md,
-						cursor: 'pointer',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.surface,
-							color: colors.text,
-						},
+						objectFit: 'cover',
+						backgroundColor: colors.background,
+						flexShrink: 0,
 					}}
-					on={{ click: onCancel }}
-				>
-					×
-				</button>
-
-				{/* Header with media info */}
-				<div
-					css={{
-						display: 'flex',
-						gap: spacing.md,
-						marginBottom: spacing.lg,
-						paddingBottom: spacing.lg,
-						borderBottom: `1px solid ${colors.border}`,
-						paddingRight: spacing.xl,
-					}}
-				>
-					<img
-						src={getArtworkUrl(item)}
-						alt=""
+				/>
+				<div css={{ minWidth: 0, alignSelf: 'center' }}>
+					<p
 						css={{
-							width: '64px',
-							height: '64px',
-							borderRadius: radius.md,
-							objectFit: 'cover',
-							backgroundColor: colors.background,
-							flexShrink: 0,
-						}}
-					/>
-					<div css={{ minWidth: 0 }}>
-						<h3
-							id="manage-access-modal-title"
-							css={{
-								fontSize: typography.fontSize.lg,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-								overflow: 'hidden',
-								textOverflow: 'ellipsis',
-								whiteSpace: 'nowrap',
-							}}
-							title={item.title}
-						>
-							{item.title}
-						</h3>
-						{item.author && (
-							<p
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-									margin: `${spacing.xs} 0 0 0`,
-								}}
-							>
-								{item.author}
-							</p>
-						)}
-					</div>
-				</div>
-
-				{/* Feeds list */}
-				<div
-					css={{
-						flex: 1,
-						minHeight: '150px',
-						overflowY: 'auto',
-						marginBottom: spacing.lg,
-					}}
-				>
-					{/* Curated feeds with toggles */}
-					{curatedFeeds.length > 0 && (
-						<div css={{ marginBottom: spacing.lg }}>
-							<h4
-								css={{
-									fontSize: typography.fontSize.xs,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.textMuted,
-									textTransform: 'uppercase',
-									letterSpacing: '0.05em',
-									margin: `0 0 ${spacing.sm} 0`,
-								}}
-							>
-								Curated Feeds
-							</h4>
-							<div
-								css={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
-								}}
-							>
-								{curatedFeeds.map((feed) => (
-									<FeedToggleRow
-										key={feed.id}
-										feedId={feed.id}
-										name={feed.name}
-										updatedAt={feed.updatedAt}
-										isEnabled={selectedFeedIds.has(feed.id)}
-										onToggle={() => onToggle(feed.id)}
-									/>
-								))}
-							</div>
-						</div>
-					)}
-
-					{/* Directory feeds (read-only) */}
-					{matchingDirectoryFeeds.length > 0 && (
-						<div>
-							<h4
-								css={{
-									fontSize: typography.fontSize.xs,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.textMuted,
-									textTransform: 'uppercase',
-									letterSpacing: '0.05em',
-									margin: `0 0 ${spacing.sm} 0`,
-								}}
-							>
-								Directory Feeds
-							</h4>
-							<div
-								css={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
-								}}
-							>
-								{matchingDirectoryFeeds.map((feed) => (
-									<div
-										key={feed.id}
-										css={{
-											display: 'flex',
-											alignItems: 'center',
-											gap: spacing.md,
-											padding: spacing.sm,
-											backgroundColor: colors.background,
-											borderRadius: radius.md,
-											opacity: 0.7,
-										}}
-									>
-										<img
-											src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
-											alt=""
-											css={{
-												width: '32px',
-												height: '32px',
-												borderRadius: radius.sm,
-												objectFit: 'cover',
-											}}
-										/>
-										<span
-											css={{
-												flex: 1,
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-											}}
-										>
-											{feed.name}
-										</span>
-										<span
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												fontStyle: 'italic',
-											}}
-										>
-											via directory
-										</span>
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-
-					{curatedFeeds.length === 0 && matchingDirectoryFeeds.length === 0 && (
-						<p
-							css={{
-								textAlign: 'center',
-								color: colors.textMuted,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							No feeds available.
-						</p>
-					)}
-				</div>
-
-				{/* Footer buttons */}
-				<div
-					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
-				>
-					<button
-						type="button"
-						disabled={saving}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
 							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: saving ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': saving ? {} : { backgroundColor: colors.background },
+							color: colors.textMuted,
+							margin: 0,
 						}}
-						on={{ click: onCancel }}
 					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						disabled={saving}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor: saving ? colors.border : colors.primary,
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: saving ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': saving ? {} : { backgroundColor: colors.primaryHover },
-						}}
-						on={{ click: onSave }}
-					>
-						{saving ? 'Saving...' : 'Done'}
-					</button>
+						Manage which feeds include this media file.
+					</p>
 				</div>
 			</div>
-		</div>
+
+			{/* Curated feeds with toggles */}
+			{curatedFeeds.length > 0 && (
+				<ModalSection title="Curated Feeds">
+					<ModalList>
+						{curatedFeeds.map((feed) => (
+							<FeedToggleRow
+								key={feed.id}
+								feedId={feed.id}
+								name={feed.name}
+								updatedAt={feed.updatedAt}
+								isEnabled={selectedFeedIds.has(feed.id)}
+								onToggle={() => onToggle(feed.id)}
+							/>
+						))}
+					</ModalList>
+				</ModalSection>
+			)}
+
+			{/* Directory feeds (read-only) */}
+			{matchingDirectoryFeeds.length > 0 && (
+				<ModalSection title="Directory Feeds">
+					<ModalList>
+						{matchingDirectoryFeeds.map((feed) => (
+							<div
+								key={feed.id}
+								css={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.md,
+									padding: spacing.sm,
+									backgroundColor: colors.background,
+									borderRadius: radius.md,
+									opacity: 0.7,
+								}}
+							>
+								<img
+									src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
+									alt=""
+									css={{
+										width: '32px',
+										height: '32px',
+										borderRadius: radius.sm,
+										objectFit: 'cover',
+									}}
+								/>
+								<span
+									css={{
+										flex: 1,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+									}}
+								>
+									{feed.name}
+								</span>
+								<span
+									css={{
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										fontStyle: 'italic',
+									}}
+								>
+									via directory
+								</span>
+							</div>
+						))}
+					</ModalList>
+				</ModalSection>
+			)}
+
+			{curatedFeeds.length === 0 && matchingDirectoryFeeds.length === 0 && (
+				<p
+					css={{
+						textAlign: 'center',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+					}}
+				>
+					No feeds available.
+				</p>
+			)}
+		</Modal>
 	)
 }
 
@@ -2115,215 +1945,53 @@ function BulkAssignModal({
 	const noFeedsSelected = feedCount === 0
 
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="bulk-assign-modal-title"
-			tabIndex={-1}
-			css={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: spacing.lg,
-				outline: 'none',
-				[mq.mobile]: {
-					padding: 0,
-				},
-			}}
-			on={{
-				click: (e) => {
-					if (e.target === e.currentTarget) onCancel()
-				},
-				keydown: (e: KeyboardEvent) => {
-					if (e.key === 'Escape') onCancel()
-				},
-			}}
-		>
-			<div
-				css={{
-					position: 'relative',
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.xl,
-					maxWidth: '420px',
-					width: '100%',
-					maxHeight: '80vh',
-					display: 'flex',
-					flexDirection: 'column',
-					boxShadow: shadows.lg,
-					[mq.mobile]: {
-						maxWidth: 'none',
-						maxHeight: 'none',
-						height: '100%',
-						borderRadius: 0,
-						border: 'none',
-					},
-				}}
-			>
-				{/* Close button */}
-				<button
-					type="button"
-					aria-label="Close"
-					autofocus
-					css={{
-						position: 'absolute',
-						top: spacing.md,
-						right: spacing.md,
-						width: '32px',
-						height: '32px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.surface,
-							color: colors.text,
-						},
-					}}
-					on={{ click: onCancel }}
-				>
-					×
-				</button>
-
-				{/* Header */}
-				<div
-					css={{
-						marginBottom: spacing.lg,
-						paddingBottom: spacing.lg,
-						borderBottom: `1px solid ${colors.border}`,
-						paddingRight: spacing.xl,
-					}}
-				>
-					<h3
-						id="bulk-assign-modal-title"
-						css={{
-							fontSize: typography.fontSize.lg,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
-						}}
-					>
-						Assign to Feeds
-					</h3>
-					<p
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-							margin: `${spacing.xs} 0 0 0`,
-						}}
-					>
-						Add {selectedCount} item{selectedCount !== 1 ? 's' : ''} to curated
-						feeds
-					</p>
-				</div>
-
-				{/* Feed list */}
-				<div
-					css={{
-						flex: 1,
-						minHeight: '150px',
-						maxHeight: '300px',
-						overflowY: 'auto',
-						marginBottom: spacing.lg,
-					}}
-				>
-					{curatedFeeds.length > 0 ? (
-						<div
-							css={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: spacing.sm,
-							}}
-						>
-							{curatedFeeds.map((feed) => (
-								<FeedCheckboxRow
-									key={feed.id}
-									feedId={feed.id}
-									name={feed.name}
-									updatedAt={feed.updatedAt}
-									isSelected={selectedFeedIds.has(feed.id)}
-									onToggle={() => onToggleFeed(feed.id)}
-								/>
-							))}
-						</div>
-					) : (
-						<p
-							css={{
-								textAlign: 'center',
-								color: colors.textMuted,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							No curated feeds available. Create a feed first.
-						</p>
-					)}
-				</div>
-
-				{/* Footer buttons */}
-				<div
-					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
-				>
-					<button
-						type="button"
-						disabled={saving}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: saving ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': saving ? {} : { backgroundColor: colors.background },
-						}}
-						on={{ click: onCancel }}
-					>
+		<Modal
+			title="Assign to Feeds"
+			subtitle={`Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to curated feeds`}
+			size="sm"
+			onClose={onCancel}
+			footer={
+				<ModalFooter>
+					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
 						Cancel
-					</button>
-					<button
-						type="button"
+					</ModalButton>
+					<ModalButton
+						variant="primary"
 						disabled={saving || noFeedsSelected}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor:
-								saving || noFeedsSelected ? colors.border : colors.primary,
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: saving || noFeedsSelected ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover':
-								saving || noFeedsSelected
-									? {}
-									: { backgroundColor: colors.primaryHover },
-						}}
-						on={{ click: onSave }}
+						onClick={onSave}
 					>
 						{saving
 							? 'Assigning...'
 							: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
-					</button>
-				</div>
-			</div>
-		</div>
+					</ModalButton>
+				</ModalFooter>
+			}
+		>
+			{curatedFeeds.length > 0 ? (
+				<ModalList>
+					{curatedFeeds.map((feed) => (
+						<FeedCheckboxRow
+							key={feed.id}
+							feedId={feed.id}
+							name={feed.name}
+							updatedAt={feed.updatedAt}
+							isSelected={selectedFeedIds.has(feed.id)}
+							onToggle={() => onToggleFeed(feed.id)}
+						/>
+					))}
+				</ModalList>
+			) : (
+				<p
+					css={{
+						textAlign: 'center',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+					}}
+				>
+					No curated feeds available. Create a feed first.
+				</p>
+			)}
+		</Modal>
 	)
 }
 
@@ -2345,214 +2013,53 @@ function BulkUnassignModal({
 	onCancel: () => void
 }) {
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="bulk-unassign-modal-title"
-			tabIndex={-1}
-			css={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: spacing.lg,
-				outline: 'none',
-				[mq.mobile]: {
-					padding: 0,
-				},
-			}}
-			on={{
-				click: (e) => {
-					if (e.target === e.currentTarget) onCancel()
-				},
-				keydown: (e: KeyboardEvent) => {
-					if (e.key === 'Escape') onCancel()
-				},
-			}}
-		>
-			<div
-				css={{
-					position: 'relative',
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.xl,
-					maxWidth: '420px',
-					width: '100%',
-					maxHeight: '80vh',
-					display: 'flex',
-					flexDirection: 'column',
-					boxShadow: shadows.lg,
-					[mq.mobile]: {
-						maxWidth: 'none',
-						maxHeight: 'none',
-						height: '100%',
-						borderRadius: 0,
-						border: 'none',
-					},
-				}}
-			>
-				{/* Close button */}
-				<button
-					type="button"
-					aria-label="Close"
-					autofocus
-					css={{
-						position: 'absolute',
-						top: spacing.md,
-						right: spacing.md,
-						width: '32px',
-						height: '32px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.surface,
-							color: colors.text,
-						},
-					}}
-					on={{ click: onCancel }}
-				>
-					×
-				</button>
-
-				{/* Header */}
-				<div
-					css={{
-						marginBottom: spacing.lg,
-						paddingBottom: spacing.lg,
-						borderBottom: `1px solid ${colors.border}`,
-						paddingRight: spacing.xl,
-					}}
-				>
-					<h3
-						id="bulk-unassign-modal-title"
-						css={{
-							fontSize: typography.fontSize.lg,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
-						}}
-					>
-						Remove from Feed
-					</h3>
-					<p
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-							margin: `${spacing.xs} 0 0 0`,
-						}}
-					>
-						Remove selected items from a curated feed
-					</p>
-				</div>
-
-				{/* Feed list */}
-				<div
-					css={{
-						flex: 1,
-						minHeight: '150px',
-						maxHeight: '300px',
-						overflowY: 'auto',
-						marginBottom: spacing.lg,
-					}}
-				>
-					{feedsWithItems.length > 0 ? (
-						<div
-							css={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: spacing.sm,
-							}}
-						>
-							{feedsWithItems.map(({ feed, count }) => (
-								<FeedRadioRowWithCount
-									key={feed.id}
-									feedId={feed.id}
-									name={feed.name}
-									updatedAt={feed.updatedAt}
-									itemCount={count}
-									totalSelected={selectedCount}
-									isSelected={selectedFeedId === feed.id}
-									onSelect={() => onSelectFeed(feed.id)}
-								/>
-							))}
-						</div>
-					) : (
-						<p
-							css={{
-								textAlign: 'center',
-								color: colors.textMuted,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							None of the selected items are assigned to any feeds.
-						</p>
-					)}
-				</div>
-
-				{/* Footer buttons */}
-				<div
-					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
-				>
-					<button
-						type="button"
-						disabled={saving}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: saving ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': saving ? {} : { backgroundColor: colors.background },
-						}}
-						on={{ click: onCancel }}
-					>
+		<Modal
+			title="Remove from Feed"
+			subtitle="Remove selected items from a curated feed"
+			size="sm"
+			onClose={onCancel}
+			footer={
+				<ModalFooter>
+					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
 						Cancel
-					</button>
-					<button
-						type="button"
+					</ModalButton>
+					<ModalButton
+						variant="danger"
 						disabled={saving || !selectedFeedId}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor:
-								saving || !selectedFeedId ? colors.border : colors.error,
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: saving || !selectedFeedId ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover':
-								saving || !selectedFeedId
-									? {}
-									: { backgroundColor: colors.errorHover },
-						}}
-						on={{ click: onSave }}
+						onClick={onSave}
 					>
 						{saving ? 'Removing...' : 'Remove from Feed'}
-					</button>
-				</div>
-			</div>
-		</div>
+					</ModalButton>
+				</ModalFooter>
+			}
+		>
+			{feedsWithItems.length > 0 ? (
+				<ModalList>
+					{feedsWithItems.map(({ feed, count }) => (
+						<FeedRadioRowWithCount
+							key={feed.id}
+							feedId={feed.id}
+							name={feed.name}
+							updatedAt={feed.updatedAt}
+							itemCount={count}
+							totalSelected={selectedCount}
+							isSelected={selectedFeedId === feed.id}
+							onSelect={() => onSelectFeed(feed.id)}
+						/>
+					))}
+				</ModalList>
+			) : (
+				<p
+					css={{
+						textAlign: 'center',
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+					}}
+				>
+					None of the selected items are assigned to any feeds.
+				</p>
+			)}
+		</Modal>
 	)
 }
 

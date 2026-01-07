@@ -1,5 +1,11 @@
 import type { Handle } from '@remix-run/component'
 import {
+	Modal,
+	ModalAlert,
+	ModalButton,
+	ModalFooter,
+} from '#app/components/modal.tsx'
+import {
 	formatDate,
 	formatDuration,
 	formatFileSize,
@@ -3212,199 +3218,56 @@ function DeleteConfirmModal({
 	onCancel: () => void
 }) {
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="delete-confirm-modal-title"
-			tabIndex={-1}
-			css={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: spacing.lg,
-				outline: 'none',
-				[mq.mobile]: {
-					padding: 0,
-				},
-			}}
-			on={{
-				click: (e) => {
-					if (e.target === e.currentTarget) onCancel()
-				},
-				keydown: (e: KeyboardEvent) => {
-					if (e.key === 'Escape') onCancel()
-				},
-			}}
-		>
-			<div
-				css={{
-					position: 'relative',
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.xl,
-					maxWidth: '400px',
-					width: '100%',
-					boxShadow: shadows.lg,
-					[mq.mobile]: {
-						maxWidth: 'none',
-						maxHeight: 'none',
-						height: '100%',
-						borderRadius: 0,
-						border: 'none',
-						display: 'flex',
-						flexDirection: 'column',
-					},
-				}}
-			>
-				{/* Close button */}
-				<button
-					type="button"
-					aria-label="Close"
-					autofocus
-					css={{
-						position: 'absolute',
-						top: spacing.md,
-						right: spacing.md,
-						width: '32px',
-						height: '32px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.surface,
-							color: colors.text,
-						},
-					}}
-					on={{ click: onCancel }}
-				>
-					×
-				</button>
-
-				<h3
-					id="delete-confirm-modal-title"
-					css={{
-						fontSize: typography.fontSize.lg,
-						fontWeight: typography.fontWeight.semibold,
-						color: colors.text,
-						margin: `0 0 ${spacing.md} 0`,
-						paddingRight: spacing.xl,
-					}}
-				>
-					Delete Feed
-				</h3>
-
-				<p
-					css={{
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-						margin: `0 0 ${spacing.md} 0`,
-					}}
-				>
-					Are you sure you want to delete{' '}
-					<strong css={{ color: colors.text }}>{feedName}</strong>?
-				</p>
-
-				<div
-					css={{
-						backgroundColor: 'rgba(239, 68, 68, 0.1)',
-						borderRadius: radius.md,
-						padding: spacing.md,
-						marginBottom: spacing.lg,
-					}}
-				>
-					<p
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: '#ef4444',
-							margin: 0,
-						}}
-					>
-						This action cannot be undone. The following will be permanently
-						deleted:
-					</p>
-					<ul
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: '#ef4444',
-							margin: `${spacing.sm} 0 0 0`,
-							paddingLeft: spacing.lg,
-						}}
-					>
-						<li>The feed and all its settings</li>
-						{tokenCount > 0 && (
-							<li>
-								{tokenCount} access token{tokenCount !== 1 ? 's' : ''}
-							</li>
-						)}
-						{itemCount > 0 && (
-							<li>
-								{itemCount} media item reference{itemCount !== 1 ? 's' : ''}
-							</li>
-						)}
-					</ul>
-				</div>
-
-				<div
-					css={{ display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' }}
-				>
-					<button
-						type="button"
+		<Modal
+			title="Delete Feed"
+			subtitle={`Are you sure you want to delete ${feedName}?`}
+			size="sm"
+			onClose={onCancel}
+			showHeaderBorder={false}
+			footer={
+				<ModalFooter>
+					<ModalButton
+						variant="secondary"
 						disabled={isLoading}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: isLoading ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': isLoading
-								? {}
-								: { backgroundColor: colors.background },
-						}}
-						on={{ click: onCancel }}
+						onClick={onCancel}
 					>
 						Cancel
-					</button>
-					<button
-						type="button"
+					</ModalButton>
+					<ModalButton
+						variant="danger"
 						disabled={isLoading}
-						css={{
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: '#fff',
-							backgroundColor: isLoading ? colors.border : '#ef4444',
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: isLoading ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': isLoading ? {} : { backgroundColor: '#dc2626' },
-						}}
-						on={{ click: onConfirm }}
+						onClick={onConfirm}
 					>
 						{isLoading ? 'Deleting...' : 'Delete Feed'}
-					</button>
-				</div>
-			</div>
-		</div>
+					</ModalButton>
+				</ModalFooter>
+			}
+		>
+			<ModalAlert type="error">
+				<p css={{ margin: 0 }}>
+					This action cannot be undone. The following will be permanently
+					deleted:
+				</p>
+				<ul
+					css={{
+						margin: `${spacing.sm} 0 0 0`,
+						paddingLeft: spacing.lg,
+					}}
+				>
+					<li>The feed and all its settings</li>
+					{tokenCount > 0 && (
+						<li>
+							{tokenCount} access token{tokenCount !== 1 ? 's' : ''}
+						</li>
+					)}
+					{itemCount > 0 && (
+						<li>
+							{itemCount} media item reference{itemCount !== 1 ? 's' : ''}
+						</li>
+					)}
+				</ul>
+			</ModalAlert>
+		</Modal>
 	)
 }
 
@@ -3442,473 +3305,19 @@ function AddFilesModal({
 	const pathParts = pickerPath ? pickerPath.split('/') : []
 
 	return (
-		<div
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="add-files-modal-title"
-			tabIndex={-1}
-			css={{
-				position: 'fixed',
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				backgroundColor: 'rgba(0, 0, 0, 0.5)',
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				zIndex: 1000,
-				padding: spacing.lg,
-				outline: 'none',
-				[mq.mobile]: {
-					padding: 0,
-				},
-			}}
-			on={{
-				click: (e) => {
-					if (e.target === e.currentTarget) onCancel()
-				},
-				keydown: (e: KeyboardEvent) => {
-					if (e.key === 'Escape') onCancel()
-				},
-			}}
-		>
-			<div
-				css={{
-					position: 'relative',
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.xl,
-					maxWidth: '600px',
-					width: '100%',
-					maxHeight: '80vh',
-					display: 'flex',
-					flexDirection: 'column',
-					boxShadow: shadows.lg,
-					[mq.mobile]: {
-						maxWidth: 'none',
-						maxHeight: 'none',
-						height: '100%',
-						borderRadius: 0,
-						border: 'none',
-					},
-				}}
-			>
-				{/* Close button */}
-				<button
-					type="button"
-					aria-label="Close"
-					autofocus
-					css={{
-						position: 'absolute',
-						top: spacing.md,
-						right: spacing.md,
-						width: '32px',
-						height: '32px',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						transition: `all ${transitions.fast}`,
-						zIndex: 1,
-						'&:hover': {
-							backgroundColor: colors.surface,
-							color: colors.text,
-						},
-					}}
-					on={{ click: onCancel }}
-				>
-					×
-				</button>
-
-				<h3
-					id="add-files-modal-title"
-					css={{
-						fontSize: typography.fontSize.lg,
-						fontWeight: typography.fontWeight.semibold,
-						color: colors.text,
-						margin: `0 0 ${spacing.md} 0`,
-						paddingRight: spacing.xl,
-					}}
-				>
-					Add Files to Feed
-				</h3>
-
-				<p
-					css={{
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-						margin: `0 0 ${spacing.lg} 0`,
-					}}
-				>
-					Select media files to add to this feed. Files already in the feed are
-					shown but disabled.
-				</p>
-
-				{/* File picker */}
-				<div
-					css={{
-						flex: 1,
-						minHeight: '250px',
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						overflow: 'hidden',
-						display: 'flex',
-						flexDirection: 'column',
-						marginBottom: spacing.lg,
-					}}
-				>
-					{/* Root selector */}
-					{rootsState.status === 'loading' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: colors.textMuted }}>
-								Loading media roots...
-							</span>
-						</div>
-					)}
-
-					{rootsState.status === 'error' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: '#ef4444' }}>
-								Error: {rootsState.message}
-							</span>
-						</div>
-					)}
-
-					{rootsState.status === 'success' && rootsState.roots.length === 0 && (
-						<div
-							css={{
-								padding: spacing.xl,
-								textAlign: 'center',
-								color: colors.textMuted,
-							}}
-						>
-							<div
-								css={{
-									width: '48px',
-									height: '48px',
-									margin: `0 auto ${spacing.md}`,
-									borderRadius: radius.md,
-									backgroundColor: colors.background,
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									fontSize: '24px',
-								}}
-							>
-								📂
-							</div>
-							<p
-								css={{
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.text,
-									margin: `0 0 ${spacing.sm} 0`,
-								}}
-							>
-								No media files available
-							</p>
-							<p
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-									margin: 0,
-									maxWidth: '400px',
-									marginLeft: 'auto',
-									marginRight: 'auto',
-								}}
-							>
-								To add files to this feed, first add media files to one of your
-								configured media path directories. Check your{' '}
-								<code
-									css={{
-										fontSize: typography.fontSize.xs,
-										backgroundColor: colors.background,
-										padding: `${spacing.xs} ${spacing.xs}`,
-										borderRadius: radius.sm,
-										fontFamily: 'monospace',
-									}}
-								>
-									MEDIA_PATHS
-								</code>{' '}
-								environment variable to see where media should be stored.
-							</p>
-						</div>
-					)}
-
-					{rootsState.status === 'success' && rootsState.roots.length > 0 && (
-						<>
-							<div
-								css={{
-									padding: spacing.sm,
-									backgroundColor: colors.background,
-									borderBottom: `1px solid ${colors.border}`,
-									display: 'flex',
-									gap: spacing.sm,
-									flexWrap: 'wrap',
-								}}
-							>
-								{rootsState.roots.map((root) => (
-									<button
-										key={root.name}
-										type="button"
-										css={{
-											padding: `${spacing.xs} ${spacing.sm}`,
-											fontSize: typography.fontSize.xs,
-											borderRadius: radius.sm,
-											border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-											backgroundColor:
-												pickerRoot === root.name
-													? colors.primary
-													: 'transparent',
-											color:
-												pickerRoot === root.name
-													? colors.background
-													: colors.text,
-											cursor: 'pointer',
-											transition: `all ${transitions.fast}`,
-											'&:hover': {
-												borderColor: colors.primary,
-											},
-										}}
-										on={{ click: () => onSelectRoot(root.name) }}
-									>
-										{root.name}
-									</button>
-								))}
-							</div>
-
-							{/* Path breadcrumb */}
-							{pickerRoot && (
-								<div
-									css={{
-										padding: spacing.sm,
-										backgroundColor: colors.background,
-										borderBottom: `1px solid ${colors.border}`,
-										fontSize: typography.fontSize.sm,
-										fontFamily: 'monospace',
-										color: colors.textMuted,
-										display: 'flex',
-										alignItems: 'center',
-										gap: spacing.xs,
-									}}
-								>
-									<span css={{ color: colors.primary }}>{pickerRoot}</span>
-									{pathParts.map((part, i) => (
-										<span key={i}>
-											<span css={{ color: colors.textMuted }}>/</span>
-											<span>{part}</span>
-										</span>
-									))}
-									{!pickerPath && (
-										<span css={{ color: colors.textMuted }}>/</span>
-									)}
-								</div>
-							)}
-
-							{/* File listing */}
-							<div
-								css={{
-									flex: 1,
-									minHeight: '150px',
-									overflowY: 'auto',
-									backgroundColor: colors.surface,
-								}}
-							>
-								{!pickerRoot && (
-									<div
-										css={{
-											padding: spacing.lg,
-											textAlign: 'center',
-											color: colors.textMuted,
-										}}
-									>
-										Select a media root to browse files
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'loading' && (
-									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-										<span css={{ color: colors.textMuted }}>Loading...</span>
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'error' && (
-									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-										<span css={{ color: '#ef4444' }}>
-											{browseState.message}
-										</span>
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'success' && (
-									<div>
-										{pickerPath && (
-											<button
-												type="button"
-												css={fileItemStyles}
-												on={{ click: onNavigateUp }}
-											>
-												<span css={{ marginRight: spacing.sm }}>📁</span>
-												<span>..</span>
-											</button>
-										)}
-
-										{browseState.entries.length === 0 && !pickerPath && (
-											<div
-												css={{
-													padding: spacing.xl,
-													textAlign: 'center',
-													color: colors.textMuted,
-												}}
-											>
-												<div
-													css={{
-														width: '40px',
-														height: '40px',
-														margin: `0 auto ${spacing.sm}`,
-														borderRadius: radius.md,
-														backgroundColor: colors.background,
-														display: 'flex',
-														alignItems: 'center',
-														justifyContent: 'center',
-														fontSize: '20px',
-													}}
-												>
-													📂
-												</div>
-												<p
-													css={{
-														fontSize: typography.fontSize.sm,
-														fontWeight: typography.fontWeight.medium,
-														color: colors.text,
-														margin: `0 0 ${spacing.xs} 0`,
-													}}
-												>
-													No files in this directory
-												</p>
-												<p
-													css={{
-														fontSize: typography.fontSize.xs,
-														color: colors.textMuted,
-														margin: 0,
-													}}
-												>
-													Add media files to{' '}
-													<code
-														css={{
-															fontFamily: 'monospace',
-															backgroundColor: colors.background,
-															padding: `0 ${spacing.xs}`,
-															borderRadius: radius.sm,
-														}}
-													>
-														{pickerRoot}
-													</code>{' '}
-													to see them here.
-												</p>
-											</div>
-										)}
-
-										{/* Directories */}
-										{browseState.entries
-											.filter((e) => e.type === 'directory')
-											.map((entry) => (
-												<button
-													key={entry.name}
-													type="button"
-													css={fileItemStyles}
-													on={{ click: () => onNavigateToDir(entry.name) }}
-												>
-													<span css={{ marginRight: spacing.sm }}>📁</span>
-													<span>{entry.name}</span>
-												</button>
-											))}
-
-										{/* Files with checkboxes */}
-										{browseState.entries
-											.filter((e) => e.type === 'file')
-											.map((entry) => {
-												const selected = isFileSelected(entry.name)
-												const inFeed = isFileInFeed(entry.name)
-												return (
-													<button
-														key={entry.name}
-														type="button"
-														disabled={inFeed}
-														css={{
-															...fileItemStyles,
-															backgroundColor: selected
-																? colors.primarySoft
-																: inFeed
-																	? 'rgba(128, 128, 128, 0.05)'
-																	: 'transparent',
-															opacity: inFeed ? 0.5 : 1,
-															cursor: inFeed ? 'not-allowed' : 'pointer',
-														}}
-														on={{
-															click: () => {
-																if (!inFeed) onToggleFile(entry.name)
-															},
-														}}
-													>
-														<span
-															css={{
-																marginRight: spacing.sm,
-																width: '16px',
-																height: '16px',
-																border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
-																borderRadius: radius.sm,
-																backgroundColor: inFeed
-																	? colors.border
-																	: selected
-																		? colors.primary
-																		: 'transparent',
-																display: 'inline-flex',
-																alignItems: 'center',
-																justifyContent: 'center',
-																fontSize: '12px',
-																color: colors.background,
-															}}
-														>
-															{(selected || inFeed) && '✓'}
-														</span>
-														<span css={{ marginRight: spacing.sm }}>📄</span>
-														<span>{entry.name}</span>
-														{inFeed && (
-															<span
-																css={{
-																	marginLeft: 'auto',
-																	fontSize: typography.fontSize.xs,
-																	color: colors.textMuted,
-																}}
-															>
-																Already in feed
-															</span>
-														)}
-													</button>
-												)
-											})}
-									</div>
-								)}
-							</div>
-						</>
-					)}
-				</div>
-
-				{/* Footer */}
+		<Modal
+			title="Add Files to Feed"
+			subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
+			size="lg"
+			onClose={onCancel}
+			footer={
 				<div
 					css={{
 						display: 'flex',
 						gap: spacing.sm,
 						justifyContent: 'space-between',
 						alignItems: 'center',
+						width: '100%',
 					}}
 				>
 					<span
@@ -3916,60 +3325,371 @@ function AddFilesModal({
 					>
 						{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
 					</span>
-					<div css={{ display: 'flex', gap: spacing.sm }}>
-						<button
-							type="button"
+					<ModalFooter>
+						<ModalButton
+							variant="secondary"
 							disabled={isLoading}
-							css={{
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.text,
-								backgroundColor: 'transparent',
-								border: `1px solid ${colors.border}`,
-								borderRadius: radius.md,
-								cursor: isLoading ? 'not-allowed' : 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': isLoading
-									? {}
-									: { backgroundColor: colors.background },
-							}}
-							on={{ click: onCancel }}
+							onClick={onCancel}
 						>
 							Cancel
-						</button>
-						<button
-							type="button"
+						</ModalButton>
+						<ModalButton
+							variant="primary"
 							disabled={isLoading || selectedCount === 0}
-							css={{
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.background,
-								backgroundColor:
-									isLoading || selectedCount === 0
-										? colors.border
-										: colors.primary,
-								border: 'none',
-								borderRadius: radius.md,
-								cursor:
-									isLoading || selectedCount === 0 ? 'not-allowed' : 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover':
-									isLoading || selectedCount === 0
-										? {}
-										: { backgroundColor: colors.primaryHover },
-							}}
-							on={{ click: onConfirm }}
+							onClick={onConfirm}
 						>
 							{isLoading
 								? 'Adding...'
 								: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
-						</button>
-					</div>
+						</ModalButton>
+					</ModalFooter>
 				</div>
+			}
+		>
+			{/* File picker */}
+			<div
+				css={{
+					minHeight: '250px',
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					overflow: 'hidden',
+					display: 'flex',
+					flexDirection: 'column',
+				}}
+			>
+				{/* Root selector */}
+				{rootsState.status === 'loading' && (
+					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+						<span css={{ color: colors.textMuted }}>
+							Loading media roots...
+						</span>
+					</div>
+				)}
+
+				{rootsState.status === 'error' && (
+					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+						<span css={{ color: '#ef4444' }}>Error: {rootsState.message}</span>
+					</div>
+				)}
+
+				{rootsState.status === 'success' && rootsState.roots.length === 0 && (
+					<div
+						css={{
+							padding: spacing.xl,
+							textAlign: 'center',
+							color: colors.textMuted,
+						}}
+					>
+						<div
+							css={{
+								width: '48px',
+								height: '48px',
+								margin: `0 auto ${spacing.md}`,
+								borderRadius: radius.md,
+								backgroundColor: colors.background,
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								fontSize: '24px',
+							}}
+						>
+							📂
+						</div>
+						<p
+							css={{
+								fontSize: typography.fontSize.base,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								margin: `0 0 ${spacing.sm} 0`,
+							}}
+						>
+							No media files available
+						</p>
+						<p
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								margin: 0,
+								maxWidth: '400px',
+								marginLeft: 'auto',
+								marginRight: 'auto',
+							}}
+						>
+							To add files to this feed, first add media files to one of your
+							configured media path directories. Check your{' '}
+							<code
+								css={{
+									fontSize: typography.fontSize.xs,
+									backgroundColor: colors.background,
+									padding: `${spacing.xs} ${spacing.xs}`,
+									borderRadius: radius.sm,
+									fontFamily: 'monospace',
+								}}
+							>
+								MEDIA_PATHS
+							</code>{' '}
+							environment variable to see where media should be stored.
+						</p>
+					</div>
+				)}
+
+				{rootsState.status === 'success' && rootsState.roots.length > 0 && (
+					<>
+						<div
+							css={{
+								padding: spacing.sm,
+								backgroundColor: colors.background,
+								borderBottom: `1px solid ${colors.border}`,
+								display: 'flex',
+								gap: spacing.sm,
+								flexWrap: 'wrap',
+							}}
+						>
+							{rootsState.roots.map((root) => (
+								<button
+									key={root.name}
+									type="button"
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.xs,
+										borderRadius: radius.sm,
+										border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+										backgroundColor:
+											pickerRoot === root.name ? colors.primary : 'transparent',
+										color:
+											pickerRoot === root.name
+												? colors.background
+												: colors.text,
+										cursor: 'pointer',
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											borderColor: colors.primary,
+										},
+									}}
+									on={{ click: () => onSelectRoot(root.name) }}
+								>
+									{root.name}
+								</button>
+							))}
+						</div>
+
+						{/* Path breadcrumb */}
+						{pickerRoot && (
+							<div
+								css={{
+									padding: spacing.sm,
+									backgroundColor: colors.background,
+									borderBottom: `1px solid ${colors.border}`,
+									fontSize: typography.fontSize.sm,
+									fontFamily: 'monospace',
+									color: colors.textMuted,
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.xs,
+								}}
+							>
+								<span css={{ color: colors.primary }}>{pickerRoot}</span>
+								{pathParts.map((part, i) => (
+									<span key={i}>
+										<span css={{ color: colors.textMuted }}>/</span>
+										<span>{part}</span>
+									</span>
+								))}
+								{!pickerPath && (
+									<span css={{ color: colors.textMuted }}>/</span>
+								)}
+							</div>
+						)}
+
+						{/* File listing */}
+						<div
+							css={{
+								flex: 1,
+								minHeight: '150px',
+								maxHeight: '300px',
+								overflowY: 'auto',
+								backgroundColor: colors.surface,
+							}}
+						>
+							{!pickerRoot && (
+								<div
+									css={{
+										padding: spacing.lg,
+										textAlign: 'center',
+										color: colors.textMuted,
+									}}
+								>
+									Select a media root to browse files
+								</div>
+							)}
+
+							{pickerRoot && browseState.status === 'loading' && (
+								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+									<span css={{ color: colors.textMuted }}>Loading...</span>
+								</div>
+							)}
+
+							{pickerRoot && browseState.status === 'error' && (
+								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+									<span css={{ color: '#ef4444' }}>{browseState.message}</span>
+								</div>
+							)}
+
+							{pickerRoot && browseState.status === 'success' && (
+								<div>
+									{pickerPath && (
+										<button
+											type="button"
+											css={fileItemStyles}
+											on={{ click: onNavigateUp }}
+										>
+											<span css={{ marginRight: spacing.sm }}>📁</span>
+											<span>..</span>
+										</button>
+									)}
+
+									{browseState.entries.length === 0 && !pickerPath && (
+										<div
+											css={{
+												padding: spacing.xl,
+												textAlign: 'center',
+												color: colors.textMuted,
+											}}
+										>
+											<div
+												css={{
+													width: '40px',
+													height: '40px',
+													margin: `0 auto ${spacing.sm}`,
+													borderRadius: radius.md,
+													backgroundColor: colors.background,
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													fontSize: '20px',
+												}}
+											>
+												📂
+											</div>
+											<p
+												css={{
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.text,
+													margin: `0 0 ${spacing.xs} 0`,
+												}}
+											>
+												No files in this directory
+											</p>
+											<p
+												css={{
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+													margin: 0,
+												}}
+											>
+												Add media files to{' '}
+												<code
+													css={{
+														fontFamily: 'monospace',
+														backgroundColor: colors.background,
+														padding: `0 ${spacing.xs}`,
+														borderRadius: radius.sm,
+													}}
+												>
+													{pickerRoot}
+												</code>{' '}
+												to see them here.
+											</p>
+										</div>
+									)}
+
+									{/* Directories */}
+									{browseState.entries
+										.filter((e) => e.type === 'directory')
+										.map((entry) => (
+											<button
+												key={entry.name}
+												type="button"
+												css={fileItemStyles}
+												on={{ click: () => onNavigateToDir(entry.name) }}
+											>
+												<span css={{ marginRight: spacing.sm }}>📁</span>
+												<span>{entry.name}</span>
+											</button>
+										))}
+
+									{/* Files with checkboxes */}
+									{browseState.entries
+										.filter((e) => e.type === 'file')
+										.map((entry) => {
+											const selected = isFileSelected(entry.name)
+											const inFeed = isFileInFeed(entry.name)
+											return (
+												<button
+													key={entry.name}
+													type="button"
+													disabled={inFeed}
+													css={{
+														...fileItemStyles,
+														backgroundColor: selected
+															? colors.primarySoft
+															: inFeed
+																? 'rgba(128, 128, 128, 0.05)'
+																: 'transparent',
+														opacity: inFeed ? 0.5 : 1,
+														cursor: inFeed ? 'not-allowed' : 'pointer',
+													}}
+													on={{
+														click: () => {
+															if (!inFeed) onToggleFile(entry.name)
+														},
+													}}
+												>
+													<span
+														css={{
+															marginRight: spacing.sm,
+															width: '16px',
+															height: '16px',
+															border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
+															borderRadius: radius.sm,
+															backgroundColor: inFeed
+																? colors.border
+																: selected
+																	? colors.primary
+																	: 'transparent',
+															display: 'inline-flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															fontSize: '12px',
+															color: colors.background,
+														}}
+													>
+														{(selected || inFeed) && '✓'}
+													</span>
+													<span css={{ marginRight: spacing.sm }}>📄</span>
+													<span>{entry.name}</span>
+													{inFeed && (
+														<span
+															css={{
+																marginLeft: 'auto',
+																fontSize: typography.fontSize.xs,
+																color: colors.textMuted,
+															}}
+														>
+															Already in feed
+														</span>
+													)}
+												</button>
+											)
+										})}
+								</div>
+							)}
+						</div>
+					</>
+				)}
 			</div>
-		</div>
+		</Modal>
 	)
 }
 

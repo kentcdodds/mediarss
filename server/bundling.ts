@@ -3,6 +3,7 @@ import path from 'node:path'
 
 type PackageJson = {
 	exports?: Record<string, { default?: string; types?: string } | string>
+	module?: string
 	main?: string
 }
 
@@ -37,7 +38,15 @@ function resolvePackageExport(
 		fs.readFileSync(packageJsonPath, 'utf-8'),
 	) as PackageJson
 
+	// If no exports field, fall back to module or main field
 	if (!packageJson.exports) {
+		// Prefer ESM module over CommonJS main
+		const entryFile = packageJson.module || packageJson.main
+		if (entryFile) {
+			const entryPath = path.join(packageDir, entryFile)
+			if (fs.existsSync(entryPath)) return entryPath
+		}
+		// Last resort: look for index.js
 		const indexPath = path.join(packageDir, 'index.js')
 		return fs.existsSync(indexPath) ? indexPath : null
 	}

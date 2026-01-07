@@ -1,5 +1,11 @@
 import type { Handle } from '@remix-run/component'
 import {
+	formatDate,
+	formatDuration,
+	formatFileSize,
+	formatRelativeTime,
+} from '#app/helpers/format.ts'
+import {
 	colors,
 	mq,
 	radius,
@@ -162,39 +168,6 @@ type BrowseState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
 	| { status: 'success'; entries: Array<DirectoryEntry> }
-
-/**
- * Format duration in seconds to human-readable format (e.g., "1h 23m" or "45m 12s")
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === 0) return '—'
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
-}
-
-/**
- * Format file size in bytes to human-readable format (e.g., "1.2 GB" or "456 MB")
- */
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 B'
-
-	const units = ['B', 'KB', 'MB', 'GB', 'TB']
-	const k = 1024
-	const i = Math.floor(Math.log(bytes) / Math.log(k))
-	const size = bytes / Math.pow(k, i)
-
-	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
-}
 
 /**
  * FeedDetail component - displays feed information and manages tokens.
@@ -799,28 +772,6 @@ export function FeedDetail(this: Handle) {
 		}
 	}
 
-	const formatDate = (timestamp: number) => {
-		return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
-		})
-	}
-
-	const formatRelativeTime = (timestamp: number | null) => {
-		if (!timestamp) return 'Never'
-		const now = Date.now() / 1000
-		const diff = now - timestamp
-
-		if (diff < 60) return 'Just now'
-		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-		if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-		if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
-		return formatDate(timestamp)
-	}
-
 	return (renderProps: { params: Record<string, string> }) => {
 		// Fetch on first render or if id changes
 		const paramId = renderProps.params.id
@@ -1123,8 +1074,14 @@ export function FeedDetail(this: Handle) {
 											: `${feed.sortFields} (${feed.sortOrder})`
 									}
 								/>
-								<InfoItem label="Created" value={formatDate(feed.createdAt)} />
-								<InfoItem label="Updated" value={formatDate(feed.updatedAt)} />
+								<InfoItem
+									label="Created"
+									value={formatDate(feed.createdAt, 'short')}
+								/>
+								<InfoItem
+									label="Updated"
+									value={formatDate(feed.updatedAt, 'short')}
+								/>
 							</div>
 						</>
 					)}
@@ -2371,7 +2328,7 @@ function TokenCard({
 						flexWrap: 'wrap',
 					}}
 				>
-					<span>Created {formatDate(token.createdAt)}</span>
+					<span>Created {formatDate(token.createdAt, 'short')}</span>
 					<span>Last used: {formatRelativeTime(token.lastUsedAt)}</span>
 				</div>
 			</div>

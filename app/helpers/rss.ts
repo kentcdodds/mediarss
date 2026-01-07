@@ -1,6 +1,7 @@
 import { invariant } from '@epic-web/invariant'
 import { resolveMediaPath } from '#app/config/env.ts'
 import type { DirectoryFeed, Feed } from '#app/db/types.ts'
+import { formatItunesDuration, formatRssDate } from './format.ts'
 import type { MediaFile } from './media.ts'
 
 /**
@@ -56,31 +57,6 @@ function cdata(str: string | null | undefined | object): string {
 		return `<![CDATA[${escaped}]]>`
 	}
 	return escapeXml(str)
-}
-
-/**
- * Format duration in HH:MM:SS format for iTunes.
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
-		return ''
-	}
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-	}
-	return `${minutes}:${secs.toString().padStart(2, '0')}`
-}
-
-/**
- * Format a date as RFC 2822 for RSS.
- */
-function formatRssDate(date: Date): string {
-	return date.toUTCString()
 }
 
 /**
@@ -188,19 +164,6 @@ function getArtworkUrl(
 }
 
 /**
- * Format a date in a human-readable format for display in descriptions.
- * Uses UTC timezone to ensure consistent formatting regardless of server location.
- */
-function formatHumanDate(date: Date): string {
-	return date.toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-		timeZone: 'UTC',
-	})
-}
-
-/**
  * Build the description with optional original publication date appended.
  * When using synthetic dates, we preserve the actual publication date in the
  * description so users can still see when the content was originally published.
@@ -214,7 +177,12 @@ function buildDescription(
 
 	// Only append original date if we're using synthetic dates and have an actual date
 	if (useSyntheticDates && originalPubDate) {
-		const dateStr = formatHumanDate(originalPubDate)
+		const dateStr = originalPubDate.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric',
+			timeZone: 'UTC',
+		})
 		const separator = baseDescription ? '\n\n' : ''
 		return `${baseDescription}${separator}Originally published: ${dateStr}`
 	}
@@ -266,7 +234,7 @@ function generateItem(
 
 	const mediaUrl = getMediaUrl(baseUrl, token, item.path)
 	const artworkUrl = getArtworkUrl(baseUrl, token, item.path, cacheVersion)
-	const duration = formatDuration(item.duration)
+	const duration = formatItunesDuration(item.duration)
 
 	return `    <item>
       <guid isPermaLink="false">${escapeXml(itemId)}</guid>

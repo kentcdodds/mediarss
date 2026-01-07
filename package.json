@@ -1,5 +1,6 @@
 {
   "name": "mediarss",
+  "version": "1.2.0",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -24,6 +25,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
     "@types/bun": "latest",
+    "@types/semver": "^7.7.1",
+    "semver": "^7.7.3",
     "typescript": "^5.9.3"
   },
   "dependencies": {

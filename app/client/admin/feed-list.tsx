@@ -1,4 +1,5 @@
 import type { Handle } from '@remix-run/component'
+import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
 	colors,
 	mq,
@@ -290,34 +291,6 @@ function parseDirectoryPaths(pathsJson: string): Array<string> {
 	} catch {
 		return []
 	}
-}
-
-/**
- * Format a relative time string (e.g., "2 hours ago", "3 days ago")
- */
-function formatRelativeTime(timestamp: number): string {
-	const now = Math.floor(Date.now() / 1000)
-	const diff = now - timestamp
-
-	if (diff < 60) return 'just now'
-	if (diff < 3600) {
-		const mins = Math.floor(diff / 60)
-		return `${mins} min${mins !== 1 ? 's' : ''} ago`
-	}
-	if (diff < 86400) {
-		const hours = Math.floor(diff / 3600)
-		return `${hours} hour${hours !== 1 ? 's' : ''} ago`
-	}
-	if (diff < 604800) {
-		const days = Math.floor(diff / 86400)
-		return `${days} day${days !== 1 ? 's' : ''} ago`
-	}
-	if (diff < 2592000) {
-		const weeks = Math.floor(diff / 604800)
-		return `${weeks} week${weeks !== 1 ? 's' : ''} ago`
-	}
-	const months = Math.floor(diff / 2592000)
-	return `${months} month${months !== 1 ? 's' : ''} ago`
 }
 
 function FeedCard({ feed }: { feed: Feed }) {

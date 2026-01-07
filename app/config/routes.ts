@@ -6,6 +6,7 @@ export default route({
 	art: '/art/:token/*path',
 	// Admin routes
 	adminHealth: '/admin/health',
+	adminApiVersion: '/admin/api/version',
 	admin: '/admin',
 	adminCatchAll: '/admin/*path',
 	adminApiFeeds: '/admin/api/feeds',

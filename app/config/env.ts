@@ -79,6 +79,12 @@ const EnvSchema = z.object({
 	RATE_LIMIT_ADMIN_WRITE: optionalInt(30),
 	RATE_LIMIT_MEDIA: optionalInt(300),
 	RATE_LIMIT_DEFAULT: optionalInt(1000),
+
+	// GitHub repository URL for linking to commits (optional)
+	GITHUB_REPO: z
+		.string()
+		.optional()
+		.default('https://github.com/kentcdodds/mediarss'),
 })
 
 export type Env = z.infer<typeof EnvSchema>
@@ -207,4 +213,11 @@ export function getRateLimitConfig() {
 		media: env.RATE_LIMIT_MEDIA,
 		default: env.RATE_LIMIT_DEFAULT,
 	}
+}
+
+/**
+ * Get the GitHub repository URL for linking to commits.
+ */
+export function getGitHubRepo(): string | undefined {
+	return getEnv().GITHUB_REPO
 }

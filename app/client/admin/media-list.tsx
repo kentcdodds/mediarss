@@ -1,5 +1,6 @@
 import type { Handle } from '@remix-run/component'
 import { matchSorter, rankings } from 'match-sorter'
+import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
 import {
 	colors,
 	mq,
@@ -66,39 +67,6 @@ type LoadingState =
 			curatedFeeds: Array<CuratedFeed>
 			directoryFeeds: Array<DirectoryFeed>
 	  }
-
-/**
- * Format duration in seconds to human-readable format
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === 0) return '—'
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
-}
-
-/**
- * Format file size in bytes to human-readable format
- */
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 B'
-
-	const units = ['B', 'KB', 'MB', 'GB', 'TB']
-	const k = 1024
-	const i = Math.floor(Math.log(bytes) / Math.log(k))
-	const size = bytes / Math.pow(k, i)
-
-	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
-}
 
 /**
  * Check if a media item is within any of the directory paths.

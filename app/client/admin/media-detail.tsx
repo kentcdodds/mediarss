@@ -1,5 +1,10 @@
 import type { Handle } from '@remix-run/component'
 import {
+	formatDate,
+	formatDuration,
+	formatFileSize,
+} from '#app/helpers/format.ts'
+import {
 	breakpoints,
 	colors,
 	mq,
@@ -63,52 +68,6 @@ type LoadingState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
 	| { status: 'success'; data: MediaDetailResponse }
-
-/**
- * Format duration in seconds to human-readable format
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === 0) return '—'
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m ${secs}s`
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
-}
-
-/**
- * Format file size in bytes to human-readable format
- */
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 B'
-
-	const units = ['B', 'KB', 'MB', 'GB', 'TB']
-	const k = 1024
-	const i = Math.floor(Math.log(bytes) / Math.log(k))
-	const size = bytes / Math.pow(k, i)
-
-	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
-}
-
-/**
- * Format date to human-readable format
- */
-function formatDate(dateStr: string | null): string {
-	if (!dateStr) return '—'
-	const date = new Date(dateStr)
-	return date.toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	})
-}
 
 /**
  * Check if MIME type is video
@@ -372,7 +331,7 @@ export function MediaDetail(this: Handle) {
 							>
 								<MetadataItem
 									label="Duration"
-									value={formatDuration(media.duration)}
+									value={formatDuration(media.duration, { showSeconds: true })}
 								/>
 								<MetadataItem
 									label="Size"
@@ -381,7 +340,7 @@ export function MediaDetail(this: Handle) {
 								<MetadataItem label="Format" value={media.mimeType} />
 								<MetadataItem
 									label="Published"
-									value={formatDate(media.publicationDate)}
+									value={formatDate(media.publicationDate, 'date')}
 								/>
 								{media.trackNumber && (
 									<MetadataItem label="Track" value={`#${media.trackNumber}`} />

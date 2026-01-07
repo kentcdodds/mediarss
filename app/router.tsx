@@ -22,6 +22,7 @@ import adminApiMediaHandlers from '#app/routes/admin/api/media.ts'
 import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assignments.ts'
 import adminApiMediaStreamHandlers from '#app/routes/admin/api/media-stream.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
+import adminApiVersionHandlers from '#app/routes/admin/api/version.ts'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
@@ -91,6 +92,7 @@ router.map(routes.art, artHandlers)
 
 // Admin routes - API routes first (more specific), then catch-all
 router.map(routes.adminHealth, adminApiHealthHandlers)
+router.map(routes.adminApiVersion, adminApiVersionHandlers)
 router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
 router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
 router.map(routes.adminApiBrowse, adminApiBrowseHandlers)

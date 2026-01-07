@@ -217,6 +217,100 @@ function ResizeAware(this: Handle) {
 }
 ```
 
+#### Context System
+
+The context system allows indirect ancestor/descendant communication without passing props through every level. It's accessed via `this.context` on the `Handle` interface.
+
+**Setting Context (Provider):**
+
+A parent component provides context using `this.context.set()`. The context type is declared as a generic parameter on `Handle`:
+
+```tsx
+import type { Handle } from '@remix-run/component'
+
+function ThemeProvider(this: Handle<{ theme: 'light' | 'dark' }>) {
+	// Set context value for all descendants
+	this.context.set({ theme: 'dark' })
+	
+	return () => (
+		<div>
+			<ThemedButton />
+			<ThemedText />
+		</div>
+	)
+}
+```
+
+**Getting Context (Consumer):**
+
+Descendant components retrieve context using `this.context.get()`, passing the provider component as the key:
+
+```tsx
+import type { Handle } from '@remix-run/component'
+
+function ThemedButton(this: Handle) {
+	// Get context from nearest ancestor ThemeProvider
+	const theme = this.context.get(ThemeProvider)
+	
+	return () => (
+		<button css={{ 
+			background: theme?.theme === 'dark' ? '#333' : '#fff',
+			color: theme?.theme === 'dark' ? '#fff' : '#333'
+		}}>
+			Click me
+		</button>
+	)
+}
+```
+
+**Key Features:**
+
+- **Type Safety**: Context is fully typed via TypeScript generics - `Handle<{ theme: string }>` defines the context shape
+- **Ancestor Lookup**: Automatically traverses up the component tree to find the nearest ancestor that provides the requested context
+- **Scoped**: Each component instance can provide its own context, allowing nested providers with different values
+- **Component-keyed**: Use the provider component function itself as the lookup key
+
+**Full Example with Multiple Consumers:**
+
+```tsx
+import type { Handle } from '@remix-run/component'
+
+// Provider component with typed context
+function UserProvider(this: Handle<{ user: { name: string; role: string } }>) {
+	this.context.set({ user: { name: 'Alice', role: 'admin' } })
+	
+	return () => (
+		<div>
+			<UserGreeting />
+			<UserBadge />
+		</div>
+	)
+}
+
+// Consumer component 1
+function UserGreeting(this: Handle) {
+	const ctx = this.context.get(UserProvider)
+	
+	return () => <h1>Welcome, {ctx?.user.name}!</h1>
+}
+
+// Consumer component 2
+function UserBadge(this: Handle) {
+	const ctx = this.context.get(UserProvider)
+	
+	return () => (
+		<span css={{
+			padding: '4px 8px',
+			background: ctx?.user.role === 'admin' ? '#ef4444' : '#3b82f6',
+			borderRadius: '4px',
+			color: 'white'
+		}}>
+			{ctx?.user.role}
+		</span>
+	)
+}
+```
+
 #### Known Bug: DOM insertBefore Error
 
 There's a known bug in Remix components where navigating with the client-side router can sometimes cause this console error:

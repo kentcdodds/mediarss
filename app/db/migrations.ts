@@ -108,31 +108,19 @@ const migrations: Array<Migration> = [
 		version: 2,
 		name: 'add_feed_properties',
 		up: (db) => {
-			// Add subtitle and copyright columns (nullable)
+			// Add subtitle, copyright, and feed_type columns (all nullable)
+			// feed_type defaults to 'episodic' at the application layer when null
 			db.run(sql`ALTER TABLE directory_feeds ADD COLUMN subtitle TEXT;`)
 			db.run(sql`ALTER TABLE directory_feeds ADD COLUMN copyright TEXT;`)
-			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN subtitle TEXT;`)
-			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN copyright TEXT;`)
-
-			// Add feed_type column as nullable first (to handle existing data)
 			db.run(
 				sql`ALTER TABLE directory_feeds ADD COLUMN feed_type TEXT CHECK (feed_type IN ('episodic', 'serial'));`,
 			)
+
+			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN subtitle TEXT;`)
+			db.run(sql`ALTER TABLE curated_feeds ADD COLUMN copyright TEXT;`)
 			db.run(
 				sql`ALTER TABLE curated_feeds ADD COLUMN feed_type TEXT CHECK (feed_type IN ('episodic', 'serial'));`,
 			)
-
-			// Set default value for existing rows
-			db.run(
-				sql`UPDATE directory_feeds SET feed_type = 'episodic' WHERE feed_type IS NULL;`,
-			)
-			db.run(
-				sql`UPDATE curated_feeds SET feed_type = 'episodic' WHERE feed_type IS NULL;`,
-			)
-
-			// Note: SQLite doesn't support ALTER COLUMN to add NOT NULL constraint
-			// after column creation without recreating the table.
-			// The application layer enforces the default value of 'episodic'.
 		},
 	},
 ]

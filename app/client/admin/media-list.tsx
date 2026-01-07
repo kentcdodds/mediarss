@@ -541,8 +541,8 @@ export function MediaList(this: Handle) {
 							maxRanking: rankings.CONTAINS,
 						},
 					],
-					// Don't match on just any characters - require at least contains
-					threshold: rankings.CONTAINS,
+					// No global threshold - let each key's threshold control matching
+					// Match-sorter will rank results by relevance (best matches first)
 				})
 			: media
 

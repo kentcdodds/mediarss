@@ -189,12 +189,14 @@ function getArtworkUrl(
 
 /**
  * Format a date in a human-readable format for display in descriptions.
+ * Uses UTC timezone to ensure consistent formatting regardless of server location.
  */
 function formatHumanDate(date: Date): string {
 	return date.toLocaleDateString('en-US', {
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric',
+		timeZone: 'UTC',
 	})
 }
 

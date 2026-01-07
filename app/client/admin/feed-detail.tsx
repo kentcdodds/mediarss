@@ -31,7 +31,8 @@ type DirectoryFeed = {
 	directoryPaths: string // JSON array of "mediaRoot:relativePath" strings
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
-	feedType: 'episodic' | 'serial'
+	// Nullable in DB/API for legacy feeds; UI defaults to 'episodic' when missing.
+	feedType: ('episodic' | 'serial') | null
 	link: string | null
 	copyright: string | null
 	imageUrl: string | null
@@ -47,7 +48,8 @@ type CuratedFeed = {
 	subtitle: string | null
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
-	feedType: 'episodic' | 'serial'
+	// Nullable in DB/API for legacy feeds; UI defaults to 'episodic' when missing.
+	feedType: ('episodic' | 'serial') | null
 	link: string | null
 	copyright: string | null
 	imageUrl: string | null

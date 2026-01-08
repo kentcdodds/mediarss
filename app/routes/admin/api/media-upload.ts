@@ -272,6 +272,12 @@ export default {
 		try {
 			await Bun.write(tempPath, file)
 		} catch (err) {
+			// Clean up temp file if it was partially created
+			try {
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Ignore cleanup errors - file may not exist
+			}
 			console.error('Failed to write temp file:', err)
 			return Response.json({ error: 'Failed to save file' }, { status: 500 })
 		}

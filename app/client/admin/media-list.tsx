@@ -447,16 +447,23 @@ export function MediaList(this: Handle) {
 				signal: this.signal,
 			})
 
-			const data = await res.json()
-
 			if (!res.ok) {
+				let errorMessage = `Upload failed: HTTP ${res.status}`
+				try {
+					const data = await res.json()
+					errorMessage = data.error || errorMessage
+				} catch {
+					// Response wasn't JSON, use default message
+				}
 				uploadState = {
 					status: 'error',
-					message: data.error || `Upload failed: HTTP ${res.status}`,
+					message: errorMessage,
 				}
 				this.update()
 				return
 			}
+
+			const data = await res.json()
 
 			uploadState = {
 				status: 'success',

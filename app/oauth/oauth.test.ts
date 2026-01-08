@@ -6,6 +6,7 @@ import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
+import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import {
 	clearKeyCache,
 	computeS256Challenge,
@@ -196,6 +197,9 @@ describe('OAuth full flow integration', () => {
 	let testClient: { id: string; redirectUris: string[] }
 
 	beforeAll(async () => {
+		// Reset rate limiters to ensure clean state for integration tests
+		resetRateLimiters()
+
 		// Create test client
 		testClient = createTestClient('Integration Test Client ' + uniqueId(), [
 			'http://localhost:9999/callback',
@@ -220,6 +224,8 @@ describe('OAuth full flow integration', () => {
 		}
 		// Clear key cache for clean state
 		clearKeyCache()
+		// Reset rate limiters for clean state
+		resetRateLimiters()
 	})
 
 	test('JWKS endpoint returns valid JWK', async () => {

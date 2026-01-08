@@ -13,6 +13,7 @@ import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
+import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import {
 	clearKeyCache,
 	clearMetadataCache,
@@ -237,6 +238,9 @@ describe('OAuth full flow with static client', () => {
 	let testClient: { id: string; redirectUris: string[] }
 
 	beforeAll(async () => {
+		// Reset rate limiters to ensure clean state for integration tests
+		resetRateLimiters()
+
 		// Create test client
 		testClient = createTestClient('Flow Test ' + uniqueId(), [
 			'http://localhost:9999/callback',
@@ -260,6 +264,7 @@ describe('OAuth full flow with static client', () => {
 			server.stop()
 		}
 		clearKeyCache()
+		resetRateLimiters()
 	})
 
 	test('Server metadata endpoint returns correct data', async () => {

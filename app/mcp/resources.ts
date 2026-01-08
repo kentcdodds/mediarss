@@ -7,7 +7,7 @@ import {
 	McpServer,
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { getMediaRoots } from '#app/config/env.ts'
+import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
@@ -15,8 +15,13 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import {
+	getFileMetadata,
+	scanDirectoryWithMetadata,
+} from '#app/helpers/media.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
+import { generateMediaWidgetHtml, type MediaWidgetData } from './widgets.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
 
@@ -271,6 +276,7 @@ export async function initializeResources(
 											'media://feeds/{id}',
 											'media://directories',
 											'media://server',
+											'media://widget/media/{rootName}/{relativePath}',
 										],
 									},
 								},
@@ -282,5 +288,115 @@ export async function initializeResources(
 				}
 			},
 		)
+
+		// Media widget resource - returns HTML for MCP-UI compatible clients
+		server.registerResource(
+			'media-widget',
+			new ResourceTemplate('media://widget/media/{rootName}/{relativePath+}', {
+				list: async () => {
+					// List available media files from all media roots
+					const mediaRoots = getMediaRoots()
+					const resources: Array<{
+						name: string
+						uri: string
+						mimeType: string
+						description: string
+					}> = []
+
+					for (const root of mediaRoots) {
+						const files = await scanDirectoryWithMetadata(root.path)
+						for (const file of files.slice(0, 50)) {
+							// Limit to 50 files per root
+							const relativePath = file.path.replace(root.path + '/', '')
+							resources.push({
+								name: file.title,
+								uri: `media://widget/media/${encodeURIComponent(root.name)}/${encodeURIComponent(relativePath)}`,
+								mimeType: 'text/html',
+								description: `${file.author ? `by ${file.author} — ` : ''}Interactive media player widget`,
+							})
+						}
+					}
+
+					return { resources }
+				},
+			}),
+			{
+				description:
+					'Interactive media player widget (MCP-UI). Returns an HTML page with embedded media player for playback. Use this to display media files with full metadata and playback controls.',
+				mimeType: 'text/html',
+			},
+			async (uri, params, extra) => {
+				const rootName = decodeURIComponent(String(params.rootName))
+				const relativePath = decodeURIComponent(String(params.relativePath))
+
+				// Get absolute path for the file
+				const filePath = toAbsolutePath(rootName, relativePath)
+				if (!filePath) {
+					throw new Error(
+						`Media root "${rootName}" not found. Use media://directories to list available roots.`,
+					)
+				}
+
+				// Get file metadata
+				const metadata = await getFileMetadata(filePath)
+				if (!metadata) {
+					throw new Error(
+						`Media file not found or not readable: ${rootName}:${relativePath}`,
+					)
+				}
+
+				// Determine base URL from the request context
+				// The extra object may contain request info from the transport
+				const baseUrl = getBaseUrlFromExtra(extra)
+
+				// Build the widget data
+				const mediaData: MediaWidgetData = {
+					title: metadata.title,
+					author: metadata.author,
+					duration: metadata.duration,
+					sizeBytes: metadata.sizeBytes,
+					mimeType: metadata.mimeType,
+					publicationDate: metadata.publicationDate?.toISOString() ?? null,
+					description: metadata.description,
+					narrators: metadata.narrators,
+					genres: metadata.genres,
+					artworkUrl: `/admin/api/artwork/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}`,
+					streamUrl: `/admin/api/media-stream/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}`,
+				}
+
+				// Generate the HTML widget
+				const html = generateMediaWidgetHtml({
+					baseUrl,
+					media: mediaData,
+				})
+
+				return {
+					contents: [
+						{
+							uri: uri.toString(),
+							mimeType: 'text/html',
+							text: html,
+						},
+					],
+				}
+			},
+		)
 	}
+}
+
+/**
+ * Extract base URL from the extra context provided by the transport.
+ * Falls back to a reasonable default if not available.
+ */
+function getBaseUrlFromExtra(extra: unknown): string {
+	// The transport may pass authInfo which contains issuer info
+	if (extra && typeof extra === 'object' && 'authInfo' in extra) {
+		const authInfo = extra.authInfo as { issuer?: string }
+		if (authInfo.issuer) {
+			return authInfo.issuer
+		}
+	}
+
+	// Default to environment variable or localhost
+	return Bun.env.PUBLIC_URL ?? 'http://localhost:3000'
 }

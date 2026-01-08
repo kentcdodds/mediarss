@@ -7,6 +7,7 @@ import {
 	ModalList,
 	ModalSection,
 } from '#app/components/modal.tsx'
+import { SearchInput } from '#app/components/search-input.tsx'
 import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
 import {
 	colors,
@@ -627,103 +628,21 @@ export function MediaList(this: Handle) {
 				</div>
 
 				{/* Search */}
-				<div
-					css={{
-						marginBottom: spacing.lg,
-					}}
-				>
-					<div
-						css={{
-							position: 'relative',
-							width: '100%',
-							maxWidth: '400px',
-							[mq.mobile]: {
-								maxWidth: 'none',
-							},
+				<div css={{ marginBottom: spacing.lg }}>
+					<SearchInput
+						placeholder="Search by title, author, narrator, genre..."
+						value={searchQuery}
+						onInput={(value) => {
+							searchQuery = value
+							currentPage = 1 // Reset to first page on search
+							this.update()
 						}}
-					>
-						<input
-							type="text"
-							placeholder="Search by title, author, narrator, genre..."
-							value={searchQuery}
-							css={{
-								width: '100%',
-								padding: spacing.sm,
-								paddingRight: searchQuery ? '36px' : spacing.sm,
-								fontSize: typography.fontSize.sm,
-								color: colors.text,
-								backgroundColor: colors.surface,
-								border: `1px solid ${colors.border}`,
-								borderRadius: radius.md,
-								outline: 'none',
-								transition: `border-color ${transitions.fast}`,
-								'&:focus': {
-									borderColor: colors.primary,
-								},
-								'&::placeholder': {
-									color: colors.textMuted,
-								},
-							}}
-							on={{
-								input: (e) => {
-									searchQuery = (e.target as HTMLInputElement).value
-									currentPage = 1 // Reset to first page on search
-									this.update()
-								},
-							}}
-						/>
-						{searchQuery && (
-							<button
-								type="button"
-								aria-label="Clear search"
-								css={{
-									position: 'absolute',
-									right: '8px',
-									top: '50%',
-									transform: 'translateY(-50%)',
-									width: '20px',
-									height: '20px',
-									padding: 0,
-									border: 'none',
-									borderRadius: '50%',
-									backgroundColor: colors.border,
-									color: colors.textMuted,
-									cursor: 'pointer',
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										backgroundColor: colors.textMuted,
-										color: colors.surface,
-									},
-								}}
-								on={{
-									click: () => {
-										searchQuery = ''
-										currentPage = 1
-										this.update()
-									},
-								}}
-							>
-								<svg
-									width="12"
-									height="12"
-									viewBox="0 0 12 12"
-									fill="none"
-									xmlns="http://www.w3.org/2000/svg"
-									aria-hidden="true"
-								>
-									<path
-										d="M2 2L10 10M10 2L2 10"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-									/>
-								</svg>
-							</button>
-						)}
-					</div>
+						onClear={() => {
+							searchQuery = ''
+							currentPage = 1
+							this.update()
+						}}
+					/>
 				</div>
 
 				{/* Media Table */}

@@ -1,4 +1,6 @@
 import type { Handle } from '@remix-run/component'
+import { matchSorter, rankings } from 'match-sorter'
+import { SearchInput } from '#app/components/search-input.tsx'
 import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
 	colors,
@@ -52,6 +54,7 @@ type LoadingState =
  */
 export function FeedList(this: Handle) {
 	let state: LoadingState = { status: 'loading' }
+	let searchQuery = ''
 
 	// Fetch feeds on mount
 	fetch('/admin/api/feeds', { signal: this.signal })
@@ -86,6 +89,33 @@ export function FeedList(this: Handle) {
 
 		const { feeds } = state
 
+		// Filter feeds by search query using match-sorter
+		const filteredFeeds = searchQuery.trim()
+			? matchSorter(feeds, searchQuery.trim(), {
+					keys: [
+						// Name is the primary search field
+						{ key: 'name', threshold: rankings.CONTAINS },
+						// Description for content-based search
+						{ key: 'description', threshold: rankings.CONTAINS },
+						// Type (directory/curated)
+						{ key: 'type', threshold: rankings.WORD_STARTS_WITH },
+						// Directory paths for directory feeds
+						{
+							key: (feed) => {
+								if (feed.type === 'directory') {
+									return parseDirectoryPaths(
+										(feed as DirectoryFeed).directoryPaths,
+									).join(' ')
+								}
+								return ''
+							},
+							threshold: rankings.CONTAINS,
+							maxRanking: rankings.CONTAINS,
+						},
+					],
+				})
+			: feeds
+
 		return (
 			<div>
 				<div
@@ -102,19 +132,34 @@ export function FeedList(this: Handle) {
 						},
 					}}
 				>
-					<h2
-						css={{
-							fontSize: typography.fontSize.xl,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
-							[mq.mobile]: {
-								fontSize: typography.fontSize.lg,
-							},
-						}}
-					>
-						Your Feeds
-					</h2>
+					<div>
+						<h2
+							css={{
+								fontSize: typography.fontSize.xl,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+								[mq.mobile]: {
+									fontSize: typography.fontSize.lg,
+								},
+							}}
+						>
+							Your Feeds
+						</h2>
+						{feeds.length > 0 && (
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: `${spacing.xs} 0 0 0`,
+								}}
+							>
+								{filteredFeeds.length === feeds.length
+									? `${feeds.length} feed${feeds.length !== 1 ? 's' : ''}`
+									: `Showing ${filteredFeeds.length} of ${feeds.length} feeds`}
+							</p>
+						)}
+					</div>
 					<div
 						css={{
 							display: 'flex',
@@ -175,8 +220,28 @@ export function FeedList(this: Handle) {
 					</div>
 				</div>
 
+				{/* Search */}
+				{feeds.length > 0 && (
+					<div css={{ marginBottom: spacing.lg }}>
+						<SearchInput
+							placeholder="Search by name, description, path..."
+							value={searchQuery}
+							onInput={(value) => {
+								searchQuery = value
+								this.update()
+							}}
+							onClear={() => {
+								searchQuery = ''
+								this.update()
+							}}
+						/>
+					</div>
+				)}
+
 				{feeds.length === 0 ? (
 					<EmptyState />
+				) : filteredFeeds.length === 0 ? (
+					<NoResults searchQuery={searchQuery} />
 				) : (
 					<div
 						css={{
@@ -188,7 +253,7 @@ export function FeedList(this: Handle) {
 							},
 						}}
 					>
-						{feeds.map((feed) => (
+						{filteredFeeds.map((feed) => (
 							<FeedCard key={feed.id} feed={feed} />
 						))}
 					</div>
@@ -277,6 +342,40 @@ function EmptyState() {
 				}}
 			>
 				Create your first feed to get started
+			</p>
+		</div>
+	)
+}
+
+function NoResults({ searchQuery }: { searchQuery: string }) {
+	return (
+		<div
+			css={{
+				textAlign: 'center',
+				padding: spacing['2xl'],
+				backgroundColor: colors.surface,
+				borderRadius: radius.lg,
+				border: `1px solid ${colors.border}`,
+			}}
+		>
+			<p
+				css={{
+					color: colors.textMuted,
+					fontSize: typography.fontSize.lg,
+					margin: 0,
+					marginBottom: spacing.md,
+				}}
+			>
+				No feeds match "{searchQuery}"
+			</p>
+			<p
+				css={{
+					color: colors.textMuted,
+					fontSize: typography.fontSize.sm,
+					margin: 0,
+				}}
+			>
+				Try a different search term
 			</p>
 		</div>
 	)

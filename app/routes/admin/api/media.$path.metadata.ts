@@ -85,8 +85,7 @@ function isMediaInDirectoryFeed(
 
 		if (
 			normalizedFile.startsWith(normalizedDir + '/') ||
-			normalizedFile === normalizedDir ||
-			normalizedFile.startsWith(normalizedDir)
+			normalizedFile === normalizedDir
 		) {
 			return true
 		}
@@ -295,7 +294,7 @@ export default {
 			directoryFeeds: directoryFeeds.map((f) => ({
 				id: f.id,
 				name: f.name,
-				directoryPaths: JSON.parse(f.directoryPaths) as string[],
+				directoryPaths: parseDirectoryPaths(f),
 				imageUrl: f.imageUrl,
 				updatedAt: f.updatedAt,
 			})),

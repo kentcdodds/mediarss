@@ -257,6 +257,7 @@ export function MediaDetail(this: Handle) {
 	const saveMetadata = async () => {
 		if (state.status !== 'success') return
 
+		const savePath = currentPath
 		savingMetadata = true
 		metadataMessage = null
 		this.update()
@@ -297,12 +298,16 @@ export function MediaDetail(this: Handle) {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
+				signal: this.signal,
 			})
 
 			if (!res.ok) {
 				const data = await res.json()
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
+
+			// Don't update state if user navigated away
+			if (this.signal.aborted || currentPath !== savePath) return
 
 			// Update state with the response
 			const data = (await res.json()) as MediaDetailResponse
@@ -317,6 +322,8 @@ export function MediaDetail(this: Handle) {
 				this.update()
 			}, 3000)
 		} catch (err) {
+			// Ignore abort errors
+			if (this.signal.aborted) return
 			metadataMessage = {
 				type: 'error',
 				text: err instanceof Error ? err.message : 'Failed to save metadata',
@@ -1286,45 +1293,60 @@ function MetadataField({
 	type?: 'text' | 'number'
 	onChange: (value: string) => void
 }) {
+	const inputStyles = {
+		width: '100%',
+		padding: spacing.sm,
+		fontSize: typography.fontSize.sm,
+		color: colors.text,
+		backgroundColor: colors.background,
+		border: `1px solid ${colors.border}`,
+		borderRadius: radius.md,
+		outline: 'none',
+		transition: `border-color ${transitions.fast}`,
+		'&:focus': {
+			borderColor: colors.primary,
+		},
+	}
+
+	const labelStyles = {
+		display: 'block',
+		fontSize: typography.fontSize.xs,
+		color: colors.textMuted,
+		textTransform: 'uppercase' as const,
+		letterSpacing: '0.05em',
+		marginBottom: spacing.xs,
+	}
+
+	const inputHandler = {
+		input: (e: Event) => onChange((e.target as HTMLInputElement).value),
+	}
+
+	if (type === 'number') {
+		return (
+			<div>
+				<label css={{ display: 'block' }}>
+					<span css={labelStyles}>{label}</span>
+					<input
+						type="number"
+						value={value}
+						css={inputStyles}
+						on={inputHandler}
+					/>
+				</label>
+			</div>
+		)
+	}
+
 	return (
 		<div>
-			<label
-				css={{
-					display: 'block',
-				}}
-			>
-				<span
-					css={{
-						display: 'block',
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-						textTransform: 'uppercase',
-						letterSpacing: '0.05em',
-						marginBottom: spacing.xs,
-					}}
-				>
-					{label}
-				</span>
+			<label css={{ display: 'block' }}>
+				<span css={labelStyles}>{label}</span>
 				<input
-					type={type}
+					type="text"
 					value={value}
-					css={{
-						width: '100%',
-						padding: spacing.sm,
-						fontSize: typography.fontSize.sm,
-						color: colors.text,
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						outline: 'none',
-						transition: `border-color ${transitions.fast}`,
-						'&:focus': {
-							borderColor: colors.primary,
-						},
-					}}
-					on={{
-						input: (e) => onChange((e.target as HTMLInputElement).value),
-					}}
+					list={undefined}
+					css={inputStyles}
+					on={inputHandler}
 				/>
 			</label>
 		</div>

@@ -197,7 +197,10 @@ export function clearCache(): void {
  */
 export function deleteCacheByPrefix(prefix: string): number {
 	const db = getCacheDb()
-	const result = db.run('DELETE FROM cache WHERE key LIKE ?', `${prefix}%`)
+	const statement = db.prepare<void, [string]>(
+		'DELETE FROM cache WHERE key LIKE ?',
+	)
+	const result = statement.run(`${prefix}%`)
 	return result.changes
 }
 

@@ -22,7 +22,8 @@ type Feed = DirectoryFeed | CuratedFeed
  * Format a date timestamp for human-readable output.
  */
 function formatDate(timestamp: number): string {
-	return new Date(timestamp * 1000).toISOString().split('T')[0]
+	const isoString = new Date(timestamp * 1000).toISOString()
+	return isoString.split('T')[0] ?? isoString
 }
 
 /**

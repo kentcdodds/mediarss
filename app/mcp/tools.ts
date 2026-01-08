@@ -80,7 +80,8 @@ function getFeedById(
  * Format a date timestamp for human-readable output.
  */
 function formatDate(timestamp: number): string {
-	return new Date(timestamp * 1000).toISOString().split('T')[0]
+	const isoString = new Date(timestamp * 1000).toISOString()
+	return isoString.split('T')[0] ?? isoString
 }
 
 /**
@@ -165,7 +166,6 @@ export async function initializeTools(
 					},
 				}
 			},
-			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Get feed details
@@ -251,7 +251,6 @@ export async function initializeTools(
 					},
 				}
 			},
-			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// List media directories
@@ -292,7 +291,6 @@ export async function initializeTools(
 					},
 				}
 			},
-			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Browse media directory
@@ -439,7 +437,6 @@ export async function initializeTools(
 					}
 				}
 			},
-			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Get feed tokens
@@ -510,7 +507,6 @@ export async function initializeTools(
 					},
 				}
 			},
-			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 	}
 
@@ -623,7 +619,6 @@ export async function initializeTools(
 					}
 				}
 			},
-			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Create curated feed
@@ -690,7 +685,6 @@ export async function initializeTools(
 					}
 				}
 			},
-			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Update feed
@@ -775,7 +769,6 @@ export async function initializeTools(
 					}
 				}
 			},
-			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Delete feed
@@ -836,9 +829,6 @@ export async function initializeTools(
 						isError: true,
 					}
 				}
-			},
-			{
-				annotations: { readOnlyHint: false, destructiveHint: true },
 			},
 		)
 
@@ -904,7 +894,6 @@ export async function initializeTools(
 					}
 				}
 			},
-			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Delete feed token
@@ -961,9 +950,6 @@ export async function initializeTools(
 						isError: true,
 					}
 				}
-			},
-			{
-				annotations: { readOnlyHint: false, destructiveHint: true },
 			},
 		)
 	}

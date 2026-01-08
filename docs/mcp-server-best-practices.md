@@ -120,7 +120,9 @@ annotations: {
 | `idempotentHint` | Same input always produces same result |
 | `openWorldHint` | Accesses external APIs/resources |
 
-**Our Current State:** No annotations on tools
+**Note:** The `server.tool()` API in the MCP SDK we use doesn't support passing both custom params schema AND annotations simultaneously. When using the 4-argument form `tool(name, description, schema, handler)`, annotations cannot be included. This is a limitation of the current SDK API signature.
+
+**Our Current State:** Annotations not used due to SDK API limitation
 
 ---
 
@@ -380,7 +382,7 @@ Please ask me some questions to understand what I'm trying to create, then help 
 ### High Priority
 1. ✅ Add comprehensive server instructions
 2. ✅ Enhance tool descriptions with examples, inputs, returns, next steps
-3. ✅ Add tool annotations (readOnlyHint, destructiveHint, etc.)
+3. ⚠️ Tool annotations (readOnlyHint, destructiveHint, etc.) — Not possible with current SDK API
 4. ✅ Improve response formatting (human-readable + structured)
 
 ### Medium Priority

@@ -99,7 +99,7 @@ export const MCP_CORS_HEADERS = {
 export const DISCOVERY_CORS_HEADERS = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-	'Access-Control-Allow-Headers': 'mcp-protocol-version',
+	'Access-Control-Allow-Headers': 'Accept, Content-Type, mcp-protocol-version',
 } as const
 
 /**

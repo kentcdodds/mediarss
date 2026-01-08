@@ -1,5 +1,6 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { MCP_SCOPES } from '#app/mcp/auth.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 
 /**
@@ -14,6 +15,7 @@ export interface AuthorizationServerMetadata {
 	token_endpoint: string
 	jwks_uri: string
 	registration_endpoint: string
+	scopes_supported: readonly string[]
 	response_types_supported: string[]
 	grant_types_supported: string[]
 	code_challenge_methods_supported: string[]
@@ -31,6 +33,7 @@ function handleGet(context: RequestContext): Response {
 		token_endpoint: `${origin}/oauth/token`,
 		jwks_uri: `${origin}/oauth/jwks`,
 		registration_endpoint: `${origin}/oauth/register`,
+		scopes_supported: MCP_SCOPES,
 		response_types_supported: ['code'],
 		grant_types_supported: ['authorization_code'],
 		code_challenge_methods_supported: ['S256'],
@@ -51,10 +54,10 @@ export default {
 	action: withCors({
 		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
 		handler: (context: RequestContext) => {
-			if (context.method !== 'GET') {
+			if (context.method !== 'GET' && context.method !== 'HEAD') {
 				return new Response('Method Not Allowed', {
 					status: 405,
-					headers: { Allow: 'GET, OPTIONS' },
+					headers: { Allow: 'GET, HEAD, OPTIONS' },
 				})
 			}
 			return handleGet(context)

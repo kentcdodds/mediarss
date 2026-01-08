@@ -628,7 +628,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `❌ Media root "${mediaRoot}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
+								text: `❌ Media root "${parsed.rootName}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
 							},
 						],
 						isError: true,

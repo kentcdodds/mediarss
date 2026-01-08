@@ -219,13 +219,18 @@ export function parseMediaWidgetUri(
 	const match = uri.match(/^media:\/\/widget\/media\/([^/]+)\/([^/]+)\/(.+)$/)
 	if (!match) return null
 
-	return {
-		token: decodeURIComponent(match[1]!),
-		rootName: decodeURIComponent(match[2]!),
-		// Decode each segment individually to preserve slashes within segments
-		relativePath: match[3]!
-			.split('/')
-			.map((segment) => decodeURIComponent(segment))
-			.join('/'),
+	try {
+		return {
+			token: decodeURIComponent(match[1]!),
+			rootName: decodeURIComponent(match[2]!),
+			// Decode each segment individually to preserve slashes within segments
+			relativePath: match[3]!
+				.split('/')
+				.map((segment) => decodeURIComponent(segment))
+				.join('/'),
+		}
+	} catch {
+		// Return null for malformed percent-encoded sequences
+		return null
 	}
 }

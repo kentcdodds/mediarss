@@ -337,7 +337,7 @@ export async function initializeResources(
 				// Get absolute path for the file
 				const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
 				if (!filePath) {
-					throw new Error(`Media root "${rootName}" not found.`)
+					throw new Error(`Media root "${parsed.rootName}" not found.`)
 				}
 
 				// Validate file is allowed for this feed (path traversal protection)

@@ -47,8 +47,13 @@ export default {
 
 		const { feed, type } = result
 
-		// Decode the path parameter
-		const decodedPath = decodeURIComponent(splatParam)
+		// Decode the path parameter with error handling for malformed encoding
+		let decodedPath: string
+		try {
+			decodedPath = decodeURIComponent(splatParam)
+		} catch {
+			return new Response('Invalid URL encoding', { status: 400 })
+		}
 
 		// Parse root name and relative path from URL
 		const parsed = parseMediaPathStrict(decodedPath)

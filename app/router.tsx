@@ -74,6 +74,12 @@ function bunStaticFiles(
 const router = createRouter({
 	middleware: [
 		rateLimit(),
+		bunStaticFiles('./public', {
+			cacheControl:
+				Bun.env.NODE_ENV === 'production'
+					? 'public, max-age=31536000, immutable'
+					: 'no-cache',
+		}),
 		bunStaticFiles('./app', {
 			filter: (p) => p.startsWith('assets/'),
 			cacheControl:

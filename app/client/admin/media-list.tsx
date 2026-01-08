@@ -169,9 +169,6 @@ export function MediaList(this: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let currentPage = 1
-	let selectedItem: MediaItem | null = null
-	let modalFeedIds: Set<string> = new Set()
-	let saving = false
 
 	// Bulk selection state
 	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
@@ -524,77 +521,6 @@ export function MediaList(this: Handle) {
 
 	fetchData()
 
-	const openModal = (item: MediaItem) => {
-		if (state.status !== 'success') return
-		selectedItem = item
-
-		// Initialize modal with current curated feed assignments
-		// Use the same key format as the API: "mediaRoot:relativePath"
-		const mediaPath = `${item.rootName}:${item.relativePath}`
-		const currentAssignments = state.assignments[mediaPath] ?? []
-		modalFeedIds = new Set(
-			currentAssignments
-				.filter((a) => a.feedType === 'curated')
-				.map((a) => a.feedId),
-		)
-		this.update()
-	}
-
-	const closeModal = () => {
-		selectedItem = null
-		modalFeedIds = new Set()
-		this.update()
-	}
-
-	const toggleFeed = (feedId: string) => {
-		if (modalFeedIds.has(feedId)) {
-			modalFeedIds.delete(feedId)
-		} else {
-			modalFeedIds.add(feedId)
-		}
-		this.update()
-	}
-
-	const saveAssignments = async () => {
-		if (!selectedItem || state.status !== 'success') return
-
-		saving = true
-		this.update()
-
-		try {
-			// Build the media path in the format expected by the API: "mediaRoot:relativePath"
-			const mediaPath = `${selectedItem.rootName}:${selectedItem.relativePath}`
-
-			const res = await fetch('/admin/api/media/assignments', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					mediaPath,
-					feedIds: [...modalFeedIds],
-				}),
-			})
-
-			if (!res.ok) {
-				const data = await res.json()
-				throw new Error(data.error || `HTTP ${res.status}`)
-			}
-
-			// Update local state with new assignments using the same key format
-			const newAssignments = [...modalFeedIds].map((feedId) => ({
-				feedId,
-				feedType: 'curated' as const,
-			}))
-			state.assignments[mediaPath] = newAssignments
-
-			closeModal()
-		} catch (err) {
-			console.error('Failed to save assignments:', err)
-		} finally {
-			saving = false
-			this.update()
-		}
-	}
-
 	const getArtworkUrl = (item: MediaItem) => {
 		return `/admin/api/artwork/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
 	}
@@ -663,21 +589,6 @@ export function MediaList(this: Handle) {
 					},
 				}}
 			>
-				{/* Modal */}
-				{selectedItem && (
-					<ManageAccessModal
-						item={selectedItem}
-						curatedFeeds={curatedFeeds}
-						directoryFeeds={directoryFeeds}
-						selectedFeedIds={modalFeedIds}
-						saving={saving}
-						getArtworkUrl={getArtworkUrl}
-						onToggle={toggleFeed}
-						onSave={saveAssignments}
-						onCancel={closeModal}
-					/>
-				)}
-
 				{/* Header */}
 				<div
 					css={{
@@ -729,7 +640,7 @@ export function MediaList(this: Handle) {
 									},
 								}}
 							>
-								{' · Click to manage feed access'}
+								{' · Click row to view details'}
 							</span>
 						</p>
 					</div>
@@ -956,20 +867,6 @@ export function MediaList(this: Handle) {
 										>
 											Feeds
 										</th>
-										<th
-											css={{
-												textAlign: 'center',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												width: '80px',
-											}}
-										>
-											Actions
-										</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -1004,11 +901,13 @@ export function MediaList(this: Handle) {
 													},
 												}}
 												on={{
-													click: () => openModal(item),
+													click: () => {
+														window.location.href = `/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
+													},
 													keydown: (e: KeyboardEvent) => {
 														if (e.key === 'Enter' || e.key === ' ') {
 															e.preventDefault()
-															openModal(item)
+															window.location.href = `/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
 														}
 													},
 												}}
@@ -1032,18 +931,30 @@ export function MediaList(this: Handle) {
 													/>
 												</td>
 												<td css={{ padding: spacing.sm, textAlign: 'center' }}>
-													<img
-														src={getArtworkUrl(item)}
-														alt=""
-														loading="lazy"
+													<div
 														css={{
 															width: '40px',
 															height: '40px',
+															flexShrink: 0,
 															borderRadius: radius.sm,
-															objectFit: 'cover',
 															backgroundColor: colors.background,
+															overflow: 'hidden',
 														}}
-													/>
+													>
+														<img
+															src={getArtworkUrl(item)}
+															alt=""
+															loading="lazy"
+															width={40}
+															height={40}
+															css={{
+																width: '40px',
+																height: '40px',
+																display: 'block',
+																objectFit: 'cover',
+															}}
+														/>
+													</div>
 												</td>
 												<td
 													css={{
@@ -1132,33 +1043,6 @@ export function MediaList(this: Handle) {
 															None
 														</span>
 													)}
-												</td>
-												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														textAlign: 'center',
-													}}
-												>
-													<Link
-														href={`/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`}
-														css={{
-															padding: `${spacing.xs} ${spacing.sm}`,
-															fontSize: typography.fontSize.xs,
-															fontWeight: typography.fontWeight.medium,
-															color: colors.primary,
-															textDecoration: 'none',
-															border: `1px solid ${colors.primary}`,
-															borderRadius: radius.sm,
-															'&:hover': {
-																backgroundColor: colors.primarySoft,
-															},
-														}}
-														on={{
-															click: (e: MouseEvent) => e.stopPropagation(),
-														}}
-													>
-														View
-													</Link>
 												</td>
 											</tr>
 										)
@@ -1497,228 +1381,6 @@ function ErrorMessage({ message }: { message: string }) {
 				← Back to feeds
 			</Link>
 		</div>
-	)
-}
-
-function ManageAccessModal({
-	item,
-	curatedFeeds,
-	directoryFeeds,
-	selectedFeedIds,
-	saving,
-	getArtworkUrl,
-	onToggle,
-	onSave,
-	onCancel,
-}: {
-	item: MediaItem
-	curatedFeeds: Array<CuratedFeed>
-	directoryFeeds: Array<DirectoryFeed>
-	selectedFeedIds: Set<string>
-	saving: boolean
-	getArtworkUrl: (item: MediaItem) => string
-	onToggle: (feedId: string) => void
-	onSave: () => void
-	onCancel: () => void
-}) {
-	// Find directory feeds that contain this file
-	const matchingDirectoryFeeds = directoryFeeds.filter((feed) =>
-		isMediaInDirectoryFeed(item, feed.directoryPaths),
-	)
-
-	return (
-		<Modal
-			title={item.title}
-			subtitle={item.author ?? undefined}
-			description="Manage which feeds include this media file."
-			headerImage={getArtworkUrl(item)}
-			size="md"
-			onClose={onCancel}
-			footer={
-				<ModalFooter>
-					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
-						Cancel
-					</ModalButton>
-					<ModalButton variant="primary" disabled={saving} onClick={onSave}>
-						{saving ? 'Saving...' : 'Done'}
-					</ModalButton>
-				</ModalFooter>
-			}
-		>
-			{/* Curated feeds with toggles */}
-			{curatedFeeds.length > 0 && (
-				<ModalSection title="Curated Feeds">
-					<ModalList>
-						{curatedFeeds.map((feed) => (
-							<FeedToggleRow
-								key={feed.id}
-								feedId={feed.id}
-								name={feed.name}
-								updatedAt={feed.updatedAt}
-								isEnabled={selectedFeedIds.has(feed.id)}
-								onToggle={() => onToggle(feed.id)}
-							/>
-						))}
-					</ModalList>
-				</ModalSection>
-			)}
-
-			{/* Directory feeds (read-only) */}
-			{matchingDirectoryFeeds.length > 0 && (
-				<ModalSection title="Directory Feeds">
-					<ModalList>
-						{matchingDirectoryFeeds.map((feed) => (
-							<div
-								key={feed.id}
-								css={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.md,
-									padding: spacing.sm,
-									backgroundColor: colors.background,
-									borderRadius: radius.md,
-									opacity: 0.7,
-								}}
-							>
-								<img
-									src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
-									alt=""
-									css={{
-										width: '32px',
-										height: '32px',
-										borderRadius: radius.sm,
-										objectFit: 'cover',
-									}}
-								/>
-								<span
-									css={{
-										flex: 1,
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
-									}}
-								>
-									{feed.name}
-								</span>
-								<span
-									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										fontStyle: 'italic',
-									}}
-								>
-									via directory
-								</span>
-							</div>
-						))}
-					</ModalList>
-				</ModalSection>
-			)}
-
-			{curatedFeeds.length === 0 && matchingDirectoryFeeds.length === 0 && (
-				<p
-					css={{
-						textAlign: 'center',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.sm,
-					}}
-				>
-					No feeds available.
-				</p>
-			)}
-		</Modal>
-	)
-}
-
-function FeedToggleRow({
-	feedId,
-	name,
-	updatedAt,
-	isEnabled,
-	onToggle,
-}: {
-	feedId: string
-	name: string
-	updatedAt: number
-	isEnabled: boolean
-	onToggle: () => void
-}) {
-	return (
-		<div
-			css={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				padding: spacing.sm,
-				backgroundColor: colors.background,
-				borderRadius: radius.md,
-			}}
-		>
-			<img
-				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
-				alt=""
-				css={{
-					width: '32px',
-					height: '32px',
-					borderRadius: radius.sm,
-					objectFit: 'cover',
-				}}
-			/>
-			<span
-				css={{
-					flex: 1,
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-				}}
-			>
-				{name}
-			</span>
-			<ToggleSwitch enabled={isEnabled} onToggle={onToggle} />
-		</div>
-	)
-}
-
-function ToggleSwitch({
-	enabled,
-	onToggle,
-}: {
-	enabled: boolean
-	onToggle: () => void
-}) {
-	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={enabled}
-			css={{
-				width: '44px',
-				height: '24px',
-				borderRadius: '12px',
-				border: 'none',
-				backgroundColor: enabled ? colors.primary : colors.border,
-				cursor: 'pointer',
-				padding: '2px',
-				transition: `background-color ${transitions.fast}`,
-				display: 'flex',
-				alignItems: 'center',
-				'&:focus': {
-					outline: `2px solid ${colors.primary}`,
-					outlineOffset: '2px',
-				},
-			}}
-			on={{ click: onToggle }}
-		>
-			<div
-				css={{
-					width: '20px',
-					height: '20px',
-					borderRadius: '50%',
-					backgroundColor: '#fff',
-					boxShadow: shadows.sm,
-					transition: `transform ${transitions.fast}`,
-					transform: enabled ? 'translateX(20px)' : 'translateX(0)',
-				}}
-			/>
-		</button>
 	)
 }
 

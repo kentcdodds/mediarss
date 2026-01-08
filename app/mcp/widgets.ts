@@ -86,12 +86,12 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 	const { baseUrl, media } = options
 
 	// Resolve URLs to be absolute
-	const artworkUrl = media.artworkUrl.startsWith('http')
-		? media.artworkUrl
-		: `${baseUrl}${media.artworkUrl}`
-	const streamUrl = media.streamUrl.startsWith('http')
-		? media.streamUrl
-		: `${baseUrl}${media.streamUrl}`
+	const resolveUrl = (url: string) => {
+		if (url.startsWith('http')) return url
+		return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
+	}
+	const artworkUrl = resolveUrl(media.artworkUrl)
+	const streamUrl = resolveUrl(media.streamUrl)
 
 	const mediaData: MediaWidgetData = {
 		...media,
@@ -112,14 +112,17 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 		),
 	}
 
-	// Generate module preload links
+	// Generate module preload links with properly escaped URLs
+	const escapeHtmlAttr = (str: string) =>
+		str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 	const modulePreloads = Object.values(absoluteImportmap.imports)
-		.map((url) => `<link rel="modulepreload" href="${url}" />`)
+		.map((url) => `<link rel="modulepreload" href="${escapeHtmlAttr(url)}" />`)
 		.join('\n\t\t\t')
 
 	// Generate the HTML using the html template tag for safety
 	// Note: We use html.raw for script content since we've already escaped it
-	const importmapJson = JSON.stringify(absoluteImportmap)
+	// Apply XSS escaping to import map JSON as well (baseUrl could contain malicious content)
+	const importmapJson = escapeJsonForScript(absoluteImportmap)
 	const escapedMediaData = escapeJsonForScript(mediaData)
 	const escapedBaseUrl = escapeJsonForScript(baseUrl)
 
@@ -193,15 +196,7 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 		</html>`.toString()
 }
 
-/**
- * Encode a relative path for use in URIs, encoding each segment individually.
- */
-function encodeRelativePathForUri(relativePath: string): string {
-	return relativePath
-		.split('/')
-		.map((segment) => encodeURIComponent(segment))
-		.join('/')
-}
+import { encodeRelativePath } from '#app/helpers/feed-access.ts'
 
 /**
  * Generate the MCP resource URI for a media widget
@@ -211,7 +206,7 @@ export function getMediaWidgetUri(
 	rootName: string,
 	relativePath: string,
 ): string {
-	const encodedPath = encodeRelativePathForUri(relativePath)
+	const encodedPath = encodeRelativePath(relativePath)
 	return `media://widget/media/${encodeURIComponent(token)}/${encodeURIComponent(rootName)}/${encodedPath}`
 }
 

@@ -3,30 +3,19 @@
  * Resources are data sources that can be read by the AI.
  */
 
-import nodePath from 'node:path'
 import {
 	McpServer,
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
-import {
-	getMediaRoots,
-	parseMediaPath,
-	toAbsolutePath,
-} from '#app/config/env.ts'
+import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
 	listDirectoryFeeds,
-	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type {
-	CuratedFeed,
-	DirectoryFeed,
-	Feed,
-	FeedItem,
-} from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
@@ -66,51 +55,6 @@ function getFeedById(id: string): FeedWithType | undefined {
 	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
 
 	return undefined
-}
-
-/**
- * Validate that a file path is allowed for the given feed.
- */
-function isFileAllowed(
-	feed: Feed,
-	type: 'directory' | 'curated',
-	rootName: string,
-	relativePath: string,
-): boolean {
-	if (type === 'directory' && isDirectoryFeed(feed)) {
-		const paths = parseDirectoryPaths(feed)
-		const filePath = toAbsolutePath(rootName, relativePath)
-		if (!filePath) return false
-
-		for (const mediaPath of paths) {
-			const { mediaRoot, relativePath: dirRelativePath } =
-				parseMediaPath(mediaPath)
-			const dirPath = toAbsolutePath(mediaRoot, dirRelativePath)
-			if (!dirPath) continue
-
-			const resolvedDir = nodePath.resolve(dirPath)
-			const resolvedFile = nodePath.resolve(filePath)
-			if (resolvedFile.startsWith(resolvedDir + nodePath.sep)) {
-				return true
-			}
-		}
-		return false
-	}
-
-	const feedItems = getItemsForFeed(feed.id)
-	return feedItems.some(
-		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
-	)
-}
-
-/**
- * Encode a relative path for use in URLs, encoding each segment individually.
- */
-function encodeRelativePath(relativePath: string): string {
-	return relativePath
-		.split('/')
-		.map((segment) => encodeURIComponent(segment))
-		.join('/')
 }
 
 /**
@@ -362,9 +306,17 @@ export async function initializeResources(
 				mimeType: 'text/html',
 			},
 			async (uri, params, extra) => {
-				const token = decodeURIComponent(String(params.token))
-				const rootName = decodeURIComponent(String(params.rootName))
-				const relativePath = decodeURIComponent(String(params.relativePath))
+				// Decode URI components with error handling for malformed sequences
+				let token: string, rootName: string, relativePath: string
+				try {
+					token = decodeURIComponent(String(params.token))
+					rootName = decodeURIComponent(String(params.rootName))
+					relativePath = decodeURIComponent(String(params.relativePath))
+				} catch {
+					throw new Error(
+						'Invalid URI encoding in path parameters. Ensure the URI is properly encoded.',
+					)
+				}
 
 				// Validate token and get feed
 				const result = getFeedByToken(token)

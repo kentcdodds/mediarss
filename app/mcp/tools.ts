@@ -3,14 +3,9 @@
  * Tools provide callable functions that the AI can invoke.
  */
 
-import nodePath from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import {
-	getMediaRoots,
-	parseMediaPath,
-	toAbsolutePath,
-} from '#app/config/env.ts'
+import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import {
 	createCuratedFeedToken,
 	deleteCuratedFeedToken,
@@ -33,7 +28,6 @@ import {
 	deleteDirectoryFeed,
 	getDirectoryFeedById,
 	listDirectoryFeeds,
-	parseDirectoryPaths,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
@@ -44,7 +38,7 @@ import type {
 	DirectoryFeedToken,
 	FeedItem,
 } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
@@ -104,41 +98,6 @@ function formatSize(bytes: number): string {
 	if (bytes < 1024 * 1024 * 1024)
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
-
-/**
- * Validate that a file path is allowed for the given feed.
- */
-function isFileAllowed(
-	feed: Feed,
-	type: 'directory' | 'curated',
-	rootName: string,
-	relativePath: string,
-): boolean {
-	if (type === 'directory' && isDirectoryFeed(feed)) {
-		const paths = parseDirectoryPaths(feed)
-		const filePath = toAbsolutePath(rootName, relativePath)
-		if (!filePath) return false
-
-		for (const mediaPath of paths) {
-			const { mediaRoot, relativePath: dirRelativePath } =
-				parseMediaPath(mediaPath)
-			const dirPath = toAbsolutePath(mediaRoot, dirRelativePath)
-			if (!dirPath) continue
-
-			const resolvedDir = nodePath.resolve(dirPath)
-			const resolvedFile = nodePath.resolve(filePath)
-			if (resolvedFile.startsWith(resolvedDir + nodePath.sep)) {
-				return true
-			}
-		}
-		return false
-	}
-
-	const feedItems = getItemsForFeed(feed.id)
-	return feedItems.some(
-		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
-	)
 }
 
 /**

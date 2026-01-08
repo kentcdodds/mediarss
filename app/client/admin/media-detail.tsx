@@ -655,16 +655,80 @@ export function MediaDetail(this: Handle) {
 											gap: spacing.sm,
 										}}
 									>
-										{curatedFeeds.map((feed) => (
-											<FeedToggleRow
-												key={feed.id}
-												feedId={feed.id}
-												name={feed.name}
-												updatedAt={feed.updatedAt}
-												isEnabled={selectedFeedIds.has(feed.id)}
-												onToggle={() => toggleFeed(feed.id)}
-											/>
-										))}
+										{curatedFeeds.map((feed) => {
+											const isEnabled = selectedFeedIds.has(feed.id)
+											return (
+												<div
+													key={feed.id}
+													css={{
+														display: 'flex',
+														alignItems: 'center',
+														gap: spacing.md,
+														padding: spacing.sm,
+														backgroundColor: colors.background,
+														borderRadius: radius.md,
+													}}
+												>
+													<img
+														src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
+														alt=""
+														css={{
+															width: '32px',
+															height: '32px',
+															borderRadius: radius.sm,
+															objectFit: 'cover',
+														}}
+													/>
+													<span
+														css={{
+															flex: 1,
+															fontSize: typography.fontSize.sm,
+															color: colors.text,
+														}}
+													>
+														{feed.name}
+													</span>
+													<button
+														type="button"
+														role="switch"
+														aria-checked={isEnabled}
+														css={{
+															width: '44px',
+															height: '24px',
+															borderRadius: '12px',
+															border: 'none',
+															backgroundColor: isEnabled
+																? colors.primary
+																: colors.border,
+															cursor: 'pointer',
+															padding: '2px',
+															transition: `background-color ${transitions.fast}`,
+															display: 'flex',
+															alignItems: 'center',
+															'&:focus': {
+																outline: `2px solid ${colors.primary}`,
+																outlineOffset: '2px',
+															},
+														}}
+														on={{ click: () => toggleFeed(feed.id) }}
+													>
+														<div
+															css={{
+																width: '20px',
+																height: '20px',
+																borderRadius: '50%',
+																backgroundColor: '#fff',
+																boxShadow: shadows.sm,
+																transition: `transform ${transitions.fast}`,
+																transform: isEnabled
+																	? 'translateX(20px)'
+																	: 'translateX(0)',
+															}}
+														/>
+													</button>
+												</div>
+											)
+										})}
 									</div>
 								</div>
 							)}
@@ -849,98 +913,5 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 				{value}
 			</dd>
 		</div>
-	)
-}
-
-function FeedToggleRow({
-	feedId,
-	name,
-	updatedAt,
-	isEnabled,
-	onToggle,
-}: {
-	feedId: string
-	name: string
-	updatedAt: number
-	isEnabled: boolean
-	onToggle: () => void
-}) {
-	return (
-		<div
-			css={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				padding: spacing.sm,
-				backgroundColor: colors.background,
-				borderRadius: radius.md,
-			}}
-		>
-			<img
-				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
-				alt=""
-				css={{
-					width: '32px',
-					height: '32px',
-					borderRadius: radius.sm,
-					objectFit: 'cover',
-				}}
-			/>
-			<span
-				css={{
-					flex: 1,
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-				}}
-			>
-				{name}
-			</span>
-			<ToggleSwitch enabled={isEnabled} onToggle={onToggle} />
-		</div>
-	)
-}
-
-function ToggleSwitch({
-	enabled,
-	onToggle,
-}: {
-	enabled: boolean
-	onToggle: () => void
-}) {
-	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={enabled}
-			css={{
-				width: '44px',
-				height: '24px',
-				borderRadius: '12px',
-				border: 'none',
-				backgroundColor: enabled ? colors.primary : colors.border,
-				cursor: 'pointer',
-				padding: '2px',
-				transition: `background-color ${transitions.fast}`,
-				display: 'flex',
-				alignItems: 'center',
-				'&:focus': {
-					outline: `2px solid ${colors.primary}`,
-					outlineOffset: '2px',
-				},
-			}}
-			on={{ click: onToggle }}
-		>
-			<div
-				css={{
-					width: '20px',
-					height: '20px',
-					borderRadius: '50%',
-					backgroundColor: '#fff',
-					boxShadow: shadows.sm,
-					transition: `transform ${transitions.fast}`,
-					transform: enabled ? 'translateX(20px)' : 'translateX(0)',
-				}}
-			/>
-		</button>
 	)
 }

@@ -3,6 +3,9 @@
 FROM oven/bun:1 AS base
 WORKDIR /app
 
+# Install FFmpeg for metadata editing
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 FROM base AS install
 COPY package.json bun.lock ./

@@ -191,6 +191,17 @@ export function clearCache(): void {
 }
 
 /**
+ * Delete cache entries matching a key prefix.
+ * Useful for invalidating related cache entries (e.g., all entries for a specific file).
+ * @returns The number of entries deleted
+ */
+export function deleteCacheByPrefix(prefix: string): number {
+	const db = getCacheDb()
+	const result = db.run('DELETE FROM cache WHERE key LIKE ?', `${prefix}%`)
+	return result.changes
+}
+
+/**
  * Get cache statistics.
  */
 export function getCacheStats(): { count: number; sizeBytes: number } {

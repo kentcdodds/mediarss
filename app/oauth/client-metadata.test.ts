@@ -304,14 +304,14 @@ describe('OAuth full flow with static client', () => {
 		expect(metadata.client_id_metadata_document_supported).toBe(true)
 	})
 
-	test('Server metadata does not include registration endpoint', async () => {
+	test('Server metadata includes registration endpoint for DCR', async () => {
 		const response = await fetch(
 			`${baseUrl}/.well-known/oauth-authorization-server`,
 		)
 		const metadata = (await response.json()) as Record<string, unknown>
 
-		// Dynamic registration is optional per MCP 2025-11-25, and we don't implement it
-		expect(metadata.registration_endpoint).toBeUndefined()
+		// We support both DCR and client ID metadata documents
+		expect(metadata.registration_endpoint).toBe(`${baseUrl}/oauth/register`)
 	})
 
 	test('Full authorization code flow with static client', async () => {
@@ -525,15 +525,38 @@ describe('MCP 2025-11-25 spec compliance', () => {
 		expect(metadata.client_id_metadata_document_supported).toBe(true)
 	})
 
-	test('Dynamic client registration is optional (no registration endpoint)', async () => {
-		const response = await fetch(
-			`${baseUrl}/.well-known/oauth-authorization-server`,
-		)
-		const metadata = (await response.json()) as Record<string, unknown>
+	test('Dynamic client registration endpoint works', async () => {
+		// Register a new client via DCR
+		const registerResponse = await fetch(`${baseUrl}/oauth/register`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				redirect_uris: ['http://localhost:9999/callback'],
+				client_name: 'DCR Test Client',
+			}),
+		})
 
-		// Per MCP 2025-11-25, dynamic registration is MAY (optional)
-		// We don't implement it, so registration_endpoint should not be present
-		expect(metadata.registration_endpoint).toBeUndefined()
+		expect(registerResponse.status).toBe(201)
+
+		const clientData = (await registerResponse.json()) as {
+			client_id: string
+			client_name: string
+			redirect_uris: string[]
+			token_endpoint_auth_method: string
+			grant_types: string[]
+			response_types: string[]
+			client_id_issued_at: number
+		}
+
+		expect(clientData.client_id).toBeTruthy()
+		expect(clientData.client_name).toBe('DCR Test Client')
+		expect(clientData.redirect_uris).toContain('http://localhost:9999/callback')
+		expect(clientData.token_endpoint_auth_method).toBe('none')
+		expect(clientData.grant_types).toContain('authorization_code')
+		expect(clientData.response_types).toContain('code')
+		expect(clientData.client_id_issued_at).toBeGreaterThan(0)
 	})
 
 	test('PKCE with S256 is supported', async () => {

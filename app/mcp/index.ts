@@ -5,5 +5,6 @@
 
 export * from './auth.ts'
 export * from './cors.ts'
+export * from './metadata.ts'
 export * from './server.ts'
 export * from './transport.ts'

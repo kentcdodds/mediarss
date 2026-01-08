@@ -14,8 +14,17 @@ import {
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { promptsMetadata } from './metadata.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
+
+/**
+ * Format a date timestamp for human-readable output.
+ */
+function formatDate(timestamp: number): string {
+	const isoString = new Date(timestamp * 1000).toISOString()
+	return isoString.split('T')[0] ?? isoString
+}
 
 /**
  * Get all feeds (both directory and curated)
@@ -59,13 +68,17 @@ export async function initializePrompts(
 	// Read prompts (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
 		// Summarize library prompt
-		server.prompt(
-			'summarize_library',
-			'Get a summary of your media library',
-			{},
+		server.registerPrompt(
+			promptsMetadata.summarize_library.name,
+			{
+				title: promptsMetadata.summarize_library.title,
+				description: promptsMetadata.summarize_library.description,
+			},
 			async () => {
 				const feeds = getAllFeeds()
 				const mediaRoots = getMediaRoots()
+				const directoryFeeds = feeds.filter((f) => f.type === 'directory')
+				const curatedFeeds = feeds.filter((f) => f.type === 'curated')
 
 				return {
 					messages: [
@@ -73,21 +86,44 @@ export async function initializePrompts(
 							role: 'user',
 							content: {
 								type: 'text',
-								text: `Please provide a summary of my media library.
+								text: `Please provide a comprehensive summary of my media library.
 
-Current library stats:
-- Total feeds: ${feeds.length}
-- Directory feeds: ${feeds.filter((f) => f.type === 'directory').length}
-- Curated feeds: ${feeds.filter((f) => f.type === 'curated').length}
-- Media roots configured: ${mediaRoots.length}
+## Current Library Statistics
 
-Feeds:
-${feeds.map((f) => `- ${f.name} (${f.type})`).join('\n')}
+| Metric | Count |
+|--------|-------|
+| Total Feeds | ${feeds.length} |
+| Directory Feeds | ${directoryFeeds.length} |
+| Curated Feeds | ${curatedFeeds.length} |
+| Media Roots | ${mediaRoots.length} |
 
-Media roots:
-${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
+## Feeds
+${
+	feeds.length === 0
+		? '*No feeds created yet.*'
+		: feeds
+				.map(
+					(f) =>
+						`- **${f.name}** (${f.type}) — ID: \`${f.id}\`, Created: ${formatDate(f.createdAt)}${f.description ? `\n  ${f.description}` : ''}`,
+				)
+				.join('\n')
+}
 
-Please give me an overview of my library and any suggestions for organization.`,
+## Media Roots
+${
+	mediaRoots.length === 0
+		? '*No media directories configured.*'
+		: mediaRoots.map((mr) => `- **${mr.name}**: \`${mr.path}\``).join('\n')
+}
+
+## Your Task
+
+Please provide:
+1. **Overview**: Summarize what's in my library
+2. **Organization Assessment**: How well organized is my media?
+3. **Recommendations**: Suggest improvements or new feeds to create
+
+You can use \`browse_media\` to explore the media directories and \`get_feed\` to inspect specific feeds.`,
 							},
 						},
 					],
@@ -96,23 +132,38 @@ Please give me an overview of my library and any suggestions for organization.`,
 		)
 
 		// Explore feed prompt
-		server.prompt(
-			'explore_feed',
-			'Explore a specific feed and its contents',
+		server.registerPrompt(
+			promptsMetadata.explore_feed.name,
 			{
-				feedId: z.string().describe('The feed ID to explore'),
+				title: promptsMetadata.explore_feed.title,
+				description: promptsMetadata.explore_feed.description,
+				argsSchema: {
+					feedId: z.string().describe('The feed ID to explore'),
+				},
 			},
 			async ({ feedId }) => {
 				const feed = getFeedById(feedId)
 
 				if (!feed) {
+					const allFeeds = getAllFeeds()
 					return {
 						messages: [
 							{
 								role: 'user',
 								content: {
 									type: 'text',
-									text: `Feed with ID ${feedId} was not found. Please use the list_feeds tool to see available feeds.`,
+									text: `Feed with ID \`${feedId}\` was not found.
+
+## Available Feeds
+${
+	allFeeds.length === 0
+		? '*No feeds exist yet.*'
+		: allFeeds
+				.map((f) => `- **${f.name}** — ID: \`${f.id}\` (${f.type})`)
+				.join('\n')
+}
+
+Please use one of the available feed IDs above, or use \`list_feeds\` to see all feeds.`,
 								},
 							},
 						],
@@ -128,28 +179,46 @@ Please give me an overview of my library and any suggestions for organization.`,
 							role: 'user',
 							content: {
 								type: 'text',
-								text: `Please explore this feed and tell me about its contents:
+								text: `Please explore this feed and provide detailed analysis:
 
-Feed: ${feed.name}
-Description: ${feed.description || 'No description'}
-Type: ${feed.type}
-Created: ${new Date(feed.createdAt * 1000).toISOString()}
+## Feed Information
+
+| Property | Value |
+|----------|-------|
+| Name | ${feed.name} |
+| Type | ${feed.type} |
+| ID | \`${feed.id}\` |
+| Created | ${formatDate(feed.createdAt)} |
+| Description | ${feed.description || '*No description*'} |
 
 ${
 	feed.type === 'curated'
-		? `Items (${items.length} total):
-${items
-	.slice(0, 20)
-	.map((item: FeedItem) => `- ${item.mediaRoot}:${item.relativePath}`)
-	.join('\n')}
-${items.length > 20 ? `\n... and ${items.length - 20} more items` : ''}`
-		: 'This is a directory feed - items are automatically included from the configured directories.'
+		? `## Items (${items.length} total)
+${
+	items.length === 0
+		? '*No items in this feed yet.*'
+		: items
+				.slice(0, 25)
+				.map(
+					(item: FeedItem, i) =>
+						`${i + 1}. ${item.mediaRoot}:${item.relativePath}`,
+				)
+				.join('\n')
+}
+${items.length > 25 ? `\n*... and ${items.length - 25} more items*` : ''}`
+		: `## Source
+This is a directory feed — items are automatically loaded from the configured folder(s).`
 }
 
-Please provide:
-1. A summary of what this feed contains
-2. Any patterns you notice in the content
-3. Suggestions for organization or improvements`,
+## Your Task
+
+Please analyze this feed and provide:
+1. **Content Summary**: What type of content does this feed contain?
+2. **Patterns**: Any patterns you notice (series, authors, genres, etc.)
+3. **Quality Check**: Are there any issues or inconsistencies?
+4. **Suggestions**: How could this feed be improved or better organized?
+
+Use \`browse_media\` to explore the source directories if needed.`,
 							},
 						},
 					],
@@ -160,15 +229,18 @@ Please provide:
 
 	// Write prompts (require mcp:write scope)
 	if (hasScope(authInfo, 'mcp:write')) {
-		// Create feed prompt
-		server.prompt(
-			'create_feed_wizard',
-			'Interactive wizard to create a new feed',
+		// Create feed wizard prompt
+		server.registerPrompt(
+			promptsMetadata.create_feed_wizard.name,
 			{
-				type: z
-					.enum(['directory', 'curated'])
-					.optional()
-					.describe('Type of feed to create'),
+				title: promptsMetadata.create_feed_wizard.title,
+				description: promptsMetadata.create_feed_wizard.description,
+				argsSchema: {
+					type: z
+						.enum(['directory', 'curated'])
+						.optional()
+						.describe('Type of feed to create'),
+				},
 			},
 			async ({ type }) => {
 				const mediaRoots = getMediaRoots()
@@ -176,34 +248,76 @@ Please provide:
 				let promptText: string
 
 				if (type === 'directory') {
-					promptText = `I want to create a new directory-based feed. 
+					promptText = `# Create a Directory Feed
 
-Available media roots:
-${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
+Directory feeds automatically include all media files from a folder. Perfect for:
+- Audiobook series (e.g., all Harry Potter books)
+- TV show seasons
+- Album collections
 
-Please help me:
-1. Choose an appropriate media root
-2. Browse the directory to find content
-3. Set up the feed with a good name and description
+## Available Media Roots
+${
+	mediaRoots.length === 0
+		? '*No media directories configured. Ask the admin to set up MEDIA_PATHS.*'
+		: mediaRoots.map((mr) => `- **${mr.name}**: \`${mr.path}\``).join('\n')
+}
 
-You can use the browse_media tool to explore directories, then create_directory_feed to create the feed.`
+## Your Task
+
+Please help me create a directory feed:
+
+1. **Explore**: Use \`browse_media\` to explore the directories and find content
+2. **Choose**: Help me select the right folder for the feed
+3. **Name**: Suggest a good name and description
+4. **Create**: Use \`create_directory_feed\` to create it
+
+Start by asking which media root I'd like to explore, or browse them to see what's available.`
 				} else if (type === 'curated') {
-					promptText = `I want to create a new curated feed where I can manually select content.
+					promptText = `# Create a Curated Feed
 
-Please help me:
-1. Come up with a good name and description for the feed
-2. Create the feed using create_curated_feed
-3. Explain how I can add content to it later`
+Curated feeds let you manually select specific media files. Perfect for:
+- Custom playlists (favorites, road trip, etc.)
+- Mixed content from different sources
+- Hand-picked collections
+
+## Your Task
+
+Please help me create a curated feed:
+
+1. **Purpose**: Ask me what this feed is for
+2. **Name**: Help me choose a good name and description
+3. **Create**: Use \`create_curated_feed\` to create it
+4. **Explain**: Tell me how to add items via the admin UI
+
+What would you like to call this feed, and what will it be used for?`
 				} else {
-					promptText = `I want to create a new feed. Please help me decide:
+					promptText = `# Feed Creation Wizard
 
-1. Should this be a directory feed (automatically includes all media from a folder)?
-2. Or a curated feed (manually select specific content)?
+I can help you create a new podcast/media feed. First, let's figure out which type is right for you:
 
-Available media roots:
-${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
+## Feed Types
 
-Please ask me some questions to understand what I'm trying to create, then help me set it up.`
+| Type | Best For | How It Works |
+|------|----------|--------------|
+| **Directory** | Series, albums, shows | Auto-includes all files from a folder |
+| **Curated** | Playlists, favorites | Manually select specific files |
+
+## Available Media Roots
+${
+	mediaRoots.length === 0
+		? '*No media directories configured.*'
+		: mediaRoots.map((mr) => `- **${mr.name}**: \`${mr.path}\``).join('\n')
+}
+
+## Your Task
+
+Help me decide:
+1. **Directory Feed**: Do you have a folder with content you want to turn into a feed?
+2. **Curated Feed**: Do you want to hand-pick specific files from different locations?
+
+You can use \`browse_media\` to explore what's available and help me decide.
+
+What are you trying to create?`
 				}
 
 				return {
@@ -221,14 +335,21 @@ Please ask me some questions to understand what I'm trying to create, then help 
 		)
 
 		// Organize media prompt
-		server.prompt(
-			'organize_media',
-			'Help organize media into feeds',
+		server.registerPrompt(
+			promptsMetadata.organize_media.name,
 			{
-				mediaRoot: z.string().optional().describe('The media root to organize'),
+				title: promptsMetadata.organize_media.title,
+				description: promptsMetadata.organize_media.description,
+				argsSchema: {
+					mediaRoot: z
+						.string()
+						.optional()
+						.describe('The media root to organize'),
+				},
 			},
 			async ({ mediaRoot }) => {
 				const mediaRoots = getMediaRoots()
+				const existingFeeds = getAllFeeds()
 
 				if (mediaRoot) {
 					const mr = mediaRoots.find((m) => m.name === mediaRoot)
@@ -239,7 +360,12 @@ Please ask me some questions to understand what I'm trying to create, then help 
 									role: 'user',
 									content: {
 										type: 'text',
-										text: `Media root "${mediaRoot}" not found. Available roots: ${mediaRoots.map((m) => m.name).join(', ')}`,
+										text: `Media root "${mediaRoot}" not found.
+
+## Available Roots
+${mediaRoots.map((m) => `- **${m.name}**: \`${m.path}\``).join('\n')}
+
+Please choose one of the available media roots.`,
 									},
 								},
 							],
@@ -252,15 +378,25 @@ Please ask me some questions to understand what I'm trying to create, then help 
 								role: 'user',
 								content: {
 									type: 'text',
-									text: `Please help me organize the media in "${mediaRoot}" (${mr.path}).
+									text: `# Organize Media: ${mediaRoot}
 
-Steps:
-1. Use browse_media to explore the directory structure
-2. Identify logical groupings (by series, author, genre, etc.)
-3. Suggest feeds to create for each grouping
-4. Create the feeds with appropriate names and descriptions
+Help me organize the media in **${mediaRoot}** (\`${mr.path}\`).
 
-Start by browsing the directory to see what's there.`,
+## Existing Feeds (${existingFeeds.length})
+${
+	existingFeeds.length === 0
+		? '*No feeds created yet.*'
+		: existingFeeds.map((f) => `- **${f.name}** (${f.type})`).join('\n')
+}
+
+## Your Task
+
+1. **Explore**: Use \`browse_media\` to explore the directory structure
+2. **Identify**: Find logical groupings (by series, author, genre, etc.)
+3. **Suggest**: Propose feeds for each grouping
+4. **Create**: Help me create feeds with good names and descriptions
+
+Start by browsing the root directory to see what's available.`,
 								},
 							},
 						],
@@ -273,18 +409,32 @@ Start by browsing the directory to see what's there.`,
 							role: 'user',
 							content: {
 								type: 'text',
-								text: `I want to organize my media library into feeds.
+								text: `# Organize My Media Library
 
-Available media roots:
-${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
+Help me organize my media files into well-structured feeds.
 
-Please help me:
-1. Choose which directory to start with
-2. Explore its contents
-3. Suggest a good organization structure
-4. Create feeds for different content groupings
+## Available Media Roots
+${
+	mediaRoots.length === 0
+		? '*No media directories configured.*'
+		: mediaRoots.map((mr) => `- **${mr.name}**: \`${mr.path}\``).join('\n')
+}
 
-Which directory should we start with?`,
+## Existing Feeds (${existingFeeds.length})
+${
+	existingFeeds.length === 0
+		? '*No feeds created yet.*'
+		: existingFeeds.map((f) => `- **${f.name}** (${f.type})`).join('\n')
+}
+
+## Your Task
+
+1. **Choose**: Which media root should we start with?
+2. **Explore**: Browse its contents with \`browse_media\`
+3. **Analyze**: Identify logical groupings
+4. **Create**: Set up feeds for each group
+
+Which directory would you like to organize?`,
 							},
 						},
 					],

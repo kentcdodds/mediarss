@@ -16,6 +16,7 @@ import {
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { serverMetadata } from './metadata.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
 
@@ -61,11 +62,12 @@ export async function initializeResources(
 	// Read resources (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
 		// All feeds resource
-		server.resource(
+		server.registerResource(
 			'feeds',
 			'media://feeds',
 			{
-				description: 'All available podcast and media feeds',
+				description:
+					'List of all podcast and media feeds. Each feed has an id, name, type (directory or curated), and creation date.',
 				mimeType: 'application/json',
 			},
 			async (uri) => {
@@ -77,13 +79,20 @@ export async function initializeResources(
 							uri: uri.toString(),
 							mimeType: 'application/json',
 							text: JSON.stringify(
-								feeds.map((feed) => ({
-									id: feed.id,
-									name: feed.name,
-									description: feed.description,
-									type: feed.type,
-									createdAt: feed.createdAt,
-								})),
+								{
+									feeds: feeds.map((feed) => ({
+										id: feed.id,
+										name: feed.name,
+										description: feed.description,
+										type: feed.type,
+										createdAt: feed.createdAt,
+									})),
+									total: feeds.length,
+									directoryCount: feeds.filter((f) => f.type === 'directory')
+										.length,
+									curatedCount: feeds.filter((f) => f.type === 'curated')
+										.length,
+								},
 								null,
 								2,
 							),
@@ -94,7 +103,7 @@ export async function initializeResources(
 		)
 
 		// Individual feed resource
-		server.resource(
+		server.registerResource(
 			'feed',
 			new ResourceTemplate('media://feeds/{id}', {
 				list: async () => {
@@ -104,13 +113,16 @@ export async function initializeResources(
 							name: feed.name,
 							uri: `media://feeds/${feed.id}`,
 							mimeType: 'application/json',
-							description: feed.description || `Feed ID: ${feed.id}`,
+							description:
+								feed.description ||
+								`${feed.type === 'directory' ? 'Directory' : 'Curated'} feed — ID: ${feed.id}`,
 						})),
 					}
 				},
 			}),
 			{
-				description: 'A specific media feed with its items',
+				description:
+					'A specific media feed with its configuration and items (for curated feeds).',
 				mimeType: 'application/json',
 			},
 			async (uri, { id }) => {
@@ -118,7 +130,9 @@ export async function initializeResources(
 				const feed = getFeedById(feedId)
 
 				if (!feed) {
-					throw new Error(`Feed with ID ${id} not found`)
+					throw new Error(
+						`Feed with ID "${feedId}" not found. Use media://feeds to list all feeds.`,
+					)
 				}
 
 				const items =
@@ -131,18 +145,24 @@ export async function initializeResources(
 							mimeType: 'application/json',
 							text: JSON.stringify(
 								{
-									id: feed.id,
-									name: feed.name,
-									description: feed.description,
-									type: feed.type,
-									createdAt: feed.createdAt,
-									items: items.map((item: FeedItem) => ({
-										id: item.id,
-										mediaRoot: item.mediaRoot,
-										relativePath: item.relativePath,
-										position: item.position,
-										addedAt: item.addedAt,
-									})),
+									feed: {
+										id: feed.id,
+										name: feed.name,
+										description: feed.description,
+										type: feed.type,
+										createdAt: feed.createdAt,
+									},
+									items:
+										feed.type === 'curated'
+											? items.map((item: FeedItem) => ({
+													id: item.id,
+													mediaRoot: item.mediaRoot,
+													relativePath: item.relativePath,
+													position: item.position,
+													addedAt: item.addedAt,
+												}))
+											: 'Items are dynamically loaded from directory',
+									itemCount: feed.type === 'curated' ? items.length : null,
 								},
 								null,
 								2,
@@ -154,11 +174,12 @@ export async function initializeResources(
 		)
 
 		// Media directories resource
-		server.resource(
+		server.registerResource(
 			'media-directories',
 			'media://directories',
 			{
-				description: 'Configured media directories',
+				description:
+					'Configured media directories that can be browsed and used to create feeds. Each has a name and filesystem path.',
 				mimeType: 'application/json',
 			},
 			async (uri) => {
@@ -170,10 +191,15 @@ export async function initializeResources(
 							uri: uri.toString(),
 							mimeType: 'application/json',
 							text: JSON.stringify(
-								mediaRoots.map((mr) => ({
-									name: mr.name,
-									path: mr.path,
-								})),
+								{
+									directories: mediaRoots.map((mr) => ({
+										name: mr.name,
+										path: mr.path,
+									})),
+									total: mediaRoots.length,
+									usage:
+										'Use the "name" value with browse_media tool to explore contents.',
+								},
 								null,
 								2,
 							),
@@ -184,11 +210,12 @@ export async function initializeResources(
 		)
 
 		// Server info resource
-		server.resource(
+		server.registerResource(
 			'server-info',
 			'media://server',
 			{
-				description: 'Server information and statistics',
+				description:
+					'Server information including version, statistics, and configuration overview.',
 				mimeType: 'application/json',
 			},
 			async (uri) => {
@@ -202,9 +229,12 @@ export async function initializeResources(
 							mimeType: 'application/json',
 							text: JSON.stringify(
 								{
-									server: 'media-server',
-									version: '1.0.0',
-									stats: {
+									server: {
+										name: serverMetadata.name,
+										version: serverMetadata.version,
+										title: serverMetadata.title,
+									},
+									statistics: {
 										totalFeeds: feeds.length,
 										directoryFeeds: feeds.filter((f) => f.type === 'directory')
 											.length,
@@ -216,6 +246,33 @@ export async function initializeResources(
 										name: mr.name,
 										path: mr.path,
 									})),
+									capabilities: {
+										tools: [
+											'list_feeds',
+											'get_feed',
+											'list_media_directories',
+											'browse_media',
+											'get_feed_tokens',
+											'create_directory_feed',
+											'create_curated_feed',
+											'update_feed',
+											'delete_feed',
+											'create_feed_token',
+											'delete_feed_token',
+										],
+										prompts: [
+											'summarize_library',
+											'explore_feed',
+											'create_feed_wizard',
+											'organize_media',
+										],
+										resources: [
+											'media://feeds',
+											'media://feeds/{id}',
+											'media://directories',
+											'media://server',
+										],
+									},
 								},
 								null,
 								2,

@@ -16,6 +16,7 @@ import { sql } from '#app/db/sql.ts'
 import {
 	clearKeyCache,
 	clearMetadataCache,
+	clientSupportsGrantType,
 	computeS256Challenge,
 	createClient,
 	deleteClient,
@@ -175,6 +176,57 @@ describe('isValidClientRedirectUri', () => {
 		).toBe(true)
 		expect(
 			isValidClientRedirectUri(resolved!, 'http://evil.com/callback'),
+		).toBe(false)
+	})
+})
+
+describe('clientSupportsGrantType', () => {
+	test('returns true when grant type is in client grantTypes', async () => {
+		const staticClient = createTestClient('Grant Test ' + uniqueId(), [
+			'http://localhost:3000/callback',
+		])
+
+		const resolved = await resolveClient(staticClient.id)
+		expect(resolved).not.toBeNull()
+
+		// Static clients default to authorization_code grant type
+		expect(clientSupportsGrantType(resolved!, 'authorization_code')).toBe(true)
+	})
+
+	test('returns false when grant type is not in client grantTypes', async () => {
+		const staticClient = createTestClient('Grant Test 2 ' + uniqueId(), [
+			'http://localhost:3000/callback',
+		])
+
+		const resolved = await resolveClient(staticClient.id)
+		expect(resolved).not.toBeNull()
+
+		// Static clients don't support client_credentials
+		expect(clientSupportsGrantType(resolved!, 'client_credentials')).toBe(false)
+		expect(clientSupportsGrantType(resolved!, 'refresh_token')).toBe(false)
+	})
+
+	test('validates against custom grant types array', () => {
+		// Create a mock ResolvedClient with specific grant types
+		const clientWithOnlyClientCredentials = {
+			id: 'test-client',
+			name: 'Test Client',
+			redirectUris: ['http://localhost:3000/callback'],
+			grantTypes: ['client_credentials'],
+			isMetadataClient: true,
+		}
+
+		expect(
+			clientSupportsGrantType(
+				clientWithOnlyClientCredentials,
+				'client_credentials',
+			),
+		).toBe(true)
+		expect(
+			clientSupportsGrantType(
+				clientWithOnlyClientCredentials,
+				'authorization_code',
+			),
 		).toBe(false)
 	})
 })

@@ -1,6 +1,7 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
 import {
+	clientSupportsGrantType,
 	consumeAuthorizationCode,
 	generateAccessToken,
 	getValidAuthorizationCode,
@@ -107,6 +108,14 @@ async function handlePost(context: RequestContext): Promise<Response> {
 	const client = await resolveClient(tokenRequest.client_id)
 	if (!client) {
 		return errorResponse('invalid_client', 'Unknown client.', 401)
+	}
+
+	// Validate client supports authorization_code grant type
+	if (!clientSupportsGrantType(client, 'authorization_code')) {
+		return errorResponse(
+			'unauthorized_client',
+			'This client is not authorized to use the authorization_code grant type.',
+		)
 	}
 
 	// Validate code

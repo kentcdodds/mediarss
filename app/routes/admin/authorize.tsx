@@ -4,6 +4,7 @@ import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
 import {
+	clientSupportsGrantType,
 	createAuthorizationCode,
 	isValidClientRedirectUri,
 	isValidCodeChallenge,
@@ -140,6 +141,14 @@ async function handleGet(context: RequestContext): Promise<Response> {
 		)
 	}
 
+	// Validate client supports authorization_code grant type
+	if (!clientSupportsGrantType(client, 'authorization_code')) {
+		return renderError(
+			'Unsupported Grant Type',
+			'This client does not support the authorization_code grant type.',
+		)
+	}
+
 	// Validate redirect_uri against the client's allowed URIs
 	if (
 		!params.redirect_uri ||
@@ -200,6 +209,14 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		return renderError(
 			'Invalid Client',
 			'The specified client_id is not registered or could not be resolved.',
+		)
+	}
+
+	// Validate client supports authorization_code grant type
+	if (!clientSupportsGrantType(client, 'authorization_code')) {
+		return renderError(
+			'Unsupported Grant Type',
+			'This client does not support the authorization_code grant type.',
 		)
 	}
 

@@ -396,6 +396,16 @@ export function isValidClientRedirectUri(
 }
 
 /**
+ * Check if a client supports a specific grant type.
+ */
+export function clientSupportsGrantType(
+	client: ResolvedClient,
+	grantType: string,
+): boolean {
+	return client.grantTypes.includes(grantType)
+}
+
+/**
  * Clear the in-memory metadata cache.
  * Useful for testing.
  */

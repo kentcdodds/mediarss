@@ -1530,6 +1530,8 @@ function ManageAccessModal({
 		<Modal
 			title={item.title}
 			subtitle={item.author ?? undefined}
+			description="Manage which feeds include this media file."
+			headerImage={getArtworkUrl(item)}
 			size="md"
 			onClose={onCancel}
 			footer={
@@ -1543,41 +1545,6 @@ function ManageAccessModal({
 				</ModalFooter>
 			}
 		>
-			{/* Media info header */}
-			<div
-				css={{
-					display: 'flex',
-					gap: spacing.md,
-					marginBottom: spacing.lg,
-					paddingBottom: spacing.lg,
-					borderBottom: `1px solid ${colors.border}`,
-				}}
-			>
-				<img
-					src={getArtworkUrl(item)}
-					alt=""
-					css={{
-						width: '64px',
-						height: '64px',
-						borderRadius: radius.md,
-						objectFit: 'cover',
-						backgroundColor: colors.background,
-						flexShrink: 0,
-					}}
-				/>
-				<div css={{ minWidth: 0, alignSelf: 'center' }}>
-					<p
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-							margin: 0,
-						}}
-					>
-						Manage which feeds include this media file.
-					</p>
-				</div>
-			</div>
-
 			{/* Curated feeds with toggles */}
 			{curatedFeeds.length > 0 && (
 				<ModalSection title="Curated Feeds">

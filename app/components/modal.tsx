@@ -24,6 +24,16 @@ type ModalProps = {
 	subtitle?: string
 
 	/**
+	 * Optional smaller description text shown below the subtitle.
+	 */
+	description?: string
+
+	/**
+	 * Optional image URL to show in the header (top left corner).
+	 */
+	headerImage?: string
+
+	/**
 	 * The size of the modal. Affects max-width.
 	 * - sm: 400px (confirmations, simple prompts)
 	 * - md: 480px (forms, details)
@@ -149,6 +159,8 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 		const {
 			title,
 			subtitle,
+			description,
+			headerImage,
 			size = 'md',
 			onClose,
 			showHeaderBorder = true,
@@ -228,12 +240,14 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 						border: `1px solid ${colors.border}`,
 						maxWidth,
 						width: '100%',
-						maxHeight: '80vh',
+						minHeight: '400px',
+						maxHeight: '85vh',
 						display: 'flex',
 						flexDirection: 'column',
 						boxShadow: shadows.lg,
 						[mq.mobile]: {
 							maxWidth: 'none',
+							minHeight: 'none',
 							maxHeight: 'none',
 							height: '100%',
 							borderRadius: 0,
@@ -244,12 +258,14 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 					{/* Header */}
 					<div
 						css={{
-							padding: spacing.xl,
-							paddingBottom: showHeaderBorder ? spacing.lg : spacing.md,
+							padding: spacing.lg,
+							paddingBottom: showHeaderBorder ? spacing.md : spacing.sm,
 							borderBottom: showHeaderBorder
 								? `1px solid ${colors.border}`
 								: 'none',
 							flexShrink: 0,
+							display: 'flex',
+							gap: spacing.md,
 						}}
 					>
 						{/* Close button */}
@@ -259,8 +275,8 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 							aria-label="Close modal"
 							css={{
 								position: 'absolute',
-								top: spacing.md,
-								right: spacing.md,
+								top: spacing.sm,
+								right: spacing.sm,
 								width: '32px',
 								height: '32px',
 								display: 'flex',
@@ -301,43 +317,76 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 							</svg>
 						</button>
 
-						<h2
-							id={titleId}
-							css={{
-								fontSize: typography.fontSize.lg,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-								paddingRight: spacing.xl,
-							}}
-						>
-							{title}
-						</h2>
-
-						{subtitle && (
-							<p
-								id={subtitleId}
+						{headerImage && (
+							<img
+								src={headerImage}
+								alt=""
 								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-									margin: `${spacing.xs} 0 0 0`,
+									width: '48px',
+									height: '48px',
+									borderRadius: radius.md,
+									objectFit: 'cover',
+									backgroundColor: colors.background,
+									flexShrink: 0,
+								}}
+							/>
+						)}
+
+						<div css={{ minWidth: 0, flex: 1 }}>
+							<h2
+								id={titleId}
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: 0,
 									paddingRight: spacing.xl,
+									whiteSpace: 'nowrap',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
 								}}
 							>
-								{subtitle}
-							</p>
-						)}
+								{title}
+							</h2>
+
+							{subtitle && (
+								<p
+									id={subtitleId}
+									css={{
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+										margin: `2px 0 0 0`,
+										paddingRight: spacing.xl,
+									}}
+								>
+									{subtitle}
+								</p>
+							)}
+
+							{description && (
+								<p
+									css={{
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										margin: `4px 0 0 0`,
+										paddingRight: spacing.xl,
+									}}
+								>
+									{description}
+								</p>
+							)}
+						</div>
 					</div>
 
 					{/* Body */}
 					<div
 						css={{
 							flex: 1,
-							minHeight: 0,
+							minHeight: '250px',
 							overflowY: 'auto',
-							padding: spacing.xl,
-							paddingTop: showHeaderBorder ? spacing.lg : spacing.sm,
-							paddingBottom: footer ? spacing.md : spacing.xl,
+							padding: spacing.lg,
+							paddingTop: showHeaderBorder ? spacing.md : spacing.sm,
+							paddingBottom: footer ? spacing.sm : spacing.lg,
 						}}
 					>
 						{children}
@@ -347,8 +396,8 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 					{footer && (
 						<div
 							css={{
-								padding: spacing.xl,
-								paddingTop: spacing.md,
+								padding: spacing.md,
+								paddingTop: spacing.sm,
 								borderTop: `1px solid ${colors.border}`,
 								flexShrink: 0,
 							}}
@@ -620,7 +669,7 @@ type ModalListProps = {
 /**
  * A scrollable list container for modal content.
  */
-export function ModalList({ children, maxHeight = '300px' }: ModalListProps) {
+export function ModalList({ children, maxHeight = '60vh' }: ModalListProps) {
 	return (
 		<div
 			css={{

@@ -271,6 +271,11 @@ describe('OAuth full flow with static client', () => {
 		resetRateLimiters()
 	})
 
+	// Reset rate limiters before each test to prevent accumulation
+	beforeEach(() => {
+		resetRateLimiters()
+	})
+
 	test('Server metadata endpoint returns correct data', async () => {
 		const response = await fetch(
 			`${baseUrl}/.well-known/oauth-authorization-server`,

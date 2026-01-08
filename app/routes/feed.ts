@@ -8,6 +8,7 @@ import {
 } from '#app/helpers/feed-items.ts'
 import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import type { MediaFile } from '#app/helpers/media.ts'
+import { getOrigin } from '#app/helpers/origin.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
 
 /**
@@ -15,7 +16,7 @@ import { generateRssFeed } from '#app/helpers/rss.ts'
  */
 function getBaseUrl(request: Request): string {
 	const url = new URL(request.url)
-	return `${url.protocol}//${url.host}`
+	return getOrigin(request, url)
 }
 
 export default {

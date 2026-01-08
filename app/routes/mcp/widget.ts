@@ -17,6 +17,7 @@ import type routes from '#app/config/routes.ts'
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
+import { getOrigin } from '#app/helpers/origin.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import {
 	generateMediaWidgetHtml,
@@ -80,9 +81,8 @@ export default {
 			return new Response('File not found or not a media file', { status: 404 })
 		}
 
-		// Determine base URL from the request
-		// Note: context.url.protocol already includes the trailing colon (e.g., "https:")
-		const baseUrl = `${context.url.protocol}//${context.url.host}`
+		// Determine base URL from the request (respects X-Forwarded-Proto for reverse proxies)
+		const baseUrl = getOrigin(context.request, context.url)
 
 		// Build token-based URLs for artwork and media streaming
 		const encodedPath = encodeRelativePath(`${rootName}/${relativePath}`)

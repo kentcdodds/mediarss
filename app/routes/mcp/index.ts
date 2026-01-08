@@ -6,6 +6,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { getOrigin } from '#app/helpers/origin.ts'
 import {
 	type AuthInfo,
 	getAuthExtra,
@@ -80,7 +81,7 @@ async function isInitializationRequest(request: Request): Promise<boolean> {
  */
 async function handleRequest(context: RequestContext): Promise<Response> {
 	const { request } = context
-	const issuer = `${context.url.protocol}//${context.url.host}`
+	const issuer = getOrigin(request, context.url)
 
 	// Validate authentication
 	const authInfo = await resolveAuthInfo(

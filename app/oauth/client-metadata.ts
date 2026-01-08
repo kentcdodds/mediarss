@@ -246,11 +246,19 @@ async function fetchMetadataDocument(
 }
 
 /**
- * Get cached metadata from database.
+ * Cached metadata with its expiration time.
+ */
+interface CachedMetadataWithExpiry {
+	metadata: ClientMetadataDocument
+	expiresAt: number // Unix timestamp in seconds
+}
+
+/**
+ * Get cached metadata from database, including expiration time.
  */
 function getCachedMetadataFromDb(
 	clientId: string,
-): ClientMetadataDocument | null {
+): CachedMetadataWithExpiry | null {
 	const now = Math.floor(Date.now() / 1000)
 
 	const row = db
@@ -264,7 +272,11 @@ function getCachedMetadataFromDb(
 	}
 
 	try {
-		return JSON.parse(row.metadata_json) as ClientMetadataDocument
+		const metadata = JSON.parse(row.metadata_json) as ClientMetadataDocument
+		return {
+			metadata,
+			expiresAt: row.expires_at,
+		}
 	} catch {
 		console.error('Failed to parse cached metadata:', row.metadata_json)
 		return null
@@ -309,10 +321,11 @@ export async function getClientMetadata(
 	// Check database cache
 	const dbCached = getCachedMetadataFromDb(clientIdUrl)
 	if (dbCached) {
-		// Store in memory cache too
-		const expiresAt = now + DEFAULT_CACHE_DURATION_SECONDS * 1000
-		metadataCache.set(clientIdUrl, { metadata: dbCached, expiresAt })
-		return dbCached
+		// Store in memory cache using the DB's actual expiration time
+		// Convert from Unix seconds to milliseconds
+		const expiresAt = dbCached.expiresAt * 1000
+		metadataCache.set(clientIdUrl, { metadata: dbCached.metadata, expiresAt })
+		return dbCached.metadata
 	}
 
 	// Fetch fresh metadata

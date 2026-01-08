@@ -120,9 +120,20 @@ annotations: {
 | `idempotentHint` | Same input always produces same result |
 | `openWorldHint` | Accesses external APIs/resources |
 
-**Note:** The `server.tool()` API in the MCP SDK we use doesn't support passing both custom params schema AND annotations simultaneously. When using the 4-argument form `tool(name, description, schema, handler)`, annotations cannot be included. This is a limitation of the current SDK API signature.
+**Our Current State:** ✅ Annotations implemented using `server.registerTool()` API
 
-**Our Current State:** Annotations not used due to SDK API limitation
+We use the newer `registerTool` API which supports both input schemas and annotations:
+```typescript
+server.registerTool('list_feeds', {
+  title: 'List Feeds',
+  description: '...',
+  inputSchema: { /* zod schema */ },
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+  },
+}, handler)
+```
 
 ---
 
@@ -382,7 +393,7 @@ Please ask me some questions to understand what I'm trying to create, then help 
 ### High Priority
 1. ✅ Add comprehensive server instructions
 2. ✅ Enhance tool descriptions with examples, inputs, returns, next steps
-3. ⚠️ Tool annotations (readOnlyHint, destructiveHint, etc.) — Not possible with current SDK API
+3. ✅ Tool annotations (readOnlyHint, destructiveHint, etc.) — Using `registerTool` API
 4. ✅ Improve response formatting (human-readable + structured)
 
 ### Medium Priority

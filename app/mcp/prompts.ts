@@ -68,10 +68,12 @@ export async function initializePrompts(
 	// Read prompts (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
 		// Summarize library prompt
-		server.prompt(
+		server.registerPrompt(
 			promptsMetadata.summarize_library.name,
-			promptsMetadata.summarize_library.description,
-			{},
+			{
+				title: promptsMetadata.summarize_library.title,
+				description: promptsMetadata.summarize_library.description,
+			},
 			async () => {
 				const feeds = getAllFeeds()
 				const mediaRoots = getMediaRoots()
@@ -130,11 +132,14 @@ You can use \`browse_media\` to explore the media directories and \`get_feed\` t
 		)
 
 		// Explore feed prompt
-		server.prompt(
+		server.registerPrompt(
 			promptsMetadata.explore_feed.name,
-			promptsMetadata.explore_feed.description,
 			{
-				feedId: z.string().describe('The feed ID to explore'),
+				title: promptsMetadata.explore_feed.title,
+				description: promptsMetadata.explore_feed.description,
+				argsSchema: {
+					feedId: z.string().describe('The feed ID to explore'),
+				},
 			},
 			async ({ feedId }) => {
 				const feed = getFeedById(feedId)
@@ -225,14 +230,17 @@ Use \`browse_media\` to explore the source directories if needed.`,
 	// Write prompts (require mcp:write scope)
 	if (hasScope(authInfo, 'mcp:write')) {
 		// Create feed wizard prompt
-		server.prompt(
+		server.registerPrompt(
 			promptsMetadata.create_feed_wizard.name,
-			promptsMetadata.create_feed_wizard.description,
 			{
-				type: z
-					.enum(['directory', 'curated'])
-					.optional()
-					.describe('Type of feed to create'),
+				title: promptsMetadata.create_feed_wizard.title,
+				description: promptsMetadata.create_feed_wizard.description,
+				argsSchema: {
+					type: z
+						.enum(['directory', 'curated'])
+						.optional()
+						.describe('Type of feed to create'),
+				},
 			},
 			async ({ type }) => {
 				const mediaRoots = getMediaRoots()
@@ -327,11 +335,17 @@ What are you trying to create?`
 		)
 
 		// Organize media prompt
-		server.prompt(
+		server.registerPrompt(
 			promptsMetadata.organize_media.name,
-			promptsMetadata.organize_media.description,
 			{
-				mediaRoot: z.string().optional().describe('The media root to organize'),
+				title: promptsMetadata.organize_media.title,
+				description: promptsMetadata.organize_media.description,
+				argsSchema: {
+					mediaRoot: z
+						.string()
+						.optional()
+						.describe('The media root to organize'),
+				},
 			},
 			async ({ mediaRoot }) => {
 				const mediaRoots = getMediaRoots()

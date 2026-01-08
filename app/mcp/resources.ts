@@ -62,7 +62,7 @@ export async function initializeResources(
 	// Read resources (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
 		// All feeds resource
-		server.resource(
+		server.registerResource(
 			'feeds',
 			'media://feeds',
 			{
@@ -103,7 +103,7 @@ export async function initializeResources(
 		)
 
 		// Individual feed resource
-		server.resource(
+		server.registerResource(
 			'feed',
 			new ResourceTemplate('media://feeds/{id}', {
 				list: async () => {
@@ -174,7 +174,7 @@ export async function initializeResources(
 		)
 
 		// Media directories resource
-		server.resource(
+		server.registerResource(
 			'media-directories',
 			'media://directories',
 			{
@@ -210,7 +210,7 @@ export async function initializeResources(
 		)
 
 		// Server info resource
-		server.resource(
+		server.registerResource(
 			'server-info',
 			'media://server',
 			{

@@ -105,10 +105,16 @@ export async function initializeTools(
 	// Read-only tools (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
 		// List all feeds
-		server.tool(
+		server.registerTool(
 			toolsMetadata.list_feeds.name,
-			toolsMetadata.list_feeds.description,
-			{},
+			{
+				title: toolsMetadata.list_feeds.title,
+				description: toolsMetadata.list_feeds.description,
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
+			},
 			async () => {
 				const feeds = getAllFeeds()
 
@@ -169,11 +175,18 @@ export async function initializeTools(
 		)
 
 		// Get feed details
-		server.tool(
+		server.registerTool(
 			toolsMetadata.get_feed.name,
-			toolsMetadata.get_feed.description,
 			{
-				id: z.string().describe('The feed ID (from `list_feeds`)'),
+				title: toolsMetadata.get_feed.title,
+				description: toolsMetadata.get_feed.description,
+				inputSchema: {
+					id: z.string().describe('The feed ID (from `list_feeds`)'),
+				},
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
 			},
 			async ({ id }) => {
 				const feed = getFeedById(id)
@@ -254,10 +267,16 @@ export async function initializeTools(
 		)
 
 		// List media directories
-		server.tool(
+		server.registerTool(
 			toolsMetadata.list_media_directories.name,
-			toolsMetadata.list_media_directories.description,
-			{},
+			{
+				title: toolsMetadata.list_media_directories.title,
+				description: toolsMetadata.list_media_directories.description,
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
+			},
 			async () => {
 				const mediaRoots = getMediaRoots()
 
@@ -294,17 +313,24 @@ export async function initializeTools(
 		)
 
 		// Browse media directory
-		server.tool(
+		server.registerTool(
 			toolsMetadata.browse_media.name,
-			toolsMetadata.browse_media.description,
 			{
-				mediaRoot: z
-					.string()
-					.describe('Name of the media root (from `list_media_directories`)'),
-				subPath: z
-					.string()
-					.optional()
-					.describe('Subdirectory path to browse (default: root)'),
+				title: toolsMetadata.browse_media.title,
+				description: toolsMetadata.browse_media.description,
+				inputSchema: {
+					mediaRoot: z
+						.string()
+						.describe('Name of the media root (from `list_media_directories`)'),
+					subPath: z
+						.string()
+						.optional()
+						.describe('Subdirectory path to browse (default: root)'),
+				},
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
 			},
 			async ({ mediaRoot, subPath }) => {
 				const mediaRoots = getMediaRoots()
@@ -440,11 +466,18 @@ export async function initializeTools(
 		)
 
 		// Get feed tokens
-		server.tool(
+		server.registerTool(
 			toolsMetadata.get_feed_tokens.name,
-			toolsMetadata.get_feed_tokens.description,
 			{
-				feedId: z.string().describe('The feed ID'),
+				title: toolsMetadata.get_feed_tokens.title,
+				description: toolsMetadata.get_feed_tokens.description,
+				inputSchema: {
+					feedId: z.string().describe('The feed ID'),
+				},
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
 			},
 			async ({ feedId }) => {
 				const feed = getFeedById(feedId)
@@ -513,21 +546,28 @@ export async function initializeTools(
 	// Write tools (require mcp:write scope)
 	if (hasScope(authInfo, 'mcp:write')) {
 		// Create directory feed
-		server.tool(
+		server.registerTool(
 			toolsMetadata.create_directory_feed.name,
-			toolsMetadata.create_directory_feed.description,
 			{
-				name: z.string().describe('Display name for the feed'),
-				description: z
-					.string()
-					.optional()
-					.describe('Description shown in podcast apps'),
-				mediaRoot: z.string().describe('Name from `list_media_directories`'),
-				directoryPath: z
-					.string()
-					.describe(
-						'Path within the media root (e.g., "Brandon Sanderson/Mistborn")',
-					),
+				title: toolsMetadata.create_directory_feed.title,
+				description: toolsMetadata.create_directory_feed.description,
+				inputSchema: {
+					name: z.string().describe('Display name for the feed'),
+					description: z
+						.string()
+						.optional()
+						.describe('Description shown in podcast apps'),
+					mediaRoot: z.string().describe('Name from `list_media_directories`'),
+					directoryPath: z
+						.string()
+						.describe(
+							'Path within the media root (e.g., "Brandon Sanderson/Mistborn")',
+						),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+				},
 			},
 			async ({ name, description, mediaRoot, directoryPath }) => {
 				const mediaRoots = getMediaRoots()
@@ -622,15 +662,22 @@ export async function initializeTools(
 		)
 
 		// Create curated feed
-		server.tool(
+		server.registerTool(
 			toolsMetadata.create_curated_feed.name,
-			toolsMetadata.create_curated_feed.description,
 			{
-				name: z.string().describe('Display name for the feed'),
-				description: z
-					.string()
-					.optional()
-					.describe('Description shown in podcast apps'),
+				title: toolsMetadata.create_curated_feed.title,
+				description: toolsMetadata.create_curated_feed.description,
+				inputSchema: {
+					name: z.string().describe('Display name for the feed'),
+					description: z
+						.string()
+						.optional()
+						.describe('Description shown in podcast apps'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+				},
 			},
 			async ({ name, description }) => {
 				try {
@@ -688,16 +735,26 @@ export async function initializeTools(
 		)
 
 		// Update feed
-		server.tool(
+		server.registerTool(
 			toolsMetadata.update_feed.name,
-			toolsMetadata.update_feed.description,
 			{
-				id: z.string().describe('The feed ID'),
-				name: z.string().optional().describe('New name (omit to keep current)'),
-				description: z
-					.string()
-					.optional()
-					.describe('New description (omit to keep current)'),
+				title: toolsMetadata.update_feed.title,
+				description: toolsMetadata.update_feed.description,
+				inputSchema: {
+					id: z.string().describe('The feed ID'),
+					name: z
+						.string()
+						.optional()
+						.describe('New name (omit to keep current)'),
+					description: z
+						.string()
+						.optional()
+						.describe('New description (omit to keep current)'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+				},
 			},
 			async ({ id, name, description }) => {
 				const feed = getFeedById(id)
@@ -772,11 +829,18 @@ export async function initializeTools(
 		)
 
 		// Delete feed
-		server.tool(
+		server.registerTool(
 			toolsMetadata.delete_feed.name,
-			toolsMetadata.delete_feed.description,
 			{
-				id: z.string().describe('The feed ID to delete'),
+				title: toolsMetadata.delete_feed.title,
+				description: toolsMetadata.delete_feed.description,
+				inputSchema: {
+					id: z.string().describe('The feed ID to delete'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: true,
+				},
 			},
 			async ({ id }) => {
 				const feed = getFeedById(id)
@@ -833,11 +897,18 @@ export async function initializeTools(
 		)
 
 		// Create feed token
-		server.tool(
+		server.registerTool(
 			toolsMetadata.create_feed_token.name,
-			toolsMetadata.create_feed_token.description,
 			{
-				feedId: z.string().describe('The feed ID'),
+				title: toolsMetadata.create_feed_token.title,
+				description: toolsMetadata.create_feed_token.description,
+				inputSchema: {
+					feedId: z.string().describe('The feed ID'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+				},
 			},
 			async ({ feedId }) => {
 				const feed = getFeedById(feedId)
@@ -897,11 +968,18 @@ export async function initializeTools(
 		)
 
 		// Delete feed token
-		server.tool(
+		server.registerTool(
 			toolsMetadata.delete_feed_token.name,
-			toolsMetadata.delete_feed_token.description,
 			{
-				token: z.string().describe('The token to delete'),
+				title: toolsMetadata.delete_feed_token.title,
+				description: toolsMetadata.delete_feed_token.description,
+				inputSchema: {
+					token: z.string().describe('The token to delete'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: true,
+				},
 			},
 			async ({ token }) => {
 				try {

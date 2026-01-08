@@ -1,7 +1,14 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from 'bun:test'
 import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
@@ -225,6 +232,11 @@ describe('OAuth full flow integration', () => {
 		// Clear key cache for clean state
 		clearKeyCache()
 		// Reset rate limiters for clean state
+		resetRateLimiters()
+	})
+
+	// Reset rate limiters before each test to prevent accumulation
+	beforeEach(() => {
 		resetRateLimiters()
 	})
 

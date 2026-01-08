@@ -8,6 +8,9 @@ export default route({
 	oauthToken: '/oauth/token',
 	oauthJwks: '/oauth/jwks',
 	oauthServerMetadata: '/.well-known/oauth-authorization-server',
+	// MCP routes
+	mcp: '/mcp',
+	mcpProtectedResource: '/.well-known/oauth-protected-resource/mcp',
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',

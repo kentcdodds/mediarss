@@ -33,6 +33,7 @@
   "dependencies": {
     "@epic-web/cachified": "^5.6.0",
     "@epic-web/invariant": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@remix-run/component": "^0.2.1",
     "@remix-run/fetch-router": "^0.14.0",
     "@remix-run/html-template": "^0.3.0",

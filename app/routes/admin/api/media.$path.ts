@@ -35,6 +35,19 @@ type MediaDetailResponse = {
 		genres: string[] | null
 		copyright: string | null
 		fileModifiedAt: number
+		// Additional metadata fields
+		album: string | null
+		albumArtist: string | null
+		composer: string | null
+		publisher: string | null
+		discNumber: number | null
+		totalDiscs: number | null
+		totalTracks: number | null
+		language: string | null
+		series: string | null
+		seriesPosition: string | null
+		encodedBy: string | null
+		subtitle: string | null
 	}
 	assignments: FeedAssignment[]
 	curatedFeeds: Array<{ id: string; name: string; imageUrl: string | null }>
@@ -181,6 +194,19 @@ export default {
 				genres: metadata.genres,
 				copyright: metadata.copyright,
 				fileModifiedAt: metadata.fileModifiedAt,
+				// Additional metadata fields
+				album: metadata.album,
+				albumArtist: metadata.albumArtist,
+				composer: metadata.composer,
+				publisher: metadata.publisher,
+				discNumber: metadata.discNumber,
+				totalDiscs: metadata.totalDiscs,
+				totalTracks: metadata.totalTracks,
+				language: metadata.language,
+				series: metadata.series,
+				seriesPosition: metadata.seriesPosition,
+				encodedBy: metadata.encodedBy,
+				subtitle: metadata.subtitle,
 			},
 			assignments,
 			curatedFeeds: curatedFeeds.map((f) => ({

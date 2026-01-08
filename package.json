@@ -44,6 +44,7 @@
     "close-with-grace": "^2.4.0",
     "fast-sort": "^3.4.1",
     "get-port": "^7.1.0",
+    "jose": "^6.1.3",
     "match-sorter": "^8.2.0",
     "music-metadata": "^11.10.4",
     "p-limit": "^7.2.0",

@@ -4,9 +4,14 @@ export default route({
 	feed: '/feed/:token',
 	media: '/media/:token/*path',
 	art: '/art/:token/*path',
+	// OAuth routes (public)
+	oauthToken: '/oauth/token',
+	oauthJwks: '/oauth/jwks',
+	oauthServerMetadata: '/.well-known/oauth-authorization-server',
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',
+	adminAuthorize: '/admin/authorize',
 	admin: '/admin',
 	adminCatchAll: '/admin/*path',
 	adminApiFeeds: '/admin/api/feeds',

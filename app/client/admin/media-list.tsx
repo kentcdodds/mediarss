@@ -880,35 +880,20 @@ export function MediaList(this: Handle) {
 										const isSelected = selectedItems.has(getItemKey(item))
 
 										return (
-											// biome-ignore lint/a11y/useSemanticElements: Using role="button" on tr for accessible clickable table rows
 											<tr
 												key={item.path}
-												tabIndex={0}
-												role="button"
 												css={{
 													borderBottom: `1px solid ${colors.border}`,
 													'&:last-child': { borderBottom: 'none' },
-													cursor: 'pointer',
 													transition: `background-color ${transitions.fast}`,
 													backgroundColor: isSelected
 														? colors.primarySoftSubtle
 														: 'transparent',
-													'&:hover, &:focus': {
+													position: 'relative',
+													'&:hover, &:focus-within': {
 														backgroundColor: isSelected
 															? colors.primarySoft
 															: colors.background,
-														outline: 'none',
-													},
-												}}
-												on={{
-													click: () => {
-														window.location.href = `/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
-													},
-													keydown: (e: KeyboardEvent) => {
-														if (e.key === 'Enter' || e.key === ' ') {
-															e.preventDefault()
-															window.location.href = `/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
-														}
 													},
 												}}
 											>
@@ -917,12 +902,8 @@ export function MediaList(this: Handle) {
 														padding: spacing.sm,
 														textAlign: 'center',
 														width: '48px',
-													}}
-													on={{
-														click: (e: MouseEvent) => {
-															e.stopPropagation()
-															toggleSelection(item)
-														},
+														position: 'relative',
+														zIndex: 1,
 													}}
 												>
 													<Checkbox
@@ -967,7 +948,27 @@ export function MediaList(this: Handle) {
 													}}
 													title={item.title}
 												>
-													{item.title}
+													<Link
+														href={`/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`}
+														css={{
+															color: 'inherit',
+															textDecoration: 'none',
+															'&::after': {
+																content: '""',
+																position: 'absolute',
+																inset: 0,
+																cursor: 'pointer',
+															},
+															'&:focus': {
+																outline: 'none',
+															},
+															'&:focus-visible': {
+																textDecoration: 'underline',
+															},
+														}}
+													>
+														{item.title}
+													</Link>
 												</td>
 												<td
 													css={{

@@ -1,6 +1,6 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import { TOKEN_CORS_HEADERS, handleTokenCorsPrelight } from '#app/mcp/cors.ts'
+import { handleTokenCorsPrelight, TOKEN_CORS_HEADERS } from '#app/mcp/cors.ts'
 import {
 	clientSupportsGrantType,
 	consumeAuthorizationCode,

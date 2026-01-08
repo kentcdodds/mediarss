@@ -26,7 +26,7 @@ export interface AuthInfoExtra {
  * Helper to get the extra data from AuthInfo.
  */
 export function getAuthExtra(authInfo: AuthInfo): AuthInfoExtra {
-	return authInfo.extra as AuthInfoExtra
+	return authInfo.extra as unknown as AuthInfoExtra
 }
 
 /**

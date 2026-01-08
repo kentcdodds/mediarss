@@ -17,6 +17,7 @@ export interface AccessTokenPayload {
 	exp: number
 	iat: number
 	scope: string
+	client_id?: string
 }
 
 /**

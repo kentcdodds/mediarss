@@ -5,8 +5,10 @@ import {
 	afterAll,
 	afterEach,
 	beforeAll,
+	beforeEach,
 	describe,
 	expect,
+	mock,
 	test,
 } from 'bun:test'
 import * as jose from 'jose'
@@ -14,6 +16,7 @@ import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
+import { consoleError } from '#test/setup.ts'
 import {
 	clearKeyCache,
 	clearMetadataCache,
@@ -23,6 +26,7 @@ import {
 	deleteClient,
 	generateCodeVerifier,
 	getAudience,
+	getClientMetadata,
 	isUrlClientId,
 	isValidClientRedirectUri,
 	resolveClient,
@@ -549,5 +553,713 @@ describe('MCP 2025-11-25 spec compliance', () => {
 
 		expect(metadata.grant_types_supported).toContain('authorization_code')
 		expect(metadata.response_types_supported).toContain('code')
+	})
+})
+
+// ============================================================================
+// URL-based Client ID Metadata Document Tests
+// ============================================================================
+// These tests mock the fetch function to test HTTPS URL-based client metadata
+// document fetching, validation, and caching without making actual network calls.
+
+describe('URL-based Client ID Metadata Documents', () => {
+	const originalFetch = globalThis.fetch
+	let mockFetchResponses: Map<string, () => Response | Promise<Response>>
+
+	beforeEach(() => {
+		mockFetchResponses = new Map()
+
+		// Mock global fetch for HTTPS URLs
+		// Cast through unknown to satisfy TypeScript (Bun's fetch has additional properties)
+		globalThis.fetch = mock(
+			async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url =
+					typeof input === 'string'
+						? input
+						: input instanceof URL
+							? input.toString()
+							: input.url
+
+				// Check if we have a mock response for this URL
+				const mockResponseFn = mockFetchResponses.get(url)
+				if (mockResponseFn) {
+					return mockResponseFn()
+				}
+
+				// For non-mocked URLs, use original fetch (e.g., localhost test server)
+				return originalFetch(input, init)
+			},
+		) as unknown as typeof fetch
+	})
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch
+		clearMetadataCache()
+		// Clean up test metadata from DB
+		db.run(
+			sql`DELETE FROM client_metadata_cache WHERE client_id LIKE 'https://test-%';`,
+		)
+	})
+
+	describe('getClientMetadata() with valid documents', () => {
+		test('fetches and returns valid metadata document', async () => {
+			const clientIdUrl = 'https://test-valid-client.example.com/oauth/metadata'
+			const validMetadata = {
+				client_id: clientIdUrl,
+				client_name: 'Test MCP Client',
+				redirect_uris: ['https://test-valid-client.example.com/callback'],
+				grant_types: ['authorization_code'],
+				response_types: ['code'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(validMetadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600',
+					},
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+
+			expect(result).not.toBeNull()
+			expect(result!.client_id).toBe(clientIdUrl)
+			expect(result!.client_name).toBe('Test MCP Client')
+			expect(result!.redirect_uris).toEqual([
+				'https://test-valid-client.example.com/callback',
+			])
+			expect(result!.grant_types).toEqual(['authorization_code'])
+		})
+
+		test('handles metadata with multiple redirect URIs', async () => {
+			const clientIdUrl = 'https://test-multi-redirect.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: [
+					'https://app.example.com/callback',
+					'https://staging.example.com/callback',
+					'http://localhost:3000/callback',
+				],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+
+			expect(result).not.toBeNull()
+			expect(result!.redirect_uris).toHaveLength(3)
+			expect(result!.redirect_uris).toContain(
+				'https://app.example.com/callback',
+			)
+			expect(result!.redirect_uris).toContain('http://localhost:3000/callback')
+		})
+
+		test('handles metadata with optional fields omitted', async () => {
+			const clientIdUrl = 'https://test-minimal.example.com/metadata'
+			const minimalMetadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-minimal.example.com/callback'],
+				// client_name, grant_types, response_types all optional
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(minimalMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+
+			expect(result).not.toBeNull()
+			expect(result!.client_id).toBe(clientIdUrl)
+			expect(result!.client_name).toBeUndefined()
+			expect(result!.grant_types).toBeUndefined()
+		})
+
+		test('returns null for non-URL client IDs', async () => {
+			const result = await getClientMetadata('simple-client-id')
+			expect(result).toBeNull()
+		})
+
+		test('returns null for HTTP (non-HTTPS) URLs', async () => {
+			const result = await getClientMetadata(
+				'http://insecure.example.com/metadata',
+			)
+			expect(result).toBeNull()
+		})
+	})
+
+	describe('Metadata validation errors', () => {
+		test('rejects metadata when client_id does not match URL', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-mismatch.example.com/metadata'
+			const badMetadata = {
+				client_id: 'https://different-domain.example.com/metadata', // Mismatch!
+				redirect_uris: ['https://test-mismatch.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull() // Should fail validation
+		})
+
+		test('rejects metadata with empty redirect_uris array', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-empty-redirects.example.com/metadata'
+			const badMetadata = {
+				client_id: clientIdUrl,
+				redirect_uris: [], // Empty array not allowed
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('rejects metadata with missing redirect_uris', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-missing-redirects.example.com/metadata'
+			const badMetadata = {
+				client_id: clientIdUrl,
+				// redirect_uris is required but missing
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('rejects metadata with invalid redirect URI format', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-invalid-uri.example.com/metadata'
+			const badMetadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['not-a-valid-url'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('rejects metadata with non-string redirect URI', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-wrong-type.example.com/metadata'
+			const badMetadata = {
+				client_id: clientIdUrl,
+				redirect_uris: [12345], // Should be string
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('rejects metadata with invalid grant_types type', async () => {
+			// Suppress expected console.error from validation failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-invalid-grants.example.com/metadata'
+			const badMetadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-invalid-grants.example.com/callback'],
+				grant_types: 'authorization_code', // Should be array
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(badMetadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+	})
+
+	describe('Fetch error handling', () => {
+		test('handles 404 response', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-404.example.com/metadata'
+
+			mockFetchResponses.set(
+				clientIdUrl,
+				() => new Response('Not Found', { status: 404 }),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('handles 500 server error', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-500.example.com/metadata'
+
+			mockFetchResponses.set(
+				clientIdUrl,
+				() => new Response('Internal Server Error', { status: 500 }),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('handles non-JSON content type', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-wrong-content.example.com/metadata'
+
+			mockFetchResponses.set(
+				clientIdUrl,
+				() =>
+					new Response('<html>Not JSON</html>', {
+						status: 200,
+						headers: { 'Content-Type': 'text/html' },
+					}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('handles invalid JSON response', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-bad-json.example.com/metadata'
+
+			mockFetchResponses.set(
+				clientIdUrl,
+				() =>
+					new Response('{ invalid json }', {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' },
+					}),
+			)
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+
+		test('handles network errors', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-network-error.example.com/metadata'
+
+			mockFetchResponses.set(clientIdUrl, () => {
+				throw new Error('Network error')
+			})
+
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).toBeNull()
+		})
+	})
+
+	describe('Cache behavior', () => {
+		test('caches metadata in memory on successful fetch', async () => {
+			const clientIdUrl = 'https://test-cache-memory.example.com/metadata'
+			let fetchCount = 0
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-cache-memory.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () => {
+				fetchCount++
+				return Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600',
+					},
+				})
+			})
+
+			// First call - should fetch
+			const result1 = await getClientMetadata(clientIdUrl)
+			expect(result1).not.toBeNull()
+			expect(fetchCount).toBe(1)
+
+			// Second call - should use cache
+			const result2 = await getClientMetadata(clientIdUrl)
+			expect(result2).not.toBeNull()
+			expect(result2!.client_id).toBe(clientIdUrl)
+			expect(fetchCount).toBe(1) // No additional fetch
+		})
+
+		test('caches metadata in database on successful fetch', async () => {
+			const clientIdUrl = 'https://test-cache-db.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-cache-db.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600',
+					},
+				}),
+			)
+
+			await getClientMetadata(clientIdUrl)
+
+			// Check database cache
+			const row = db
+				.query<{ client_id: string; metadata_json: string }, [string]>(
+					sql`SELECT * FROM client_metadata_cache WHERE client_id = ?;`,
+				)
+				.get(clientIdUrl)
+
+			expect(row).not.toBeNull()
+			expect(row!.client_id).toBe(clientIdUrl)
+
+			const cachedMetadata = JSON.parse(row!.metadata_json)
+			expect(cachedMetadata.client_id).toBe(clientIdUrl)
+		})
+
+		test('retrieves from database cache after memory cache cleared', async () => {
+			const clientIdUrl = 'https://test-cache-fallback.example.com/metadata'
+			let fetchCount = 0
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-cache-fallback.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () => {
+				fetchCount++
+				return Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=3600',
+					},
+				})
+			})
+
+			// Fetch and cache
+			await getClientMetadata(clientIdUrl)
+			expect(fetchCount).toBe(1)
+
+			// Clear only memory cache
+			clearMetadataCache()
+
+			// Should retrieve from DB cache, not fetch again
+			const result = await getClientMetadata(clientIdUrl)
+			expect(result).not.toBeNull()
+			expect(result!.client_id).toBe(clientIdUrl)
+			expect(fetchCount).toBe(1) // Still no additional fetch
+		})
+
+		test('respects Cache-Control max-age header', async () => {
+			const clientIdUrl = 'https://test-cache-ttl.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-cache-ttl.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=600', // 10 minutes
+					},
+				}),
+			)
+
+			await getClientMetadata(clientIdUrl)
+
+			// Check DB cache expiration
+			const row = db
+				.query<{ expires_at: number; cached_at: number }, [string]>(
+					sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
+				)
+				.get(clientIdUrl)
+
+			expect(row).not.toBeNull()
+			const duration = row!.expires_at - row!.cached_at
+			expect(duration).toBe(600) // Should match max-age
+		})
+
+		test('enforces minimum cache duration', async () => {
+			const clientIdUrl = 'https://test-min-cache.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-min-cache.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=60', // Only 1 minute
+					},
+				}),
+			)
+
+			await getClientMetadata(clientIdUrl)
+
+			const row = db
+				.query<{ expires_at: number; cached_at: number }, [string]>(
+					sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
+				)
+				.get(clientIdUrl)
+
+			expect(row).not.toBeNull()
+			const duration = row!.expires_at - row!.cached_at
+			expect(duration).toBe(300) // Should be enforced minimum (5 minutes)
+		})
+
+		test('enforces maximum cache duration', async () => {
+			const clientIdUrl = 'https://test-max-cache.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-max-cache.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: {
+						'Content-Type': 'application/json',
+						'Cache-Control': 'max-age=999999', // Very long
+					},
+				}),
+			)
+
+			await getClientMetadata(clientIdUrl)
+
+			const row = db
+				.query<{ expires_at: number; cached_at: number }, [string]>(
+					sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
+				)
+				.get(clientIdUrl)
+
+			expect(row).not.toBeNull()
+			const duration = row!.expires_at - row!.cached_at
+			expect(duration).toBe(86400) // Should be enforced maximum (24 hours)
+		})
+	})
+
+	describe('resolveClient() with URL-based clients', () => {
+		test('resolves URL-based client from metadata document', async () => {
+			const clientIdUrl = 'https://test-resolve.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				client_name: 'My MCP App',
+				redirect_uris: ['https://test-resolve.example.com/callback'],
+				grant_types: ['authorization_code'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+
+			expect(resolved).not.toBeNull()
+			expect(resolved!.id).toBe(clientIdUrl)
+			expect(resolved!.name).toBe('My MCP App')
+			expect(resolved!.redirectUris).toEqual([
+				'https://test-resolve.example.com/callback',
+			])
+			expect(resolved!.grantTypes).toEqual(['authorization_code'])
+			expect(resolved!.isMetadataClient).toBe(true)
+		})
+
+		test('uses hostname as name when client_name not provided', async () => {
+			const clientIdUrl = 'https://test-no-name.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-no-name.example.com/callback'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+
+			expect(resolved).not.toBeNull()
+			expect(resolved!.name).toBe('test-no-name.example.com')
+		})
+
+		test('defaults to authorization_code grant type when not specified', async () => {
+			const clientIdUrl = 'https://test-default-grant.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-default-grant.example.com/callback'],
+				// grant_types not specified
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+
+			expect(resolved).not.toBeNull()
+			expect(resolved!.grantTypes).toEqual(['authorization_code'])
+		})
+
+		test('returns null for invalid URL client metadata', async () => {
+			// Suppress expected console.error from fetch failure
+			consoleError.mockImplementation(() => {})
+
+			const clientIdUrl = 'https://test-invalid-resolve.example.com/metadata'
+
+			mockFetchResponses.set(
+				clientIdUrl,
+				() => new Response('Not Found', { status: 404 }),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+			expect(resolved).toBeNull()
+		})
+
+		test('redirect URI validation works for URL-based clients', async () => {
+			const clientIdUrl =
+				'https://test-redirect-validation.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: [
+					'https://test-redirect-validation.example.com/callback',
+					'https://test-redirect-validation.example.com/callback2',
+				],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+			expect(resolved).not.toBeNull()
+
+			// Valid redirect URIs
+			expect(
+				isValidClientRedirectUri(
+					resolved!,
+					'https://test-redirect-validation.example.com/callback',
+				),
+			).toBe(true)
+			expect(
+				isValidClientRedirectUri(
+					resolved!,
+					'https://test-redirect-validation.example.com/callback2',
+				),
+			).toBe(true)
+
+			// Invalid redirect URI
+			expect(
+				isValidClientRedirectUri(
+					resolved!,
+					'https://evil.example.com/callback',
+				),
+			).toBe(false)
+		})
+
+		test('grant type validation works for URL-based clients', async () => {
+			const clientIdUrl = 'https://test-grant-validation.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-grant-validation.example.com/callback'],
+				grant_types: ['authorization_code', 'refresh_token'],
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+			expect(resolved).not.toBeNull()
+
+			expect(clientSupportsGrantType(resolved!, 'authorization_code')).toBe(
+				true,
+			)
+			expect(clientSupportsGrantType(resolved!, 'refresh_token')).toBe(true)
+			expect(clientSupportsGrantType(resolved!, 'client_credentials')).toBe(
+				false,
+			)
+		})
+
+		test('client without authorization_code grant fails validation', async () => {
+			const clientIdUrl = 'https://test-no-auth-code.example.com/metadata'
+			const metadata = {
+				client_id: clientIdUrl,
+				redirect_uris: ['https://test-no-auth-code.example.com/callback'],
+				grant_types: ['client_credentials'], // No authorization_code
+			}
+
+			mockFetchResponses.set(clientIdUrl, () =>
+				Response.json(metadata, {
+					headers: { 'Content-Type': 'application/json' },
+				}),
+			)
+
+			const resolved = await resolveClient(clientIdUrl)
+			expect(resolved).not.toBeNull()
+
+			// Should fail authorization_code validation
+			expect(clientSupportsGrantType(resolved!, 'authorization_code')).toBe(
+				false,
+			)
+			expect(clientSupportsGrantType(resolved!, 'client_credentials')).toBe(
+				true,
+			)
+		})
 	})
 })

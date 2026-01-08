@@ -103,12 +103,20 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 	const sessionId = request.headers.get('mcp-session-id')
 	let session = sessionId ? sessions.get(sessionId) : undefined
 
-	// If we have a session, verify auth matches
-	if (session && session.authInfo.sub !== authInfo.sub) {
-		// Token changed, invalidate session
-		await session.transport.close()
-		sessions.delete(sessionId!)
-		session = undefined
+	// If we have a session, verify auth still matches
+	if (session) {
+		// Check if user changed or if scopes have been downgraded
+		const userChanged = session.authInfo.sub !== authInfo.sub
+		const scopesDowngraded = session.authInfo.scopes.some(
+			(scope) => !authInfo.scopes.includes(scope),
+		)
+
+		if (userChanged || scopesDowngraded) {
+			// Token changed or scopes reduced, invalidate session
+			await session.transport.close()
+			sessions.delete(sessionId!)
+			session = undefined
+		}
 	}
 
 	// Handle initialization request

@@ -58,7 +58,7 @@ export function SearchInput({
 					},
 				}}
 				on={{
-					input: (e) => {
+					input: (e: Event) => {
 						onInput((e.target as HTMLInputElement).value)
 					},
 				}}

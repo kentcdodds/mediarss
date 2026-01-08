@@ -187,7 +187,7 @@ export function Modal(this: Handle, _setupProps: ModalProps) {
 					click: handleBackdropClick,
 					keydown: handleKeyDown,
 				}}
-				connect={(node: HTMLDivElement, signal) => {
+				connect={(node: HTMLDivElement, signal: AbortSignal) => {
 					modalRef = node
 
 					// Store currently focused element to restore later

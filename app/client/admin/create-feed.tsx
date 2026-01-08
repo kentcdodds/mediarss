@@ -518,7 +518,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="My Audiobooks"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										directoryForm.name = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -538,7 +538,7 @@ export function CreateFeed(this: Handle) {
 								rows={3}
 								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										directoryForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
@@ -561,7 +561,7 @@ export function CreateFeed(this: Handle) {
 								maxLength={255}
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										directoryForm.subtitle = (
 											e.target as HTMLInputElement
 										).value
@@ -581,7 +581,7 @@ export function CreateFeed(this: Handle) {
 								value={directoryForm.feedType}
 								css={inputStyles}
 								on={{
-									change: (e) => {
+									change: (e: Event) => {
 										directoryForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										this.update()
@@ -605,7 +605,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="https://example.com"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										directoryForm.link = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -625,7 +625,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="© 2024 Your Name"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										directoryForm.copyright = (
 											e.target as HTMLInputElement
 										).value
@@ -728,7 +728,7 @@ export function CreateFeed(this: Handle) {
 									value={directoryForm.sortFields}
 									css={inputStyles}
 									on={{
-										change: (e) => {
+										change: (e: Event) => {
 											directoryForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
@@ -753,7 +753,7 @@ export function CreateFeed(this: Handle) {
 									value={directoryForm.sortOrder}
 									css={inputStyles}
 									on={{
-										change: (e) => {
+										change: (e: Event) => {
 											directoryForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											this.update()
@@ -797,7 +797,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="My Custom Playlist"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										curatedForm.name = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -817,7 +817,7 @@ export function CreateFeed(this: Handle) {
 								rows={3}
 								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										curatedForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
@@ -840,7 +840,7 @@ export function CreateFeed(this: Handle) {
 								maxLength={255}
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										curatedForm.subtitle = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -858,7 +858,7 @@ export function CreateFeed(this: Handle) {
 								value={curatedForm.feedType}
 								css={inputStyles}
 								on={{
-									change: (e) => {
+									change: (e: Event) => {
 										curatedForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										this.update()
@@ -882,7 +882,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="https://example.com"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										curatedForm.link = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -902,7 +902,7 @@ export function CreateFeed(this: Handle) {
 								placeholder="© 2024 Your Name"
 								css={inputStyles}
 								on={{
-									input: (e) => {
+									input: (e: Event) => {
 										curatedForm.copyright = (e.target as HTMLInputElement).value
 										this.update()
 									},
@@ -968,7 +968,7 @@ export function CreateFeed(this: Handle) {
 									value={curatedForm.sortFields}
 									css={inputStyles}
 									on={{
-										change: (e) => {
+										change: (e: Event) => {
 											curatedForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
@@ -994,7 +994,7 @@ export function CreateFeed(this: Handle) {
 									value={curatedForm.sortOrder}
 									css={inputStyles}
 									on={{
-										change: (e) => {
+										change: (e: Event) => {
 											curatedForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											this.update()
@@ -1604,7 +1604,7 @@ function FilePicker({
 							},
 						}}
 						on={{
-							input: (e) =>
+							input: (e: Event) =>
 								onSearchChange((e.target as HTMLInputElement).value),
 						}}
 					/>

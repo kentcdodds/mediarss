@@ -1217,7 +1217,7 @@ export function FeedDetail(this: Handle) {
 									accept="image/jpeg,image/png,image/webp"
 									css={{ display: 'none' }}
 									on={{
-										change: (e) => {
+										change: (e: Event) => {
 											const input = e.target as HTMLInputElement
 											const file = input.files?.[0]
 											if (file) {
@@ -1324,7 +1324,7 @@ export function FeedDetail(this: Handle) {
 											'&::placeholder': { color: colors.textMuted },
 										}}
 										on={{
-											input: (e) => {
+											input: (e: Event) => {
 												imageUrlInput = (e.target as HTMLInputElement).value
 												this.update()
 											},
@@ -2042,7 +2042,7 @@ export function FeedDetail(this: Handle) {
 										'&:focus': { borderColor: colors.primary },
 									}}
 									on={{
-										input: (e) => {
+										input: (e: Event) => {
 											newTokenLabel = (e.target as HTMLInputElement).value
 											this.update()
 										},
@@ -2496,7 +2496,8 @@ function EditForm({
 					value={form.name}
 					css={inputStyles}
 					on={{
-						input: (e) => onNameChange((e.target as HTMLInputElement).value),
+						input: (e: Event) =>
+							onNameChange((e.target as HTMLInputElement).value),
 					}}
 				/>
 			</div>
@@ -2530,7 +2531,7 @@ function EditForm({
 					rows={3}
 					css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
 					on={{
-						input: (e) =>
+						input: (e: Event) =>
 							onDescriptionChange((e.target as HTMLTextAreaElement).value),
 					}}
 				/>
@@ -2568,7 +2569,7 @@ function EditForm({
 					maxLength={255}
 					css={inputStyles}
 					on={{
-						input: (e) =>
+						input: (e: Event) =>
 							onSubtitleChange((e.target as HTMLInputElement).value),
 					}}
 				/>
@@ -2604,7 +2605,7 @@ function EditForm({
 					value={form.feedType}
 					css={inputStyles}
 					on={{
-						change: (e) =>
+						change: (e: Event) =>
 							onFeedTypeChange(
 								(e.target as HTMLSelectElement).value as 'episodic' | 'serial',
 							),
@@ -2646,7 +2647,8 @@ function EditForm({
 					placeholder="https://example.com"
 					css={inputStyles}
 					on={{
-						input: (e) => onLinkChange((e.target as HTMLInputElement).value),
+						input: (e: Event) =>
+							onLinkChange((e.target as HTMLInputElement).value),
 					}}
 				/>
 			</div>
@@ -2681,7 +2683,7 @@ function EditForm({
 					placeholder="© 2024 Your Name"
 					css={inputStyles}
 					on={{
-						input: (e) =>
+						input: (e: Event) =>
 							onCopyrightChange((e.target as HTMLInputElement).value),
 					}}
 				/>
@@ -2721,7 +2723,7 @@ function EditForm({
 						value={form.sortFields}
 						css={inputStyles}
 						on={{
-							change: (e) =>
+							change: (e: Event) =>
 								onSortFieldsChange((e.target as HTMLSelectElement).value),
 						}}
 					>
@@ -2770,7 +2772,7 @@ function EditForm({
 						value={form.sortOrder}
 						css={inputStyles}
 						on={{
-							change: (e) =>
+							change: (e: Event) =>
 								onSortOrderChange(
 									(e.target as HTMLSelectElement).value as 'asc' | 'desc',
 								),

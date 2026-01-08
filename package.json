@@ -14,7 +14,7 @@
     "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development bun run --watch index.ts",
     "test": "bun test",
     "start": "NODE_ENV=production bun run index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --write .",
@@ -27,6 +27,7 @@
     "@biomejs/biome": "^2.3.10",
     "@types/bun": "latest",
     "@types/semver": "^7.7.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260108.1",
     "semver": "^7.7.3",
     "typescript": "^5.9.3"
   },

@@ -15,167 +15,139 @@ initEnv()
 const TEST_AUDIO_DIR = './test/fixtures/audio'
 const TEST_VIDEO_DIR = './test/fixtures/video'
 
-// isMediaFile tests
+/**
+ * Creates a temporary empty directory that will be automatically cleaned up.
+ */
+function createTempDirectory() {
+	const tempDir = `./test/fixtures/empty-test-dir-${Date.now()}`
+	return {
+		path: tempDir,
+		async setup() {
+			await Bun.write(`${tempDir}/.gitkeep`, '')
+		},
+		[Symbol.asyncDispose]: async () => {
+			// SWR background revalidation may warn after cleanup deletes the directory
+			consoleWarn.mockImplementation(() => {})
+			await Bun.$`rm -rf ${tempDir}`
+			// Wait for SWR background revalidation to complete
+			await new Promise((resolve) => setTimeout(resolve, 10))
+		},
+	}
+}
 
-test('isMediaFile returns true for m4b audiobook file', async () => {
-	const testFile = path.join(TEST_AUDIO_DIR, 'Inkheart.m4b')
-	const result = await isMediaFile(testFile)
-	expect(result).toBe(true)
+test('isMediaFile correctly identifies media and non-media files', async () => {
+	// Audio files should be identified as media
+	await expect(
+		isMediaFile(path.join(TEST_AUDIO_DIR, 'Inkheart.m4b')),
+	).resolves.toBe(true)
+	await expect(
+		isMediaFile(
+			path.join(TEST_AUDIO_DIR, 'On the Edge of the Dark Sea of Darkness.mp3'),
+		),
+	).resolves.toBe(true)
+
+	// Video files should be identified as media
+	await expect(
+		isMediaFile(path.join(TEST_VIDEO_DIR, 'Toy Story.mkv')),
+	).resolves.toBe(true)
+
+	// Non-existent files should return false
+	await expect(isMediaFile('/nonexistent/file.mp3')).resolves.toBe(false)
+
+	// Non-media files should return false
+	await expect(isMediaFile('./package.json')).resolves.toBe(false)
 })
 
-test('isMediaFile returns true for mp3 file', async () => {
-	const testFile = path.join(
-		TEST_AUDIO_DIR,
-		'On the Edge of the Dark Sea of Darkness.mp3',
-	)
-	const result = await isMediaFile(testFile)
-	expect(result).toBe(true)
-})
-
-test('isMediaFile returns true for mkv video file', async () => {
-	const testFile = path.join(TEST_VIDEO_DIR, 'Toy Story.mkv')
-	const result = await isMediaFile(testFile)
-	expect(result).toBe(true)
-})
-
-test('isMediaFile returns false for non-existent file', async () => {
-	const result = await isMediaFile('/nonexistent/file.mp3')
-	expect(result).toBe(false)
-})
-
-test('isMediaFile returns false for non-media file', async () => {
-	// Use package.json as a non-media file
-	const result = await isMediaFile('./package.json')
-	expect(result).toBe(false)
-})
-
-// scanDirectory tests
-
-test('scanDirectory finds audio files in test directory', async () => {
-	const files = await scanDirectory(TEST_AUDIO_DIR)
-
-	expect(files.length).toBeGreaterThan(0)
-
-	// All returned paths should be absolute
-	for (const file of files) {
+test('scanDirectory finds media files in directories', async () => {
+	// Audio directory should contain audio files with absolute paths
+	const audioFiles = await scanDirectory(TEST_AUDIO_DIR)
+	expect(audioFiles.length).toBeGreaterThan(0)
+	for (const file of audioFiles) {
 		expect(path.isAbsolute(file)).toBe(true)
 	}
-})
 
-test('scanDirectory finds video files in test directory', async () => {
-	const files = await scanDirectory(TEST_VIDEO_DIR)
+	// Video directory should contain video files
+	const videoFiles = await scanDirectory(TEST_VIDEO_DIR)
+	expect(videoFiles.length).toBeGreaterThan(0)
+	expect(videoFiles.some((f) => f.includes('Toy Story'))).toBe(true)
 
-	expect(files.length).toBeGreaterThan(0)
-	expect(files.some((f) => f.includes('Toy Story'))).toBe(true)
-})
-
-test('scanDirectory returns empty array for non-existent directory', async () => {
-	// scanDirectory logs a warning for non-existent directories
-	// (may be deferred due to SWR caching, so we wait a tick for it to complete)
+	// Non-existent directory should return empty array
 	consoleWarn.mockImplementation(() => {})
-
-	const files = await scanDirectory('/nonexistent/directory')
-	expect(files).toEqual([])
-
+	const nonExistentFiles = await scanDirectory('/nonexistent/directory')
+	expect(nonExistentFiles).toEqual([])
 	// Wait for SWR background revalidation to complete
 	await new Promise((resolve) => setTimeout(resolve, 10))
 })
 
-test('scanDirectory returns empty array for empty directory', async () => {
-	// SWR background revalidation may warn after cleanup deletes the directory
-	consoleWarn.mockImplementation(() => {})
+test('scanDirectory returns empty array for directory without media files', async () => {
+	await using tempDir = createTempDirectory()
+	await tempDir.setup()
 
-	// Create temp empty dir
-	const tempDir = './test/fixtures/empty-test-dir'
-	await Bun.write(`${tempDir}/.gitkeep`, '')
-
-	const files = await scanDirectory(tempDir)
+	const files = await scanDirectory(tempDir.path)
 	// .gitkeep is not a media file, so should be empty
 	expect(files).toEqual([])
-
-	// Cleanup
-	await Bun.$`rm -rf ${tempDir}`
-
-	// Wait for SWR background revalidation to complete
-	await new Promise((resolve) => setTimeout(resolve, 10))
 })
 
-// getFileMetadata tests
-
-test('getFileMetadata extracts metadata from m4b audiobook', async () => {
-	const testFile = path.join(TEST_AUDIO_DIR, 'Inkheart.m4b')
-	const metadata = await getFileMetadata(testFile)
-
-	expect(metadata).not.toBeNull()
-	if (!metadata) return
-
-	expect(metadata.path).toContain('Inkheart')
-	expect(metadata.filename).toBe('Inkheart.m4b')
-	expect(metadata.mimeType).toMatch(/audio/)
-	expect(metadata.sizeBytes).toBeGreaterThan(0)
-	expect(metadata.fileModifiedAt).toBeGreaterThan(0)
-	// Title should be from ID3 or fallback to filename
-	expect(metadata.title.length).toBeGreaterThan(0)
-})
-
-test('getFileMetadata extracts metadata from mp3 file', async () => {
-	const testFile = path.join(
-		TEST_AUDIO_DIR,
-		'On the Edge of the Dark Sea of Darkness.mp3',
+test('getFileMetadata extracts metadata from various media file types', async () => {
+	// Test m4b audiobook
+	const m4bMetadata = await getFileMetadata(
+		path.join(TEST_AUDIO_DIR, 'Inkheart.m4b'),
 	)
-	const metadata = await getFileMetadata(testFile)
+	expect(m4bMetadata).not.toBeNull()
+	expect(m4bMetadata!.path).toContain('Inkheart')
+	expect(m4bMetadata!.filename).toBe('Inkheart.m4b')
+	expect(m4bMetadata!.mimeType).toMatch(/audio/)
+	expect(m4bMetadata!.sizeBytes).toBeGreaterThan(0)
+	expect(m4bMetadata!.fileModifiedAt).toBeGreaterThan(0)
+	expect(m4bMetadata!.title.length).toBeGreaterThan(0)
 
-	expect(metadata).not.toBeNull()
-	if (!metadata) return
+	// Test mp3 file
+	const mp3Metadata = await getFileMetadata(
+		path.join(TEST_AUDIO_DIR, 'On the Edge of the Dark Sea of Darkness.mp3'),
+	)
+	expect(mp3Metadata).not.toBeNull()
+	expect(mp3Metadata!.mimeType).toBe('audio/mpeg')
+	expect(mp3Metadata!.sizeBytes).toBeGreaterThan(0)
 
-	expect(metadata.mimeType).toBe('audio/mpeg')
-	expect(metadata.sizeBytes).toBeGreaterThan(0)
+	// Test mkv video
+	const mkvMetadata = await getFileMetadata(
+		path.join(TEST_VIDEO_DIR, 'Toy Story.mkv'),
+	)
+	expect(mkvMetadata).not.toBeNull()
+	expect(mkvMetadata!.mimeType).toMatch(/video/)
+	expect(mkvMetadata!.filename).toBe('Toy Story.mkv')
 })
 
-test('getFileMetadata extracts metadata from mkv video', async () => {
-	const testFile = path.join(TEST_VIDEO_DIR, 'Toy Story.mkv')
-	const metadata = await getFileMetadata(testFile)
-
-	expect(metadata).not.toBeNull()
-	if (!metadata) return
-
-	expect(metadata.mimeType).toMatch(/video/)
-	expect(metadata.filename).toBe('Toy Story.mkv')
-})
-
-test('getFileMetadata returns null for non-existent file', async () => {
+test('getFileMetadata returns null for non-existent and non-media files', async () => {
+	// Non-existent file
 	consoleError.mockImplementation(() => {})
-
-	const metadata = await getFileMetadata('/nonexistent/file.mp3')
-	expect(metadata).toBeNull()
+	const nonExistentMetadata = await getFileMetadata('/nonexistent/file.mp3')
+	expect(nonExistentMetadata).toBeNull()
 	expect(consoleError).toHaveBeenCalledTimes(1)
 	expect(consoleError.mock.calls[0]?.[0]).toBe(
 		'Error getting metadata for /nonexistent/file.mp3:',
 	)
+
+	// Reset mock for non-media file test
+	consoleError.mockClear()
+
+	// Non-media file
+	const nonMediaMetadata = await getFileMetadata('./package.json')
+	expect(nonMediaMetadata).toBeNull()
 })
 
-test('getFileMetadata returns null for non-media file', async () => {
-	const metadata = await getFileMetadata('./package.json')
-	expect(metadata).toBeNull()
-})
-
-// scanDirectoryWithMetadata tests
-
-test('scanDirectoryWithMetadata returns metadata for all media files in directory', async () => {
-	const files = await scanDirectoryWithMetadata(TEST_AUDIO_DIR)
-
-	expect(files.length).toBeGreaterThan(0)
-
-	for (const file of files) {
+test('scanDirectoryWithMetadata returns complete metadata for all media files', async () => {
+	// Directory with media files should return metadata for each
+	const audioFilesWithMetadata = await scanDirectoryWithMetadata(TEST_AUDIO_DIR)
+	expect(audioFilesWithMetadata.length).toBeGreaterThan(0)
+	for (const file of audioFilesWithMetadata) {
 		expect(file.path).toBeTruthy()
 		expect(file.filename).toBeTruthy()
 		expect(file.mimeType).toBeTruthy()
 		expect(file.sizeBytes).toBeGreaterThan(0)
 	}
-})
 
-test('scanDirectoryWithMetadata returns empty array for directory with no media', async () => {
-	// Use a directory that exists but has no media files
-	const files = await scanDirectoryWithMetadata('./app/db')
-	expect(files).toEqual([])
+	// Directory without media files should return empty array
+	const noMediaFiles = await scanDirectoryWithMetadata('./app/db')
+	expect(noMediaFiles).toEqual([])
 })

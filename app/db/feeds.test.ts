@@ -31,41 +31,37 @@ function createTestDatabase() {
 	}
 }
 
-// directory_feeds table tests
-
-test('directory_feeds creates a feed with default values', () => {
+test('directory_feeds table stores feeds with all fields and enforces constraints', () => {
 	using ctx = createTestDatabase()
 
+	// Test creating a feed with minimal required fields and defaults
 	ctx.db.run(sql`
 		INSERT INTO directory_feeds (id, name, directory_paths)
 		VALUES ('test-1', 'Test Feed', '["audio:/media/audio"]')
 	`)
 
-	const feed = ctx.db
+	const minimalFeed = ctx.db
 		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('test-1') as Record<string, unknown>
 
-	expect(feed.name).toBe('Test Feed')
-	expect(feed.description).toBe('')
-	expect(feed.directory_paths).toBe('["audio:/media/audio"]')
-	expect(feed.sort_fields).toBe('filename')
-	expect(feed.sort_order).toBe('asc')
-	expect(feed.language).toBe('en')
-	expect(feed.explicit).toBe('no')
-	expect(feed.image_url).toBeNull()
-	expect(feed.author).toBeNull()
-	expect(feed.owner_name).toBeNull()
-	expect(feed.owner_email).toBeNull()
-	expect(feed.category).toBeNull()
-	expect(feed.link).toBeNull()
-	expect(feed.filter_in).toBeNull()
-	expect(feed.filter_out).toBeNull()
-	expect(feed.overrides).toBeNull()
-})
+	expect(minimalFeed.name).toBe('Test Feed')
+	expect(minimalFeed.description).toBe('')
+	expect(minimalFeed.directory_paths).toBe('["audio:/media/audio"]')
+	expect(minimalFeed.sort_fields).toBe('filename')
+	expect(minimalFeed.sort_order).toBe('asc')
+	expect(minimalFeed.language).toBe('en')
+	expect(minimalFeed.explicit).toBe('no')
+	expect(minimalFeed.image_url).toBeNull()
+	expect(minimalFeed.author).toBeNull()
+	expect(minimalFeed.owner_name).toBeNull()
+	expect(minimalFeed.owner_email).toBeNull()
+	expect(minimalFeed.category).toBeNull()
+	expect(minimalFeed.link).toBeNull()
+	expect(minimalFeed.filter_in).toBeNull()
+	expect(minimalFeed.filter_out).toBeNull()
+	expect(minimalFeed.overrides).toBeNull()
 
-test('directory_feeds creates a feed with all fields', () => {
-	using ctx = createTestDatabase()
-
+	// Test creating a feed with all fields specified
 	ctx.db.run(sql`
 		INSERT INTO directory_feeds (
 			id, name, description, directory_paths, sort_fields, sort_order,
@@ -81,33 +77,30 @@ test('directory_feeds creates a feed with all fields', () => {
 		)
 	`)
 
-	const feed = ctx.db
+	const fullFeed = ctx.db
 		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('test-2') as Record<string, unknown>
 
-	expect(feed.name).toBe('Full Feed')
-	expect(feed.description).toBe('A description')
-	expect(feed.directory_paths).toBe(
+	expect(fullFeed.name).toBe('Full Feed')
+	expect(fullFeed.description).toBe('A description')
+	expect(fullFeed.directory_paths).toBe(
 		'["video:/media/video","audio:/media/audio"]',
 	)
-	expect(feed.sort_fields).toBe('desc:pubDate,asc:title')
-	expect(feed.sort_order).toBe('desc')
-	expect(feed.image_url).toBe('https://example.com/image.png')
-	expect(feed.author).toBe('John Doe')
-	expect(feed.owner_name).toBe('Jane Doe')
-	expect(feed.owner_email).toBe('jane@example.com')
-	expect(feed.language).toBe('en-US')
-	expect(feed.explicit).toBe('clean')
-	expect(feed.category).toBe('Arts > Books')
-	expect(feed.link).toBe('https://example.com')
-	expect(feed.filter_in).toBe('Season 1:title')
-	expect(feed.filter_out).toBe('Trailer:title')
-	expect(feed.overrides).toBe('{"custom": "value"}')
-})
+	expect(fullFeed.sort_fields).toBe('desc:pubDate,asc:title')
+	expect(fullFeed.sort_order).toBe('desc')
+	expect(fullFeed.image_url).toBe('https://example.com/image.png')
+	expect(fullFeed.author).toBe('John Doe')
+	expect(fullFeed.owner_name).toBe('Jane Doe')
+	expect(fullFeed.owner_email).toBe('jane@example.com')
+	expect(fullFeed.language).toBe('en-US')
+	expect(fullFeed.explicit).toBe('clean')
+	expect(fullFeed.category).toBe('Arts > Books')
+	expect(fullFeed.link).toBe('https://example.com')
+	expect(fullFeed.filter_in).toBe('Season 1:title')
+	expect(fullFeed.filter_out).toBe('Trailer:title')
+	expect(fullFeed.overrides).toBe('{"custom": "value"}')
 
-test('directory_feeds enforces sort_order check constraint', () => {
-	using ctx = createTestDatabase()
-
+	// Test sort_order check constraint
 	expect(() => {
 		ctx.db.run(sql`
 			INSERT INTO directory_feeds (id, name, directory_paths, sort_order)
@@ -116,38 +109,34 @@ test('directory_feeds enforces sort_order check constraint', () => {
 	}).toThrow()
 })
 
-// curated_feeds table tests
-
-test('curated_feeds creates a feed with default values', () => {
+test('curated_feeds table stores feeds with all fields and correct schema', () => {
 	using ctx = createTestDatabase()
 
+	// Test creating a feed with minimal required fields and defaults
 	ctx.db.run(sql`
 		INSERT INTO curated_feeds (id, name)
 		VALUES ('test-1', 'Test Curated Feed')
 	`)
 
-	const feed = ctx.db
+	const minimalFeed = ctx.db
 		.query(sql`SELECT * FROM curated_feeds WHERE id = ?`)
 		.get('test-1') as Record<string, unknown>
 
-	expect(feed.name).toBe('Test Curated Feed')
-	expect(feed.description).toBe('')
-	expect(feed.sort_fields).toBe('position')
-	expect(feed.sort_order).toBe('asc')
-	expect(feed.language).toBe('en')
-	expect(feed.explicit).toBe('no')
-	expect(feed.image_url).toBeNull()
-	expect(feed.author).toBeNull()
-	expect(feed.owner_name).toBeNull()
-	expect(feed.owner_email).toBeNull()
-	expect(feed.category).toBeNull()
-	expect(feed.link).toBeNull()
-	expect(feed.overrides).toBeNull()
-})
+	expect(minimalFeed.name).toBe('Test Curated Feed')
+	expect(minimalFeed.description).toBe('')
+	expect(minimalFeed.sort_fields).toBe('position')
+	expect(minimalFeed.sort_order).toBe('asc')
+	expect(minimalFeed.language).toBe('en')
+	expect(minimalFeed.explicit).toBe('no')
+	expect(minimalFeed.image_url).toBeNull()
+	expect(minimalFeed.author).toBeNull()
+	expect(minimalFeed.owner_name).toBeNull()
+	expect(minimalFeed.owner_email).toBeNull()
+	expect(minimalFeed.category).toBeNull()
+	expect(minimalFeed.link).toBeNull()
+	expect(minimalFeed.overrides).toBeNull()
 
-test('curated_feeds creates a feed with all fields', () => {
-	using ctx = createTestDatabase()
-
+	// Test creating a feed with all fields specified
 	ctx.db.run(sql`
 		INSERT INTO curated_feeds (
 			id, name, description, sort_fields, sort_order,
@@ -163,27 +152,24 @@ test('curated_feeds creates a feed with all fields', () => {
 		)
 	`)
 
-	const feed = ctx.db
+	const fullFeed = ctx.db
 		.query(sql`SELECT * FROM curated_feeds WHERE id = ?`)
 		.get('test-2') as Record<string, unknown>
 
-	expect(feed.name).toBe('Full Curated Feed')
-	expect(feed.description).toBe('A curated description')
-	expect(feed.sort_fields).toBe('asc:position,desc:addedAt')
-	expect(feed.image_url).toBe('https://example.com/curated.png')
-	expect(feed.author).toBe('Curator')
-	expect(feed.owner_name).toBe('Owner Name')
-	expect(feed.owner_email).toBe('owner@example.com')
-	expect(feed.language).toBe('es')
-	expect(feed.explicit).toBe('yes')
-	expect(feed.category).toBe('Comedy')
-	expect(feed.link).toBe('https://curated.example.com')
-	expect(feed.overrides).toBe('{"rss": {"channel": {"custom": true}}}')
-})
+	expect(fullFeed.name).toBe('Full Curated Feed')
+	expect(fullFeed.description).toBe('A curated description')
+	expect(fullFeed.sort_fields).toBe('asc:position,desc:addedAt')
+	expect(fullFeed.image_url).toBe('https://example.com/curated.png')
+	expect(fullFeed.author).toBe('Curator')
+	expect(fullFeed.owner_name).toBe('Owner Name')
+	expect(fullFeed.owner_email).toBe('owner@example.com')
+	expect(fullFeed.language).toBe('es')
+	expect(fullFeed.explicit).toBe('yes')
+	expect(fullFeed.category).toBe('Comedy')
+	expect(fullFeed.link).toBe('https://curated.example.com')
+	expect(fullFeed.overrides).toBe('{"rss": {"channel": {"custom": true}}}')
 
-test('curated_feeds does not have filter_in/filter_out columns', () => {
-	using ctx = createTestDatabase()
-
+	// Verify curated_feeds does NOT have filter_in/filter_out columns
 	const columns = ctx.db
 		.query(sql`PRAGMA table_info(curated_feeds)`)
 		.all() as Array<{ name: string }>
@@ -193,16 +179,16 @@ test('curated_feeds does not have filter_in/filter_out columns', () => {
 	expect(columnNames).not.toContain('filter_out')
 })
 
-// feed update tests
-
-test('directory_feeds updates feed fields', () => {
+test('directory_feeds supports updating fields and setting nullable fields to null', () => {
 	using ctx = createTestDatabase()
 
+	// Create a feed to update
 	ctx.db.run(sql`
-		INSERT INTO directory_feeds (id, name, directory_paths)
-		VALUES ('update-test', 'Original', '["audio:/original/path"]')
+		INSERT INTO directory_feeds (id, name, directory_paths, author, filter_in)
+		VALUES ('update-test', 'Original', '["audio:/original/path"]', 'Some Author', 'Some Filter')
 	`)
 
+	// Update some fields
 	ctx.db.run(sql`
 		UPDATE directory_feeds
 		SET name = 'Updated',
@@ -212,37 +198,29 @@ test('directory_feeds updates feed fields', () => {
 		WHERE id = 'update-test'
 	`)
 
-	const feed = ctx.db
+	const updatedFeed = ctx.db
 		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('update-test') as Record<string, unknown>
 
-	expect(feed.name).toBe('Updated')
-	expect(feed.sort_fields).toBe('desc:pubDate')
-	expect(feed.filter_in).toBe('Chapter:title')
-	expect(feed.image_url).toBe('https://new-image.com/art.png')
-	// Unchanged fields
-	expect(feed.directory_paths).toBe('["audio:/original/path"]')
-	expect(feed.language).toBe('en')
-})
+	expect(updatedFeed.name).toBe('Updated')
+	expect(updatedFeed.sort_fields).toBe('desc:pubDate')
+	expect(updatedFeed.filter_in).toBe('Chapter:title')
+	expect(updatedFeed.image_url).toBe('https://new-image.com/art.png')
+	// Unchanged fields should remain
+	expect(updatedFeed.directory_paths).toBe('["audio:/original/path"]')
+	expect(updatedFeed.language).toBe('en')
 
-test('directory_feeds can set nullable fields to null', () => {
-	using ctx = createTestDatabase()
-
-	ctx.db.run(sql`
-		INSERT INTO directory_feeds (id, name, directory_paths, author, filter_in)
-		VALUES ('null-test', 'Test', '["audio:/path"]', 'Some Author', 'Some Filter')
-	`)
-
+	// Set nullable fields to null
 	ctx.db.run(sql`
 		UPDATE directory_feeds
 		SET author = NULL, filter_in = NULL
-		WHERE id = 'null-test'
+		WHERE id = 'update-test'
 	`)
 
-	const feed = ctx.db
+	const nulledFeed = ctx.db
 		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
-		.get('null-test') as Record<string, unknown>
+		.get('update-test') as Record<string, unknown>
 
-	expect(feed.author).toBeNull()
-	expect(feed.filter_in).toBeNull()
+	expect(nulledFeed.author).toBeNull()
+	expect(nulledFeed.filter_in).toBeNull()
 })

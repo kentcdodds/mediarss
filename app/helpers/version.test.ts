@@ -8,37 +8,30 @@ import {
 } from './version.ts'
 
 test('getAppVersion returns a valid semver version string from package.json', async () => {
-	const version = await getAppVersion()
-	expect(version).not.toBeNull()
-	// Basic semver pattern check (e.g., "1.0.0" or "0.1.0")
-	expect(version).toMatch(/^\d+\.\d+\.\d+/)
+	await expect(getAppVersion()).resolves.toMatch(/^\d+\.\d+\.\d+/)
 })
 
-test('getCommitInfo returns commit hash, message, and date when in git repo', async () => {
+test('getCommitInfo returns complete git commit information when in a git repo', async () => {
 	const commit = await getCommitInfo()
 
 	// This test assumes we're running in a git repository
-	// If not in a git repo, commit will be null
 	if (commit === null) {
-		// Skip assertions if not in a git repo
 		console.log('Skipping git tests - not in a git repository')
 		return
 	}
 
+	// Verify all commit info properties
 	expect(commit.hash).toBeString()
 	expect(commit.hash).toHaveLength(40) // Full SHA is 40 chars
 	expect(commit.shortHash).toBeString()
 	expect(commit.shortHash).toHaveLength(7) // Short SHA is 7 chars
 	expect(commit.message).toBeString()
 	expect(commit.date).toBeString()
+
 	// Date should be ISO format
 	expect(new Date(commit.date).toISOString()).toBeTruthy()
-})
 
-test('getCommitInfo short hash is first 7 characters of full hash', async () => {
-	const commit = await getCommitInfo()
-	if (commit === null) return
-
+	// Short hash should be first 7 characters of full hash
 	expect(commit.shortHash).toBe(commit.hash.slice(0, 7))
 })
 
@@ -60,7 +53,7 @@ test('getDisplayVersion returns version or short commit hash', async () => {
 	).toBeTruthy()
 })
 
-test('getVersionInfo returns complete version info object', async () => {
+test('getVersionInfo returns complete version info object with all required properties', async () => {
 	const info = await getVersionInfo()
 
 	expect(info).toHaveProperty('version')

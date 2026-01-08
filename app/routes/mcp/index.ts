@@ -8,22 +8,20 @@ import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
 import {
 	type AuthInfo,
+	getAuthExtra,
 	handleUnauthorized,
 	resolveAuthInfo,
 } from '#app/mcp/auth.ts'
 import { addCorsHeaders, handleCorsPrelight } from '#app/mcp/cors.ts'
 import { createMcpServer, initializeMcpServer } from '#app/mcp/server.ts'
-import {
-	BunStreamableHTTPServerTransport,
-	type RequestContext as TransportContext,
-} from '#app/mcp/transport.ts'
+import { WebStandardStreamableHTTPServerTransport } from '#app/mcp/transport.ts'
 
 /**
  * Session storage for active MCP sessions.
  * Maps session ID to transport and server instances.
  */
 interface McpSession {
-	transport: BunStreamableHTTPServerTransport
+	transport: WebStandardStreamableHTTPServerTransport
 	server: McpServer
 	authInfo: AuthInfo
 	createdAt: number
@@ -106,7 +104,8 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 	// If we have a session, verify auth still matches
 	if (session) {
 		// Check if user changed or if scopes have been downgraded
-		const userChanged = session.authInfo.sub !== authInfo.sub
+		const userChanged =
+			getAuthExtra(session.authInfo).sub !== getAuthExtra(authInfo).sub
 		const scopesDowngraded = session.authInfo.scopes.some(
 			(scope) => !authInfo.scopes.includes(scope),
 		)
@@ -164,9 +163,9 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 		}
 
 		// Create new session
-		const transport = new BunStreamableHTTPServerTransport({
+		const transport = new WebStandardStreamableHTTPServerTransport({
 			sessionIdGenerator: () => crypto.randomUUID(),
-			onSessionInitialized: (newSessionId) => {
+			onsessioninitialized: (newSessionId) => {
 				sessions.set(newSessionId, {
 					transport,
 					server,
@@ -193,14 +192,9 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 	}
 
 	// Handle the request
-	const transportContext: TransportContext = {
+	const response = await session.transport.handleRequest(request, {
 		authInfo,
-	}
-
-	const response = await session.transport.handleRequest(
-		request,
-		transportContext,
-	)
+	})
 	return addCorsHeaders(response)
 }
 

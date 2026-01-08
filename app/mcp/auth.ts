@@ -3,23 +3,30 @@
  * Handles token verification and authorization for MCP requests.
  */
 
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
 import {
 	type AccessTokenPayload,
 	verifyAccessToken,
 } from '#app/oauth/tokens.ts'
 
+// Re-export the SDK's AuthInfo type for use elsewhere
+export type { AuthInfo }
+
 /**
- * Information about an authenticated MCP session.
+ * Extended auth info with our custom fields stored in extra.
  */
-export interface AuthInfo {
-	/** The raw access token */
-	token: string
-	/** Scopes granted to this token */
-	scopes: string[]
+export interface AuthInfoExtra {
 	/** Subject (user identifier) from the token */
 	sub: string
 	/** Full token payload */
 	payload: AccessTokenPayload
+}
+
+/**
+ * Helper to get the extra data from AuthInfo.
+ */
+export function getAuthExtra(authInfo: AuthInfo): AuthInfoExtra {
+	return authInfo.extra as AuthInfoExtra
 }
 
 /**
@@ -48,9 +55,12 @@ export async function resolveAuthInfo(
 
 	return {
 		token,
+		clientId: payload.client_id ?? 'unknown',
 		scopes: payload.scope ? payload.scope.split(' ') : [],
-		sub: payload.sub,
-		payload,
+		extra: {
+			sub: payload.sub,
+			payload,
+		} satisfies AuthInfoExtra,
 	}
 }
 

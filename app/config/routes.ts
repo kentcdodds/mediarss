@@ -7,6 +7,7 @@ export default route({
 	// OAuth routes (public)
 	oauthToken: '/oauth/token',
 	oauthJwks: '/oauth/jwks',
+	oauthRegister: '/oauth/register',
 	oauthServerMetadata: '/.well-known/oauth-authorization-server',
 	// MCP routes
 	mcp: '/mcp',

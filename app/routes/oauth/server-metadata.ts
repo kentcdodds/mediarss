@@ -1,5 +1,9 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
+import {
+	DISCOVERY_CORS_HEADERS,
+	handleDiscoveryCorsPrelight,
+} from '#app/mcp/cors.ts'
 
 /**
  * OAuth Authorization Server Metadata per RFC 8414.
@@ -12,14 +16,13 @@ export interface AuthorizationServerMetadata {
 	authorization_endpoint: string
 	token_endpoint: string
 	jwks_uri: string
+	registration_endpoint: string
 	response_types_supported: string[]
 	grant_types_supported: string[]
 	code_challenge_methods_supported: string[]
 	token_endpoint_auth_methods_supported: string[]
 	// MCP-specific extension: indicates support for client ID metadata documents
 	client_id_metadata_document_supported: boolean
-	// Registration endpoint is OPTIONAL per MCP 2025-11-25
-	// We don't implement dynamic registration, so this is omitted
 }
 
 function handleGet(context: RequestContext): Response {
@@ -30,6 +33,7 @@ function handleGet(context: RequestContext): Response {
 		authorization_endpoint: `${origin}/admin/authorize`,
 		token_endpoint: `${origin}/oauth/token`,
 		jwks_uri: `${origin}/oauth/jwks`,
+		registration_endpoint: `${origin}/oauth/register`,
 		response_types_supported: ['code'],
 		grant_types_supported: ['authorization_code'],
 		code_challenge_methods_supported: ['S256'],
@@ -40,6 +44,7 @@ function handleGet(context: RequestContext): Response {
 
 	return Response.json(metadata, {
 		headers: {
+			...DISCOVERY_CORS_HEADERS,
 			'Cache-Control': 'public, max-age=3600',
 		},
 	})
@@ -48,10 +53,15 @@ function handleGet(context: RequestContext): Response {
 export default {
 	middleware: [],
 	action(context: RequestContext) {
+		// Handle CORS preflight
+		if (context.method === 'OPTIONS') {
+			return handleDiscoveryCorsPrelight()
+		}
+
 		if (context.method !== 'GET') {
 			return new Response('Method Not Allowed', {
 				status: 405,
-				headers: { Allow: 'GET' },
+				headers: { Allow: 'GET, OPTIONS' },
 			})
 		}
 		return handleGet(context)

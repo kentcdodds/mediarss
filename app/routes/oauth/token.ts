@@ -1,5 +1,6 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { TOKEN_CORS_HEADERS, handleTokenCorsPrelight } from '#app/mcp/cors.ts'
 import {
 	clientSupportsGrantType,
 	consumeAuthorizationCode,
@@ -41,6 +42,7 @@ function errorResponse(
 	return Response.json(body, {
 		status,
 		headers: {
+			...TOKEN_CORS_HEADERS,
 			'Cache-Control': 'no-store',
 			Pragma: 'no-cache',
 		},
@@ -208,6 +210,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	return Response.json(response, {
 		headers: {
+			...TOKEN_CORS_HEADERS,
 			'Cache-Control': 'no-store',
 			Pragma: 'no-cache',
 		},
@@ -217,10 +220,15 @@ async function handlePost(context: RequestContext): Promise<Response> {
 export default {
 	middleware: [],
 	async action(context: RequestContext) {
+		// Handle CORS preflight
+		if (context.method === 'OPTIONS') {
+			return handleTokenCorsPrelight()
+		}
+
 		if (context.method !== 'POST') {
 			return new Response('Method Not Allowed', {
 				status: 405,
-				headers: { Allow: 'POST' },
+				headers: { ...TOKEN_CORS_HEADERS, Allow: 'POST, OPTIONS' },
 			})
 		}
 		return handlePost(context)

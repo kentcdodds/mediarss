@@ -73,3 +73,47 @@ export function handleDiscoveryCorsPrelight(): Response {
 		},
 	})
 }
+
+/**
+ * CORS headers for OAuth registration endpoint.
+ * Allows POST with JSON content type.
+ */
+export const REGISTRATION_CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Accept',
+	'Access-Control-Max-Age': '86400',
+} as const
+
+/**
+ * Handle CORS preflight for registration endpoint.
+ * @returns Response for OPTIONS request
+ */
+export function handleRegistrationCorsPrelight(): Response {
+	return new Response(null, {
+		status: 204,
+		headers: REGISTRATION_CORS_HEADERS,
+	})
+}
+
+/**
+ * CORS headers for OAuth token endpoint.
+ * Allows POST with form-urlencoded content type.
+ */
+export const TOKEN_CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Accept',
+	'Access-Control-Max-Age': '86400',
+} as const
+
+/**
+ * Handle CORS preflight for token endpoint.
+ * @returns Response for OPTIONS request
+ */
+export function handleTokenCorsPrelight(): Response {
+	return new Response(null, {
+		status: 204,
+		headers: TOKEN_CORS_HEADERS,
+	})
+}

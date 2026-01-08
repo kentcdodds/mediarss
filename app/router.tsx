@@ -31,6 +31,7 @@ import mcpHandlers from '#app/routes/mcp/index.ts'
 import mcpProtectedResourceHandlers from '#app/routes/mcp/oauth-protected-resource.ts'
 import mediaHandlers from '#app/routes/media.ts'
 import oauthJwksHandlers from '#app/routes/oauth/jwks.ts'
+import oauthRegisterHandlers from '#app/routes/oauth/register.ts'
 import oauthServerMetadataHandlers from '#app/routes/oauth/server-metadata.ts'
 import oauthTokenHandlers from '#app/routes/oauth/token.ts'
 
@@ -99,6 +100,7 @@ router.map(routes.art, artHandlers)
 // OAuth routes (public, before admin routes)
 router.map(routes.oauthToken, oauthTokenHandlers)
 router.map(routes.oauthJwks, oauthJwksHandlers)
+router.map(routes.oauthRegister, oauthRegisterHandlers)
 router.map(routes.oauthServerMetadata, oauthServerMetadataHandlers)
 
 // MCP routes (public, require OAuth token)

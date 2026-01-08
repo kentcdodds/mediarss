@@ -258,6 +258,7 @@ test('server metadata indicates DCR and client ID metadata document support', as
 		authorization_endpoint: string
 		token_endpoint: string
 		jwks_uri: string
+		scopes_supported: string[]
 		response_types_supported: string[]
 		grant_types_supported: string[]
 		code_challenge_methods_supported: string[]
@@ -270,6 +271,8 @@ test('server metadata indicates DCR and client ID metadata document support', as
 	expect(metadata.authorization_endpoint).toBe(`${ctx.baseUrl}/admin/authorize`)
 	expect(metadata.token_endpoint).toBe(`${ctx.baseUrl}/oauth/token`)
 	expect(metadata.jwks_uri).toBe(`${ctx.baseUrl}/oauth/jwks`)
+	expect(metadata.scopes_supported).toContain('mcp:read')
+	expect(metadata.scopes_supported).toContain('mcp:write')
 	expect(metadata.response_types_supported).toContain('code')
 	expect(metadata.grant_types_supported).toContain('authorization_code')
 	expect(metadata.code_challenge_methods_supported).toContain('S256')

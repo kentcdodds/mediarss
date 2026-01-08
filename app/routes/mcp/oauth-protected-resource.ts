@@ -9,10 +9,7 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
-import {
-	DISCOVERY_CORS_HEADERS,
-	handleDiscoveryCorsPrelight,
-} from '#app/mcp/cors.ts'
+import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 
 /**
  * Protected Resource Metadata per RFC 9728.
@@ -37,7 +34,6 @@ function handleGet(context: RequestContext): Response {
 
 	return Response.json(metadata, {
 		headers: {
-			...DISCOVERY_CORS_HEADERS,
 			'Cache-Control': 'public, max-age=3600',
 		},
 	})
@@ -45,21 +41,19 @@ function handleGet(context: RequestContext): Response {
 
 export default {
 	middleware: [],
-	action(context: RequestContext) {
-		// Handle CORS preflight
-		if (context.method === 'OPTIONS') {
-			return handleDiscoveryCorsPrelight()
-		}
+	action: withCors({
+		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
+		handler: (context: RequestContext) => {
+			if (context.method !== 'GET' && context.method !== 'HEAD') {
+				return new Response('Method Not Allowed', {
+					status: 405,
+					headers: { Allow: 'GET, HEAD, OPTIONS' },
+				})
+			}
 
-		if (context.method !== 'GET' && context.method !== 'HEAD') {
-			return new Response('Method Not Allowed', {
-				status: 405,
-				headers: { Allow: 'GET, HEAD, OPTIONS' },
-			})
-		}
-
-		return handleGet(context)
-	},
+			return handleGet(context)
+		},
+	}),
 } satisfies Action<
 	typeof routes.mcpProtectedResource.method,
 	typeof routes.mcpProtectedResource.pattern.source

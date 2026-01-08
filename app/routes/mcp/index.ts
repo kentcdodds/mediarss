@@ -12,7 +12,7 @@ import {
 	handleUnauthorized,
 	resolveAuthInfo,
 } from '#app/mcp/auth.ts'
-import { addCorsHeaders, handleCorsPrelight } from '#app/mcp/cors.ts'
+import { MCP_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createMcpServer, initializeMcpServer } from '#app/mcp/server.ts'
 import { WebStandardStreamableHTTPServerTransport } from '#app/mcp/transport.ts'
 
@@ -82,146 +82,139 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 	const { request } = context
 	const issuer = `${context.url.protocol}//${context.url.host}`
 
-	try {
-		// Handle CORS preflight
-		if (request.method === 'OPTIONS') {
-			return handleCorsPrelight()
-		}
+	// Validate authentication
+	const authInfo = await resolveAuthInfo(
+		request.headers.get('authorization'),
+		issuer,
+	)
 
-		// Validate authentication
-		const authInfo = await resolveAuthInfo(
-			request.headers.get('authorization'),
-			issuer,
+	if (!authInfo) {
+		return handleUnauthorized(request)
+	}
+
+	// Check for existing session
+	const sessionId = request.headers.get('mcp-session-id')
+	let session = sessionId ? sessions.get(sessionId) : undefined
+
+	// If we have a session, verify auth still matches
+	if (session) {
+		// Check if user changed or if scopes have been downgraded
+		const userChanged =
+			getAuthExtra(session.authInfo).sub !== getAuthExtra(authInfo).sub
+		const scopesDowngraded = session.authInfo.scopes.some(
+			(scope) => !authInfo.scopes.includes(scope),
 		)
 
-		if (!authInfo) {
-			return addCorsHeaders(handleUnauthorized(request))
+		if (userChanged || scopesDowngraded) {
+			// Token changed or scopes reduced, invalidate session
+			await session.transport.close()
+			sessions.delete(sessionId!)
+			session = undefined
 		}
+	}
 
-		// Check for existing session
-		const sessionId = request.headers.get('mcp-session-id')
-		let session = sessionId ? sessions.get(sessionId) : undefined
+	// Handle initialization request
+	if (!session) {
+		const isInit = await isInitializationRequest(request)
 
-		// If we have a session, verify auth still matches
-		if (session) {
-			// Check if user changed or if scopes have been downgraded
-			const userChanged =
-				getAuthExtra(session.authInfo).sub !== getAuthExtra(authInfo).sub
-			const scopesDowngraded = session.authInfo.scopes.some(
-				(scope) => !authInfo.scopes.includes(scope),
-			)
-
-			if (userChanged || scopesDowngraded) {
-				// Token changed or scopes reduced, invalidate session
-				await session.transport.close()
-				sessions.delete(sessionId!)
-				session = undefined
-			}
-		}
-
-		// Handle initialization request
-		if (!session) {
-			const isInit = await isInitializationRequest(request)
-
-			if (!isInit && sessionId) {
-				// Session not found but session ID provided
-				return addCorsHeaders(
-					new Response(
-						JSON.stringify({
-							jsonrpc: '2.0',
-							error: {
-								code: -32001,
-								message: 'Session not found',
-							},
-							id: null,
-						}),
-						{
-							status: 404,
-							headers: { 'Content-Type': 'application/json' },
-						},
-					),
-				)
-			}
-
-			if (!isInit) {
-				// Non-init request without session
-				return addCorsHeaders(
-					new Response(
-						JSON.stringify({
-							jsonrpc: '2.0',
-							error: {
-								code: -32000,
-								message: 'Bad Request: Mcp-Session-Id header is required',
-							},
-							id: null,
-						}),
-						{
-							status: 400,
-							headers: { 'Content-Type': 'application/json' },
-						},
-					),
-				)
-			}
-
-			// Create new session
-			const transport = new WebStandardStreamableHTTPServerTransport({
-				sessionIdGenerator: () => crypto.randomUUID(),
-				onsessioninitialized: (newSessionId) => {
-					sessions.set(newSessionId, {
-						transport,
-						server,
-						authInfo,
-						createdAt: Date.now(),
-					})
-				},
-			})
-
-			// Register onclose callback to remove session from map when closed
-			transport.onclose = () => {
-				const sid = transport.sessionId
-				if (sid) {
-					sessions.delete(sid)
-				}
-			}
-
-			const server = createMcpServer()
-			await initializeMcpServer(server, authInfo)
-			// Note: server.connect() calls transport.start() internally
-			await server.connect(transport)
-
-			session = { transport, server, authInfo, createdAt: Date.now() }
-		}
-
-		// Handle the request
-		const response = await session.transport.handleRequest(request, {
-			authInfo,
-		})
-		return addCorsHeaders(response)
-	} catch (error) {
-		console.error('MCP handler error:', error)
-		return addCorsHeaders(
-			new Response(
+		if (!isInit && sessionId) {
+			// Session not found but session ID provided
+			return new Response(
 				JSON.stringify({
 					jsonrpc: '2.0',
 					error: {
-						code: -32603,
-						message:
-							error instanceof Error ? error.message : 'Internal server error',
+						code: -32001,
+						message: 'Session not found',
 					},
 					id: null,
 				}),
 				{
-					status: 500,
+					status: 404,
 					headers: { 'Content-Type': 'application/json' },
 				},
-			),
-		)
+			)
+		}
+
+		if (!isInit) {
+			// Non-init request without session
+			return new Response(
+				JSON.stringify({
+					jsonrpc: '2.0',
+					error: {
+						code: -32000,
+						message: 'Bad Request: Mcp-Session-Id header is required',
+					},
+					id: null,
+				}),
+				{
+					status: 400,
+					headers: { 'Content-Type': 'application/json' },
+				},
+			)
+		}
+
+		// Create new session
+		const transport = new WebStandardStreamableHTTPServerTransport({
+			sessionIdGenerator: () => crypto.randomUUID(),
+			onsessioninitialized: (newSessionId) => {
+				sessions.set(newSessionId, {
+					transport,
+					server,
+					authInfo,
+					createdAt: Date.now(),
+				})
+			},
+		})
+
+		// Register onclose callback to remove session from map when closed
+		transport.onclose = () => {
+			const sid = transport.sessionId
+			if (sid) {
+				sessions.delete(sid)
+			}
+		}
+
+		const server = createMcpServer()
+		await initializeMcpServer(server, authInfo)
+		// Note: server.connect() calls transport.start() internally
+		await server.connect(transport)
+
+		session = { transport, server, authInfo, createdAt: Date.now() }
 	}
+
+	// Handle the request
+	return session.transport.handleRequest(request, {
+		authInfo,
+	})
 }
 
 export default {
 	middleware: [],
-	async action(context: RequestContext) {
-		return handleRequest(context)
-	},
+	action: withCors({
+		getCorsHeaders: () => MCP_CORS_HEADERS,
+		handler: async (context: RequestContext) => {
+			try {
+				return await handleRequest(context)
+			} catch (error) {
+				console.error('MCP handler error:', error)
+				return new Response(
+					JSON.stringify({
+						jsonrpc: '2.0',
+						error: {
+							code: -32603,
+							message:
+								error instanceof Error
+									? error.message
+									: 'Internal server error',
+						},
+						id: null,
+					}),
+					{
+						status: 500,
+						headers: { 'Content-Type': 'application/json' },
+					},
+				)
+			}
+		},
+	}),
 } satisfies Action<typeof routes.mcp.method, typeof routes.mcp.pattern.source>

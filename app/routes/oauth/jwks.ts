@@ -1,9 +1,6 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import {
-	DISCOVERY_CORS_HEADERS,
-	handleDiscoveryCorsPrelight,
-} from '#app/mcp/cors.ts'
+import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { getPublicKeyJwk } from '#app/oauth/index.ts'
 
 /**
@@ -20,7 +17,6 @@ async function handleGet(): Promise<Response> {
 
 	return Response.json(jwks, {
 		headers: {
-			...DISCOVERY_CORS_HEADERS,
 			'Content-Type': 'application/json',
 			// Cache for 1 hour, keys rarely change
 			'Cache-Control': 'public, max-age=3600',
@@ -30,20 +26,18 @@ async function handleGet(): Promise<Response> {
 
 export default {
 	middleware: [],
-	async action(context: RequestContext) {
-		// Handle CORS preflight
-		if (context.method === 'OPTIONS') {
-			return handleDiscoveryCorsPrelight()
-		}
-
-		if (context.method !== 'GET') {
-			return new Response('Method Not Allowed', {
-				status: 405,
-				headers: { ...DISCOVERY_CORS_HEADERS, Allow: 'GET, OPTIONS' },
-			})
-		}
-		return handleGet()
-	},
+	action: withCors({
+		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
+		handler: async (context: RequestContext) => {
+			if (context.method !== 'GET') {
+				return new Response('Method Not Allowed', {
+					status: 405,
+					headers: { Allow: 'GET, OPTIONS' },
+				})
+			}
+			return handleGet()
+		},
+	}),
 } satisfies Action<
 	typeof routes.oauthJwks.method,
 	typeof routes.oauthJwks.pattern.source

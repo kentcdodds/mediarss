@@ -5,10 +5,7 @@
 
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import {
-	handleRegistrationCorsPrelight,
-	REGISTRATION_CORS_HEADERS,
-} from '#app/mcp/cors.ts'
+import { REGISTRATION_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createClient } from '#app/oauth/clients.ts'
 
 /**
@@ -173,10 +170,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 				error: 'invalid_client_metadata',
 				error_description: 'Content-Type must be application/json',
 			},
-			{
-				status: 400,
-				headers: REGISTRATION_CORS_HEADERS,
-			},
+			{ status: 400 },
 		)
 	}
 
@@ -189,20 +183,14 @@ async function handlePost(context: RequestContext): Promise<Response> {
 				error: 'invalid_client_metadata',
 				error_description: 'Request body must be valid JSON',
 			},
-			{
-				status: 400,
-				headers: REGISTRATION_CORS_HEADERS,
-			},
+			{ status: 400 },
 		)
 	}
 
 	const validated = validateRegistrationRequest(body)
 
 	if ('error' in validated) {
-		return Response.json(validated, {
-			status: 400,
-			headers: REGISTRATION_CORS_HEADERS,
-		})
+		return Response.json(validated, { status: 400 })
 	}
 
 	// Create the client
@@ -223,7 +211,6 @@ async function handlePost(context: RequestContext): Promise<Response> {
 	return Response.json(response, {
 		status: 201,
 		headers: {
-			...REGISTRATION_CORS_HEADERS,
 			'Cache-Control': 'no-store',
 		},
 	})
@@ -231,21 +218,19 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 export default {
 	middleware: [],
-	async action(context: RequestContext) {
-		// Handle CORS preflight
-		if (context.method === 'OPTIONS') {
-			return handleRegistrationCorsPrelight()
-		}
+	action: withCors({
+		getCorsHeaders: () => REGISTRATION_CORS_HEADERS,
+		handler: async (context: RequestContext) => {
+			if (context.method !== 'POST') {
+				return new Response('Method Not Allowed', {
+					status: 405,
+					headers: { Allow: 'POST, OPTIONS' },
+				})
+			}
 
-		if (context.method !== 'POST') {
-			return new Response('Method Not Allowed', {
-				status: 405,
-				headers: { ...REGISTRATION_CORS_HEADERS, Allow: 'POST, OPTIONS' },
-			})
-		}
-
-		return handlePost(context)
-	},
+			return handlePost(context)
+		},
+	}),
 } satisfies Action<
 	typeof routes.oauthRegister.method,
 	typeof routes.oauthRegister.pattern.source

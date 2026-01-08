@@ -1,7 +1,85 @@
 /**
- * CORS utilities for MCP endpoints.
+ * CORS utilities for MCP and OAuth endpoints.
  * MCP requires CORS support for browser-based clients.
  */
+
+import type { RequestContext } from '@remix-run/fetch-router'
+
+/**
+ * Handler function type for Bun/Remix routes.
+ */
+type RouteHandler = (context: RequestContext) => Response | Promise<Response>
+
+/**
+ * Merge multiple headers objects into one (uses set so later headers override earlier).
+ */
+export function mergeHeaders(
+	...headers: Array<HeadersInit | null | undefined>
+): Headers {
+	const merged = new Headers()
+	for (const header of headers) {
+		if (!header) continue
+		new Headers(header).forEach((value, key) => {
+			merged.set(key, value)
+		})
+	}
+	return merged
+}
+
+/**
+ * Wrap a route handler with CORS support.
+ * Automatically handles OPTIONS preflight and adds CORS headers to all responses.
+ *
+ * @example
+ * ```ts
+ * export default {
+ *   middleware: [],
+ *   action: withCors({
+ *     getCorsHeaders: (request) => MCP_CORS_HEADERS,
+ *     handler: async (context) => {
+ *       return Response.json({ ok: true })
+ *     },
+ *   }),
+ * }
+ * ```
+ */
+export function withCors({
+	getCorsHeaders,
+	handler,
+}: {
+	getCorsHeaders(
+		request: Request,
+	): Record<string, string> | Headers | null | undefined
+	handler: RouteHandler
+}): RouteHandler {
+	return async (context) => {
+		const corsHeaders = getCorsHeaders(context.request)
+		if (!corsHeaders) {
+			return handler(context)
+		}
+
+		// Handle CORS preflight requests
+		if (context.request.method === 'OPTIONS') {
+			const headers = mergeHeaders(corsHeaders, {
+				'Access-Control-Max-Age': '86400',
+			})
+
+			return new Response(null, { status: 204, headers })
+		}
+
+		// Call the original handler
+		const response = await handler(context)
+
+		// Add CORS headers to ALL responses, including early returns
+		const newHeaders = mergeHeaders(response.headers, corsHeaders)
+
+		return new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: newHeaders,
+		})
+	}
+}
 
 /**
  * CORS headers for MCP endpoints.
@@ -12,43 +90,7 @@ export const MCP_CORS_HEADERS = {
 	'Access-Control-Allow-Headers':
 		'Content-Type, Authorization, Accept, mcp-session-id, mcp-protocol-version',
 	'Access-Control-Expose-Headers': 'mcp-session-id',
-	'Access-Control-Max-Age': '86400',
 } as const
-
-/**
- * Handle CORS preflight request.
- * @returns Response for OPTIONS request
- */
-export function handleCorsPrelight(): Response {
-	return new Response(null, {
-		status: 204,
-		headers: MCP_CORS_HEADERS,
-	})
-}
-
-/**
- * Add CORS headers to an existing response.
- * @param response - The response to add headers to
- * @returns New response with CORS headers
- */
-export function addCorsHeaders(response: Response): Response {
-	const headers = new Headers(response.headers)
-
-	headers.set(
-		'Access-Control-Allow-Origin',
-		MCP_CORS_HEADERS['Access-Control-Allow-Origin'],
-	)
-	headers.set(
-		'Access-Control-Expose-Headers',
-		MCP_CORS_HEADERS['Access-Control-Expose-Headers'],
-	)
-
-	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers,
-	})
-}
 
 /**
  * CORS headers specifically for well-known endpoints.
@@ -61,20 +103,6 @@ export const DISCOVERY_CORS_HEADERS = {
 } as const
 
 /**
- * Handle CORS preflight for discovery endpoints.
- * @returns Response for OPTIONS request
- */
-export function handleDiscoveryCorsPrelight(): Response {
-	return new Response(null, {
-		status: 204,
-		headers: {
-			...DISCOVERY_CORS_HEADERS,
-			'Access-Control-Max-Age': '86400',
-		},
-	})
-}
-
-/**
  * CORS headers for OAuth registration endpoint.
  * Allows POST with JSON content type.
  */
@@ -82,19 +110,7 @@ export const REGISTRATION_CORS_HEADERS = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'POST, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type, Accept',
-	'Access-Control-Max-Age': '86400',
 } as const
-
-/**
- * Handle CORS preflight for registration endpoint.
- * @returns Response for OPTIONS request
- */
-export function handleRegistrationCorsPrelight(): Response {
-	return new Response(null, {
-		status: 204,
-		headers: REGISTRATION_CORS_HEADERS,
-	})
-}
 
 /**
  * CORS headers for OAuth token endpoint.
@@ -104,16 +120,4 @@ export const TOKEN_CORS_HEADERS = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'POST, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type, Accept',
-	'Access-Control-Max-Age': '86400',
 } as const
-
-/**
- * Handle CORS preflight for token endpoint.
- * @returns Response for OPTIONS request
- */
-export function handleTokenCorsPrelight(): Response {
-	return new Response(null, {
-		status: 204,
-		headers: TOKEN_CORS_HEADERS,
-	})
-}

@@ -1,9 +1,6 @@
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
-import {
-	DISCOVERY_CORS_HEADERS,
-	handleDiscoveryCorsPrelight,
-} from '#app/mcp/cors.ts'
+import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 
 /**
  * OAuth Authorization Server Metadata per RFC 8414.
@@ -44,7 +41,6 @@ function handleGet(context: RequestContext): Response {
 
 	return Response.json(metadata, {
 		headers: {
-			...DISCOVERY_CORS_HEADERS,
 			'Cache-Control': 'public, max-age=3600',
 		},
 	})
@@ -52,20 +48,18 @@ function handleGet(context: RequestContext): Response {
 
 export default {
 	middleware: [],
-	action(context: RequestContext) {
-		// Handle CORS preflight
-		if (context.method === 'OPTIONS') {
-			return handleDiscoveryCorsPrelight()
-		}
-
-		if (context.method !== 'GET') {
-			return new Response('Method Not Allowed', {
-				status: 405,
-				headers: { Allow: 'GET, OPTIONS' },
-			})
-		}
-		return handleGet(context)
-	},
+	action: withCors({
+		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
+		handler: (context: RequestContext) => {
+			if (context.method !== 'GET') {
+				return new Response('Method Not Allowed', {
+					status: 405,
+					headers: { Allow: 'GET, OPTIONS' },
+				})
+			}
+			return handleGet(context)
+		},
+	}),
 } satisfies Action<
 	typeof routes.oauthServerMetadata.method,
 	typeof routes.oauthServerMetadata.pattern.source

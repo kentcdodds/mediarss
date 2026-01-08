@@ -83,7 +83,8 @@ If you're running this on a Synology NAS, follow these specific instructions:
        - Mount path: `/media/[your-name]` (e.g., `/media/shows`,
          `/media/personal`, etc.)
        - Local path: `/volume1/[your-folder]`
-       - Check "Read-only"
+       - Check "Read-only" if you only need to serve existing files
+       - **Uncheck "Read-only"** if you want to upload media via the admin dashboard
    - In the "Port Settings" tab:
 
      - Local Port: 22050 (or your preferred port)
@@ -148,8 +149,15 @@ docker run -d \
   [your-image-name]
 ```
 
-Note: The `:ro` flag in the media volume mounts makes them read-only, which is
-recommended for security.
+**Note on volume permissions:**
+
+- The `:ro` flag makes media volumes read-only, which is recommended for security
+  if you only need to serve existing files.
+- **To enable media uploads**, mount volumes read/write by removing the `:ro` flag:
+  ```bash
+  -v /path/to/audiobooks:/media/audiobooks \
+  ```
+  This allows uploading new media files through the admin dashboard.
 
 ### Volume Mounts
 
@@ -175,7 +183,9 @@ The application requires these volume mounts:
    - Examples:
      - `-v /path/to/audiobooks:/media/audiobooks:ro`
      - `-v /path/to/audio-series:/media/audio-series:ro`
-   - Should be mounted read-only (`:ro`)
+   - Mount read-only (`:ro`) if you only need to serve existing files
+   - **For media uploads:** Mount read/write (without `:ro`) to enable uploading
+     files via the admin dashboard
    - Name the mount points anything that makes sense for your use case
 
 ### Media Directory Structure
@@ -362,6 +372,7 @@ docker stop mediarss
 docker rm mediarss
 
 # Run the new container (using the same data directory and media mount)
+# Note: Remove :ro from media volumes if you need to upload media files
 docker run -d \
   --name mediarss \
   -p 22050:22050 \

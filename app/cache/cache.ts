@@ -197,10 +197,13 @@ export function clearCache(): void {
  */
 export function deleteCacheByPrefix(prefix: string): number {
 	const db = getCacheDb()
+	// Escape LIKE special characters in prefix to prevent unintended matches
+	// _ matches any single character, % matches any sequence of characters
+	const escapedPrefix = prefix.replace(/[\\%_]/g, '\\$&')
 	const statement = db.prepare<void, [string]>(
-		'DELETE FROM cache WHERE key LIKE ?',
+		'DELETE FROM cache WHERE key LIKE ? ESCAPE "\\"',
 	)
-	const result = statement.run(`${prefix}%`)
+	const result = statement.run(`${escapedPrefix}%`)
 	return result.changes
 }
 

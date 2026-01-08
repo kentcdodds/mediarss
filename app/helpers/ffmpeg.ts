@@ -57,7 +57,13 @@ const TAG_MAPPINGS = {
  */
 function getFormatType(mimeType: string): 'mp3' | 'mp4' | 'mkv' | null {
 	if (mimeType === 'audio/mpeg') return 'mp3'
-	if (mimeType === 'audio/mp4' || mimeType === 'video/mp4') return 'mp4'
+	// M4A files can have audio/mp4, audio/x-m4a, or video/mp4 MIME types
+	if (
+		mimeType === 'audio/mp4' ||
+		mimeType === 'audio/x-m4a' ||
+		mimeType === 'video/mp4'
+	)
+		return 'mp4'
 	if (mimeType === 'video/x-matroska' || mimeType === 'audio/x-matroska')
 		return 'mkv'
 	return null

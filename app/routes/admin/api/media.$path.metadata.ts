@@ -10,7 +10,7 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
-import { updateMetadata, type EditableMetadata } from '#app/helpers/ffmpeg.ts'
+import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 

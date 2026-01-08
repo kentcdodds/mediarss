@@ -294,7 +294,7 @@ export function MediaDetail(this: Handle) {
 				payload.copyright = editedMetadata.copyright
 			}
 
-			const res = await fetch(`/admin/api/media/${currentPath}/metadata`, {
+			const res = await fetch(`/admin/api/media/${savePath}/metadata`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),

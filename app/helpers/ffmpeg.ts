@@ -41,17 +41,17 @@ const TAG_MAPPINGS = {
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
-		narrator: 'composer', // Audiobooks often use composer for narrator
+		narrator: 'TPE3', // ID3v2 conductor/performer - used for narrators
 		album: 'album',
 		albumArtist: 'album_artist',
 		composer: 'composer',
 		publisher: 'publisher',
 		discNumber: 'disc',
 		language: 'language',
-		series: 'TIT3', // Part of set / Series name (ID3v2)
-		seriesPosition: 'TPOS', // Part of set position
+		series: 'TXXX:series', // Custom tag for series name
+		seriesPosition: 'TXXX:series-part', // Custom tag for series position
 		encodedBy: 'encoded_by',
-		subtitle: 'TIT3', // Subtitle / description refinement
+		subtitle: 'TIT3', // ID3v2 subtitle/description refinement
 	},
 	// M4A/M4B (iTunes/QuickTime)
 	mp4: {
@@ -62,7 +62,7 @@ const TAG_MAPPINGS = {
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
-		narrator: 'composer', // iTunes uses composer for narrator
+		narrator: '----:com.apple.iTunes:NARRATOR', // Custom iTunes tag for narrator
 		album: 'album',
 		albumArtist: 'album_artist',
 		composer: 'composer',

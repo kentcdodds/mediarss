@@ -419,6 +419,8 @@ function extractDescription(
  * 1. json64.narrated_by (comma-separated)
  * 2. TXXX:narrated_by
  * 3. ----:com.apple.iTunes:PERFORMER_NAME
+ * 4. ----:com.apple.iTunes:NARRATOR (custom tag we write for MP4)
+ * 5. TPE3 (ID3v2 conductor/performer - we write this for MP3)
  */
 function extractNarrators(
 	metadata: mm.IAudioMetadata,
@@ -450,6 +452,29 @@ function extractNarrators(
 	)
 	if (performer) {
 		const narrators = performer
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 4. Custom iTunes narrator tag (we write this for MP4)
+	const itunesNarrator = getNativeValue(
+		metadata,
+		'----:com.apple.iTunes:NARRATOR',
+	)
+	if (itunesNarrator) {
+		const narrators = itunesNarrator
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 5. TPE3 - ID3v2 conductor/performer (we write this for MP3)
+	const tpe3 = getNativeValue(metadata, 'TPE3')
+	if (tpe3) {
+		const narrators = tpe3
 			.split(',')
 			.map((n) => n.trim())
 			.filter(Boolean)
@@ -622,9 +647,17 @@ function extractSeries(metadata: mm.IAudioMetadata): string | null {
 	const show = getNativeValue(metadata, 'tvsh') // iTunes show name
 	if (show) return show
 
+	// Check for show tag (MP4)
+	const showTag = getNativeValue(metadata, 'show')
+	if (showTag) return showTag
+
 	// Check for series tag
 	const series = getNativeValue(metadata, 'series')
 	if (series) return series
+
+	// Check for TXXX:series (MP3 custom tag we write to)
+	const txxxSeries = getNativeValue(metadata, 'TXXX:series')
+	if (txxxSeries) return txxxSeries
 
 	// Check for grouping (sometimes used for series)
 	if (metadata.common.grouping) {
@@ -642,13 +675,21 @@ function extractSeriesPosition(metadata: mm.IAudioMetadata): string | null {
 	const episodeSort = getNativeValue(metadata, 'tves') // iTunes episode sort
 	if (episodeSort) return episodeSort
 
+	// Check for episode_sort (MP4)
+	const episodeSortTag = getNativeValue(metadata, 'episode_sort')
+	if (episodeSortTag) return episodeSortTag
+
 	// Check for series-part
 	const seriesPart = getNativeValue(metadata, 'series-part')
 	if (seriesPart) return seriesPart
 
+	// Check for TXXX:series-part (MP3 custom tag we write to)
+	const txxxSeriesPart = getNativeValue(metadata, 'TXXX:series-part')
+	if (txxxSeriesPart) return txxxSeriesPart
+
 	// Check for movement name (classical music)
-	if (metadata.common.movementName) {
-		return metadata.common.movementName
+	if (metadata.common.movement) {
+		return metadata.common.movement
 	}
 
 	return null

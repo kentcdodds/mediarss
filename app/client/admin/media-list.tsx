@@ -1424,6 +1424,12 @@ function Checkbox({
 				click: (e: MouseEvent) => {
 					e.stopPropagation()
 				},
+				keydown: (e: KeyboardEvent) => {
+					// Stop Space/Enter from bubbling to row's keydown handler
+					if (e.key === ' ' || e.key === 'Enter') {
+						e.stopPropagation()
+					}
+				},
 			}}
 		>
 			<input
@@ -1444,6 +1450,12 @@ function Checkbox({
 				on={{
 					change: () => onChange(),
 					click: (e: MouseEvent) => e.stopPropagation(),
+					keydown: (e: KeyboardEvent) => {
+						// Stop Space/Enter from bubbling to row's keydown handler
+						if (e.key === ' ' || e.key === 'Enter') {
+							e.stopPropagation()
+						}
+					},
 				}}
 			/>
 			{checked && (

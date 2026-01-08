@@ -69,6 +69,16 @@ type LoadingState =
 	| { status: 'error'; message: string }
 	| { status: 'success'; data: MediaDetailResponse }
 
+type EditableMetadata = {
+	title: string
+	author: string
+	description: string
+	year: string
+	genre: string
+	trackNumber: string
+	copyright: string
+}
+
 /**
  * Check if MIME type is video
  */
@@ -85,6 +95,20 @@ export function MediaDetail(this: Handle) {
 	let selectedFeedIds: Set<string> = new Set()
 	let saving = false
 	let saveMessage: { type: 'success' | 'error'; text: string } | null = null
+
+	// Metadata editing state
+	let isEditingMetadata = false
+	let savingMetadata = false
+	let metadataMessage: { type: 'success' | 'error'; text: string } | null = null
+	let editedMetadata: EditableMetadata = {
+		title: '',
+		author: '',
+		description: '',
+		year: '',
+		genre: '',
+		trackNumber: '',
+		copyright: '',
+	}
 
 	const fetchMedia = async (encodedPath: string) => {
 		currentPath = encodedPath
@@ -202,6 +226,117 @@ export function MediaDetail(this: Handle) {
 			if (!currentAssignments.has(id)) return true
 		}
 		return false
+	}
+
+	// Initialize edit form with current metadata
+	const startEditingMetadata = () => {
+		if (state.status !== 'success') return
+		const { media } = state.data
+		editedMetadata = {
+			title: media.title || '',
+			author: media.author || '',
+			description: media.description || '',
+			year: media.publicationDate
+				? new Date(media.publicationDate).getFullYear().toString()
+				: '',
+			genre: media.genres?.join(', ') || '',
+			trackNumber: media.trackNumber?.toString() || '',
+			copyright: media.copyright || '',
+		}
+		isEditingMetadata = true
+		metadataMessage = null
+		this.update()
+	}
+
+	const cancelEditingMetadata = () => {
+		isEditingMetadata = false
+		metadataMessage = null
+		this.update()
+	}
+
+	const saveMetadata = async () => {
+		if (state.status !== 'success') return
+
+		const savePath = currentPath
+		savingMetadata = true
+		metadataMessage = null
+		this.update()
+
+		try {
+			// Build the update payload with only changed fields
+			const payload: Record<string, string | number> = {}
+
+			if (editedMetadata.title) {
+				payload.title = editedMetadata.title
+			}
+			if (editedMetadata.author) {
+				payload.author = editedMetadata.author
+			}
+			if (editedMetadata.description) {
+				payload.description = editedMetadata.description
+			}
+			if (editedMetadata.year) {
+				const year = parseInt(editedMetadata.year, 10)
+				if (!Number.isNaN(year)) {
+					payload.year = year
+				}
+			}
+			if (editedMetadata.genre) {
+				payload.genre = editedMetadata.genre
+			}
+			if (editedMetadata.trackNumber) {
+				const track = parseInt(editedMetadata.trackNumber, 10)
+				if (!Number.isNaN(track)) {
+					payload.trackNumber = track
+				}
+			}
+			if (editedMetadata.copyright) {
+				payload.copyright = editedMetadata.copyright
+			}
+
+			const res = await fetch(`/admin/api/media/${savePath}/metadata`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+				signal: this.signal,
+			})
+
+			if (!res.ok) {
+				const data = await res.json()
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			// Don't update state if user navigated away
+			if (this.signal.aborted || currentPath !== savePath) return
+
+			// Update state with the response
+			const data = (await res.json()) as MediaDetailResponse
+			state = { status: 'success', data }
+
+			metadataMessage = { type: 'success', text: 'Metadata saved successfully' }
+			isEditingMetadata = false
+
+			// Clear success message after 3 seconds
+			setTimeout(() => {
+				metadataMessage = null
+				this.update()
+			}, 3000)
+		} catch (err) {
+			// Ignore abort errors
+			if (this.signal.aborted) return
+			metadataMessage = {
+				type: 'error',
+				text: err instanceof Error ? err.message : 'Failed to save metadata',
+			}
+		} finally {
+			savingMetadata = false
+			this.update()
+		}
+	}
+
+	const updateEditedField = (field: keyof EditableMetadata, value: string) => {
+		editedMetadata[field] = value
+		this.update()
 	}
 
 	return () => {
@@ -553,6 +688,237 @@ export function MediaDetail(this: Handle) {
 								</p>
 							</div>
 						)}
+
+						{/* Metadata Editing Card */}
+						<div
+							css={{
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: responsive.spacingSection,
+								marginBottom: spacing.xl,
+								boxShadow: shadows.sm,
+							}}
+						>
+							<div
+								css={{
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									marginBottom: spacing.md,
+								}}
+							>
+								<h3
+									css={{
+										fontSize: typography.fontSize.base,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										margin: 0,
+									}}
+								>
+									Edit Metadata
+								</h3>
+								{!isEditingMetadata && (
+									<button
+										type="button"
+										css={{
+											padding: `${spacing.xs} ${spacing.md}`,
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.background,
+											backgroundColor: colors.primary,
+											border: 'none',
+											borderRadius: radius.md,
+											cursor: 'pointer',
+											transition: `all ${transitions.fast}`,
+											'&:hover': { backgroundColor: colors.primaryHover },
+										}}
+										on={{ click: startEditingMetadata }}
+									>
+										Edit
+									</button>
+								)}
+							</div>
+
+							{metadataMessage && !isEditingMetadata && (
+								<div
+									css={{
+										padding: spacing.sm,
+										borderRadius: radius.md,
+										marginBottom: spacing.md,
+										backgroundColor:
+											metadataMessage.type === 'success'
+												? 'rgba(16, 185, 129, 0.1)'
+												: 'rgba(239, 68, 68, 0.1)',
+										border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+									}}
+								>
+									<p
+										css={{
+											margin: 0,
+											fontSize: typography.fontSize.sm,
+											color:
+												metadataMessage.type === 'success'
+													? '#10b981'
+													: '#ef4444',
+										}}
+									>
+										{metadataMessage.text}
+									</p>
+								</div>
+							)}
+
+							{isEditingMetadata ? (
+								<div>
+									{metadataMessage && (
+										<div
+											css={{
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												marginBottom: spacing.md,
+												backgroundColor:
+													metadataMessage.type === 'success'
+														? 'rgba(16, 185, 129, 0.1)'
+														: 'rgba(239, 68, 68, 0.1)',
+												border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+											}}
+										>
+											<p
+												css={{
+													margin: 0,
+													fontSize: typography.fontSize.sm,
+													color:
+														metadataMessage.type === 'success'
+															? '#10b981'
+															: '#ef4444',
+												}}
+											>
+												{metadataMessage.text}
+											</p>
+										</div>
+									)}
+
+									<div
+										css={{
+											display: 'flex',
+											flexDirection: 'column',
+											gap: spacing.md,
+										}}
+									>
+										<MetadataField
+											label="Title"
+											value={editedMetadata.title}
+											onChange={(v) => updateEditedField('title', v)}
+										/>
+										<MetadataField
+											label="Author"
+											value={editedMetadata.author}
+											onChange={(v) => updateEditedField('author', v)}
+										/>
+										<MetadataTextArea
+											label="Description"
+											value={editedMetadata.description}
+											onChange={(v) => updateEditedField('description', v)}
+										/>
+										<div
+											css={{
+												display: 'grid',
+												gridTemplateColumns: '1fr 1fr',
+												gap: spacing.md,
+											}}
+										>
+											<MetadataField
+												label="Year"
+												value={editedMetadata.year}
+												type="number"
+												onChange={(v) => updateEditedField('year', v)}
+											/>
+											<MetadataField
+												label="Track Number"
+												value={editedMetadata.trackNumber}
+												type="number"
+												onChange={(v) => updateEditedField('trackNumber', v)}
+											/>
+										</div>
+										<MetadataField
+											label="Genre"
+											value={editedMetadata.genre}
+											onChange={(v) => updateEditedField('genre', v)}
+										/>
+										<MetadataField
+											label="Copyright"
+											value={editedMetadata.copyright}
+											onChange={(v) => updateEditedField('copyright', v)}
+										/>
+
+										<div
+											css={{
+												display: 'flex',
+												gap: spacing.sm,
+												justifyContent: 'flex-end',
+												marginTop: spacing.sm,
+											}}
+										>
+											<button
+												type="button"
+												disabled={savingMetadata}
+												css={{
+													padding: `${spacing.sm} ${spacing.lg}`,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.text,
+													backgroundColor: colors.background,
+													border: `1px solid ${colors.border}`,
+													borderRadius: radius.md,
+													cursor: savingMetadata ? 'not-allowed' : 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': savingMetadata
+														? {}
+														: { backgroundColor: colors.surface },
+												}}
+												on={{ click: cancelEditingMetadata }}
+											>
+												Cancel
+											</button>
+											<button
+												type="button"
+												disabled={savingMetadata}
+												css={{
+													padding: `${spacing.sm} ${spacing.lg}`,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.background,
+													backgroundColor: savingMetadata
+														? colors.border
+														: colors.primary,
+													border: 'none',
+													borderRadius: radius.md,
+													cursor: savingMetadata ? 'not-allowed' : 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': savingMetadata
+														? {}
+														: { backgroundColor: colors.primaryHover },
+												}}
+												on={{ click: saveMetadata }}
+											>
+												{savingMetadata ? 'Saving...' : 'Save Metadata'}
+											</button>
+										</div>
+									</div>
+								</div>
+							) : (
+								<p
+									css={{
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+										margin: 0,
+									}}
+								>
+									Edit the file's embedded metadata (title, author, description,
+									etc.)
+								</p>
+							)}
+						</div>
 
 						{/* Feed Assignments Card */}
 						<div
@@ -912,6 +1278,133 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 			>
 				{value}
 			</dd>
+		</div>
+	)
+}
+
+function MetadataField({
+	label,
+	value,
+	type = 'text',
+	onChange,
+}: {
+	label: string
+	value: string
+	type?: 'text' | 'number'
+	onChange: (value: string) => void
+}) {
+	const inputStyles = {
+		width: '100%',
+		padding: spacing.sm,
+		fontSize: typography.fontSize.sm,
+		color: colors.text,
+		backgroundColor: colors.background,
+		border: `1px solid ${colors.border}`,
+		borderRadius: radius.md,
+		outline: 'none',
+		transition: `border-color ${transitions.fast}`,
+		'&:focus': {
+			borderColor: colors.primary,
+		},
+	}
+
+	const labelStyles = {
+		display: 'block',
+		fontSize: typography.fontSize.xs,
+		color: colors.textMuted,
+		textTransform: 'uppercase' as const,
+		letterSpacing: '0.05em',
+		marginBottom: spacing.xs,
+	}
+
+	const inputHandler = {
+		input: (e: Event) => onChange((e.target as HTMLInputElement).value),
+	}
+
+	if (type === 'number') {
+		return (
+			<div>
+				<label css={{ display: 'block' }}>
+					<span css={labelStyles}>{label}</span>
+					<input
+						type="number"
+						value={value}
+						css={inputStyles}
+						on={inputHandler}
+					/>
+				</label>
+			</div>
+		)
+	}
+
+	return (
+		<div>
+			<label css={{ display: 'block' }}>
+				<span css={labelStyles}>{label}</span>
+				<input
+					type="text"
+					value={value}
+					list={undefined}
+					css={inputStyles}
+					on={inputHandler}
+				/>
+			</label>
+		</div>
+	)
+}
+
+function MetadataTextArea({
+	label,
+	value,
+	onChange,
+}: {
+	label: string
+	value: string
+	onChange: (value: string) => void
+}) {
+	return (
+		<div>
+			<label
+				css={{
+					display: 'block',
+				}}
+			>
+				<span
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+						marginBottom: spacing.xs,
+					}}
+				>
+					{label}
+				</span>
+				<textarea
+					value={value}
+					rows={4}
+					css={{
+						width: '100%',
+						padding: spacing.sm,
+						fontSize: typography.fontSize.sm,
+						color: colors.text,
+						backgroundColor: colors.background,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						outline: 'none',
+						resize: 'vertical',
+						fontFamily: 'inherit',
+						transition: `border-color ${transitions.fast}`,
+						'&:focus': {
+							borderColor: colors.primary,
+						},
+					}}
+					on={{
+						input: (e) => onChange((e.target as HTMLTextAreaElement).value),
+					}}
+				/>
+			</label>
 		</div>
 	)
 }

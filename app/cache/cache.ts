@@ -191,6 +191,23 @@ export function clearCache(): void {
 }
 
 /**
+ * Delete cache entries matching a key prefix.
+ * Useful for invalidating related cache entries (e.g., all entries for a specific file).
+ * @returns The number of entries deleted
+ */
+export function deleteCacheByPrefix(prefix: string): number {
+	const db = getCacheDb()
+	// Escape LIKE special characters in prefix to prevent unintended matches
+	// _ matches any single character, % matches any sequence of characters
+	const escapedPrefix = prefix.replace(/[\\%_]/g, '\\$&')
+	const statement = db.prepare<void, [string]>(
+		'DELETE FROM cache WHERE key LIKE ? ESCAPE "\\"',
+	)
+	const result = statement.run(`${escapedPrefix}%`)
+	return result.changes
+}
+
+/**
  * Get cache statistics.
  */
 export function getCacheStats(): { count: number; sizeBytes: number } {

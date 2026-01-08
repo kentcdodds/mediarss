@@ -5,6 +5,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { type AuthInfo, hasScope, type McpScope } from './auth.ts'
+import { serverMetadata } from './metadata.ts'
 import { initializePrompts } from './prompts.ts'
 import { initializeResources } from './resources.ts'
 import { initializeTools } from './tools.ts'
@@ -23,8 +24,8 @@ export interface McpContext {
 export function createMcpServer(): McpServer {
 	const server = new McpServer(
 		{
-			name: 'media-server',
-			version: '1.0.0',
+			name: serverMetadata.name,
+			version: serverMetadata.version,
 		},
 		{
 			capabilities: {
@@ -33,15 +34,7 @@ export function createMcpServer(): McpServer {
 				prompts: { listChanged: true },
 				logging: {},
 			},
-			instructions: `
-This is a media server MCP that allows you to manage podcasts, audiobooks,
-and video content. You can browse media directories, manage podcast/media feeds,
-and organize your media library.
-
-Available capabilities depend on your authorization scopes:
-- mcp:read - Browse media, list feeds, view feed details
-- mcp:write - Create feeds, modify feed settings, manage media assignments
-			`.trim(),
+			instructions: serverMetadata.instructions,
 		},
 	)
 

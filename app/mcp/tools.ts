@@ -39,6 +39,7 @@ import type {
 	FeedItem,
 } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { toolsMetadata } from './metadata.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
@@ -76,6 +77,24 @@ function getFeedById(
 }
 
 /**
+ * Format a date timestamp for human-readable output.
+ */
+function formatDate(timestamp: number): string {
+	return new Date(timestamp * 1000).toISOString().split('T')[0]
+}
+
+/**
+ * Format file size for human-readable output.
+ */
+function formatSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+	if (bytes < 1024 * 1024 * 1024)
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
  * Initialize MCP tools based on authorized scopes.
  */
 export async function initializeTools(
@@ -86,42 +105,75 @@ export async function initializeTools(
 	if (hasScope(authInfo, 'mcp:read')) {
 		// List all feeds
 		server.tool(
-			'list_feeds',
-			'List all available podcast and media feeds',
+			toolsMetadata.list_feeds.name,
+			toolsMetadata.list_feeds.description,
 			{},
 			async () => {
 				const feeds = getAllFeeds()
 
+				// Format human-readable output
+				const lines: string[] = []
+				lines.push(`## Feeds (${feeds.length} total)\n`)
+
+				if (feeds.length === 0) {
+					lines.push('No feeds created yet.')
+					lines.push(
+						'\nNext: Use `create_directory_feed` or `create_curated_feed` to create one.',
+					)
+				} else {
+					const directoryFeeds = feeds.filter((f) => f.type === 'directory')
+					const curatedFeeds = feeds.filter((f) => f.type === 'curated')
+
+					if (directoryFeeds.length > 0) {
+						lines.push(`### Directory Feeds (${directoryFeeds.length})`)
+						for (const feed of directoryFeeds) {
+							lines.push(
+								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
+							)
+							if (feed.description) lines.push(`  ${feed.description}`)
+						}
+						lines.push('')
+					}
+
+					if (curatedFeeds.length > 0) {
+						lines.push(`### Curated Feeds (${curatedFeeds.length})`)
+						for (const feed of curatedFeeds) {
+							lines.push(
+								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
+							)
+							if (feed.description) lines.push(`  ${feed.description}`)
+						}
+						lines.push('')
+					}
+
+					lines.push(
+						'Next: Use `get_feed` with a feed id for details, or `get_feed_tokens` for RSS URLs.',
+					)
+				}
+
 				return {
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(
-								{
-									feeds: feeds.map((feed) => ({
-										id: feed.id,
-										name: feed.name,
-										description: feed.description,
-										type: feed.type,
-										createdAt: feed.createdAt,
-									})),
-									total: feeds.length,
-								},
-								null,
-								2,
-							),
-						},
-					],
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						feeds: feeds.map((feed) => ({
+							id: feed.id,
+							name: feed.name,
+							description: feed.description,
+							type: feed.type,
+							createdAt: feed.createdAt,
+						})),
+						total: feeds.length,
+					},
 				}
 			},
+			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Get feed details
 		server.tool(
-			'get_feed',
-			'Get details about a specific feed including its items',
+			toolsMetadata.get_feed.name,
+			toolsMetadata.get_feed.description,
 			{
-				id: z.string().describe('The feed ID'),
+				id: z.string().describe('The feed ID (from `list_feeds`)'),
 			},
 			async ({ id }) => {
 				const feed = getFeedById(id)
@@ -131,7 +183,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `Feed with ID ${id} not found`,
+								text: `❌ Feed with ID \`${id}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
@@ -142,91 +194,131 @@ export async function initializeTools(
 				const items =
 					feed.type === 'curated' ? getItemsForFeed(id) : ([] as FeedItem[])
 
+				// Format human-readable output
+				const lines: string[] = []
+				lines.push(`## ${feed.name}`)
+				lines.push('')
+				lines.push(`- **Type**: ${feed.type}`)
+				lines.push(`- **ID**: \`${feed.id}\``)
+				lines.push(`- **Created**: ${formatDate(feed.createdAt)}`)
+				if (feed.description) {
+					lines.push(`- **Description**: ${feed.description}`)
+				}
+
+				if (feed.type === 'curated') {
+					lines.push('')
+					lines.push(`### Items (${items.length})`)
+					if (items.length === 0) {
+						lines.push('No items yet. Add media files via the admin UI.')
+					} else {
+						for (const item of items.slice(0, 20)) {
+							lines.push(`- ${item.mediaRoot}:${item.relativePath}`)
+						}
+						if (items.length > 20) {
+							lines.push(`- ... and ${items.length - 20} more items`)
+						}
+					}
+				} else {
+					lines.push('')
+					lines.push(
+						'*Directory feed — items are dynamically loaded from the configured folder.*',
+					)
+				}
+
+				lines.push('')
+				lines.push(
+					'Next: Use `get_feed_tokens` to get RSS URLs, or `update_feed` to modify.',
+				)
+
 				return {
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(
-								{
-									feed: {
-										id: feed.id,
-										name: feed.name,
-										description: feed.description,
-										type: feed.type,
-										createdAt: feed.createdAt,
-									},
-									items: items.map((item: FeedItem) => ({
-										id: item.id,
-										mediaRoot: item.mediaRoot,
-										relativePath: item.relativePath,
-										position: item.position,
-										addedAt: item.addedAt,
-									})),
-									itemCount: items.length,
-								},
-								null,
-								2,
-							),
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						feed: {
+							id: feed.id,
+							name: feed.name,
+							description: feed.description,
+							type: feed.type,
+							createdAt: feed.createdAt,
 						},
-					],
+						items: items.map((item: FeedItem) => ({
+							id: item.id,
+							mediaRoot: item.mediaRoot,
+							relativePath: item.relativePath,
+							position: item.position,
+							addedAt: item.addedAt,
+						})),
+						itemCount: items.length,
+					},
 				}
 			},
+			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// List media directories
 		server.tool(
-			'list_media_directories',
-			'List configured media directories that can be browsed',
+			toolsMetadata.list_media_directories.name,
+			toolsMetadata.list_media_directories.description,
 			{},
 			async () => {
 				const mediaRoots = getMediaRoots()
 
+				// Format human-readable output
+				const lines: string[] = []
+				lines.push(`## Media Directories (${mediaRoots.length})\n`)
+
+				if (mediaRoots.length === 0) {
+					lines.push('No media directories configured.')
+					lines.push(
+						'\nAsk the server administrator to configure MEDIA_PATHS environment variable.',
+					)
+				} else {
+					for (const mr of mediaRoots) {
+						lines.push(`- **${mr.name}**: \`${mr.path}\``)
+					}
+					lines.push('')
+					lines.push(
+						'Next: Use `browse_media` with a media root name to explore contents.',
+					)
+				}
+
 				return {
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(
-								{
-									directories: mediaRoots.map((mr) => ({
-										name: mr.name,
-										path: mr.path,
-									})),
-									total: mediaRoots.length,
-								},
-								null,
-								2,
-							),
-						},
-					],
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						directories: mediaRoots.map((mr) => ({
+							name: mr.name,
+							path: mr.path,
+						})),
+						total: mediaRoots.length,
+					},
 				}
 			},
+			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Browse media directory
 		server.tool(
-			'browse_media',
-			'Browse files in a media directory',
+			toolsMetadata.browse_media.name,
+			toolsMetadata.browse_media.description,
 			{
 				mediaRoot: z
 					.string()
-					.describe(
-						'The name of the media root to browse (from list_media_directories)',
-					),
+					.describe('Name of the media root (from `list_media_directories`)'),
 				subPath: z
 					.string()
 					.optional()
-					.describe('Optional subdirectory path to browse'),
+					.describe('Subdirectory path to browse (default: root)'),
 			},
 			async ({ mediaRoot, subPath }) => {
 				const mediaRoots = getMediaRoots()
 				const mr = mediaRoots.find((m) => m.name === mediaRoot)
 
 				if (!mr) {
+					const available = mediaRoots.map((m) => m.name).join(', ')
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Media root "${mediaRoot}" not found. Use list_media_directories to see available roots.`,
+								text: `❌ Media root "${mediaRoot}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
 							},
 						],
 						isError: true,
@@ -244,7 +336,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: 'Invalid path: directory traversal is not allowed',
+								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
 							},
 						],
 						isError: true,
@@ -258,8 +350,6 @@ export async function initializeTools(
 						size?: number
 					}> = []
 
-					// Use fs.readdir instead of Bun.Glob + Bun.file().exists()
-					// because Bun.file().exists() returns false for directories
 					const fs = await import('node:fs/promises')
 					const dirEntries = await fs.readdir(fullPath, { withFileTypes: true })
 
@@ -272,7 +362,6 @@ export async function initializeTools(
 								const stat = await fs.stat(`${fullPath}/${entry.name}`)
 								size = stat.size
 							} catch {
-								// Skip files we can't stat
 								continue
 							}
 						}
@@ -284,46 +373,79 @@ export async function initializeTools(
 						})
 					}
 
+					// Sort: directories first, then files alphabetically
+					entries.sort((a, b) => {
+						if (a.type !== b.type) {
+							return a.type === 'directory' ? -1 : 1
+						}
+						return a.name.localeCompare(b.name)
+					})
+
+					// Format human-readable output
+					const displayPath = subPath || '/'
+					const lines: string[] = []
+					lines.push(`## ${mediaRoot}:${displayPath}\n`)
+
+					const dirs = entries.filter((e) => e.type === 'directory')
+					const files = entries.filter((e) => e.type === 'file')
+
+					if (entries.length === 0) {
+						lines.push('*Empty directory*')
+					} else {
+						if (dirs.length > 0) {
+							lines.push(`### 📁 Folders (${dirs.length})`)
+							for (const dir of dirs) {
+								lines.push(`- ${dir.name}/`)
+							}
+							lines.push('')
+						}
+
+						if (files.length > 0) {
+							lines.push(`### 📄 Files (${files.length})`)
+							for (const file of files) {
+								const sizeStr = file.size ? ` (${formatSize(file.size)})` : ''
+								lines.push(`- ${file.name}${sizeStr}`)
+							}
+						}
+					}
+
+					lines.push('')
+					lines.push(
+						'Next: Browse subfolders with `subPath`, or use `create_directory_feed` to create a feed.',
+					)
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										path: subPath || '/',
-										mediaRoot: mr.name,
-										entries: entries.sort((a, b) => {
-											// Directories first, then files
-											if (a.type !== b.type) {
-												return a.type === 'directory' ? -1 : 1
-											}
-											return a.name.localeCompare(b.name)
-										}),
-									},
-									null,
-									2,
-								),
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							path: subPath || '/',
+							mediaRoot: mr.name,
+							entries,
+							counts: {
+								directories: dirs.length,
+								files: files.length,
 							},
-						],
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error browsing directory: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error browsing directory: ${message}\n\nMake sure the path exists and is accessible.`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 
 		// Get feed tokens
 		server.tool(
-			'get_feed_tokens',
-			'Get the access tokens for a feed',
+			toolsMetadata.get_feed_tokens.name,
+			toolsMetadata.get_feed_tokens.description,
 			{
 				feedId: z.string().describe('The feed ID'),
 			},
@@ -335,7 +457,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `Feed with ID ${feedId} not found`,
+								text: `❌ Feed with ID \`${feedId}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
@@ -347,27 +469,48 @@ export async function initializeTools(
 						? listActiveDirectoryFeedTokens(feedId)
 						: listActiveCuratedFeedTokens(feedId)
 
+				// Format human-readable output
+				const lines: string[] = []
+				lines.push(`## Tokens for "${feed.name}"`)
+				lines.push('')
+
+				if (tokens.length === 0) {
+					lines.push('No active tokens.')
+					lines.push('')
+					lines.push(
+						'Next: Use `create_feed_token` to generate an access token.',
+					)
+				} else {
+					lines.push(`### Active Tokens (${tokens.length})`)
+					for (const t of tokens) {
+						lines.push(`- \`${t.token}\` — Created ${formatDate(t.createdAt)}`)
+						lines.push(`  RSS URL: \`/feed/${feedId}?token=${t.token}\``)
+					}
+					lines.push('')
+					lines.push(
+						'Add these URLs to any podcast app to subscribe to the feed.',
+					)
+					lines.push('')
+					lines.push(
+						'Next: Use `create_feed_token` for more tokens, or `delete_feed_token` to revoke access.',
+					)
+				}
+
 				return {
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(
-								{
-									feedId,
-									feedName: feed.name,
-									tokens: tokens.map((t: FeedToken) => ({
-										token: t.token,
-										label: t.label,
-										createdAt: t.createdAt,
-									})),
-								},
-								null,
-								2,
-							),
-						},
-					],
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						feedId,
+						feedName: feed.name,
+						tokens: tokens.map((t: FeedToken) => ({
+							token: t.token,
+							label: t.label,
+							createdAt: t.createdAt,
+							rssUrl: `/feed/${feedId}?token=${t.token}`,
+						})),
+					},
 				}
 			},
+			{ annotations: { readOnlyHint: true, destructiveHint: false } },
 		)
 	}
 
@@ -375,28 +518,32 @@ export async function initializeTools(
 	if (hasScope(authInfo, 'mcp:write')) {
 		// Create directory feed
 		server.tool(
-			'create_directory_feed',
-			'Create a new feed from a media directory',
+			toolsMetadata.create_directory_feed.name,
+			toolsMetadata.create_directory_feed.description,
 			{
-				name: z.string().describe('The feed name'),
-				description: z.string().optional().describe('The feed description'),
-				mediaRoot: z
+				name: z.string().describe('Display name for the feed'),
+				description: z
 					.string()
-					.describe('The media root name (from list_media_directories)'),
+					.optional()
+					.describe('Description shown in podcast apps'),
+				mediaRoot: z.string().describe('Name from `list_media_directories`'),
 				directoryPath: z
 					.string()
-					.describe('The directory path within the media root'),
+					.describe(
+						'Path within the media root (e.g., "Brandon Sanderson/Mistborn")',
+					),
 			},
 			async ({ name, description, mediaRoot, directoryPath }) => {
 				const mediaRoots = getMediaRoots()
 				const mr = mediaRoots.find((m) => m.name === mediaRoot)
 
 				if (!mr) {
+					const available = mediaRoots.map((m) => m.name).join(', ')
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Media root "${mediaRoot}" not found`,
+								text: `❌ Media root "${mediaRoot}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
 							},
 						],
 						isError: true,
@@ -413,7 +560,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: 'Invalid path: directory traversal is not allowed',
+								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
 							},
 						],
 						isError: true,
@@ -430,47 +577,65 @@ export async function initializeTools(
 					// Create initial token
 					const token = createDirectoryFeedToken({ feedId: feed.id })
 
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Feed created successfully!`)
+					lines.push('')
+					lines.push(`## ${feed.name}`)
+					lines.push(`- **ID**: \`${feed.id}\``)
+					lines.push(`- **Type**: directory`)
+					lines.push(`- **Source**: ${mediaRoot}:${directoryPath}`)
+					if (feed.description) {
+						lines.push(`- **Description**: ${feed.description}`)
+					}
+					lines.push('')
+					lines.push(`### RSS Feed URL`)
+					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
+					lines.push('')
+					lines.push(
+						'Add this URL to any podcast app to subscribe to the feed.',
+					)
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										feed: {
-											id: feed.id,
-											name: feed.name,
-											description: feed.description,
-										},
-										token: token.token,
-									},
-									null,
-									2,
-								),
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							feed: {
+								id: feed.id,
+								name: feed.name,
+								description: feed.description,
+								type: 'directory',
 							},
-						],
+							token: token.token,
+							rssUrl: `/feed/${feed.id}?token=${token.token}`,
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error creating feed: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error creating feed: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Create curated feed
 		server.tool(
-			'create_curated_feed',
-			'Create a new curated feed (manually managed)',
+			toolsMetadata.create_curated_feed.name,
+			toolsMetadata.create_curated_feed.description,
 			{
-				name: z.string().describe('The feed name'),
-				description: z.string().optional().describe('The feed description'),
+				name: z.string().describe('Display name for the feed'),
+				description: z
+					.string()
+					.optional()
+					.describe('Description shown in podcast apps'),
 			},
 			async ({ name, description }) => {
 				try {
@@ -482,48 +647,63 @@ export async function initializeTools(
 					// Create initial token
 					const token = createCuratedFeedToken({ feedId: feed.id })
 
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Feed created successfully!`)
+					lines.push('')
+					lines.push(`## ${feed.name}`)
+					lines.push(`- **ID**: \`${feed.id}\``)
+					lines.push(`- **Type**: curated`)
+					if (feed.description) {
+						lines.push(`- **Description**: ${feed.description}`)
+					}
+					lines.push('')
+					lines.push(`### RSS Feed URL`)
+					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
+					lines.push('')
+					lines.push('The feed starts empty. Add media files via the admin UI.')
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										feed: {
-											id: feed.id,
-											name: feed.name,
-											description: feed.description,
-										},
-										token: token.token,
-									},
-									null,
-									2,
-								),
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							feed: {
+								id: feed.id,
+								name: feed.name,
+								description: feed.description,
+								type: 'curated',
 							},
-						],
+							token: token.token,
+							rssUrl: `/feed/${feed.id}?token=${token.token}`,
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error creating feed: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error creating feed: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Update feed
 		server.tool(
-			'update_feed',
-			'Update a feed name or description',
+			toolsMetadata.update_feed.name,
+			toolsMetadata.update_feed.description,
 			{
 				id: z.string().describe('The feed ID'),
-				name: z.string().optional().describe('New name'),
-				description: z.string().optional().describe('New description'),
+				name: z.string().optional().describe('New name (omit to keep current)'),
+				description: z
+					.string()
+					.optional()
+					.describe('New description (omit to keep current)'),
 			},
 			async ({ id, name, description }) => {
 				const feed = getFeedById(id)
@@ -533,7 +713,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `Feed with ID ${id} not found`,
+								text: `❌ Feed with ID \`${id}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
@@ -555,39 +735,53 @@ export async function initializeTools(
 						})
 					}
 
+					const updatedFeed = getFeedById(id)!
+
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Feed updated successfully!`)
+					lines.push('')
+					lines.push(`## ${updatedFeed.name}`)
+					lines.push(`- **ID**: \`${updatedFeed.id}\``)
+					lines.push(`- **Type**: ${updatedFeed.type}`)
+					if (updatedFeed.description) {
+						lines.push(`- **Description**: ${updatedFeed.description}`)
+					}
+					lines.push('')
+					lines.push('Next: Use `get_feed` to see full details.')
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										message: `Feed ${id} updated successfully`,
-									},
-									null,
-									2,
-								),
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							feed: {
+								id: updatedFeed.id,
+								name: updatedFeed.name,
+								description: updatedFeed.description,
+								type: updatedFeed.type,
 							},
-						],
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error updating feed: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error updating feed: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Delete feed
 		server.tool(
-			'delete_feed',
-			'Delete a feed',
+			toolsMetadata.delete_feed.name,
+			toolsMetadata.delete_feed.description,
 			{
 				id: z.string().describe('The feed ID to delete'),
 			},
@@ -599,7 +793,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `Feed with ID ${id} not found`,
+								text: `❌ Feed with ID \`${id}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
@@ -607,45 +801,51 @@ export async function initializeTools(
 				}
 
 				try {
+					const feedName = feed.name
 					if (feed.type === 'directory') {
 						deleteDirectoryFeed(id)
 					} else {
 						deleteCuratedFeed(id)
 					}
 
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Feed "${feedName}" deleted successfully.`)
+					lines.push('')
+					lines.push('All access tokens for this feed have been invalidated.')
+					lines.push('')
+					lines.push('Next: Use `list_feeds` to see remaining feeds.')
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										message: `Feed ${id} deleted successfully`,
-									},
-									null,
-									2,
-								),
-							},
-						],
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							deletedFeedId: id,
+							deletedFeedName: feedName,
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error deleting feed: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error deleting feed: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{
+				annotations: { readOnlyHint: false, destructiveHint: true },
+			},
 		)
 
 		// Create feed token
 		server.tool(
-			'create_feed_token',
-			'Create a new access token for a feed',
+			toolsMetadata.create_feed_token.name,
+			toolsMetadata.create_feed_token.description,
 			{
 				feedId: z.string().describe('The feed ID'),
 			},
@@ -657,7 +857,7 @@ export async function initializeTools(
 						content: [
 							{
 								type: 'text',
-								text: `Feed with ID ${feedId} not found`,
+								text: `❌ Feed with ID \`${feedId}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
@@ -670,40 +870,47 @@ export async function initializeTools(
 							? createDirectoryFeedToken({ feedId })
 							: createCuratedFeedToken({ feedId })
 
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Token created successfully!`)
+					lines.push('')
+					lines.push(`### RSS Feed URL`)
+					lines.push(`\`/feed/${feedId}?token=${token.token}\``)
+					lines.push('')
+					lines.push(
+						'Add this URL to any podcast app to subscribe to the feed.',
+					)
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										feedId,
-										token: token.token,
-									},
-									null,
-									2,
-								),
-							},
-						],
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							feedId,
+							feedName: feed.name,
+							token: token.token,
+							rssUrl: `/feed/${feedId}?token=${token.token}`,
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error creating token: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error creating token: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
 			},
+			{ annotations: { readOnlyHint: false, destructiveHint: false } },
 		)
 
 		// Delete feed token
 		server.tool(
-			'delete_feed_token',
-			'Delete an access token for a feed',
+			toolsMetadata.delete_feed_token.name,
+			toolsMetadata.delete_feed_token.description,
 			{
 				token: z.string().describe('The token to delete'),
 			},
@@ -718,39 +925,45 @@ export async function initializeTools(
 							content: [
 								{
 									type: 'text',
-									text: `Token not found`,
+									text: `❌ Token not found or already deleted.\n\nNext: Use \`get_feed_tokens\` with a feed ID to see active tokens.`,
 								},
 							],
 							isError: true,
 						}
 					}
 
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Token deleted successfully.`)
+					lines.push('')
+					lines.push('Anyone using this token has lost access to the feed.')
+					lines.push('')
+					lines.push(
+						'Next: Use `get_feed_tokens` to verify, or `create_feed_token` to issue a replacement.',
+					)
+
 					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(
-									{
-										success: true,
-										message: 'Token deleted successfully',
-									},
-									null,
-									2,
-								),
-							},
-						],
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							deletedToken: token,
+						},
 					}
 				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `Error deleting token: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error deleting token: ${message}`,
 							},
 						],
 						isError: true,
 					}
 				}
+			},
+			{
+				annotations: { readOnlyHint: false, destructiveHint: true },
 			},
 		)
 	}

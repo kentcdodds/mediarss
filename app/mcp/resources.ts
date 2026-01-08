@@ -3,32 +3,40 @@
  * Resources are data sources that can be read by the AI.
  */
 
+import nodePath from 'node:path'
 import {
 	McpServer,
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
+import {
+	getMediaRoots,
+	parseMediaPath,
+	toAbsolutePath,
+} from '#app/config/env.ts'
 import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
 	listDirectoryFeeds,
+	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
-import {
-	getFileMetadata,
-	scanDirectoryWithMetadata,
-} from '#app/helpers/media.ts'
+import type { CuratedFeed, DirectoryFeed, Feed, FeedItem } from '#app/db/types.ts'
+import { isDirectoryFeed } from '#app/db/types.ts'
+import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { getFileMetadata } from '#app/helpers/media.ts'
+import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, type MediaWidgetData } from './widgets.ts'
 
-type Feed = DirectoryFeed | CuratedFeed
+type FeedWithType = (DirectoryFeed | CuratedFeed) & {
+	type: 'directory' | 'curated'
+}
 
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+function getAllFeeds(): Array<FeedWithType> {
 	const directoryFeeds = listDirectoryFeeds().map((f) => ({
 		...f,
 		type: 'directory' as const,
@@ -45,9 +53,7 @@ function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(
-	id: string,
-): (Feed & { type: 'directory' | 'curated' }) | undefined {
+function getFeedById(id: string): FeedWithType | undefined {
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
@@ -55,6 +61,51 @@ function getFeedById(
 	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
 
 	return undefined
+}
+
+/**
+ * Validate that a file path is allowed for the given feed.
+ */
+function isFileAllowed(
+	feed: Feed,
+	type: 'directory' | 'curated',
+	rootName: string,
+	relativePath: string,
+): boolean {
+	if (type === 'directory' && isDirectoryFeed(feed)) {
+		const paths = parseDirectoryPaths(feed)
+		const filePath = toAbsolutePath(rootName, relativePath)
+		if (!filePath) return false
+
+		for (const mediaPath of paths) {
+			const { mediaRoot, relativePath: dirRelativePath } =
+				parseMediaPath(mediaPath)
+			const dirPath = toAbsolutePath(mediaRoot, dirRelativePath)
+			if (!dirPath) continue
+
+			const resolvedDir = nodePath.resolve(dirPath)
+			const resolvedFile = nodePath.resolve(filePath)
+			if (resolvedFile.startsWith(resolvedDir + nodePath.sep)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	const feedItems = getItemsForFeed(feed.id)
+	return feedItems.some(
+		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
+	)
+}
+
+/**
+ * Encode a relative path for use in URLs, encoding each segment individually.
+ */
+function encodeRelativePath(relativePath: string): string {
+	return relativePath
+		.split('/')
+		.map((segment) => encodeURIComponent(segment))
+		.join('/')
 }
 
 /**
@@ -276,7 +327,7 @@ export async function initializeResources(
 											'media://feeds/{id}',
 											'media://directories',
 											'media://server',
-											'media://widget/media/{rootName}/{relativePath}',
+											'media://widget/media/{token}/{rootName}/{relativePath}',
 										],
 									},
 								},
@@ -290,66 +341,65 @@ export async function initializeResources(
 		)
 
 		// Media widget resource - returns HTML for MCP-UI compatible clients
+		// Uses token-based authentication to ensure only authorized users can access media
 		server.registerResource(
 			'media-widget',
-			new ResourceTemplate('media://widget/media/{rootName}/{relativePath+}', {
-				list: async () => {
-					// List available media files from all media roots
-					const mediaRoots = getMediaRoots()
-					const resources: Array<{
-						name: string
-						uri: string
-						mimeType: string
-						description: string
-					}> = []
-
-					for (const root of mediaRoots) {
-						const files = await scanDirectoryWithMetadata(root.path)
-						for (const file of files.slice(0, 50)) {
-							// Limit to 50 files per root
-							const relativePath = file.path.replace(root.path + '/', '')
-							resources.push({
-								name: file.title,
-								uri: `media://widget/media/${encodeURIComponent(root.name)}/${encodeURIComponent(relativePath)}`,
-								mimeType: 'text/html',
-								description: `${file.author ? `by ${file.author} — ` : ''}Interactive media player widget`,
-							})
-						}
-					}
-
-					return { resources }
+			new ResourceTemplate(
+				'media://widget/media/{token}/{rootName}/{relativePath+}',
+				{
+					list: undefined, // Don't list widgets - they're accessed via tokens
 				},
-			}),
+			),
 			{
 				description:
-					'Interactive media player widget (MCP-UI). Returns an HTML page with embedded media player for playback. Use this to display media files with full metadata and playback controls.',
+					'Interactive media player widget (MCP-UI). Returns an HTML page with embedded media player for playback. Requires a valid feed token. Use get_feed_tokens to obtain tokens for your feeds.',
 				mimeType: 'text/html',
 			},
 			async (uri, params, extra) => {
+				const token = decodeURIComponent(String(params.token))
 				const rootName = decodeURIComponent(String(params.rootName))
 				const relativePath = decodeURIComponent(String(params.relativePath))
 
+				// Validate token and get feed
+				const result = getFeedByToken(token)
+				if (!result) {
+					throw new Error('Invalid or expired token. Use get_feed_tokens to obtain a valid token.')
+				}
+
+				const { feed, type } = result
+
+				// Parse and validate the path
+				const parsed = parseMediaPathStrict(`${rootName}/${relativePath}`)
+				if (!parsed) {
+					throw new Error('Invalid path format.')
+				}
+
 				// Get absolute path for the file
-				const filePath = toAbsolutePath(rootName, relativePath)
+				const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
 				if (!filePath) {
-					throw new Error(
-						`Media root "${rootName}" not found. Use media://directories to list available roots.`,
-					)
+					throw new Error(`Media root "${rootName}" not found.`)
+				}
+
+				// Validate file is allowed for this feed (path traversal protection)
+				if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+					throw new Error('File not found or not accessible with this token.')
 				}
 
 				// Get file metadata
 				const metadata = await getFileMetadata(filePath)
 				if (!metadata) {
-					throw new Error(
-						`Media file not found or not readable: ${rootName}:${relativePath}`,
-					)
+					throw new Error(`Media file not found or not readable.`)
 				}
 
 				// Determine base URL from the request context
-				// The extra object may contain request info from the transport
 				const baseUrl = getBaseUrlFromExtra(extra)
 
-				// Build the widget data
+				// Build token-based URLs
+				const encodedPath = encodeRelativePath(
+					`${parsed.rootName}/${parsed.relativePath}`,
+				)
+
+				// Build the widget data with token-based URLs
 				const mediaData: MediaWidgetData = {
 					title: metadata.title,
 					author: metadata.author,
@@ -360,8 +410,9 @@ export async function initializeResources(
 					description: metadata.description,
 					narrators: metadata.narrators,
 					genres: metadata.genres,
-					artworkUrl: `/admin/api/artwork/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}`,
-					streamUrl: `/admin/api/media-stream/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}`,
+					// Use token-based public URLs, not admin URLs
+					artworkUrl: `/art/${token}/${encodedPath}`,
+					streamUrl: `/media/${token}/${encodedPath}`,
 				}
 
 				// Generate the HTML widget

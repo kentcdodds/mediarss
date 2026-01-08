@@ -12,7 +12,7 @@ import {
 	listDirectoryFeeds,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { DirectoryFeed, CuratedFeed, FeedItem } from '#app/db/types.ts'
+import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 
 type Feed = DirectoryFeed | CuratedFeed

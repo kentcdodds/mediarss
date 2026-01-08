@@ -7,35 +7,35 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
 import {
+	createCuratedFeedToken,
+	deleteCuratedFeedToken,
+	listActiveCuratedFeedTokens,
+} from '#app/db/curated-feed-tokens.ts'
+import {
 	createCuratedFeed,
+	deleteCuratedFeed,
 	getCuratedFeedById,
 	listCuratedFeeds,
 	updateCuratedFeed,
-	deleteCuratedFeed,
 } from '#app/db/curated-feeds.ts'
 import {
-	createCuratedFeedToken,
-	listActiveCuratedFeedTokens,
-	deleteCuratedFeedToken,
-} from '#app/db/curated-feed-tokens.ts'
+	createDirectoryFeedToken,
+	deleteDirectoryFeedToken,
+	listActiveDirectoryFeedTokens,
+} from '#app/db/directory-feed-tokens.ts'
 import {
 	createDirectoryFeed,
+	deleteDirectoryFeed,
 	getDirectoryFeedById,
 	listDirectoryFeeds,
 	updateDirectoryFeed,
-	deleteDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
-import {
-	createDirectoryFeedToken,
-	listActiveDirectoryFeedTokens,
-	deleteDirectoryFeedToken,
-} from '#app/db/directory-feed-tokens.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type {
-	DirectoryFeed,
 	CuratedFeed,
-	DirectoryFeedToken,
 	CuratedFeedToken,
+	DirectoryFeed,
+	DirectoryFeedToken,
 	FeedItem,
 } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
@@ -233,9 +233,23 @@ export async function initializeTools(
 					}
 				}
 
-				const fullPath = subPath
-					? `${mr.path}/${subPath}`.replace(/\/+/g, '/')
-					: mr.path
+				// Resolve paths and validate to prevent directory traversal
+				const { resolve, sep } = await import('node:path')
+				const basePath = resolve(mr.path)
+				const fullPath = subPath ? resolve(basePath, subPath) : basePath
+
+				// Ensure the resolved path stays within the media root
+				if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: 'Invalid path: directory traversal is not allowed',
+							},
+						],
+						isError: true,
+					}
+				}
 
 				try {
 					const entries: Array<{
@@ -244,24 +258,30 @@ export async function initializeTools(
 						size?: number
 					}> = []
 
-					const glob = new Bun.Glob('*')
-					for await (const entry of glob.scan({
-						cwd: fullPath,
-						onlyFiles: false,
-					})) {
-						const entryPath = `${fullPath}/${entry}`
-						const file = Bun.file(entryPath)
-						const exists = await file.exists()
+					// Use fs.readdir instead of Bun.Glob + Bun.file().exists()
+					// because Bun.file().exists() returns false for directories
+					const fs = await import('node:fs/promises')
+					const dirEntries = await fs.readdir(fullPath, { withFileTypes: true })
 
-						if (exists) {
-							const stat = await file.stat()
-							const isDir = stat?.isDirectory() ?? false
-							entries.push({
-								name: entry,
-								type: isDir ? 'directory' : 'file',
-								size: isDir ? undefined : stat?.size,
-							})
+					for (const entry of dirEntries) {
+						const isDir = entry.isDirectory()
+						let size: number | undefined
+
+						if (!isDir) {
+							try {
+								const stat = await fs.stat(`${fullPath}/${entry.name}`)
+								size = stat.size
+							} catch {
+								// Skip files we can't stat
+								continue
+							}
 						}
+
+						entries.push({
+							name: entry.name,
+							type: isDir ? 'directory' : 'file',
+							size,
+						})
 					}
 
 					return {
@@ -377,6 +397,23 @@ export async function initializeTools(
 							{
 								type: 'text',
 								text: `Media root "${mediaRoot}" not found`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Validate directoryPath to prevent path traversal
+				const { resolve, sep } = await import('node:path')
+				const basePath = resolve(mr.path)
+				const fullPath = resolve(basePath, directoryPath)
+
+				if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: 'Invalid path: directory traversal is not allowed',
 							},
 						],
 						isError: true,

@@ -168,6 +168,14 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 			},
 		})
 
+		// Register onclose callback to remove session from map when closed
+		transport.onclose = () => {
+			const sid = transport.sessionId
+			if (sid) {
+				sessions.delete(sid)
+			}
+		}
+
 		const server = createMcpServer()
 		await initializeMcpServer(server, authInfo)
 		await transport.start()

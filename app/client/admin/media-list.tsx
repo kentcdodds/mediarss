@@ -399,7 +399,9 @@ export function MediaList(this: Handle) {
 			if (res.ok) {
 				const data = (await res.json()) as { roots: Array<MediaRoot> }
 				mediaRoots = data.roots
-				if (mediaRoots.length > 0 && !selectedRoot) {
+				// Reset selectedRoot if it doesn't exist in the fetched roots, or if empty
+				const rootExists = mediaRoots.some((r) => r.name === selectedRoot)
+				if (mediaRoots.length > 0 && (!selectedRoot || !rootExists)) {
 					selectedRoot = mediaRoots[0]!.name
 				}
 				this.update()
@@ -442,6 +444,7 @@ export function MediaList(this: Handle) {
 			const res = await fetch('/admin/api/media/upload', {
 				method: 'POST',
 				body: formData,
+				signal: this.signal,
 			})
 
 			const data = await res.json()
@@ -466,6 +469,10 @@ export function MediaList(this: Handle) {
 			// Refresh the media list after successful upload
 			fetchData()
 		} catch (err) {
+			// Don't update state if the request was aborted (component unmounted)
+			if (err instanceof Error && err.name === 'AbortError') {
+				return
+			}
 			uploadState = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Upload failed',
@@ -2548,6 +2555,11 @@ function UploadModal({
 								border: 0,
 							}}
 							on={{
+								click: (e: Event) => {
+									// Clear value before opening file dialog to allow re-selecting same file
+									const input = e.target as HTMLInputElement
+									input.value = ''
+								},
 								change: (e: Event) => {
 									const input = e.target as HTMLInputElement
 									onFileSelect(input.files)

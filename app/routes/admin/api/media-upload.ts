@@ -49,17 +49,33 @@ function sanitizeFilename(filename: string, defaultExt?: string): string {
 	// Remove leading dots to prevent hidden files
 	sanitized = sanitized.replace(/^\.+/, '')
 
-	// Limit length
+	// Limit length to 255 chars (filesystem limit)
 	if (sanitized.length > 255) {
 		const ext = nodePath.extname(sanitized)
 		const base = nodePath.basename(sanitized, ext)
-		sanitized = base.slice(0, 255 - ext.length) + ext
+
+		// Handle edge case: extension alone is >= 255 chars
+		// In this case, truncate the extension and generate a new base
+		if (ext.length >= 255) {
+			// Keep a reasonable extension length (max 20 chars including dot)
+			const truncatedExt = ext.slice(0, 20)
+			sanitized = `upload-${Date.now()}${truncatedExt}`
+		} else {
+			// Normal case: truncate the base, keep the extension
+			const maxBaseLength = Math.max(1, 255 - ext.length)
+			sanitized = base.slice(0, maxBaseLength) + ext
+		}
 	}
 
 	// If empty after sanitization, generate a name with proper extension
 	if (!sanitized) {
 		const ext = defaultExt ? `.${defaultExt}` : ''
 		sanitized = `upload-${Date.now()}${ext}`
+	}
+
+	// Final safety check: ensure we don't create hidden files (starts with dot)
+	if (sanitized.startsWith('.')) {
+		sanitized = `upload-${Date.now()}${sanitized}`
 	}
 
 	return sanitized
@@ -119,8 +135,12 @@ async function moveWithUniqueFilename(
 	let targetPath = nodePath.join(targetDir, filename)
 
 	if (await linkFileExclusive(tempPath, targetPath)) {
-		// Successfully linked, remove temp file
-		await fs.promises.unlink(tempPath)
+		// Successfully linked, remove temp file (ignore cleanup errors)
+		try {
+			await fs.promises.unlink(tempPath)
+		} catch {
+			// Temp file cleanup failed, but upload succeeded - ignore
+		}
 		return filename
 	}
 
@@ -133,8 +153,12 @@ async function moveWithUniqueFilename(
 		targetPath = nodePath.join(targetDir, filename)
 
 		if (await linkFileExclusive(tempPath, targetPath)) {
-			// Successfully linked, remove temp file
-			await fs.promises.unlink(tempPath)
+			// Successfully linked, remove temp file (ignore cleanup errors)
+			try {
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Temp file cleanup failed, but upload succeeded - ignore
+			}
 			return filename
 		}
 

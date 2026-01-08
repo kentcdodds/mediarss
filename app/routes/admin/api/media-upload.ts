@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import nodePath from 'node:path'
 import type { Action } from '@remix-run/fetch-router'
-import { fileTypeFromBuffer } from 'file-type'
+import { fileTypeFromFile } from 'file-type'
 import { getMediaRootByName, getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 
@@ -38,9 +38,11 @@ function isAllowedMimeType(mime: string): boolean {
 }
 
 /**
- * Sanitize a filename to prevent path traversal and other issues
+ * Sanitize a filename to prevent path traversal and other issues.
+ * @param filename - The original filename
+ * @param defaultExt - Optional default extension to use if filename sanitizes to empty
  */
-function sanitizeFilename(filename: string): string {
+function sanitizeFilename(filename: string, defaultExt?: string): string {
 	// Remove path separators and null bytes
 	let sanitized = filename.replace(/[/\\:\0]/g, '_')
 
@@ -54,9 +56,10 @@ function sanitizeFilename(filename: string): string {
 		sanitized = base.slice(0, 255 - ext.length) + ext
 	}
 
-	// If empty after sanitization, generate a name
+	// If empty after sanitization, generate a name with proper extension
 	if (!sanitized) {
-		sanitized = `upload-${Date.now()}`
+		const ext = defaultExt ? `.${defaultExt}` : ''
+		sanitized = `upload-${Date.now()}${ext}`
 	}
 
 	return sanitized
@@ -76,6 +79,76 @@ function sanitizeSubdirectory(subdir: string): string {
 		.join(nodePath.sep)
 
 	return sanitized
+}
+
+/**
+ * Atomically link a temp file to a target path, failing if target exists.
+ * Uses fs.link + fs.unlink for atomic creation without overwrite.
+ * Returns true if successful, false if target already exists.
+ */
+async function linkFileExclusive(
+	tempPath: string,
+	targetPath: string,
+): Promise<boolean> {
+	try {
+		// Create a hard link - this is atomic and fails if target exists
+		await fs.promises.link(tempPath, targetPath)
+		return true
+	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+			return false
+		}
+		throw err
+	}
+}
+
+/**
+ * Move temp file to final location with unique filename.
+ * Uses atomic operations to avoid race conditions.
+ */
+async function moveWithUniqueFilename(
+	tempPath: string,
+	targetDir: string,
+	baseFilename: string,
+): Promise<string> {
+	const ext = nodePath.extname(baseFilename)
+	const base = nodePath.basename(baseFilename, ext)
+
+	// Try the original filename first
+	let filename = baseFilename
+	let targetPath = nodePath.join(targetDir, filename)
+
+	if (await linkFileExclusive(tempPath, targetPath)) {
+		// Successfully linked, remove temp file
+		await fs.promises.unlink(tempPath)
+		return filename
+	}
+
+	// Generate unique filenames with counter
+	let counter = 1
+	const maxAttempts = 1000 // Prevent infinite loop
+
+	while (counter < maxAttempts) {
+		filename = `${base}-${counter}${ext}`
+		targetPath = nodePath.join(targetDir, filename)
+
+		if (await linkFileExclusive(tempPath, targetPath)) {
+			// Successfully linked, remove temp file
+			await fs.promises.unlink(tempPath)
+			return filename
+		}
+
+		counter++
+	}
+
+	// Clean up temp file before throwing
+	try {
+		await fs.promises.unlink(tempPath)
+	} catch {
+		// Ignore cleanup error
+	}
+
+	throw new Error('Could not generate unique filename after 1000 attempts')
 }
 
 /**
@@ -155,39 +228,6 @@ export default {
 			}
 		}
 
-		// Validate the file content type
-		const fileBuffer = await file.arrayBuffer()
-		const fileBytes = new Uint8Array(fileBuffer)
-
-		// Use file-type to detect the actual MIME type
-		const detectedType = await fileTypeFromBuffer(fileBytes)
-		if (!detectedType) {
-			return Response.json(
-				{
-					error:
-						'Could not determine file type. Please upload a valid media file.',
-				},
-				{ status: 400 },
-			)
-		}
-
-		if (!isAllowedMimeType(detectedType.mime)) {
-			return Response.json(
-				{
-					error: `File type not allowed: ${detectedType.mime}. Allowed types are audio and video files.`,
-				},
-				{ status: 400 },
-			)
-		}
-
-		// Sanitize the filename
-		const originalFilename =
-			file.name || `upload-${Date.now()}.${detectedType.ext}`
-		const sanitizedFilename = sanitizeFilename(originalFilename)
-
-		// Build the full file path
-		const filePath = nodePath.join(targetDir, sanitizedFilename)
-
 		// Ensure target directory exists
 		try {
 			await fs.promises.mkdir(targetDir, { recursive: true })
@@ -199,70 +239,119 @@ export default {
 			)
 		}
 
-		// Check if file already exists
-		if (fs.existsSync(filePath)) {
-			// Generate a unique filename
-			const ext = nodePath.extname(sanitizedFilename)
-			const base = nodePath.basename(sanitizedFilename, ext)
-			let counter = 1
-			let uniqueFilename = sanitizedFilename
-			let uniquePath = filePath
+		// Create a temporary file path for initial upload
+		// Use a hidden file prefix so it doesn't show up in directory listings
+		const tempFilename = `.upload-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`
+		const tempPath = nodePath.join(targetDir, tempFilename)
 
-			while (fs.existsSync(uniquePath)) {
-				uniqueFilename = `${base}-${counter}${ext}`
-				uniquePath = nodePath.join(targetDir, uniqueFilename)
-				counter++
-			}
+		// Stream the file to disk first (avoids loading entire file into memory)
+		try {
+			await Bun.write(tempPath, file)
+		} catch (err) {
+			console.error('Failed to write temp file:', err)
+			return Response.json({ error: 'Failed to save file' }, { status: 500 })
+		}
 
-			// Use the unique path
-			const finalPath = uniquePath
-			const finalFilename = uniqueFilename
-
-			// Write the file
+		// Detect MIME type from the file on disk (only reads first few KB)
+		let detectedType: { ext: string; mime: string } | undefined
+		try {
+			detectedType = await fileTypeFromFile(tempPath)
+		} catch (err) {
+			// Clean up temp file on error
 			try {
-				await Bun.write(finalPath, fileBytes)
-			} catch (err) {
-				console.error('Failed to write file:', err)
-				return Response.json({ error: 'Failed to save file' }, { status: 500 })
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Ignore cleanup errors
 			}
-
-			const finalRelativePath = relativePath
-				? nodePath.join(relativePath, finalFilename)
-				: finalFilename
-
+			console.error('Failed to detect file type:', err)
 			return Response.json(
-				{
-					success: true,
-					file: {
-						filename: finalFilename,
-						size: file.size,
-						mimeType: detectedType.mime,
-						rootName: rootName,
-						relativePath: finalRelativePath,
-						mediaPath: `${rootName}:${finalRelativePath}`,
-					},
-				},
-				{ status: 201 },
+				{ error: 'Failed to detect file type' },
+				{ status: 500 },
 			)
 		}
 
-		// Write the file
+		if (!detectedType) {
+			// Clean up temp file
+			try {
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Ignore cleanup errors
+			}
+			return Response.json(
+				{
+					error:
+						'Could not determine file type. Please upload a valid media file.',
+				},
+				{ status: 400 },
+			)
+		}
+
+		if (!isAllowedMimeType(detectedType.mime)) {
+			// Clean up temp file
+			try {
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Ignore cleanup errors
+			}
+			return Response.json(
+				{
+					error: `File type not allowed: ${detectedType.mime}. Allowed types are audio and video files.`,
+				},
+				{ status: 400 },
+			)
+		}
+
+		// Sanitize the filename, passing the detected extension for fallback
+		const originalFilename =
+			file.name || `upload-${Date.now()}.${detectedType.ext}`
+		const sanitizedFilename = sanitizeFilename(
+			originalFilename,
+			detectedType.ext,
+		)
+
+		// Ensure the filename has the correct extension based on detected type
+		let targetFilename = sanitizedFilename
+		const currentExt = nodePath
+			.extname(sanitizedFilename)
+			.toLowerCase()
+			.slice(1)
+		if (!currentExt || currentExt !== detectedType.ext) {
+			// If no extension or wrong extension, append the correct one
+			const base = nodePath.basename(
+				sanitizedFilename,
+				nodePath.extname(sanitizedFilename),
+			)
+			targetFilename = `${base}.${detectedType.ext}`
+		}
+
+		// Move temp file to final location with unique filename (atomic, no race conditions)
+		let finalFilename: string
 		try {
-			await Bun.write(filePath, fileBytes)
+			finalFilename = await moveWithUniqueFilename(
+				tempPath,
+				targetDir,
+				targetFilename,
+			)
 		} catch (err) {
-			console.error('Failed to write file:', err)
+			// Clean up temp file if it still exists
+			try {
+				await fs.promises.unlink(tempPath)
+			} catch {
+				// Ignore cleanup errors
+			}
+			console.error('Failed to move file:', err)
 			return Response.json({ error: 'Failed to save file' }, { status: 500 })
 		}
 
 		const finalRelativePath = relativePath
-			? nodePath.join(relativePath, sanitizedFilename)
-			: sanitizedFilename
+			? nodePath.join(relativePath, finalFilename)
+			: finalFilename
 
 		return Response.json(
 			{
 				success: true,
 				file: {
-					filename: sanitizedFilename,
+					filename: finalFilename,
 					size: file.size,
 					mimeType: detectedType.mime,
 					rootName: rootName,

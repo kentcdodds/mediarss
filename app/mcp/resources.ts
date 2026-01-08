@@ -20,7 +20,12 @@ import {
 	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed, Feed, FeedItem } from '#app/db/types.ts'
+import type {
+	CuratedFeed,
+	DirectoryFeed,
+	Feed,
+	FeedItem,
+} from '#app/db/types.ts'
 import { isDirectoryFeed } from '#app/db/types.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
@@ -309,6 +314,7 @@ export async function initializeResources(
 											'list_media_directories',
 											'browse_media',
 											'get_feed_tokens',
+											'get_media_widget',
 											'create_directory_feed',
 											'create_curated_feed',
 											'update_feed',
@@ -363,7 +369,9 @@ export async function initializeResources(
 				// Validate token and get feed
 				const result = getFeedByToken(token)
 				if (!result) {
-					throw new Error('Invalid or expired token. Use get_feed_tokens to obtain a valid token.')
+					throw new Error(
+						'Invalid or expired token. Use get_feed_tokens to obtain a valid token.',
+					)
 				}
 
 				const { feed, type } = result

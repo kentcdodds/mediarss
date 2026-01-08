@@ -31,6 +31,7 @@ export const serverMetadata = {
 3. **List feeds**: Use \`list_feeds\` to see existing podcast/media feeds.
 4. **Create feeds**: Use \`create_directory_feed\` or \`create_curated_feed\` to create new feeds.
 5. **Share feeds**: Use \`get_feed_tokens\` to get RSS feed URLs for podcast apps.
+6. **Play media**: Use \`get_media_widget\` to get an interactive media player widget.
 
 ## Feed Types
 
@@ -270,6 +271,31 @@ Returns: { success, message }
 The feed and other tokens are not affected.
 
 Next: Use \`get_feed_tokens\` to verify deletion or \`create_feed_token\` to issue a replacement.`,
+	},
+
+	get_media_widget: {
+		name: 'get_media_widget',
+		title: 'Get Media Widget',
+		description: `Get an interactive media player widget for a specific media file.
+
+Inputs:
+- token: string (required) — A feed access token (from \`get_feed_tokens\`)
+- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
+- relativePath: string (required) — Path to the media file within the root
+
+Returns: { widgetUri, metadata: { title, author, duration, mimeType, ... } }
+
+The widgetUri can be fetched as a resource to get an HTML media player widget.
+The metadata includes all available information about the media file.
+
+Prerequisites:
+1. Get a feed token using \`get_feed_tokens\` for the feed containing the media
+2. The media file must be accessible via the token's feed
+
+Examples:
+- { token: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
+
+Next: Fetch the widgetUri as a resource to get the interactive HTML player widget.`,
 	},
 } as const satisfies Record<string, ToolMetadata>
 

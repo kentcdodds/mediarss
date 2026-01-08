@@ -300,6 +300,7 @@ function MediaPlayerWidget(this: Handle) {
 					}}
 				>
 					{isVideoFile ? (
+						// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
 						<video
 							src={media.streamUrl}
 							controls
@@ -310,10 +311,10 @@ function MediaPlayerWidget(this: Handle) {
 								backgroundColor: '#000',
 							}}
 						>
-							<track kind="captions" />
 							Your browser does not support video playback.
 						</video>
 					) : (
+						// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
 						<audio
 							src={media.streamUrl}
 							controls
@@ -322,7 +323,6 @@ function MediaPlayerWidget(this: Handle) {
 								width: '100%',
 							}}
 						>
-							<track kind="captions" />
 							Your browser does not support audio playback.
 						</audio>
 					)}

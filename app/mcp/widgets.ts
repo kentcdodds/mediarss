@@ -45,7 +45,8 @@ const importmap = {
 		'@remix-run/component/jsx-dev-runtime':
 			'/node_modules/@remix-run/component/jsx-dev-runtime',
 		'@remix-run/interaction': '/node_modules/@remix-run/interaction',
-		'@remix-run/interaction/press': '/node_modules/@remix-run/interaction/press',
+		'@remix-run/interaction/press':
+			'/node_modules/@remix-run/interaction/press',
 		'match-sorter': '/node_modules/match-sorter',
 	},
 }

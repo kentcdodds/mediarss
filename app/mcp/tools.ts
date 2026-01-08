@@ -6,8 +6,74 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
-import * as db from '#app/db/index.ts'
+import {
+	createCuratedFeed,
+	getCuratedFeedById,
+	listCuratedFeeds,
+	updateCuratedFeed,
+	deleteCuratedFeed,
+} from '#app/db/curated-feeds.ts'
+import {
+	createCuratedFeedToken,
+	listActiveCuratedFeedTokens,
+	deleteCuratedFeedToken,
+} from '#app/db/curated-feed-tokens.ts'
+import {
+	createDirectoryFeed,
+	getDirectoryFeedById,
+	listDirectoryFeeds,
+	updateDirectoryFeed,
+	deleteDirectoryFeed,
+} from '#app/db/directory-feeds.ts'
+import {
+	createDirectoryFeedToken,
+	listActiveDirectoryFeedTokens,
+	deleteDirectoryFeedToken,
+} from '#app/db/directory-feed-tokens.ts'
+import { getItemsForFeed } from '#app/db/feed-items.ts'
+import type {
+	DirectoryFeed,
+	CuratedFeed,
+	DirectoryFeedToken,
+	CuratedFeedToken,
+	FeedItem,
+} from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+
+type Feed = DirectoryFeed | CuratedFeed
+type FeedToken = DirectoryFeedToken | CuratedFeedToken
+
+/**
+ * Get all feeds (both directory and curated)
+ */
+function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+	const directoryFeeds = listDirectoryFeeds().map((f) => ({
+		...f,
+		type: 'directory' as const,
+	}))
+	const curatedFeeds = listCuratedFeeds().map((f) => ({
+		...f,
+		type: 'curated' as const,
+	}))
+	return [...directoryFeeds, ...curatedFeeds].sort(
+		(a, b) => b.createdAt - a.createdAt,
+	)
+}
+
+/**
+ * Get a feed by ID (checks both directory and curated)
+ */
+function getFeedById(
+	id: string,
+): (Feed & { type: 'directory' | 'curated' }) | undefined {
+	const directoryFeed = getDirectoryFeedById(id)
+	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
+
+	const curatedFeed = getCuratedFeedById(id)
+	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
+
+	return undefined
+}
 
 /**
  * Initialize MCP tools based on authorized scopes.
@@ -24,7 +90,7 @@ export async function initializeTools(
 			'List all available podcast and media feeds',
 			{},
 			async () => {
-				const feeds = db.getAllFeeds()
+				const feeds = getAllFeeds()
 
 				return {
 					content: [
@@ -34,10 +100,9 @@ export async function initializeTools(
 								{
 									feeds: feeds.map((feed) => ({
 										id: feed.id,
-										title: feed.title,
+										name: feed.name,
 										description: feed.description,
 										type: feed.type,
-										itemCount: feed.itemCount,
 										createdAt: feed.createdAt,
 									})),
 									total: feeds.length,
@@ -56,10 +121,10 @@ export async function initializeTools(
 			'get_feed',
 			'Get details about a specific feed including its items',
 			{
-				id: z.number().describe('The feed ID'),
+				id: z.string().describe('The feed ID'),
 			},
 			async ({ id }) => {
-				const feed = db.getFeedById(id)
+				const feed = getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -73,8 +138,9 @@ export async function initializeTools(
 					}
 				}
 
-				// Get feed items
-				const items = db.getFeedItems(id)
+				// Get feed items (for curated feeds)
+				const items =
+					feed.type === 'curated' ? getItemsForFeed(id) : ([] as FeedItem[])
 
 				return {
 					content: [
@@ -84,17 +150,17 @@ export async function initializeTools(
 								{
 									feed: {
 										id: feed.id,
-										title: feed.title,
+										name: feed.name,
 										description: feed.description,
 										type: feed.type,
 										createdAt: feed.createdAt,
 									},
-									items: items.map((item) => ({
+									items: items.map((item: FeedItem) => ({
 										id: item.id,
-										title: item.title,
-										mediaPath: item.mediaPath,
-										duration: item.duration,
-										publishedAt: item.publishedAt,
+										mediaRoot: item.mediaRoot,
+										relativePath: item.relativePath,
+										position: item.position,
+										addedAt: item.addedAt,
 									})),
 									itemCount: items.length,
 								},
@@ -189,10 +255,11 @@ export async function initializeTools(
 
 						if (exists) {
 							const stat = await file.stat()
+							const isDir = stat?.isDirectory() ?? false
 							entries.push({
 								name: entry,
-								type: stat?.isDirectory ? 'directory' : 'file',
-								size: stat?.isDirectory ? undefined : stat?.size,
+								type: isDir ? 'directory' : 'file',
+								size: isDir ? undefined : stat?.size,
 							})
 						}
 					}
@@ -238,10 +305,10 @@ export async function initializeTools(
 			'get_feed_tokens',
 			'Get the access tokens for a feed',
 			{
-				feedId: z.number().describe('The feed ID'),
+				feedId: z.string().describe('The feed ID'),
 			},
 			async ({ feedId }) => {
-				const feed = db.getFeedById(feedId)
+				const feed = getFeedById(feedId)
 
 				if (!feed) {
 					return {
@@ -255,10 +322,10 @@ export async function initializeTools(
 					}
 				}
 
-				const tokens =
+				const tokens: FeedToken[] =
 					feed.type === 'directory'
-						? db.getDirectoryFeedTokens(feedId)
-						: db.getCuratedFeedTokens(feedId)
+						? listActiveDirectoryFeedTokens(feedId)
+						: listActiveCuratedFeedTokens(feedId)
 
 				return {
 					content: [
@@ -267,9 +334,10 @@ export async function initializeTools(
 							text: JSON.stringify(
 								{
 									feedId,
-									feedTitle: feed.title,
-									tokens: tokens.map((t) => ({
+									feedName: feed.name,
+									tokens: tokens.map((t: FeedToken) => ({
 										token: t.token,
+										label: t.label,
 										createdAt: t.createdAt,
 									})),
 								},
@@ -290,7 +358,7 @@ export async function initializeTools(
 			'create_directory_feed',
 			'Create a new feed from a media directory',
 			{
-				title: z.string().describe('The feed title'),
+				name: z.string().describe('The feed name'),
 				description: z.string().optional().describe('The feed description'),
 				mediaRoot: z
 					.string()
@@ -299,7 +367,7 @@ export async function initializeTools(
 					.string()
 					.describe('The directory path within the media root'),
 			},
-			async ({ title, description, mediaRoot, directoryPath }) => {
+			async ({ name, description, mediaRoot, directoryPath }) => {
 				const mediaRoots = getMediaRoots()
 				const mr = mediaRoots.find((m) => m.name === mediaRoot)
 
@@ -316,15 +384,14 @@ export async function initializeTools(
 				}
 
 				try {
-					const feed = db.createDirectoryFeed({
-						title,
-						description: description || null,
-						mediaPath: mediaRoot,
-						directoryPath,
+					const feed = createDirectoryFeed({
+						name,
+						description: description || undefined,
+						directoryPaths: [`${mediaRoot}:${directoryPath}`],
 					})
 
 					// Create initial token
-					const token = db.createDirectoryFeedToken(feed.id)
+					const token = createDirectoryFeedToken({ feedId: feed.id })
 
 					return {
 						content: [
@@ -335,7 +402,7 @@ export async function initializeTools(
 										success: true,
 										feed: {
 											id: feed.id,
-											title: feed.title,
+											name: feed.name,
 											description: feed.description,
 										},
 										token: token.token,
@@ -365,18 +432,18 @@ export async function initializeTools(
 			'create_curated_feed',
 			'Create a new curated feed (manually managed)',
 			{
-				title: z.string().describe('The feed title'),
+				name: z.string().describe('The feed name'),
 				description: z.string().optional().describe('The feed description'),
 			},
-			async ({ title, description }) => {
+			async ({ name, description }) => {
 				try {
-					const feed = db.createCuratedFeed({
-						title,
-						description: description || null,
+					const feed = createCuratedFeed({
+						name,
+						description: description || undefined,
 					})
 
 					// Create initial token
-					const token = db.createCuratedFeedToken(feed.id)
+					const token = createCuratedFeedToken({ feedId: feed.id })
 
 					return {
 						content: [
@@ -387,7 +454,7 @@ export async function initializeTools(
 										success: true,
 										feed: {
 											id: feed.id,
-											title: feed.title,
+											name: feed.name,
 											description: feed.description,
 										},
 										token: token.token,
@@ -415,14 +482,14 @@ export async function initializeTools(
 		// Update feed
 		server.tool(
 			'update_feed',
-			'Update a feed title or description',
+			'Update a feed name or description',
 			{
-				id: z.number().describe('The feed ID'),
-				title: z.string().optional().describe('New title'),
+				id: z.string().describe('The feed ID'),
+				name: z.string().optional().describe('New name'),
 				description: z.string().optional().describe('New description'),
 			},
-			async ({ id, title, description }) => {
-				const feed = db.getFeedById(id)
+			async ({ id, name, description }) => {
+				const feed = getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -438,14 +505,14 @@ export async function initializeTools(
 
 				try {
 					if (feed.type === 'directory') {
-						db.updateDirectoryFeed(id, {
-							title: title ?? feed.title,
+						updateDirectoryFeed(id, {
+							name: name ?? feed.name,
 							description:
 								description !== undefined ? description : feed.description,
 						})
 					} else {
-						db.updateCuratedFeed(id, {
-							title: title ?? feed.title,
+						updateCuratedFeed(id, {
+							name: name ?? feed.name,
 							description:
 								description !== undefined ? description : feed.description,
 						})
@@ -485,10 +552,10 @@ export async function initializeTools(
 			'delete_feed',
 			'Delete a feed',
 			{
-				id: z.number().describe('The feed ID to delete'),
+				id: z.string().describe('The feed ID to delete'),
 			},
 			async ({ id }) => {
-				const feed = db.getFeedById(id)
+				const feed = getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -504,9 +571,9 @@ export async function initializeTools(
 
 				try {
 					if (feed.type === 'directory') {
-						db.deleteDirectoryFeed(id)
+						deleteDirectoryFeed(id)
 					} else {
-						db.deleteCuratedFeed(id)
+						deleteCuratedFeed(id)
 					}
 
 					return {
@@ -543,10 +610,10 @@ export async function initializeTools(
 			'create_feed_token',
 			'Create a new access token for a feed',
 			{
-				feedId: z.number().describe('The feed ID'),
+				feedId: z.string().describe('The feed ID'),
 			},
 			async ({ feedId }) => {
-				const feed = db.getFeedById(feedId)
+				const feed = getFeedById(feedId)
 
 				if (!feed) {
 					return {
@@ -563,8 +630,8 @@ export async function initializeTools(
 				try {
 					const token =
 						feed.type === 'directory'
-							? db.createDirectoryFeedToken(feedId)
-							: db.createCuratedFeedToken(feedId)
+							? createDirectoryFeedToken({ feedId })
+							: createCuratedFeedToken({ feedId })
 
 					return {
 						content: [
@@ -606,8 +673,8 @@ export async function initializeTools(
 			async ({ token }) => {
 				try {
 					// Try both token types
-					const dirDeleted = db.deleteDirectoryFeedToken(token)
-					const curDeleted = db.deleteCuratedFeedToken(token)
+					const dirDeleted = deleteDirectoryFeedToken(token)
+					const curDeleted = deleteCuratedFeedToken(token)
 
 					if (!dirDeleted && !curDeleted) {
 						return {

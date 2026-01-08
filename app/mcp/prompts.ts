@@ -6,8 +6,48 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
-import * as db from '#app/db/index.ts'
+import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
+import {
+	getDirectoryFeedById,
+	listDirectoryFeeds,
+} from '#app/db/directory-feeds.ts'
+import { getItemsForFeed } from '#app/db/feed-items.ts'
+import type { DirectoryFeed, CuratedFeed, FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+
+type Feed = DirectoryFeed | CuratedFeed
+
+/**
+ * Get all feeds (both directory and curated)
+ */
+function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+	const directoryFeeds = listDirectoryFeeds().map((f) => ({
+		...f,
+		type: 'directory' as const,
+	}))
+	const curatedFeeds = listCuratedFeeds().map((f) => ({
+		...f,
+		type: 'curated' as const,
+	}))
+	return [...directoryFeeds, ...curatedFeeds].sort(
+		(a, b) => b.createdAt - a.createdAt,
+	)
+}
+
+/**
+ * Get a feed by ID (checks both directory and curated)
+ */
+function getFeedById(
+	id: string,
+): (Feed & { type: 'directory' | 'curated' }) | undefined {
+	const directoryFeed = getDirectoryFeedById(id)
+	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
+
+	const curatedFeed = getCuratedFeedById(id)
+	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
+
+	return undefined
+}
 
 /**
  * Initialize MCP prompts based on authorized scopes.
@@ -24,13 +64,8 @@ export async function initializePrompts(
 			'Get a summary of your media library',
 			{},
 			async () => {
-				const feeds = db.getAllFeeds()
+				const feeds = getAllFeeds()
 				const mediaRoots = getMediaRoots()
-
-				const totalItems = feeds.reduce(
-					(sum, feed) => sum + (feed.itemCount || 0),
-					0,
-				)
 
 				return {
 					messages: [
@@ -44,11 +79,10 @@ Current library stats:
 - Total feeds: ${feeds.length}
 - Directory feeds: ${feeds.filter((f) => f.type === 'directory').length}
 - Curated feeds: ${feeds.filter((f) => f.type === 'curated').length}
-- Total items across all feeds: ${totalItems}
 - Media roots configured: ${mediaRoots.length}
 
 Feeds:
-${feeds.map((f) => `- ${f.title} (${f.type}, ${f.itemCount || 0} items)`).join('\n')}
+${feeds.map((f) => `- ${f.name} (${f.type})`).join('\n')}
 
 Media roots:
 ${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
@@ -69,8 +103,7 @@ Please give me an overview of my library and any suggestions for organization.`,
 				feedId: z.string().describe('The feed ID to explore'),
 			},
 			async ({ feedId }) => {
-				const id = Number(feedId)
-				const feed = db.getFeedById(id)
+				const feed = getFeedById(feedId)
 
 				if (!feed) {
 					return {
@@ -86,7 +119,8 @@ Please give me an overview of my library and any suggestions for organization.`,
 					}
 				}
 
-				const items = db.getFeedItems(id)
+				const items =
+					feed.type === 'curated' ? getItemsForFeed(feedId) : ([] as FeedItem[])
 
 				return {
 					messages: [
@@ -96,20 +130,21 @@ Please give me an overview of my library and any suggestions for organization.`,
 								type: 'text',
 								text: `Please explore this feed and tell me about its contents:
 
-Feed: ${feed.title}
+Feed: ${feed.name}
 Description: ${feed.description || 'No description'}
 Type: ${feed.type}
-Created: ${feed.createdAt}
+Created: ${new Date(feed.createdAt * 1000).toISOString()}
 
-Items (${items.length} total):
+${
+	feed.type === 'curated'
+		? `Items (${items.length} total):
 ${items
 	.slice(0, 20)
-	.map(
-		(item) =>
-			`- ${item.title}${item.duration ? ` (${formatDuration(item.duration)})` : ''}`,
-	)
+	.map((item: FeedItem) => `- ${item.mediaRoot}:${item.relativePath}`)
 	.join('\n')}
-${items.length > 20 ? `\n... and ${items.length - 20} more items` : ''}
+${items.length > 20 ? `\n... and ${items.length - 20} more items` : ''}`
+		: 'This is a directory feed - items are automatically included from the configured directories.'
+}
 
 Please provide:
 1. A summary of what this feed contains
@@ -149,14 +184,14 @@ ${mediaRoots.map((mr) => `- ${mr.name}: ${mr.path}`).join('\n')}
 Please help me:
 1. Choose an appropriate media root
 2. Browse the directory to find content
-3. Set up the feed with a good title and description
+3. Set up the feed with a good name and description
 
 You can use the browse_media tool to explore directories, then create_directory_feed to create the feed.`
 				} else if (type === 'curated') {
 					promptText = `I want to create a new curated feed where I can manually select content.
 
 Please help me:
-1. Come up with a good title and description for the feed
+1. Come up with a good name and description for the feed
 2. Create the feed using create_curated_feed
 3. Explain how I can add content to it later`
 				} else {
@@ -223,7 +258,7 @@ Steps:
 1. Use browse_media to explore the directory structure
 2. Identify logical groupings (by series, author, genre, etc.)
 3. Suggest feeds to create for each grouping
-4. Create the feeds with appropriate titles and descriptions
+4. Create the feeds with appropriate names and descriptions
 
 Start by browsing the directory to see what's there.`,
 								},
@@ -257,20 +292,4 @@ Which directory should we start with?`,
 			},
 		)
 	}
-}
-
-/**
- * Format duration in seconds to a human-readable string.
- */
-function formatDuration(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`
-	} else if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
 }

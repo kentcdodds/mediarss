@@ -75,7 +75,8 @@ export interface RequestContext {
  * (Request/Response) instead of Node.js streams.
  */
 export class BunStreamableHTTPServerTransport implements Transport {
-	private sessionId?: string
+	// sessionId must be public to satisfy the Transport interface
+	sessionId?: string
 	private sessionIdGenerator?: () => string
 	private onSessionInitialized?: (sessionId: string) => void | Promise<void>
 	private initialized = false
@@ -99,7 +100,10 @@ export class BunStreamableHTTPServerTransport implements Transport {
 	// Transport interface callbacks
 	onclose?: () => void
 	onerror?: (error: Error) => void
-	onmessage?: (message: JSONRPCMessage, extra?: { authInfo?: AuthInfo }) => void
+	// Use 'unknown' for extra to be compatible with MCP SDK's Transport interface
+	// The actual type is { authInfo?: AuthInfo } but we can't declare that directly
+	// due to interface compatibility issues with the SDK
+	onmessage?: (message: JSONRPCMessage, extra?: unknown) => void
 
 	constructor(options: TransportOptions = {}) {
 		this.sessionIdGenerator = options.sessionIdGenerator

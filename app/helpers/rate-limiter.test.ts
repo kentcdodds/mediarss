@@ -16,86 +16,53 @@ function createTestLimiter(options: {
 	}
 }
 
-test('RateLimiter allows requests under the limit', () => {
+test('RateLimiter enforces request limits per IP and tracks remaining correctly', () => {
 	using ctx = createTestLimiter({ maxRequests: 3, windowMs: 1000 })
 
+	// Requests under the limit should be allowed with correct remaining count
 	const result1 = ctx.limiter.check('ip1')
-	const result2 = ctx.limiter.check('ip1')
-	const result3 = ctx.limiter.check('ip1')
-
 	expect(result1.allowed).toBe(true)
-	expect(result2.allowed).toBe(true)
-	expect(result3.allowed).toBe(true)
-})
-
-test('RateLimiter blocks requests over the limit', () => {
-	using ctx = createTestLimiter({ maxRequests: 3, windowMs: 1000 })
-
-	ctx.limiter.check('ip1')
-	ctx.limiter.check('ip1')
-	ctx.limiter.check('ip1')
-	const result4 = ctx.limiter.check('ip1')
-
-	expect(result4.allowed).toBe(false)
-})
-
-test('RateLimiter tracks remaining requests correctly', () => {
-	using ctx = createTestLimiter({ maxRequests: 3, windowMs: 1000 })
-
-	const result1 = ctx.limiter.check('ip1')
-	const result2 = ctx.limiter.check('ip1')
-	const result3 = ctx.limiter.check('ip1')
-
 	expect(result1.remaining).toBe(2)
+
+	const result2 = ctx.limiter.check('ip1')
+	expect(result2.allowed).toBe(true)
 	expect(result2.remaining).toBe(1)
+
+	const result3 = ctx.limiter.check('ip1')
+	expect(result3.allowed).toBe(true)
 	expect(result3.remaining).toBe(0)
-})
 
-test('RateLimiter returns 0 remaining when blocked', () => {
-	using ctx = createTestLimiter({ maxRequests: 3, windowMs: 1000 })
-
-	ctx.limiter.check('ip1')
-	ctx.limiter.check('ip1')
-	ctx.limiter.check('ip1')
+	// Requests over the limit should be blocked
 	const result4 = ctx.limiter.check('ip1')
-
+	expect(result4.allowed).toBe(false)
 	expect(result4.remaining).toBe(0)
 })
 
 test('RateLimiter tracks different IPs separately', () => {
 	using ctx = createTestLimiter({ maxRequests: 3, windowMs: 1000 })
 
+	// Exhaust limit for ip1
 	ctx.limiter.check('ip1')
 	ctx.limiter.check('ip1')
 	ctx.limiter.check('ip1')
-
-	// ip1 is now at limit
 	expect(ctx.limiter.check('ip1').allowed).toBe(false)
 
-	// ip2 should still be allowed
+	// ip2 should have its own separate limit
 	expect(ctx.limiter.check('ip2').allowed).toBe(true)
 	expect(ctx.limiter.check('ip2').allowed).toBe(true)
 	expect(ctx.limiter.check('ip2').allowed).toBe(true)
 	expect(ctx.limiter.check('ip2').allowed).toBe(false)
 })
 
-test('RateLimiter.isAllowed returns true when under limit', () => {
+test('RateLimiter.isAllowed provides convenient boolean check', () => {
 	using ctx = createTestLimiter({ maxRequests: 2, windowMs: 1000 })
 
 	expect(ctx.limiter.isAllowed('ip1')).toBe(true)
 	expect(ctx.limiter.isAllowed('ip1')).toBe(true)
-})
-
-test('RateLimiter.isAllowed returns false when over limit', () => {
-	using ctx = createTestLimiter({ maxRequests: 2, windowMs: 1000 })
-
-	ctx.limiter.isAllowed('ip1')
-	ctx.limiter.isAllowed('ip1')
-
 	expect(ctx.limiter.isAllowed('ip1')).toBe(false)
 })
 
-test('RateLimiter allows requests again after window expires', async () => {
+test('RateLimiter resets after window expires and provides accurate resetMs', async () => {
 	using ctx = createTestLimiter({ maxRequests: 2, windowMs: 100 })
 
 	ctx.limiter.check('ip1')
@@ -105,6 +72,7 @@ test('RateLimiter allows requests again after window expires', async () => {
 	// Wait for window to expire
 	await new Promise((resolve) => setTimeout(resolve, 150))
 
+	// Should be allowed again after window expires
 	expect(ctx.limiter.check('ip1').allowed).toBe(true)
 })
 
@@ -123,28 +91,21 @@ test('RateLimiter.resetMs indicates time until oldest request expires', async ()
 	expect(blockedResult.resetMs).toBeLessThanOrEqual(200)
 })
 
-test('RateLimiter.getName returns the configured name', () => {
-	using ctx = createTestLimiter({ name: 'my-limiter', maxRequests: 100 })
-	expect(ctx.limiter.getName()).toBe('my-limiter')
-})
+test('RateLimiter exposes configuration via getter methods', () => {
+	using ctx1 = createTestLimiter({ name: 'my-limiter', maxRequests: 30 })
+	using ctx2 = createTestLimiter({ name: 'other-limiter', maxRequests: 1000 })
 
-test('RateLimiter.getMaxRequests returns the configured limit', () => {
-	using ctx = createTestLimiter({ maxRequests: 100, windowMs: 60000 })
-	expect(ctx.limiter.getMaxRequests()).toBe(100)
-})
-
-test('RateLimiter.getMaxRequests returns correct limit for different instances', () => {
-	using ctx1 = createTestLimiter({ maxRequests: 30 })
-	using ctx2 = createTestLimiter({ maxRequests: 1000 })
-
+	expect(ctx1.limiter.getName()).toBe('my-limiter')
 	expect(ctx1.limiter.getMaxRequests()).toBe(30)
+
+	expect(ctx2.limiter.getName()).toBe('other-limiter')
 	expect(ctx2.limiter.getMaxRequests()).toBe(1000)
 })
 
 test('RateLimiter uses 60 second default window when windowMs not specified', () => {
 	using ctx = createTestLimiter({ maxRequests: 5 })
 
-	// Make 5 requests
+	// Make 5 requests - all should be allowed
 	for (let i = 0; i < 5; i++) {
 		expect(ctx.limiter.check('ip1').allowed).toBe(true)
 	}

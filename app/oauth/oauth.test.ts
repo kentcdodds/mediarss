@@ -1,14 +1,7 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	test,
-} from 'bun:test'
+import { afterAll, expect, test } from 'bun:test'
 import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
@@ -50,6 +43,33 @@ function createTestClient(
 	return client
 }
 
+/**
+ * Creates a test server that will be automatically stopped.
+ */
+async function createTestServer() {
+	resetRateLimiters()
+	const { default: router } = await import('#app/router.tsx')
+
+	const server = Bun.serve({
+		port: 0, // Let OS assign a port
+		async fetch(request) {
+			return router.fetch(request)
+		},
+	})
+
+	const baseUrl = `http://localhost:${server.port}`
+
+	return {
+		server,
+		baseUrl,
+		[Symbol.dispose]: () => {
+			server.stop()
+			clearKeyCache()
+			resetRateLimiters()
+		},
+	}
+}
+
 // Clean up test data after all tests
 afterAll(() => {
 	for (const clientId of testClientIds) {
@@ -59,765 +79,690 @@ afterAll(() => {
 	db.run(sql`DELETE FROM authorization_codes WHERE client_id LIKE 'test-%';`)
 })
 
-describe('PKCE utilities', () => {
-	test('generateCodeVerifier produces valid verifiers', () => {
-		const verifier = generateCodeVerifier()
-		expect(isValidCodeVerifier(verifier)).toBe(true)
-		expect(verifier.length).toBeGreaterThanOrEqual(43)
-	})
+// PKCE Tests
 
-	test('computeS256Challenge produces correct challenge', async () => {
-		// Known test vector from RFC 7636
-		const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
-		const expectedChallenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'
+test('PKCE generates valid verifiers and computes correct S256 challenges', async () => {
+	// generateCodeVerifier produces valid verifiers
+	const verifier = generateCodeVerifier()
+	expect(isValidCodeVerifier(verifier)).toBe(true)
+	expect(verifier.length).toBeGreaterThanOrEqual(43)
 
-		const challenge = await computeS256Challenge(verifier)
-		expect(challenge).toBe(expectedChallenge)
-	})
+	// computeS256Challenge produces correct challenge (RFC 7636 test vector)
+	const knownVerifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
+	const expectedChallenge = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'
+	await expect(computeS256Challenge(knownVerifier)).resolves.toBe(
+		expectedChallenge,
+	)
 
-	test('verifyCodeChallenge returns true for valid pair', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	// verifyCodeChallenge returns true for valid pair
+	const challenge = await computeS256Challenge(verifier)
+	await expect(verifyCodeChallenge(verifier, challenge, 'S256')).resolves.toBe(
+		true,
+	)
 
-		const result = await verifyCodeChallenge(verifier, challenge, 'S256')
-		expect(result).toBe(true)
-	})
+	// verifyCodeChallenge returns false for invalid verifier
+	const wrongVerifier = generateCodeVerifier()
+	await expect(
+		verifyCodeChallenge(wrongVerifier, challenge, 'S256'),
+	).resolves.toBe(false)
 
-	test('verifyCodeChallenge returns false for invalid verifier', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-		const wrongVerifier = generateCodeVerifier()
+	// verifyCodeChallenge rejects non-S256 methods
+	await expect(verifyCodeChallenge(verifier, challenge, 'plain')).resolves.toBe(
+		false,
+	)
 
-		const result = await verifyCodeChallenge(wrongVerifier, challenge, 'S256')
-		expect(result).toBe(false)
-	})
+	// isValidCodeVerifier rejects short verifiers
+	expect(isValidCodeVerifier('short')).toBe(false)
 
-	test('verifyCodeChallenge rejects non-S256 methods', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	// isValidCodeVerifier rejects invalid characters
+	const invalidVerifier = 'a'.repeat(43) + '!'
+	expect(isValidCodeVerifier(invalidVerifier)).toBe(false)
 
-		const result = await verifyCodeChallenge(verifier, challenge, 'plain')
-		expect(result).toBe(false)
-	})
-
-	test('isValidCodeVerifier rejects short verifiers', () => {
-		expect(isValidCodeVerifier('short')).toBe(false)
-	})
-
-	test('isValidCodeVerifier rejects invalid characters', () => {
-		const invalidVerifier = 'a'.repeat(43) + '!'
-		expect(isValidCodeVerifier(invalidVerifier)).toBe(false)
-	})
-
-	test('isValidCodeChallenge validates length', () => {
-		expect(isValidCodeChallenge('short')).toBe(false)
-		expect(
-			isValidCodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'),
-		).toBe(true)
-	})
+	// isValidCodeChallenge validates length
+	expect(isValidCodeChallenge('short')).toBe(false)
+	expect(
+		isValidCodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'),
+	).toBe(true)
 })
 
-describe('OAuth clients', () => {
-	test('createClient creates a client', () => {
-		const client = createTestClient('Test Client ' + uniqueId())
-		expect(client.name).toContain('Test Client')
-		expect(client.redirectUris).toEqual(['http://localhost:9999/callback'])
-		expect(client.id).toBeTruthy()
-	})
+// OAuth Client Tests
 
-	test('getClient retrieves an existing client', () => {
-		const created = createTestClient('Another Client ' + uniqueId())
-		const retrieved = getClient(created.id)
-		expect(retrieved).not.toBeNull()
-		expect(retrieved!.name).toContain('Another Client')
-	})
+test('OAuth clients can be created, retrieved, listed, and deleted', () => {
+	// createClient creates a client
+	const client = createTestClient('Test Client ' + uniqueId())
+	expect(client.name).toContain('Test Client')
+	expect(client.redirectUris).toEqual(['http://localhost:9999/callback'])
+	expect(client.id).toBeTruthy()
 
-	test('getClient returns null for unknown client', () => {
-		const client = getClient('nonexistent-id-' + uniqueId())
-		expect(client).toBeNull()
-	})
+	// getClient retrieves an existing client
+	const retrieved = getClient(client.id)
+	expect(retrieved).not.toBeNull()
+	expect(retrieved!.name).toContain('Test Client')
 
-	test('deleteClient removes a client', () => {
-		const client = createClient('Deletable Client ' + uniqueId(), [
-			'http://example.com/callback',
-		])
-		const deleted = deleteClient(client.id)
-		expect(deleted).toBe(true)
-		expect(getClient(client.id)).toBeNull()
-	})
+	// getClient returns null for unknown client
+	expect(getClient('nonexistent-id-' + uniqueId())).toBeNull()
 
-	test('listClients returns clients', () => {
-		const beforeCount = listClients().length
-		createTestClient('List Test Client ' + uniqueId())
-		const afterCount = listClients().length
-		expect(afterCount).toBeGreaterThan(beforeCount)
-	})
+	// listClients includes the created client
+	const beforeCount = listClients().length
+	createTestClient('List Test Client ' + uniqueId())
+	const afterCount = listClients().length
+	expect(afterCount).toBeGreaterThan(beforeCount)
+
+	// deleteClient removes a client (not using tracked cleanup for this one)
+	const deletableClient = createClient('Deletable Client ' + uniqueId(), [
+		'http://example.com/callback',
+	])
+	expect(deleteClient(deletableClient.id)).toBe(true)
+	expect(getClient(deletableClient.id)).toBeNull()
 })
 
-describe('Authorization codes', () => {
-	test('createAuthorizationCode creates a code', async () => {
-		const client = createTestClient('Code Test Client ' + uniqueId())
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+// Authorization Code Tests
 
-		const code = createAuthorizationCode({
-			clientId: client.id,
-			redirectUri: 'http://localhost:9999/callback',
-			scope: 'read write',
-			codeChallenge: challenge,
-			codeChallengeMethod: 'S256',
-		})
+test('authorization codes can be created and consumed only once', async () => {
+	const client = createTestClient('Code Test Client ' + uniqueId())
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
 
-		expect(code.code).toBeTruthy()
-		expect(code.clientId).toBe(client.id)
-		expect(code.scope).toBe('read write')
-		expect(code.usedAt).toBeNull()
+	// Create authorization code
+	const code = createAuthorizationCode({
+		clientId: client.id,
+		redirectUri: 'http://localhost:9999/callback',
+		scope: 'read write',
+		codeChallenge: challenge,
+		codeChallengeMethod: 'S256',
 	})
 
-	test('consumeAuthorizationCode marks code as used', async () => {
-		const client = createTestClient('Consume Test Client ' + uniqueId())
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(code.code).toBeTruthy()
+	expect(code.clientId).toBe(client.id)
+	expect(code.scope).toBe('read write')
+	expect(code.usedAt).toBeNull()
 
-		const authCode = createAuthorizationCode({
-			clientId: client.id,
-			redirectUri: 'http://localhost:9999/callback',
-			scope: 'read',
-			codeChallenge: challenge,
-			codeChallengeMethod: 'S256',
-		})
+	// First consumption should succeed
+	const consumed = consumeAuthorizationCode(code.code)
+	expect(consumed).not.toBeNull()
+	expect(consumed!.usedAt).not.toBeNull()
 
-		// First consumption should succeed
-		const consumed = consumeAuthorizationCode(authCode.code)
-		expect(consumed).not.toBeNull()
-		expect(consumed!.usedAt).not.toBeNull()
-
-		// Second consumption should fail (single-use)
-		const secondConsume = consumeAuthorizationCode(authCode.code)
-		expect(secondConsume).toBeNull()
-	})
+	// Second consumption should fail (single-use)
+	expect(consumeAuthorizationCode(code.code)).toBeNull()
 })
 
-describe('OAuth full flow integration', () => {
-	let server: ReturnType<typeof Bun.serve>
-	let baseUrl: string
-	let testClient: { id: string; redirectUris: string[] }
+// OAuth Full Flow Integration Tests
 
-	beforeAll(async () => {
-		// Reset rate limiters to ensure clean state for integration tests
-		resetRateLimiters()
+test('JWKS endpoint returns valid public key without private components', async () => {
+	using ctx = await createTestServer()
 
-		// Create test client
-		testClient = createTestClient('Integration Test Client ' + uniqueId(), [
-			'http://localhost:9999/callback',
-		])
+	const response = await fetch(`${ctx.baseUrl}/oauth/jwks`)
+	expect(response.status).toBe(200)
 
-		// Import and start the router
-		const { default: router } = await import('#app/router.tsx')
+	const jwks = (await response.json()) as {
+		keys: Array<{
+			kty: string
+			use: string
+			alg: string
+			kid: string
+			n: string
+			e: string
+			d?: string
+		}>
+	}
 
-		server = Bun.serve({
-			port: 0, // Let OS assign a port
-			async fetch(request) {
-				return router.fetch(request)
-			},
-		})
+	expect(jwks.keys).toBeArray()
+	expect(jwks.keys.length).toBe(1)
 
-		baseUrl = `http://localhost:${server.port}`
+	const key = jwks.keys[0]!
+	expect(key.kty).toBe('RSA')
+	expect(key.use).toBe('sig')
+	expect(key.alg).toBe('RS256')
+	expect(key.kid).toBeTruthy()
+	expect(key.n).toBeTruthy()
+	expect(key.e).toBeTruthy()
+	// Should NOT include private key components
+	expect(key.d).toBeUndefined()
+})
+
+test('authorization endpoint shows page, validates client, and requires PKCE', async () => {
+	using ctx = await createTestServer()
+
+	const testClient = createTestClient('Auth Endpoint Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	// GET shows authorization page for valid client
+	const validParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		scope: 'read',
+		state: 'test-state',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
 	})
 
-	afterAll(() => {
-		if (server) {
-			server.stop()
-		}
-		// Clear key cache for clean state
-		clearKeyCache()
-		// Reset rate limiters for clean state
-		resetRateLimiters()
+	const validResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${validParams}`,
+	)
+	expect(validResponse.status).toBe(200)
+	const html = await validResponse.text()
+	expect(html).toContain('Authorize')
+	expect(html).toContain('Auth Endpoint Test')
+
+	// Rejects invalid client
+	const invalidClientParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: 'invalid-client-id-' + uniqueId(),
+		redirect_uri: 'http://localhost/callback',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
 	})
 
-	// Reset rate limiters before each test to prevent accumulation
-	beforeEach(() => {
-		resetRateLimiters()
+	const invalidClientResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${invalidClientParams}`,
+	)
+	expect(invalidClientResponse.status).toBe(400)
+	const invalidHtml = await invalidClientResponse.text()
+	expect(invalidHtml).toContain('Invalid Client')
+
+	// Requires PKCE
+	const noPkceParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
 	})
 
-	test('JWKS endpoint returns valid JWK', async () => {
-		const response = await fetch(`${baseUrl}/oauth/jwks`)
-		expect(response.status).toBe(200)
+	const noPkceResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${noPkceParams}`,
+	)
+	expect(noPkceResponse.status).toBe(400)
+	const noPkceHtml = await noPkceResponse.text()
+	expect(noPkceHtml).toContain('PKCE Required')
+})
 
-		const jwks = (await response.json()) as {
-			keys: Array<{
-				kty: string
-				use: string
-				alg: string
-				kid: string
-				n: string
-				e: string
-				d?: string
-			}>
-		}
-		expect(jwks.keys).toBeArray()
-		expect(jwks.keys.length).toBe(1)
+test('POST to authorization endpoint issues authorization code with state', async () => {
+	using ctx = await createTestServer()
 
-		const key = jwks.keys[0]!
-		expect(key.kty).toBe('RSA')
-		expect(key.use).toBe('sig')
-		expect(key.alg).toBe('RS256')
-		expect(key.kid).toBeTruthy()
-		expect(key.n).toBeTruthy()
-		expect(key.e).toBeTruthy()
-		// Should NOT include private key components
-		expect(key.d).toBeUndefined()
+	const testClient = createTestClient('POST Auth Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	const params = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		scope: 'read',
+		state: 'my-state',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
 	})
 
-	test('GET /admin/authorize shows authorization page', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-
-		const params = new URLSearchParams({
-			response_type: 'code',
-			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			scope: 'read',
-			state: 'test-state',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const response = await fetch(`${baseUrl}/admin/authorize?${params}`)
-		expect(response.status).toBe(200)
-
-		const html = await response.text()
-		expect(html).toContain('Authorize')
-		expect(html).toContain('Integration Test Client')
+	const response = await fetch(`${ctx.baseUrl}/admin/authorize?${params}`, {
+		method: 'POST',
+		redirect: 'manual',
 	})
 
-	test('GET /admin/authorize rejects invalid client', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(response.status).toBe(302)
 
-		const params = new URLSearchParams({
-			response_type: 'code',
-			client_id: 'invalid-client-id-' + uniqueId(),
-			redirect_uri: 'http://localhost/callback',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
+	const location = response.headers.get('Location')
+	expect(location).toBeTruthy()
 
-		const response = await fetch(`${baseUrl}/admin/authorize?${params}`)
-		expect(response.status).toBe(400)
+	const redirectUrl = new URL(location!)
+	expect(redirectUrl.origin).toBe('http://localhost:9999')
+	expect(redirectUrl.pathname).toBe('/callback')
+	expect(redirectUrl.searchParams.get('code')).toBeTruthy()
+	expect(redirectUrl.searchParams.get('state')).toBe('my-state')
+})
 
-		const html = await response.text()
-		expect(html).toContain('Invalid Client')
+test('full OAuth authorization code flow with token exchange and JWT verification', async () => {
+	using ctx = await createTestServer()
+
+	const testClient = createTestClient('Full Flow Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	// Step 1: Get authorization code
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		scope: 'read write',
+		state: 'flow-state',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
 	})
 
-	test('GET /admin/authorize requires PKCE', async () => {
-		const params = new URLSearchParams({
-			response_type: 'code',
-			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-		})
-
-		const response = await fetch(`${baseUrl}/admin/authorize?${params}`)
-		expect(response.status).toBe(400)
-
-		const html = await response.text()
-		expect(html).toContain('PKCE Required')
-	})
-
-	test('POST /admin/authorize issues authorization code', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-
-		const params = new URLSearchParams({
-			response_type: 'code',
-			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			scope: 'read',
-			state: 'my-state',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const response = await fetch(`${baseUrl}/admin/authorize?${params}`, {
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
 			method: 'POST',
 			redirect: 'manual',
-		})
+		},
+	)
 
-		expect(response.status).toBe(302)
+	expect(authorizeResponse.status).toBe(302)
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	const code = redirectUrl.searchParams.get('code')!
 
-		const location = response.headers.get('Location')
-		expect(location).toBeTruthy()
-
-		const redirectUrl = new URL(location!)
-		expect(redirectUrl.origin).toBe('http://localhost:9999')
-		expect(redirectUrl.pathname).toBe('/callback')
-		expect(redirectUrl.searchParams.get('code')).toBeTruthy()
-		expect(redirectUrl.searchParams.get('state')).toBe('my-state')
-	})
-
-	test('Full authorization code flow with token exchange', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-
-		// Step 1: Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
-			client_id: testClient.id,
+	// Step 2: Exchange code for token
+	const tokenResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
 			redirect_uri: testClient.redirectUris[0]!,
-			scope: 'read write',
-			state: 'flow-state',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		expect(authorizeResponse.status).toBe(302)
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// Step 2: Exchange code for token
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
-
-		expect(tokenResponse.status).toBe(200)
-
-		const tokenData = (await tokenResponse.json()) as {
-			access_token: string
-			token_type: string
-			expires_in: number
-			scope: string
-		}
-		expect(tokenData.access_token).toBeTruthy()
-		expect(tokenData.token_type).toBe('Bearer')
-		expect(tokenData.expires_in).toBe(3600)
-		expect(tokenData.scope).toBe('read write')
-
-		// Step 3: Verify token is a valid JWT
-		const { access_token } = tokenData
-
-		// Get JWKS and verify token
-		const jwksResponse = await fetch(`${baseUrl}/oauth/jwks`)
-		const jwks = (await jwksResponse.json()) as { keys: jose.JWK[] }
-		const publicKey = await jose.importJWK(jwks.keys[0]!, 'RS256')
-
-		const { payload } = await jose.jwtVerify(access_token, publicKey, {
-			issuer: baseUrl,
-			audience: getAudience(),
-		})
-
-		expect(payload.iss).toBe(baseUrl)
-		expect(payload.aud).toBe(getAudience())
-		expect(payload.sub).toBe(getSubject())
-		expect(payload.scope).toBe('read write')
-		expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000))
-	})
-
-	test('Token endpoint rejects wrong PKCE verifier', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// Try to exchange with wrong verifier
-		const wrongVerifier = generateCodeVerifier()
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-				code_verifier: wrongVerifier,
-			}).toString(),
-		})
-
-		expect(tokenResponse.status).toBe(400)
-
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-			error_description: string
-		}
-		expect(errorData.error).toBe('invalid_grant')
-		expect(errorData.error_description).toContain('PKCE')
+			code_verifier: verifier,
+		}).toString(),
 	})
 
-	test('Token endpoint rejects missing PKCE verifier', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(tokenResponse.status).toBe(200)
 
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
+	const tokenData = (await tokenResponse.json()) as {
+		access_token: string
+		token_type: string
+		expires_in: number
+		scope: string
+	}
+	expect(tokenData.access_token).toBeTruthy()
+	expect(tokenData.token_type).toBe('Bearer')
+	expect(tokenData.expires_in).toBe(3600)
+	expect(tokenData.scope).toBe('read write')
+
+	// Step 3: Verify token is a valid JWT
+	const jwksResponse = await fetch(`${ctx.baseUrl}/oauth/jwks`)
+	const jwks = (await jwksResponse.json()) as { keys: jose.JWK[] }
+	const publicKey = await jose.importJWK(jwks.keys[0]!, 'RS256')
+
+	const { payload } = await jose.jwtVerify(tokenData.access_token, publicKey, {
+		issuer: ctx.baseUrl,
+		audience: getAudience(),
+	})
+
+	expect(payload.iss).toBe(ctx.baseUrl)
+	expect(payload.aud).toBe(getAudience())
+	expect(payload.sub).toBe(getSubject())
+	expect(payload.scope).toBe('read write')
+	expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000))
+})
+
+test('token endpoint rejects requests with invalid PKCE verifier or missing verifier', async () => {
+	using ctx = await createTestServer()
+
+	const testClient = createTestClient('PKCE Reject Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	// Get authorization code
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	const code = redirectUrl.searchParams.get('code')!
+
+	// Try with wrong verifier
+	const wrongVerifier = generateCodeVerifier()
+	const wrongVerifierResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: testClient.redirectUris[0]!,
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// Try to exchange without verifier
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-			}).toString(),
-		})
-
-		expect(tokenResponse.status).toBe(400)
-
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-			error_description: string
-		}
-		expect(errorData.error).toBe('invalid_request')
-		expect(errorData.error_description).toContain('code_verifier')
+			code_verifier: wrongVerifier,
+		}).toString(),
 	})
 
-	test('Authorization code cannot be reused', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(wrongVerifierResponse.status).toBe(400)
+	const wrongVerifierError = (await wrongVerifierResponse.json()) as {
+		error: string
+		error_description: string
+	}
+	expect(wrongVerifierError.error).toBe('invalid_grant')
+	expect(wrongVerifierError.error_description).toContain('PKCE')
 
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
+	// Get another code for missing verifier test
+	const authorizeResponse2 = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+	const code2 = new URL(
+		authorizeResponse2.headers.get('Location')!,
+	).searchParams.get('code')!
+
+	// Try without verifier
+	const noVerifierResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code: code2,
+			redirect_uri: testClient.redirectUris[0]!,
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// First exchange should succeed
-		const firstTokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
-
-		expect(firstTokenResponse.status).toBe(200)
-
-		// Second exchange with same code should fail
-		const secondTokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
-
-		expect(secondTokenResponse.status).toBe(400)
-
-		const errorData = (await secondTokenResponse.json()) as {
-			error: string
-			error_description: string
-		}
-		expect(errorData.error).toBe('invalid_grant')
-		expect(errorData.error_description).toContain('already been used')
+		}).toString(),
 	})
 
-	test('Token endpoint rejects wrong redirect_uri', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(noVerifierResponse.status).toBe(400)
+	const noVerifierError = (await noVerifierResponse.json()) as {
+		error: string
+		error_description: string
+	}
+	expect(noVerifierError.error).toBe('invalid_request')
+	expect(noVerifierError.error_description).toContain('code_verifier')
+})
 
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
+test('authorization code cannot be reused', async () => {
+	using ctx = await createTestServer()
+
+	const testClient = createTestClient('Code Reuse Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	// Get authorization code
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	const code = redirectUrl.searchParams.get('code')!
+
+	// First exchange should succeed
+	const firstTokenResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: testClient.redirectUris[0]!,
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// Try to exchange with different redirect_uri
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: 'http://evil.com/callback',
-				client_id: testClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
-
-		expect(tokenResponse.status).toBe(400)
-
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-			error_description: string
-		}
-		expect(errorData.error).toBe('invalid_grant')
-		expect(errorData.error_description).toContain('redirect_uri')
+			code_verifier: verifier,
+		}).toString(),
 	})
 
-	test('Token endpoint rejects wrong client_id', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
+	expect(firstTokenResponse.status).toBe(200)
 
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
+	// Second exchange with same code should fail
+	const secondTokenResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: testClient.redirectUris[0]!,
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
+			code_verifier: verifier,
+		}).toString(),
+	})
 
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
+	expect(secondTokenResponse.status).toBe(400)
+	const errorData = (await secondTokenResponse.json()) as {
+		error: string
+		error_description: string
+	}
+	expect(errorData.error).toBe('invalid_grant')
+	expect(errorData.error_description).toContain('already been used')
+})
 
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
+test('token endpoint validates redirect_uri and client_id match the authorization code', async () => {
+	using ctx = await createTestServer()
 
-		// Create another client
-		const otherClient = createTestClient('Other Client ' + uniqueId(), [
-			'http://other.com/callback',
-		])
+	const testClient = createTestClient('Validation Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const otherClient = createTestClient('Other Client ' + uniqueId(), [
+		'http://other.com/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
 
-		// Try to exchange with different client_id
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
+	// Get authorization code
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: otherClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
+			redirect: 'manual',
+		},
+	)
 
-		expect(tokenResponse.status).toBe(400)
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	const code = redirectUrl.searchParams.get('code')!
 
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-		}
-		expect(errorData.error).toBe('invalid_grant')
-	})
-
-	test('Token endpoint rejects unsupported grant type', async () => {
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'password',
-				username: 'test',
-				password: 'test',
-			}).toString(),
-		})
-
-		expect(tokenResponse.status).toBe(400)
-
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-		}
-		expect(errorData.error).toBe('unsupported_grant_type')
-	})
-
-	test('Token endpoint rejects wrong content type', async () => {
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				grant_type: 'authorization_code',
-				code: 'test',
-			}),
-		})
-
-		expect(tokenResponse.status).toBe(400)
-
-		const errorData = (await tokenResponse.json()) as {
-			error: string
-		}
-		expect(errorData.error).toBe('invalid_request')
-	})
-
-	test('Token endpoint only allows POST', async () => {
-		const response = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'GET',
-		})
-
-		expect(response.status).toBe(405)
-	})
-
-	test('JWKS endpoint only allows GET', async () => {
-		const response = await fetch(`${baseUrl}/oauth/jwks`, {
-			method: 'POST',
-		})
-
-		expect(response.status).toBe(405)
-	})
-
-	test('JWT token has correct claims structure', async () => {
-		const verifier = generateCodeVerifier()
-		const challenge = await computeS256Challenge(verifier)
-
-		// Get authorization code
-		const authorizeParams = new URLSearchParams({
-			response_type: 'code',
+	// Try with wrong redirect_uri
+	const wrongRedirectResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: 'http://evil.com/callback',
 			client_id: testClient.id,
-			redirect_uri: testClient.redirectUris[0]!,
-			scope: 'mcp:read',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})
-
-		const authorizeResponse = await fetch(
-			`${baseUrl}/admin/authorize?${authorizeParams}`,
-			{
-				method: 'POST',
-				redirect: 'manual',
-			},
-		)
-
-		const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
-		const code = redirectUrl.searchParams.get('code')!
-
-		// Exchange for token
-		const tokenResponse = await fetch(`${baseUrl}/oauth/token`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: new URLSearchParams({
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: testClient.redirectUris[0]!,
-				client_id: testClient.id,
-				code_verifier: verifier,
-			}).toString(),
-		})
-
-		const tokenData = (await tokenResponse.json()) as { access_token: string }
-
-		// Decode token header without verification
-		const parts = tokenData.access_token.split('.')
-		const header = JSON.parse(atob(parts[0]!)) as { alg: string; kid: string }
-
-		expect(header.alg).toBe('RS256')
-		expect(header.kid).toBeTruthy()
-
-		// Verify full token
-		const jwksResponse = await fetch(`${baseUrl}/oauth/jwks`)
-		const jwks = (await jwksResponse.json()) as { keys: jose.JWK[] }
-		const publicKey = await jose.importJWK(jwks.keys[0]!, 'RS256')
-
-		const { payload, protectedHeader } = await jose.jwtVerify(
-			tokenData.access_token,
-			publicKey,
-		)
-
-		expect(protectedHeader.alg).toBe('RS256')
-		expect(payload.iss).toBe(baseUrl)
-		expect(payload.aud).toBe('mcp-server')
-		expect(payload.sub).toBe('user')
-		expect(payload.scope).toBe('mcp:read')
-		expect(typeof payload.iat).toBe('number')
-		expect(typeof payload.exp).toBe('number')
-		expect(payload.exp! - payload.iat!).toBe(3600)
+			code_verifier: verifier,
+		}).toString(),
 	})
+
+	expect(wrongRedirectResponse.status).toBe(400)
+	const redirectError = (await wrongRedirectResponse.json()) as {
+		error: string
+		error_description: string
+	}
+	expect(redirectError.error).toBe('invalid_grant')
+	expect(redirectError.error_description).toContain('redirect_uri')
+
+	// Get another code for wrong client_id test
+	const authorizeResponse2 = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+	const code2 = new URL(
+		authorizeResponse2.headers.get('Location')!,
+	).searchParams.get('code')!
+
+	// Try with wrong client_id
+	const wrongClientResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code: code2,
+			redirect_uri: testClient.redirectUris[0]!,
+			client_id: otherClient.id,
+			code_verifier: verifier,
+		}).toString(),
+	})
+
+	expect(wrongClientResponse.status).toBe(400)
+	expect(((await wrongClientResponse.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+})
+
+test('token endpoint rejects unsupported grant types and wrong content type', async () => {
+	using ctx = await createTestServer()
+
+	// Unsupported grant type
+	const unsupportedGrantResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'password',
+			username: 'test',
+			password: 'test',
+		}).toString(),
+	})
+
+	expect(unsupportedGrantResponse.status).toBe(400)
+	expect(
+		((await unsupportedGrantResponse.json()) as { error: string }).error,
+	).toBe('unsupported_grant_type')
+
+	// Wrong content type
+	const wrongContentTypeResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			grant_type: 'authorization_code',
+			code: 'test',
+		}),
+	})
+
+	expect(wrongContentTypeResponse.status).toBe(400)
+	expect(
+		((await wrongContentTypeResponse.json()) as { error: string }).error,
+	).toBe('invalid_request')
+})
+
+test('OAuth endpoints enforce correct HTTP methods', async () => {
+	using ctx = await createTestServer()
+
+	// Token endpoint only allows POST
+	const tokenGetResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'GET',
+	})
+	expect(tokenGetResponse.status).toBe(405)
+
+	// JWKS endpoint only allows GET
+	const jwksPostResponse = await fetch(`${ctx.baseUrl}/oauth/jwks`, {
+		method: 'POST',
+	})
+	expect(jwksPostResponse.status).toBe(405)
+})
+
+test('JWT token has correct claims structure', async () => {
+	using ctx = await createTestServer()
+
+	const testClient = createTestClient('JWT Claims Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	// Get authorization code
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: testClient.id,
+		redirect_uri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	const code = redirectUrl.searchParams.get('code')!
+
+	// Exchange for token
+	const tokenResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: testClient.redirectUris[0]!,
+			client_id: testClient.id,
+			code_verifier: verifier,
+		}).toString(),
+	})
+
+	const tokenData = (await tokenResponse.json()) as { access_token: string }
+
+	// Decode token header without verification
+	const parts = tokenData.access_token.split('.')
+	const header = JSON.parse(atob(parts[0]!)) as { alg: string; kid: string }
+
+	expect(header.alg).toBe('RS256')
+	expect(header.kid).toBeTruthy()
+
+	// Verify full token
+	const jwksResponse = await fetch(`${ctx.baseUrl}/oauth/jwks`)
+	const jwks = (await jwksResponse.json()) as { keys: jose.JWK[] }
+	const publicKey = await jose.importJWK(jwks.keys[0]!, 'RS256')
+
+	const { payload, protectedHeader } = await jose.jwtVerify(
+		tokenData.access_token,
+		publicKey,
+	)
+
+	expect(protectedHeader.alg).toBe('RS256')
+	expect(payload.iss).toBe(ctx.baseUrl)
+	expect(payload.aud).toBe('mcp-server')
+	expect(payload.sub).toBe('user')
+	expect(payload.scope).toBe('mcp:read')
+	expect(typeof payload.iat).toBe('number')
+	expect(typeof payload.exp).toBe('number')
+	expect(payload.exp! - payload.iat!).toBe(3600)
 })

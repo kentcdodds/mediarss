@@ -9,122 +9,73 @@ import {
 	formatUptime,
 } from './format.ts'
 
-// formatDuration tests
-
-test('formatDuration returns fallback for null', () => {
+test('formatDuration handles various input cases and formats correctly', () => {
+	// Fallback behavior
 	expect(formatDuration(null)).toBe('—')
 	expect(formatDuration(null, { fallback: 'N/A' })).toBe('N/A')
-})
-
-test('formatDuration returns fallback for zero', () => {
 	expect(formatDuration(0)).toBe('—')
-})
 
-test('formatDuration formats seconds only', () => {
+	// Seconds only
 	expect(formatDuration(45)).toBe('45s')
-})
 
-test('formatDuration formats minutes and seconds', () => {
+	// Minutes and seconds
 	expect(formatDuration(125)).toBe('2m 5s')
-})
 
-test('formatDuration formats hours and minutes (no seconds by default)', () => {
+	// Hours and minutes (no seconds by default)
 	expect(formatDuration(3725)).toBe('1h 2m')
-})
 
-test('formatDuration formats hours, minutes, and seconds with showSeconds option', () => {
+	// Hours, minutes, and seconds with showSeconds option
 	expect(formatDuration(3725, { showSeconds: true })).toBe('1h 2m 5s')
 })
 
-// formatUptime tests
-
-test('formatUptime formats seconds', () => {
+test('formatUptime converts milliseconds to human-readable duration', () => {
 	expect(formatUptime(45000)).toBe('45s')
-})
-
-test('formatUptime formats minutes and seconds', () => {
 	expect(formatUptime(125000)).toBe('2m 5s')
-})
-
-test('formatUptime formats hours, minutes, and seconds', () => {
 	expect(formatUptime(3725000)).toBe('1h 2m 5s')
-})
-
-test('formatUptime formats days, hours, and minutes', () => {
 	expect(formatUptime(90000000)).toBe('1d 1h 0m')
 })
 
-// formatItunesDuration tests
-
-test('formatItunesDuration returns empty string for null', () => {
+test('formatItunesDuration formats duration for iTunes podcast feeds', () => {
 	expect(formatItunesDuration(null)).toBe('')
-})
-
-test('formatItunesDuration formats minutes and seconds', () => {
 	expect(formatItunesDuration(125)).toBe('2:05')
-})
-
-test('formatItunesDuration formats hours, minutes, and seconds', () => {
 	expect(formatItunesDuration(3725)).toBe('1:02:05')
 })
 
-// formatFileSize tests
-
-test('formatFileSize formats bytes', () => {
+test('formatFileSize formats bytes into human-readable sizes', () => {
+	expect(formatFileSize(0)).toBe('0 B')
 	expect(formatFileSize(500)).toBe('500 B')
-})
-
-test('formatFileSize formats kilobytes', () => {
 	expect(formatFileSize(1536)).toBe('1.5 KB')
-})
-
-test('formatFileSize formats megabytes', () => {
 	expect(formatFileSize(1572864)).toBe('1.5 MB')
-})
-
-test('formatFileSize formats gigabytes', () => {
 	expect(formatFileSize(1610612736)).toBe('1.5 GB')
 })
 
-test('formatFileSize returns 0 B for zero', () => {
-	expect(formatFileSize(0)).toBe('0 B')
-})
-
-// formatDate tests
-
-test('formatDate returns dash for null', () => {
+test('formatDate handles various input types and styles', () => {
+	// Null handling
 	expect(formatDate(null)).toBe('—')
-})
 
-test('formatDate handles ISO string input', () => {
-	const result = formatDate('2026-01-07T12:00:00Z', { style: 'date' })
-	expect(result).toContain('2026')
-	expect(result).toContain('January')
-	expect(result).toContain('7')
-})
+	// ISO string input
+	const isoResult = formatDate('2026-01-07T12:00:00Z', { style: 'date' })
+	expect(isoResult).toContain('2026')
+	expect(isoResult).toContain('January')
+	expect(isoResult).toContain('7')
 
-test('formatDate handles unix timestamp in seconds', () => {
-	// Jan 7, 2026 12:00:00 UTC
-	const timestamp = 1767787200
-	const result = formatDate(timestamp, { style: 'date' })
-	expect(result).toContain('2026')
-})
+	// Unix timestamp in seconds
+	const timestamp = 1767787200 // Jan 7, 2026 12:00:00 UTC
+	const timestampResult = formatDate(timestamp, { style: 'date' })
+	expect(timestampResult).toContain('2026')
 
-test('formatDate handles Date object', () => {
+	// Date object input
 	const date = new Date('2026-01-07T12:00:00Z')
-	const result = formatDate(date, { style: 'date' })
-	expect(result).toContain('2026')
+	const dateResult = formatDate(date, { style: 'date' })
+	expect(dateResult).toContain('2026')
+
+	// Short style returns abbreviated month
+	const shortResult = formatDate('2026-01-07T12:00:00Z', { style: 'short' })
+	expect(shortResult).toContain('Jan')
+	expect(shortResult).toContain('2026')
 })
 
-test('formatDate short style returns abbreviated month', () => {
-	const result = formatDate('2026-01-07T12:00:00Z', { style: 'short' })
-	expect(result).toContain('Jan')
-	expect(result).toContain('2026')
-})
-
-// formatRssDate tests
-
-test('formatRssDate returns RFC 2822 format', () => {
+test('formatRssDate returns RFC 2822 format for RSS feeds', () => {
 	const date = new Date('2026-01-07T12:00:00Z')
 	const result = formatRssDate(date)
 	expect(result).toContain('Wed')
@@ -132,33 +83,20 @@ test('formatRssDate returns RFC 2822 format', () => {
 	expect(result).toContain('GMT')
 })
 
-// formatRelativeTime tests
-
-test('formatRelativeTime returns Never for null', () => {
+test('formatRelativeTime shows human-friendly time differences', () => {
 	expect(formatRelativeTime(null)).toBe('Never')
-})
+	expect(formatRelativeTime(new Date())).toBe('just now')
 
-test('formatRelativeTime returns just now for recent times', () => {
-	const now = new Date()
-	expect(formatRelativeTime(now)).toBe('just now')
-})
-
-test('formatRelativeTime formats minutes ago', () => {
 	const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
 	expect(formatRelativeTime(fiveMinutesAgo)).toBe('5 mins ago')
-})
 
-test('formatRelativeTime formats hours ago', () => {
 	const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000)
 	expect(formatRelativeTime(threeHoursAgo)).toBe('3 hours ago')
-})
 
-test('formatRelativeTime formats days ago', () => {
 	const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
 	expect(formatRelativeTime(twoDaysAgo)).toBe('2 days ago')
-})
 
-test('formatRelativeTime handles unix timestamp in seconds', () => {
+	// Unix timestamp in seconds
 	const oneHourAgo = Math.floor(Date.now() / 1000) - 3600
 	expect(formatRelativeTime(oneHourAgo)).toBe('1 hour ago')
 })

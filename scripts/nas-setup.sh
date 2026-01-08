@@ -142,6 +142,8 @@ docker pull "${IMAGE_NAME}"
 
 echo ""
 echo "🛑 Stopping existing container (if any)..."
+# Disable restart policy first to signal this is an intentional stop
+docker update --restart=no "${CONTAINER_NAME}" 2>/dev/null || true
 docker stop "${CONTAINER_NAME}" 2>/dev/null || true
 docker rm "${CONTAINER_NAME}" 2>/dev/null || true
 

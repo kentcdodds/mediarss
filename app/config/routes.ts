@@ -33,5 +33,6 @@ export default route({
 	adminApiMediaAssignments: '/admin/api/media/assignments',
 	adminApiMediaDetail: '/admin/api/media/*path',
 	adminApiMediaStream: '/admin/api/media-stream/*path',
+	adminApiMediaUpload: '/admin/api/media/upload',
 	adminApiArtwork: '/admin/api/artwork/*path',
 })

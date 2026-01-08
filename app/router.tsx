@@ -21,6 +21,7 @@ import adminApiMediaDetailHandlers from '#app/routes/admin/api/media.$path.ts'
 import adminApiMediaHandlers from '#app/routes/admin/api/media.ts'
 import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assignments.ts'
 import adminApiMediaStreamHandlers from '#app/routes/admin/api/media-stream.ts'
+import adminApiMediaUploadHandlers from '#app/routes/admin/api/media-upload.ts'
 import adminApiTokenHandlers from '#app/routes/admin/api/tokens.$token.ts'
 import adminApiVersionHandlers from '#app/routes/admin/api/version.ts'
 import adminAuthorizeHandlers from '#app/routes/admin/authorize.tsx'
@@ -128,6 +129,7 @@ router.map(routes.adminApiFeed, adminApiFeedHandlers)
 router.map(routes.adminApiToken, adminApiTokenHandlers)
 router.map(routes.adminApiMedia, adminApiMediaHandlers)
 router.map(routes.adminApiMediaAssignments, adminApiMediaAssignmentsHandlers)
+router.map(routes.adminApiMediaUpload, adminApiMediaUploadHandlers)
 router.map(routes.adminApiMediaDetail, adminApiMediaDetailHandlers)
 router.map(routes.adminApiMediaStream, adminApiMediaStreamHandlers)
 router.map(routes.adminApiArtwork, adminApiArtworkHandlers)

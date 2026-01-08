@@ -20,6 +20,11 @@ import {
 } from '#app/styles/tokens.ts'
 import { Link } from './router.tsx'
 
+type MediaRoot = {
+	name: string
+	path: string
+}
+
 type MediaItem = {
 	path: string
 	rootName: string
@@ -151,6 +156,12 @@ function getMediaFeeds(
 
 const ITEMS_PER_PAGE = 100
 
+type UploadState =
+	| { status: 'idle' }
+	| { status: 'uploading'; progress: number; filename: string }
+	| { status: 'success'; filename: string; mediaPath: string }
+	| { status: 'error'; message: string }
+
 /**
  * MediaList component - displays all media files with search/filter and assignment management
  */
@@ -169,6 +180,14 @@ export function MediaList(this: Handle) {
 	let bulkSelectedFeedIds: Set<string> = new Set() // For bulk assign (multi-select)
 	let bulkUnassignFeedId: string | null = null // For bulk unassign (single-select)
 	let bulkSaving = false
+
+	// Upload state
+	let showUploadModal = false
+	let mediaRoots: Array<MediaRoot> = []
+	let selectedRoot: string = ''
+	let subdirectory: string = ''
+	let uploadState: UploadState = { status: 'idle' }
+	let selectedFiles: FileList | null = null
 
 	// Helper to get the selection key for a media item
 	const getItemKey = (item: MediaItem) =>
@@ -362,6 +381,95 @@ export function MediaList(this: Handle) {
 			console.error('Failed to save bulk unassignments:', err)
 		} finally {
 			bulkSaving = false
+			this.update()
+		}
+	}
+
+	// Upload modal handlers
+	const openUploadModal = async () => {
+		showUploadModal = true
+		uploadState = { status: 'idle' }
+		selectedFiles = null
+		subdirectory = ''
+		this.update()
+
+		// Fetch available media roots
+		try {
+			const res = await fetch('/admin/api/directories', { signal: this.signal })
+			if (res.ok) {
+				const data = (await res.json()) as { roots: Array<MediaRoot> }
+				mediaRoots = data.roots
+				if (mediaRoots.length > 0 && !selectedRoot) {
+					selectedRoot = mediaRoots[0]!.name
+				}
+				this.update()
+			}
+		} catch {
+			// Ignore fetch errors for roots
+		}
+	}
+
+	const closeUploadModal = () => {
+		showUploadModal = false
+		uploadState = { status: 'idle' }
+		selectedFiles = null
+		this.update()
+	}
+
+	const handleFileSelect = (files: FileList | null) => {
+		selectedFiles = files
+		uploadState = { status: 'idle' }
+		this.update()
+	}
+
+	const uploadFiles = async () => {
+		if (!selectedFiles || selectedFiles.length === 0 || !selectedRoot) return
+
+		const file = selectedFiles[0]
+		if (!file) return
+
+		uploadState = { status: 'uploading', progress: 0, filename: file.name }
+		this.update()
+
+		try {
+			const formData = new FormData()
+			formData.append('file', file)
+			formData.append('root', selectedRoot)
+			if (subdirectory.trim()) {
+				formData.append('subdirectory', subdirectory.trim())
+			}
+
+			const res = await fetch('/admin/api/media/upload', {
+				method: 'POST',
+				body: formData,
+			})
+
+			const data = await res.json()
+
+			if (!res.ok) {
+				uploadState = {
+					status: 'error',
+					message: data.error || `Upload failed: HTTP ${res.status}`,
+				}
+				this.update()
+				return
+			}
+
+			uploadState = {
+				status: 'success',
+				filename: data.file.filename,
+				mediaPath: data.file.mediaPath,
+			}
+			selectedFiles = null
+			this.update()
+
+			// Refresh the media list after successful upload
+			fetchData()
+		} catch (err) {
+			uploadState = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Upload failed',
+			}
 			this.update()
 		}
 	}
@@ -611,20 +719,66 @@ export function MediaList(this: Handle) {
 							</span>
 						</p>
 					</div>
-					<Link
-						href="/admin"
+					<div
 						css={{
-							color: colors.textMuted,
-							textDecoration: 'none',
-							fontSize: typography.fontSize.sm,
-							'&:hover': { color: colors.text },
+							display: 'flex',
+							gap: spacing.md,
+							alignItems: 'center',
 							[mq.mobile]: {
-								alignSelf: 'flex-start',
+								justifyContent: 'space-between',
 							},
 						}}
 					>
-						← Back to Feeds
-					</Link>
+						<button
+							type="button"
+							css={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.xs,
+								padding: `${spacing.sm} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.background,
+								backgroundColor: colors.primary,
+								border: 'none',
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `background-color ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: colors.primaryHover,
+								},
+							}}
+							on={{ click: openUploadModal }}
+						>
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 16 16"
+								fill="none"
+								aria-hidden="true"
+							>
+								<path
+									d="M8 1v10M4 5l4-4 4 4M2 14h12"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+							Upload
+						</button>
+						<Link
+							href="/admin"
+							css={{
+								color: colors.textMuted,
+								textDecoration: 'none',
+								fontSize: typography.fontSize.sm,
+								'&:hover': { color: colors.text },
+							}}
+						>
+							← Back to Feeds
+						</Link>
+					</div>
 				</div>
 
 				{/* Search */}
@@ -1062,6 +1216,33 @@ export function MediaList(this: Handle) {
 						}}
 						onSave={saveBulkUnassignments}
 						onCancel={closeBulkUnassignModal}
+					/>
+				)}
+
+				{/* Upload Modal */}
+				{showUploadModal && (
+					<UploadModal
+						mediaRoots={mediaRoots}
+						selectedRoot={selectedRoot}
+						subdirectory={subdirectory}
+						selectedFiles={selectedFiles}
+						uploadState={uploadState}
+						onRootChange={(root) => {
+							selectedRoot = root
+							this.update()
+						}}
+						onSubdirectoryChange={(dir) => {
+							subdirectory = dir
+							this.update()
+						}}
+						onFileSelect={handleFileSelect}
+						onUpload={uploadFiles}
+						onClose={closeUploadModal}
+						onReset={() => {
+							uploadState = { status: 'idle' }
+							selectedFiles = null
+							this.update()
+						}}
 					/>
 				)}
 			</div>
@@ -2179,5 +2360,450 @@ function FeedCheckboxRow({
 				{name}
 			</span>
 		</button>
+	)
+}
+
+function UploadModal({
+	mediaRoots,
+	selectedRoot,
+	subdirectory,
+	selectedFiles,
+	uploadState,
+	onRootChange,
+	onSubdirectoryChange,
+	onFileSelect,
+	onUpload,
+	onClose,
+	onReset,
+}: {
+	mediaRoots: Array<MediaRoot>
+	selectedRoot: string
+	subdirectory: string
+	selectedFiles: FileList | null
+	uploadState: UploadState
+	onRootChange: (root: string) => void
+	onSubdirectoryChange: (dir: string) => void
+	onFileSelect: (files: FileList | null) => void
+	onUpload: () => void
+	onClose: () => void
+	onReset: () => void
+}) {
+	const isUploading = uploadState.status === 'uploading'
+	const isSuccess = uploadState.status === 'success'
+	const isError = uploadState.status === 'error'
+	const hasFile = selectedFiles && selectedFiles.length > 0
+
+	return (
+		<Modal
+			title="Upload Media"
+			subtitle="Upload audio or video files to your media library"
+			size="md"
+			onClose={onClose}
+			footer={
+				<ModalFooter>
+					<ModalButton
+						variant="secondary"
+						disabled={isUploading}
+						onClick={onClose}
+					>
+						{isSuccess ? 'Close' : 'Cancel'}
+					</ModalButton>
+					{!isSuccess && (
+						<ModalButton
+							variant="primary"
+							disabled={isUploading || !hasFile || !selectedRoot}
+							onClick={onUpload}
+						>
+							{isUploading ? 'Uploading...' : 'Upload'}
+						</ModalButton>
+					)}
+					{isSuccess && (
+						<ModalButton variant="primary" onClick={onReset}>
+							Upload Another
+						</ModalButton>
+					)}
+				</ModalFooter>
+			}
+		>
+			{/* Success message */}
+			{isSuccess && (
+				<div
+					css={{
+						padding: spacing.lg,
+						backgroundColor: 'rgba(34, 197, 94, 0.1)',
+						borderRadius: radius.md,
+						border: '1px solid rgba(34, 197, 94, 0.3)',
+						marginBottom: spacing.lg,
+					}}
+				>
+					<div
+						css={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.sm,
+							marginBottom: spacing.sm,
+						}}
+					>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 20 20"
+							fill="none"
+							aria-hidden="true"
+						>
+							<circle cx="10" cy="10" r="10" fill="rgba(34, 197, 94, 0.2)" />
+							<path
+								d="M6 10l3 3 5-6"
+								stroke="#22c55e"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						<span
+							css={{
+								color: '#22c55e',
+								fontWeight: typography.fontWeight.medium,
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							Upload successful!
+						</span>
+					</div>
+					<p
+						css={{
+							margin: 0,
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+						}}
+					>
+						<strong>{uploadState.filename}</strong> has been uploaded to{' '}
+						<code
+							css={{
+								padding: `${spacing.xs} ${spacing.sm}`,
+								backgroundColor: colors.background,
+								borderRadius: radius.sm,
+								fontSize: typography.fontSize.xs,
+							}}
+						>
+							{uploadState.mediaPath}
+						</code>
+					</p>
+				</div>
+			)}
+
+			{/* Error message */}
+			{isError && (
+				<div
+					css={{
+						padding: spacing.lg,
+						backgroundColor: 'rgba(239, 68, 68, 0.1)',
+						borderRadius: radius.md,
+						border: '1px solid rgba(239, 68, 68, 0.3)',
+						marginBottom: spacing.lg,
+					}}
+				>
+					<p
+						css={{
+							margin: 0,
+							color: '#ef4444',
+							fontSize: typography.fontSize.sm,
+						}}
+					>
+						{uploadState.message}
+					</p>
+				</div>
+			)}
+
+			{/* File input */}
+			{!isSuccess && (
+				<ModalSection title="Select File">
+					<div
+						css={{
+							border: `2px dashed ${colors.border}`,
+							borderRadius: radius.md,
+							padding: spacing.xl,
+							textAlign: 'center',
+							backgroundColor: colors.background,
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								borderColor: colors.primary,
+								backgroundColor: colors.primarySoftSubtle,
+							},
+						}}
+					>
+						<input
+							type="file"
+							accept="audio/*,video/*"
+							id="upload-file-input"
+							css={{
+								position: 'absolute',
+								width: '1px',
+								height: '1px',
+								padding: 0,
+								margin: '-1px',
+								overflow: 'hidden',
+								clip: 'rect(0, 0, 0, 0)',
+								whiteSpace: 'nowrap',
+								border: 0,
+							}}
+							on={{
+								change: (e: Event) => {
+									const input = e.target as HTMLInputElement
+									onFileSelect(input.files)
+								},
+							}}
+							disabled={isUploading}
+						/>
+						<label
+							for="upload-file-input"
+							css={{
+								display: 'block',
+								cursor: isUploading ? 'not-allowed' : 'pointer',
+							}}
+						>
+							<svg
+								width="48"
+								height="48"
+								viewBox="0 0 48 48"
+								fill="none"
+								css={{ margin: '0 auto', marginBottom: spacing.md }}
+								aria-hidden="true"
+							>
+								<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
+								<path
+									d="M24 14v14M18 20l6-6 6 6M16 32h16"
+									stroke={colors.primary}
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+							{hasFile ? (
+								<div>
+									<p
+										css={{
+											margin: 0,
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.text,
+										}}
+									>
+										{selectedFiles[0]!.name}
+									</p>
+									<p
+										css={{
+											margin: `${spacing.xs} 0 0 0`,
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+										}}
+									>
+										{formatFileSize(selectedFiles[0]!.size)} · Click to change
+									</p>
+								</div>
+							) : (
+								<div>
+									<p
+										css={{
+											margin: 0,
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.text,
+										}}
+									>
+										Click to select a file
+									</p>
+									<p
+										css={{
+											margin: `${spacing.xs} 0 0 0`,
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+										}}
+									>
+										Audio or video files up to 10GB
+									</p>
+								</div>
+							)}
+						</label>
+					</div>
+				</ModalSection>
+			)}
+
+			{/* Destination */}
+			{!isSuccess && (
+				<ModalSection title="Destination">
+					{mediaRoots.length === 0 ? (
+						<p
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								margin: 0,
+							}}
+						>
+							No media roots configured. Add a MEDIA_PATHS environment variable.
+						</p>
+					) : (
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.md,
+							}}
+						>
+							<div>
+								<label
+									for="upload-media-root"
+									css={{
+										display: 'block',
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										marginBottom: spacing.xs,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}}
+								>
+									Media Root
+								</label>
+								<select
+									id="upload-media-root"
+									value={selectedRoot}
+									disabled={isUploading}
+									css={{
+										width: '100%',
+										padding: spacing.sm,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.md,
+										cursor: isUploading ? 'not-allowed' : 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}}
+									on={{
+										change: (e: Event) => {
+											const select = e.target as HTMLSelectElement
+											onRootChange(select.value)
+										},
+									}}
+								>
+									{mediaRoots.map((root) => (
+										<option key={root.name} value={root.name}>
+											{root.name} ({root.path})
+										</option>
+									))}
+								</select>
+							</div>
+							<div>
+								<label
+									for="upload-subdirectory"
+									css={{
+										display: 'block',
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										marginBottom: spacing.xs,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}}
+								>
+									Subdirectory (optional)
+								</label>
+								<input
+									id="upload-subdirectory"
+									type="text"
+									value={subdirectory}
+									placeholder="e.g., audiobooks/fiction"
+									disabled={isUploading}
+									css={{
+										width: '100%',
+										padding: spacing.sm,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.md,
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+										'&:disabled': {
+											cursor: 'not-allowed',
+											opacity: 0.6,
+										},
+										'&::placeholder': {
+											color: colors.textMuted,
+										},
+									}}
+									on={{
+										input: (e: Event) => {
+											const input = e.target as HTMLInputElement
+											onSubdirectoryChange(input.value)
+										},
+									}}
+								/>
+								<p
+									css={{
+										margin: `${spacing.xs} 0 0 0`,
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+									}}
+								>
+									Folders will be created if they don't exist
+								</p>
+							</div>
+						</div>
+					)}
+				</ModalSection>
+			)}
+
+			{/* Upload progress */}
+			{isUploading && (
+				<div
+					css={{
+						marginTop: spacing.lg,
+						padding: spacing.md,
+						backgroundColor: colors.background,
+						borderRadius: radius.md,
+					}}
+				>
+					<div
+						css={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.sm,
+							marginBottom: spacing.sm,
+						}}
+					>
+						<div
+							css={{
+								width: '16px',
+								height: '16px',
+								border: `2px solid ${colors.border}`,
+								borderTopColor: colors.primary,
+								borderRadius: '50%',
+								animation: 'spin 1s linear infinite',
+								'@keyframes spin': {
+									to: { transform: 'rotate(360deg)' },
+								},
+							}}
+						/>
+						<span
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+							}}
+						>
+							Uploading {uploadState.filename}...
+						</span>
+					</div>
+				</div>
+			)}
+		</Modal>
 	)
 }

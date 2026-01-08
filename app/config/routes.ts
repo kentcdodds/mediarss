@@ -12,6 +12,7 @@ export default route({
 	// MCP routes
 	mcp: '/mcp',
 	mcpProtectedResource: '/.well-known/oauth-protected-resource/mcp',
+	mcpWidget: '/mcp/widget/:token/*path',
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',

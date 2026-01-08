@@ -5,7 +5,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getMediaRoots } from '#app/config/env.ts'
+import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import {
 	createCuratedFeedToken,
 	deleteCuratedFeedToken,
@@ -38,8 +38,13 @@ import type {
 	DirectoryFeedToken,
 	FeedItem,
 } from '#app/db/types.ts'
+import { isFileAllowed } from '#app/helpers/feed-access.ts'
+import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { getFileMetadata } from '#app/helpers/media.ts'
+import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { toolsMetadata } from './metadata.ts'
+import { getMediaWidgetUri } from './widgets.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
@@ -93,6 +98,25 @@ function formatSize(bytes: number): string {
 	if (bytes < 1024 * 1024 * 1024)
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+/**
+ * Format duration in seconds to human-readable format.
+ */
+function formatDuration(seconds: number | null): string {
+	if (seconds === null || seconds === 0) return 'Unknown'
+
+	const hours = Math.floor(seconds / 3600)
+	const minutes = Math.floor((seconds % 3600) / 60)
+	const secs = Math.floor(seconds % 60)
+
+	if (hours > 0) {
+		return `${hours}h ${minutes}m ${secs}s`
+	}
+	if (minutes > 0) {
+		return `${minutes}m ${secs}s`
+	}
+	return `${secs}s`
 }
 
 /**
@@ -537,6 +561,163 @@ export async function initializeTools(
 							createdAt: t.createdAt,
 							rssUrl: `/feed/${feedId}?token=${t.token}`,
 						})),
+					},
+				}
+			},
+		)
+
+		// Get media widget
+		server.registerTool(
+			toolsMetadata.get_media_widget.name,
+			{
+				title: toolsMetadata.get_media_widget.title,
+				description: toolsMetadata.get_media_widget.description,
+				inputSchema: {
+					token: z
+						.string()
+						.describe('A feed access token (from `get_feed_tokens`)'),
+					mediaRoot: z
+						.string()
+						.describe('Name of the media root (from `list_media_directories`)'),
+					relativePath: z
+						.string()
+						.describe('Path to the media file within the root'),
+				},
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
+			},
+			async ({ token, mediaRoot, relativePath }) => {
+				// Validate token and get feed
+				const result = getFeedByToken(token)
+				if (!result) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ Invalid or expired token.\n\nNext: Use `get_feed_tokens` to obtain a valid token for your feed.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				const { feed, type } = result
+
+				// Parse and validate the path
+				const parsed = parseMediaPathStrict(`${mediaRoot}/${relativePath}`)
+				if (!parsed) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ Invalid path format.\n\nMake sure to provide a valid mediaRoot and relativePath.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Get absolute path for the file
+				const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
+				if (!filePath) {
+					const mediaRoots = getMediaRoots()
+					const available = mediaRoots.map((m) => m.name).join(', ')
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Media root "${parsed.rootName}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Validate file is allowed for this feed (path traversal protection)
+				if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ File not found or not accessible with this token.\n\nThe file may not exist, or the token may not have access to this media file.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Get file metadata
+				const metadata = await getFileMetadata(filePath)
+				if (!metadata) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ Could not read media file metadata.\n\nThe file may be corrupted or in an unsupported format.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Generate the widget URI
+				const widgetUri = getMediaWidgetUri(
+					token,
+					parsed.rootName,
+					parsed.relativePath,
+				)
+
+				// Format human-readable output
+				const lines: string[] = []
+				lines.push(`## ${metadata.title}`)
+				lines.push('')
+				if (metadata.author) {
+					lines.push(`**Author**: ${metadata.author}`)
+				}
+				if (metadata.narrators && metadata.narrators.length > 0) {
+					lines.push(`**Narrated by**: ${metadata.narrators.join(', ')}`)
+				}
+				lines.push(`**Duration**: ${formatDuration(metadata.duration)}`)
+				lines.push(`**Size**: ${formatSize(metadata.sizeBytes)}`)
+				lines.push(`**Format**: ${metadata.mimeType}`)
+				if (metadata.genres && metadata.genres.length > 0) {
+					lines.push(`**Genres**: ${metadata.genres.join(', ')}`)
+				}
+				if (metadata.description) {
+					lines.push('')
+					lines.push('### Description')
+					lines.push(metadata.description)
+				}
+				lines.push('')
+				lines.push('### Widget URI')
+				lines.push(`\`${widgetUri}\``)
+				lines.push('')
+				lines.push(
+					'Fetch the widget URI as a resource to get the interactive HTML media player.',
+				)
+
+				return {
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						widgetUri,
+						metadata: {
+							title: metadata.title,
+							author: metadata.author,
+							duration: metadata.duration,
+							sizeBytes: metadata.sizeBytes,
+							mimeType: metadata.mimeType,
+							publicationDate: metadata.publicationDate?.toISOString() ?? null,
+							description: metadata.description,
+							narrators: metadata.narrators,
+							genres: metadata.genres,
+						},
+						access: {
+							token,
+							mediaRoot: parsed.rootName,
+							relativePath: parsed.relativePath,
+						},
 					},
 				}
 			},

@@ -7,7 +7,7 @@ import {
 	McpServer,
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { getMediaRoots } from '#app/config/env.ts'
+import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
@@ -15,15 +15,22 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
+import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { getFileMetadata } from '#app/helpers/media.ts'
+import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
+import { generateMediaWidgetHtml, type MediaWidgetData } from './widgets.ts'
 
-type Feed = DirectoryFeed | CuratedFeed
+type FeedWithType = (DirectoryFeed | CuratedFeed) & {
+	type: 'directory' | 'curated'
+}
 
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+function getAllFeeds(): Array<FeedWithType> {
 	const directoryFeeds = listDirectoryFeeds().map((f) => ({
 		...f,
 		type: 'directory' as const,
@@ -40,9 +47,7 @@ function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(
-	id: string,
-): (Feed & { type: 'directory' | 'curated' }) | undefined {
+function getFeedById(id: string): FeedWithType | undefined {
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
@@ -253,6 +258,7 @@ export async function initializeResources(
 											'list_media_directories',
 											'browse_media',
 											'get_feed_tokens',
+											'get_media_widget',
 											'create_directory_feed',
 											'create_curated_feed',
 											'update_feed',
@@ -271,6 +277,7 @@ export async function initializeResources(
 											'media://feeds/{id}',
 											'media://directories',
 											'media://server',
+											'media://widget/media/{token}/{rootName}/{relativePath}',
 										],
 									},
 								},
@@ -282,5 +289,125 @@ export async function initializeResources(
 				}
 			},
 		)
+
+		// Media widget resource - returns HTML for MCP-UI compatible clients
+		// Uses token-based authentication to ensure only authorized users can access media
+		server.registerResource(
+			'media-widget',
+			new ResourceTemplate(
+				'media://widget/media/{token}/{rootName}/{relativePath+}',
+				{
+					list: undefined, // Don't list widgets - they're accessed via tokens
+				},
+			),
+			{
+				description:
+					'Interactive media player widget (MCP-UI). Returns an HTML page with embedded media player for playback. Requires a valid feed token. Use get_feed_tokens to obtain tokens for your feeds.',
+				mimeType: 'text/html',
+			},
+			async (uri, params, extra) => {
+				// Decode URI components with error handling for malformed sequences
+				let token: string, rootName: string, relativePath: string
+				try {
+					token = decodeURIComponent(String(params.token))
+					rootName = decodeURIComponent(String(params.rootName))
+					relativePath = decodeURIComponent(String(params.relativePath))
+				} catch {
+					throw new Error(
+						'Invalid URI encoding in path parameters. Ensure the URI is properly encoded.',
+					)
+				}
+
+				// Validate token and get feed
+				const result = getFeedByToken(token)
+				if (!result) {
+					throw new Error(
+						'Invalid or expired token. Use get_feed_tokens to obtain a valid token.',
+					)
+				}
+
+				const { feed, type } = result
+
+				// Parse and validate the path
+				const parsed = parseMediaPathStrict(`${rootName}/${relativePath}`)
+				if (!parsed) {
+					throw new Error('Invalid path format.')
+				}
+
+				// Get absolute path for the file
+				const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
+				if (!filePath) {
+					throw new Error(`Media root "${parsed.rootName}" not found.`)
+				}
+
+				// Validate file is allowed for this feed (path traversal protection)
+				if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+					throw new Error('File not found or not accessible with this token.')
+				}
+
+				// Get file metadata
+				const metadata = await getFileMetadata(filePath)
+				if (!metadata) {
+					throw new Error(`Media file not found or not readable.`)
+				}
+
+				// Determine base URL from the request context
+				const baseUrl = getBaseUrlFromExtra(extra)
+
+				// Build token-based URLs
+				const encodedPath = encodeRelativePath(
+					`${parsed.rootName}/${parsed.relativePath}`,
+				)
+
+				// Build the widget data with token-based URLs
+				const mediaData: MediaWidgetData = {
+					title: metadata.title,
+					author: metadata.author,
+					duration: metadata.duration,
+					sizeBytes: metadata.sizeBytes,
+					mimeType: metadata.mimeType,
+					publicationDate: metadata.publicationDate?.toISOString() ?? null,
+					description: metadata.description,
+					narrators: metadata.narrators,
+					genres: metadata.genres,
+					// Use token-based public URLs, not admin URLs
+					artworkUrl: `/art/${token}/${encodedPath}`,
+					streamUrl: `/media/${token}/${encodedPath}`,
+				}
+
+				// Generate the HTML widget
+				const html = generateMediaWidgetHtml({
+					baseUrl,
+					media: mediaData,
+				})
+
+				return {
+					contents: [
+						{
+							uri: uri.toString(),
+							mimeType: 'text/html',
+							text: html,
+						},
+					],
+				}
+			},
+		)
 	}
+}
+
+/**
+ * Extract base URL from the extra context provided by the transport.
+ * Falls back to a reasonable default if not available.
+ */
+function getBaseUrlFromExtra(extra: unknown): string {
+	// The transport may pass authInfo which contains issuer info
+	if (extra && typeof extra === 'object' && 'authInfo' in extra) {
+		const authInfo = extra.authInfo as { issuer?: string }
+		if (authInfo.issuer) {
+			return authInfo.issuer
+		}
+	}
+
+	// Default to environment variable or localhost
+	return Bun.env.PUBLIC_URL ?? 'http://localhost:3000'
 }

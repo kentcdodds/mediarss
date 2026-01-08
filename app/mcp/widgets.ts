@@ -227,6 +227,10 @@ export function parseMediaWidgetUri(
 	return {
 		token: decodeURIComponent(match[1]!),
 		rootName: decodeURIComponent(match[2]!),
-		relativePath: decodeURIComponent(match[3]!),
+		// Decode each segment individually to preserve slashes within segments
+		relativePath: match[3]!
+			.split('/')
+			.map((segment) => decodeURIComponent(segment))
+			.join('/'),
 	}
 }

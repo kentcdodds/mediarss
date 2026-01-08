@@ -14,7 +14,7 @@ export type EditableMetadata = {
 	trackNumber?: number // maps to "track" tag
 	copyright?: string
 	// Additional fields
-	narrator?: string // maps to "composer" or "performer" tag (common for audiobooks)
+	narrator?: string // maps to TPE3 (MP3), custom iTunes NARRATOR (MP4), or performer (MKV)
 	album?: string
 	albumArtist?: string // maps to "album_artist" tag
 	composer?: string

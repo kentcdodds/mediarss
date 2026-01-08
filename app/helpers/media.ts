@@ -183,8 +183,10 @@ function toCachedMediaFile(mediaFile: MediaFile): CachedMediaFile {
  * Convert a cached MediaFile back to the regular format (ISO string -> Date).
  */
 function fromCachedMediaFile(cached: CachedMediaFile): MediaFile {
+	// Destructure to exclude _cacheVersion from the returned MediaFile
+	const { _cacheVersion: _, ...rest } = cached
 	return {
-		...cached,
+		...rest,
 		publicationDate: cached.publicationDate
 			? new Date(cached.publicationDate)
 			: null,
@@ -475,6 +477,16 @@ function extractNarrators(
 	const tpe3 = getNativeValue(metadata, 'TPE3')
 	if (tpe3) {
 		const narrators = tpe3
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 6. performer tag (we write this for MKV)
+	const mkvPerformer = getNativeValue(metadata, 'performer')
+	if (mkvPerformer) {
+		const narrators = mkvPerformer
 			.split(',')
 			.map((n) => n.trim())
 			.filter(Boolean)

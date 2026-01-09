@@ -38,13 +38,18 @@ import type {
 	DirectoryFeedToken,
 	FeedItem,
 } from '#app/db/types.ts'
-import { isFileAllowed } from '#app/helpers/feed-access.ts'
+import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { toolsMetadata } from './metadata.ts'
-import { getMediaWidgetUri } from './widgets.ts'
+import {
+	createMediaWidgetResource,
+	getMediaWidgetToolMeta,
+	getMediaWidgetUri,
+	type MediaWidgetData,
+} from './widgets.ts'
 
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
@@ -121,10 +126,15 @@ function formatDuration(seconds: number | null): string {
 
 /**
  * Initialize MCP tools based on authorized scopes.
+ *
+ * @param server - The MCP server instance
+ * @param authInfo - Authentication information for the user
+ * @param baseUrl - Base URL of the server (for widget resources)
  */
 export async function initializeTools(
 	server: McpServer,
 	authInfo: AuthInfo,
+	baseUrl: string,
 ): Promise<void> {
 	// Read-only tools (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
@@ -587,6 +597,8 @@ export async function initializeTools(
 					readOnlyHint: true,
 					destructiveHint: false,
 				},
+				// OpenAI Apps SDK metadata for ChatGPT widget rendering
+				_meta: getMediaWidgetToolMeta(baseUrl),
 			},
 			async ({ token, mediaRoot, relativePath }) => {
 				// Validate token and get feed
@@ -662,12 +674,40 @@ export async function initializeTools(
 					}
 				}
 
-				// Generate the widget URI
+				// Generate the legacy widget URI (for backwards compatibility)
 				const widgetUri = getMediaWidgetUri(
 					token,
 					parsed.rootName,
 					parsed.relativePath,
 				)
+
+				// Build token-based URLs for media streaming
+				const encodedPath = encodeRelativePath(
+					`${parsed.rootName}/${parsed.relativePath}`,
+				)
+
+				// Build the widget data
+				const mediaData: MediaWidgetData = {
+					title: metadata.title,
+					author: metadata.author,
+					duration: metadata.duration,
+					sizeBytes: metadata.sizeBytes,
+					mimeType: metadata.mimeType,
+					publicationDate: metadata.publicationDate?.toISOString() ?? null,
+					description: metadata.description,
+					narrators: metadata.narrators,
+					genres: metadata.genres,
+					// Use token-based public URLs
+					artworkUrl: `/art/${token}/${encodedPath}`,
+					streamUrl: `/media/${token}/${encodedPath}`,
+				}
+
+				// Create the UIResource for MCP-UI compatible clients
+				const uiResource = createMediaWidgetResource({
+					baseUrl,
+					media: mediaData,
+					description: `Media player for ${metadata.title}`,
+				})
 
 				// Format human-readable output
 				const lines: string[] = []
@@ -691,34 +731,33 @@ export async function initializeTools(
 					lines.push(metadata.description)
 				}
 				lines.push('')
-				lines.push('### Widget URI')
-				lines.push(`\`${widgetUri}\``)
-				lines.push('')
-				lines.push(
-					'Fetch the widget URI as a resource to get the interactive HTML media player.',
-				)
+				lines.push('The media player widget is ready.')
+
+				// Structured content for programmatic access
+				const structuredContent = {
+					widgetUri,
+					metadata: {
+						title: metadata.title,
+						author: metadata.author,
+						duration: metadata.duration,
+						sizeBytes: metadata.sizeBytes,
+						mimeType: metadata.mimeType,
+						publicationDate: metadata.publicationDate?.toISOString() ?? null,
+						description: metadata.description,
+						narrators: metadata.narrators,
+						genres: metadata.genres,
+					},
+					access: {
+						token,
+						mediaRoot: parsed.rootName,
+						relativePath: parsed.relativePath,
+					},
+				}
 
 				return {
-					content: [{ type: 'text', text: lines.join('\n') }],
-					structuredContent: {
-						widgetUri,
-						metadata: {
-							title: metadata.title,
-							author: metadata.author,
-							duration: metadata.duration,
-							sizeBytes: metadata.sizeBytes,
-							mimeType: metadata.mimeType,
-							publicationDate: metadata.publicationDate?.toISOString() ?? null,
-							description: metadata.description,
-							narrators: metadata.narrators,
-							genres: metadata.genres,
-						},
-						access: {
-							token,
-							mediaRoot: parsed.rootName,
-							relativePath: parsed.relativePath,
-						},
-					},
+					// Include both text and the UIResource for ChatGPT/MCP-UI clients
+					content: [{ type: 'text', text: lines.join('\n') }, uiResource],
+					structuredContent,
 				}
 			},
 		)

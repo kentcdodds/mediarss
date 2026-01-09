@@ -4,7 +4,10 @@
  * Creates self-contained HTML pages for MCP-UI widgets that can be
  * rendered by ChatGPT and other MCP-UI compatible clients.
  */
+
+import { createUIResource, type UIResource } from '@mcp-ui/server'
 import { html } from '@remix-run/html-template'
+import { encodeRelativePath } from '#app/helpers/feed-access.ts'
 
 /**
  * Media data structure for the widget
@@ -71,16 +74,13 @@ function escapeJsonForScript(data: unknown): string {
 }
 
 /**
- * Generate a complete HTML page for the media player widget.
+ * Generate the raw HTML string for the media player widget.
  *
  * This creates a self-contained HTML document that:
  * 1. Includes all necessary styles inline
  * 2. Includes the import map for module resolution
  * 3. Embeds the media data as a global variable (XSS-safe)
  * 4. Loads the widget script bundle
- *
- * The widget is designed to work in ChatGPT's MCP-UI context where
- * it will be sandboxed and rendered within the chat interface.
  */
 export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 	const { baseUrl, media } = options
@@ -131,6 +131,7 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 			<head>
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
+				<meta name="color-scheme" content="light dark" />
 				<title>${media.title} - Media Player</title>
 				${html.raw`<script type="importmap">${importmapJson}</script>`}
 				${html.raw`${modulePreloads}`}
@@ -196,10 +197,23 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 		</html>`.toString()
 }
 
-import { encodeRelativePath } from '#app/helpers/feed-access.ts'
+/**
+ * Widget URI version for cache busting.
+ * Increment this when making breaking changes to the widget.
+ */
+const WIDGET_VERSION = 'v1'
 
 /**
- * Generate the MCP resource URI for a media widget
+ * Get the MCP-UI widget URI for a media player.
+ * Uses the `ui://` scheme required by ChatGPT's Apps SDK.
+ */
+export function getMediaWidgetUIUri(): `ui://${string}` {
+	return `ui://widget/media-player-${WIDGET_VERSION}.html`
+}
+
+/**
+ * Generate the legacy MCP resource URI for a media widget.
+ * This is used for backwards compatibility with existing code.
  */
 export function getMediaWidgetUri(
 	token: string,
@@ -232,5 +246,85 @@ export function parseMediaWidgetUri(
 	} catch {
 		// Return null for malformed percent-encoded sequences
 		return null
+	}
+}
+
+/**
+ * Options for creating a UIResource for the media widget.
+ */
+export interface CreateMediaWidgetResourceOptions {
+	/** Base URL of the server for resource domain and widget resources */
+	baseUrl: string
+	/** Media data to display in the widget */
+	media: MediaWidgetData
+	/** Description of the widget (shown in ChatGPT) */
+	description?: string
+}
+
+/**
+ * Create a UIResource for the media player widget.
+ *
+ * This creates a resource compatible with ChatGPT's Apps SDK by:
+ * 1. Using the `ui://` URI scheme
+ * 2. Enabling the Apps SDK adapter
+ * 3. Including OpenAI-specific metadata for CSP and widget description
+ *
+ * @param options - Options for creating the resource
+ * @returns A UIResource that can be returned in tool results
+ */
+export function createMediaWidgetResource(
+	options: CreateMediaWidgetResourceOptions,
+): UIResource {
+	const { baseUrl, media, description } = options
+
+	// Generate the HTML for the widget
+	const htmlString = generateMediaWidgetHtml({ baseUrl, media })
+
+	// Get the hostname for CSP
+	const hostname = new URL(baseUrl).hostname
+
+	return createUIResource({
+		uri: getMediaWidgetUIUri(),
+		content: {
+			type: 'rawHtml',
+			htmlString,
+		},
+		encoding: 'text',
+		// Include media data as initial render data
+		uiMetadata: {
+			'initial-render-data': media as unknown as Record<string, unknown>,
+		},
+		// OpenAI-specific metadata for ChatGPT
+		metadata: {
+			'openai/widgetDescription':
+				description ?? `Media player for ${media.title}`,
+			'openai/widgetCSP': {
+				connect_domains: [hostname],
+				resource_domains: [baseUrl],
+			},
+		},
+		// Enable the Apps SDK adapter for ChatGPT compatibility
+		adapters: {
+			appsSdk: {
+				enabled: true,
+			},
+		},
+	})
+}
+
+/**
+ * OpenAI tool metadata for the get_media_widget tool.
+ * These are added to the tool's _meta field.
+ */
+export function getMediaWidgetToolMeta(
+	baseUrl: string,
+): Record<string, unknown> {
+	return {
+		'openai/widgetDomain': baseUrl,
+		'openai/outputTemplate': getMediaWidgetUIUri(),
+		'openai/toolInvocation/invoking': 'Loading media player...',
+		'openai/toolInvocation/invoked': 'Media player ready',
+		'openai/resultCanProduceWidget': true,
+		'openai/widgetAccessible': true,
 	}
 }

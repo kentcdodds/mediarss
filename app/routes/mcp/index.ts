@@ -176,7 +176,7 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 		}
 
 		const server = createMcpServer()
-		await initializeMcpServer(server, authInfo)
+		await initializeMcpServer(server, authInfo, issuer)
 		// Note: server.connect() calls transport.start() internally
 		await server.connect(transport)
 

@@ -967,7 +967,7 @@ export async function initializeTools(
 						structuredContent: {
 							query,
 							results: structuredResults,
-							total: totalMatches,
+							total: resultsWithPaths.length,
 							truncated,
 						},
 					}

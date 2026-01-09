@@ -1290,10 +1290,26 @@ export async function initializeTools(
 
 				// Use async fs APIs and realpath to resolve symlinks
 				const fs = await import('node:fs/promises')
+
+				// Resolve media root path first (separate error for misconfigured root)
 				let realBasePath: string
-				let realFullPath: string
 				try {
 					realBasePath = await fs.realpath(basePath)
+				} catch {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Media root "${mediaRoot}" is not accessible.\n\nThe configured path may not exist or may have been unmounted.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Resolve target file path
+				let realFullPath: string
+				try {
 					realFullPath = await fs.realpath(fullPath)
 				} catch {
 					return {
@@ -1324,7 +1340,20 @@ export async function initializeTools(
 				}
 
 				// Check if path is a file (not directory)
-				const stat = await fs.stat(realFullPath)
+				let stat: Awaited<ReturnType<typeof fs.stat>>
+				try {
+					stat = await fs.stat(realFullPath)
+				} catch {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ File is not accessible: ${mediaRoot}:${relativePath}\n\nThe file may have been deleted or you may not have permission to access it.`,
+							},
+						],
+						isError: true,
+					}
+				}
 				if (!stat.isFile()) {
 					return {
 						content: [

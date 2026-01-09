@@ -11,6 +11,7 @@ const importmap = {
 		'@remix-run/interaction/press':
 			'/node_modules/@remix-run/interaction/press',
 		'match-sorter': '/node_modules/match-sorter',
+		zod: '/node_modules/zod',
 	},
 }
 

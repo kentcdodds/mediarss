@@ -10,7 +10,7 @@
  */
 import { createRoot, type Handle } from '@remix-run/component'
 import { z } from 'zod'
-import { initMcpUi, waitForRenderData } from './mcp-ui.ts'
+import { waitForRenderData } from './mcp-ui.ts'
 
 /**
  * Media data schema for validation
@@ -532,14 +532,6 @@ function MediaPlayerApp(this: Handle) {
 }
 
 // Mount the widget
+// Note: waitForRenderData() in MediaPlayerApp already signals readiness to the parent frame
 const rootElement = document.getElementById('root') ?? document.body
-createRoot(rootElement).render(
-	<div
-		connect={() => {
-			// Signal to parent that the widget is ready when mounted
-			initMcpUi()
-		}}
-	>
-		<MediaPlayerApp />
-	</div>,
-)
+createRoot(rootElement).render(<MediaPlayerApp />)

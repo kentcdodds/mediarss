@@ -112,16 +112,28 @@ export { sendMcpMessage }
  * `initial-render-data` that was passed in `uiMetadata`.
  *
  * @param schema - Optional Zod schema to validate the render data
+ * @param timeoutMs - Timeout in milliseconds (default: 10000)
  * @returns Promise that resolves with the render data
  */
 export function waitForRenderData<RenderData>(
 	schema?: z.ZodSchema<RenderData>,
+	timeoutMs = 10000,
 ): Promise<RenderData> {
 	return new Promise((resolve, reject) => {
 		window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*')
 
+		const timeoutId = setTimeout(() => {
+			window.removeEventListener('message', handleMessage)
+			reject(
+				new Error(
+					'Timed out waiting for render data. This widget must be opened through ChatGPT.',
+				),
+			)
+		}, timeoutMs)
+
 		function handleMessage(event: MessageEvent) {
 			if (event.data?.type !== 'ui-lifecycle-iframe-render-data') return
+			clearTimeout(timeoutId)
 			window.removeEventListener('message', handleMessage)
 
 			const { renderData, error } = event.data.payload

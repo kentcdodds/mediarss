@@ -34,6 +34,19 @@ type MediaInfo = {
 	genres: string[] | null
 	copyright: string | null
 	fileModifiedAt: number
+	// Additional metadata fields
+	album: string | null
+	albumArtist: string | null
+	composer: string | null
+	publisher: string | null
+	discNumber: number | null
+	totalDiscs: number | null
+	totalTracks: number | null
+	language: string | null
+	series: string | null
+	seriesPosition: string | null
+	encodedBy: string | null
+	subtitle: string | null
 }
 
 type FeedAssignment = {
@@ -77,6 +90,18 @@ type EditableMetadata = {
 	genre: string
 	trackNumber: string
 	copyright: string
+	// Additional fields
+	narrator: string
+	album: string
+	albumArtist: string
+	composer: string
+	publisher: string
+	discNumber: string
+	language: string
+	series: string
+	seriesPosition: string
+	encodedBy: string
+	subtitle: string
 }
 
 /**
@@ -108,6 +133,18 @@ export function MediaDetail(this: Handle) {
 		genre: '',
 		trackNumber: '',
 		copyright: '',
+		// Additional fields
+		narrator: '',
+		album: '',
+		albumArtist: '',
+		composer: '',
+		publisher: '',
+		discNumber: '',
+		language: '',
+		series: '',
+		seriesPosition: '',
+		encodedBy: '',
+		subtitle: '',
 	}
 
 	const fetchMedia = async (encodedPath: string) => {
@@ -242,6 +279,18 @@ export function MediaDetail(this: Handle) {
 			genre: media.genres?.join(', ') || '',
 			trackNumber: media.trackNumber?.toString() || '',
 			copyright: media.copyright || '',
+			// Additional fields
+			narrator: media.narrators?.join(', ') || '',
+			album: media.album || '',
+			albumArtist: media.albumArtist || '',
+			composer: media.composer || '',
+			publisher: media.publisher || '',
+			discNumber: media.discNumber?.toString() || '',
+			language: media.language || '',
+			series: media.series || '',
+			seriesPosition: media.seriesPosition || '',
+			encodedBy: media.encodedBy || '',
+			subtitle: media.subtitle || '',
 		}
 		isEditingMetadata = true
 		metadataMessage = null
@@ -292,6 +341,43 @@ export function MediaDetail(this: Handle) {
 			}
 			if (editedMetadata.copyright) {
 				payload.copyright = editedMetadata.copyright
+			}
+			// Additional fields
+			if (editedMetadata.narrator) {
+				payload.narrator = editedMetadata.narrator
+			}
+			if (editedMetadata.album) {
+				payload.album = editedMetadata.album
+			}
+			if (editedMetadata.albumArtist) {
+				payload.albumArtist = editedMetadata.albumArtist
+			}
+			if (editedMetadata.composer) {
+				payload.composer = editedMetadata.composer
+			}
+			if (editedMetadata.publisher) {
+				payload.publisher = editedMetadata.publisher
+			}
+			if (editedMetadata.discNumber) {
+				const disc = parseInt(editedMetadata.discNumber, 10)
+				if (!Number.isNaN(disc)) {
+					payload.discNumber = disc
+				}
+			}
+			if (editedMetadata.language) {
+				payload.language = editedMetadata.language
+			}
+			if (editedMetadata.series) {
+				payload.series = editedMetadata.series
+			}
+			if (editedMetadata.seriesPosition) {
+				payload.seriesPosition = editedMetadata.seriesPosition
+			}
+			if (editedMetadata.encodedBy) {
+				payload.encodedBy = editedMetadata.encodedBy
+			}
+			if (editedMetadata.subtitle) {
+				payload.subtitle = editedMetadata.subtitle
 			}
 
 			const res = await fetch(`/admin/api/media/${savePath}/metadata`, {
@@ -477,8 +563,34 @@ export function MediaDetail(this: Handle) {
 									label="Published"
 									value={formatDate(media.publicationDate, { style: 'date' })}
 								/>
+								{media.album && (
+									<MetadataItem label="Album" value={media.album} />
+								)}
+								{media.albumArtist && (
+									<MetadataItem
+										label="Album Artist"
+										value={media.albumArtist}
+									/>
+								)}
 								{media.trackNumber && (
-									<MetadataItem label="Track" value={`#${media.trackNumber}`} />
+									<MetadataItem
+										label="Track"
+										value={
+											media.totalTracks
+												? `${media.trackNumber} of ${media.totalTracks}`
+												: `#${media.trackNumber}`
+										}
+									/>
+								)}
+								{media.discNumber && (
+									<MetadataItem
+										label="Disc"
+										value={
+											media.totalDiscs
+												? `${media.discNumber} of ${media.totalDiscs}`
+												: `#${media.discNumber}`
+										}
+									/>
 								)}
 								<MetadataItem
 									label="Modified"
@@ -492,14 +604,39 @@ export function MediaDetail(this: Handle) {
 										value={media.narrators.join(', ')}
 									/>
 								)}
+								{media.composer && (
+									<MetadataItem label="Composer" value={media.composer} />
+								)}
 								{media.genres && media.genres.length > 0 && (
 									<MetadataItem
 										label="Genres"
 										value={media.genres.join(', ')}
 									/>
 								)}
+								{media.series && (
+									<MetadataItem
+										label="Series"
+										value={
+											media.seriesPosition
+												? `${media.series} (${media.seriesPosition})`
+												: media.series
+										}
+									/>
+								)}
+								{media.publisher && (
+									<MetadataItem label="Publisher" value={media.publisher} />
+								)}
+								{media.language && (
+									<MetadataItem label="Language" value={media.language} />
+								)}
 								{media.copyright && (
 									<MetadataItem label="Copyright" value={media.copyright} />
+								)}
+								{media.encodedBy && (
+									<MetadataItem label="Encoded By" value={media.encodedBy} />
+								)}
+								{media.subtitle && (
+									<MetadataItem label="Subtitle" value={media.subtitle} />
 								)}
 							</div>
 
@@ -805,13 +942,19 @@ export function MediaDetail(this: Handle) {
 											gap: spacing.md,
 										}}
 									>
+										{/* Basic Info */}
 										<MetadataField
 											label="Title"
 											value={editedMetadata.title}
 											onChange={(v) => updateEditedField('title', v)}
 										/>
 										<MetadataField
-											label="Author"
+											label="Subtitle"
+											value={editedMetadata.subtitle}
+											onChange={(v) => updateEditedField('subtitle', v)}
+										/>
+										<MetadataField
+											label="Author / Artist"
 											value={editedMetadata.author}
 											onChange={(v) => updateEditedField('author', v)}
 										/>
@@ -819,6 +962,59 @@ export function MediaDetail(this: Handle) {
 											label="Description"
 											value={editedMetadata.description}
 											onChange={(v) => updateEditedField('description', v)}
+										/>
+
+										{/* Album Info */}
+										<MetadataField
+											label="Album"
+											value={editedMetadata.album}
+											onChange={(v) => updateEditedField('album', v)}
+										/>
+										<MetadataField
+											label="Album Artist"
+											value={editedMetadata.albumArtist}
+											onChange={(v) => updateEditedField('albumArtist', v)}
+										/>
+
+										{/* Track/Disc Numbers */}
+										<div
+											css={{
+												display: 'grid',
+												gridTemplateColumns: '1fr 1fr',
+												gap: spacing.md,
+											}}
+										>
+											<MetadataField
+												label="Track Number"
+												value={editedMetadata.trackNumber}
+												type="number"
+												onChange={(v) => updateEditedField('trackNumber', v)}
+											/>
+											<MetadataField
+												label="Disc Number"
+												value={editedMetadata.discNumber}
+												type="number"
+												onChange={(v) => updateEditedField('discNumber', v)}
+											/>
+										</div>
+
+										{/* People */}
+										<MetadataField
+											label="Narrator(s)"
+											value={editedMetadata.narrator}
+											onChange={(v) => updateEditedField('narrator', v)}
+										/>
+										<MetadataField
+											label="Composer"
+											value={editedMetadata.composer}
+											onChange={(v) => updateEditedField('composer', v)}
+										/>
+
+										{/* Classification */}
+										<MetadataField
+											label="Genre"
+											value={editedMetadata.genre}
+											onChange={(v) => updateEditedField('genre', v)}
 										/>
 										<div
 											css={{
@@ -834,21 +1030,47 @@ export function MediaDetail(this: Handle) {
 												onChange={(v) => updateEditedField('year', v)}
 											/>
 											<MetadataField
-												label="Track Number"
-												value={editedMetadata.trackNumber}
-												type="number"
-												onChange={(v) => updateEditedField('trackNumber', v)}
+												label="Language"
+												value={editedMetadata.language}
+												onChange={(v) => updateEditedField('language', v)}
 											/>
 										</div>
+
+										{/* Series Info */}
+										<div
+											css={{
+												display: 'grid',
+												gridTemplateColumns: '2fr 1fr',
+												gap: spacing.md,
+											}}
+										>
+											<MetadataField
+												label="Series / Show"
+												value={editedMetadata.series}
+												onChange={(v) => updateEditedField('series', v)}
+											/>
+											<MetadataField
+												label="Position"
+												value={editedMetadata.seriesPosition}
+												onChange={(v) => updateEditedField('seriesPosition', v)}
+											/>
+										</div>
+
+										{/* Publishing Info */}
 										<MetadataField
-											label="Genre"
-											value={editedMetadata.genre}
-											onChange={(v) => updateEditedField('genre', v)}
+											label="Publisher"
+											value={editedMetadata.publisher}
+											onChange={(v) => updateEditedField('publisher', v)}
 										/>
 										<MetadataField
 											label="Copyright"
 											value={editedMetadata.copyright}
 											onChange={(v) => updateEditedField('copyright', v)}
+										/>
+										<MetadataField
+											label="Encoded By"
+											value={editedMetadata.encodedBy}
+											onChange={(v) => updateEditedField('encodedBy', v)}
 										/>
 
 										<div

@@ -13,6 +13,18 @@ export type EditableMetadata = {
 	genre?: string
 	trackNumber?: number // maps to "track" tag
 	copyright?: string
+	// Additional fields
+	narrator?: string // maps to TPE3 (MP3), custom iTunes NARRATOR (MP4), or performer (MKV)
+	album?: string
+	albumArtist?: string // maps to "album_artist" tag
+	composer?: string
+	publisher?: string
+	discNumber?: number // maps to "disc" tag
+	language?: string
+	series?: string // maps to "show" or "series" tag
+	seriesPosition?: string // maps to "episode_sort" or "series-part" tag
+	encodedBy?: string // maps to "encoded_by" tag
+	subtitle?: string // secondary title
 }
 
 /**
@@ -29,6 +41,17 @@ const TAG_MAPPINGS = {
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
+		narrator: 'TPE3', // ID3v2 conductor/performer - used for narrators
+		album: 'album',
+		albumArtist: 'album_artist',
+		composer: 'composer',
+		publisher: 'publisher',
+		discNumber: 'disc',
+		language: 'language',
+		series: 'TXXX:series', // Custom tag for series name
+		seriesPosition: 'TXXX:series-part', // Custom tag for series position
+		encodedBy: 'encoded_by',
+		subtitle: 'TIT3', // ID3v2 subtitle/description refinement
 	},
 	// M4A/M4B (iTunes/QuickTime)
 	mp4: {
@@ -39,16 +62,38 @@ const TAG_MAPPINGS = {
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
+		narrator: '----:com.apple.iTunes:NARRATOR', // Custom iTunes tag for narrator
+		album: 'album',
+		albumArtist: 'album_artist',
+		composer: 'composer',
+		publisher: 'publisher',
+		discNumber: 'disc',
+		language: 'language',
+		series: 'show', // TV Show / Podcast name
+		seriesPosition: 'episode_sort', // Episode number
+		encodedBy: 'encoded_by',
+		subtitle: 'subtitle', // Subtitle / description refinement
 	},
 	// MKV (Matroska)
 	mkv: {
 		title: 'title',
-		author: 'artist', // or ARTIST
-		description: 'comment', // or DESCRIPTION
+		author: 'artist',
+		description: 'comment',
 		year: 'date',
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
+		narrator: 'performer', // Matroska uses performer
+		album: 'album',
+		albumArtist: 'album_artist',
+		composer: 'composer',
+		publisher: 'publisher',
+		discNumber: 'disc',
+		language: 'language',
+		series: 'show',
+		seriesPosition: 'episode_sort',
+		encodedBy: 'encoded_by',
+		subtitle: 'subtitle',
 	},
 } as const
 
@@ -99,6 +144,42 @@ function buildMetadataArgs(
 	}
 	if (metadata.copyright !== undefined) {
 		args.push('-metadata', `${mapping.copyright}=${metadata.copyright}`)
+	}
+	if (metadata.narrator !== undefined) {
+		args.push('-metadata', `${mapping.narrator}=${metadata.narrator}`)
+	}
+	if (metadata.album !== undefined) {
+		args.push('-metadata', `${mapping.album}=${metadata.album}`)
+	}
+	if (metadata.albumArtist !== undefined) {
+		args.push('-metadata', `${mapping.albumArtist}=${metadata.albumArtist}`)
+	}
+	if (metadata.composer !== undefined) {
+		args.push('-metadata', `${mapping.composer}=${metadata.composer}`)
+	}
+	if (metadata.publisher !== undefined) {
+		args.push('-metadata', `${mapping.publisher}=${metadata.publisher}`)
+	}
+	if (metadata.discNumber !== undefined) {
+		args.push('-metadata', `${mapping.discNumber}=${metadata.discNumber}`)
+	}
+	if (metadata.language !== undefined) {
+		args.push('-metadata', `${mapping.language}=${metadata.language}`)
+	}
+	if (metadata.series !== undefined) {
+		args.push('-metadata', `${mapping.series}=${metadata.series}`)
+	}
+	if (metadata.seriesPosition !== undefined) {
+		args.push(
+			'-metadata',
+			`${mapping.seriesPosition}=${metadata.seriesPosition}`,
+		)
+	}
+	if (metadata.encodedBy !== undefined) {
+		args.push('-metadata', `${mapping.encodedBy}=${metadata.encodedBy}`)
+	}
+	if (metadata.subtitle !== undefined) {
+		args.push('-metadata', `${mapping.subtitle}=${metadata.subtitle}`)
 	}
 
 	return args

@@ -25,6 +25,18 @@ const MetadataUpdateSchema = z.object({
 	genre: z.string().optional(),
 	trackNumber: z.number().int().min(0).optional(),
 	copyright: z.string().optional(),
+	// Additional fields
+	narrator: z.string().optional(),
+	album: z.string().optional(),
+	albumArtist: z.string().optional(),
+	composer: z.string().optional(),
+	publisher: z.string().optional(),
+	discNumber: z.number().int().min(0).optional(),
+	language: z.string().optional(),
+	series: z.string().optional(),
+	seriesPosition: z.string().optional(),
+	encodedBy: z.string().optional(),
+	subtitle: z.string().optional(),
 })
 
 type FeedAssignment = {
@@ -51,6 +63,19 @@ type MediaDetailResponse = {
 		genres: string[] | null
 		copyright: string | null
 		fileModifiedAt: number
+		// Additional metadata fields
+		album: string | null
+		albumArtist: string | null
+		composer: string | null
+		publisher: string | null
+		discNumber: number | null
+		totalDiscs: number | null
+		totalTracks: number | null
+		language: string | null
+		series: string | null
+		seriesPosition: string | null
+		encodedBy: string | null
+		subtitle: string | null
 	}
 	assignments: FeedAssignment[]
 	curatedFeeds: Array<{
@@ -226,6 +251,17 @@ export default {
 				genre: metadataUpdate.genre,
 				trackNumber: metadataUpdate.trackNumber,
 				copyright: metadataUpdate.copyright,
+				narrator: metadataUpdate.narrator,
+				album: metadataUpdate.album,
+				albumArtist: metadataUpdate.albumArtist,
+				composer: metadataUpdate.composer,
+				publisher: metadataUpdate.publisher,
+				discNumber: metadataUpdate.discNumber,
+				language: metadataUpdate.language,
+				series: metadataUpdate.series,
+				seriesPosition: metadataUpdate.seriesPosition,
+				encodedBy: metadataUpdate.encodedBy,
+				subtitle: metadataUpdate.subtitle,
 			}
 
 			await updateMetadata(filePath, currentMetadata.mimeType, editableMetadata)
@@ -283,6 +319,19 @@ export default {
 				genres: updatedMetadata.genres,
 				copyright: updatedMetadata.copyright,
 				fileModifiedAt: updatedMetadata.fileModifiedAt,
+				// Additional metadata fields
+				album: updatedMetadata.album,
+				albumArtist: updatedMetadata.albumArtist,
+				composer: updatedMetadata.composer,
+				publisher: updatedMetadata.publisher,
+				discNumber: updatedMetadata.discNumber,
+				totalDiscs: updatedMetadata.totalDiscs,
+				totalTracks: updatedMetadata.totalTracks,
+				language: updatedMetadata.language,
+				series: updatedMetadata.series,
+				seriesPosition: updatedMetadata.seriesPosition,
+				encodedBy: updatedMetadata.encodedBy,
+				subtitle: updatedMetadata.subtitle,
 			},
 			assignments,
 			curatedFeeds: curatedFeeds.map((f) => ({

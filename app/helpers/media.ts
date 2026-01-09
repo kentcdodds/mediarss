@@ -134,6 +134,19 @@ const MediaFileSchema = z.object({
 	sizeBytes: z.number(),
 	mimeType: z.string(),
 	fileModifiedAt: z.number(),
+	// Additional metadata fields
+	album: z.string().nullable(),
+	albumArtist: z.string().nullable(),
+	composer: z.string().nullable(),
+	publisher: z.string().nullable(),
+	discNumber: z.number().nullable(),
+	totalDiscs: z.number().nullable(),
+	totalTracks: z.number().nullable(),
+	language: z.string().nullable(),
+	series: z.string().nullable(),
+	seriesPosition: z.string().nullable(),
+	encodedBy: z.string().nullable(),
+	subtitle: z.string().nullable(),
 })
 
 export type MediaFile = z.infer<typeof MediaFileSchema>
@@ -141,14 +154,19 @@ export type MediaFile = z.infer<typeof MediaFileSchema>
 /**
  * Schema for cached media file data (handles Date serialization).
  * Derived from MediaFileSchema with publicationDate as ISO string instead of Date.
+ * Also adds a version field for cache invalidation when schema changes.
  */
 const CachedMediaFileSchema = MediaFileSchema.omit({
 	publicationDate: true,
 }).extend({
 	publicationDate: z.string().nullable(), // ISO string in cache
+	_cacheVersion: z.literal(2).optional(), // Increment when schema changes
 })
 
 type CachedMediaFile = z.infer<typeof CachedMediaFileSchema>
+
+// Current cache version - increment when MediaFile schema changes
+const CACHE_VERSION = 2 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -157,6 +175,7 @@ function toCachedMediaFile(mediaFile: MediaFile): CachedMediaFile {
 	return {
 		...mediaFile,
 		publicationDate: mediaFile.publicationDate?.toISOString() ?? null,
+		_cacheVersion: CACHE_VERSION,
 	}
 }
 
@@ -164,8 +183,10 @@ function toCachedMediaFile(mediaFile: MediaFile): CachedMediaFile {
  * Convert a cached MediaFile back to the regular format (ISO string -> Date).
  */
 function fromCachedMediaFile(cached: CachedMediaFile): MediaFile {
+	// Destructure to exclude _cacheVersion from the returned MediaFile
+	const { _cacheVersion: _, ...rest } = cached
 	return {
-		...cached,
+		...rest,
 		publicationDate: cached.publicationDate
 			? new Date(cached.publicationDate)
 			: null,
@@ -400,6 +421,8 @@ function extractDescription(
  * 1. json64.narrated_by (comma-separated)
  * 2. TXXX:narrated_by
  * 3. ----:com.apple.iTunes:PERFORMER_NAME
+ * 4. ----:com.apple.iTunes:NARRATOR (custom tag we write for MP4)
+ * 5. TPE3 (ID3v2 conductor/performer - we write this for MP3)
  */
 function extractNarrators(
 	metadata: mm.IAudioMetadata,
@@ -431,6 +454,39 @@ function extractNarrators(
 	)
 	if (performer) {
 		const narrators = performer
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 4. Custom iTunes narrator tag (we write this for MP4)
+	const itunesNarrator = getNativeValue(
+		metadata,
+		'----:com.apple.iTunes:NARRATOR',
+	)
+	if (itunesNarrator) {
+		const narrators = itunesNarrator
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 5. TPE3 - ID3v2 conductor/performer (we write this for MP3)
+	const tpe3 = getNativeValue(metadata, 'TPE3')
+	if (tpe3) {
+		const narrators = tpe3
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 6. performer tag (we write this for MKV)
+	const mkvPerformer = getNativeValue(metadata, 'performer')
+	if (mkvPerformer) {
+		const narrators = mkvPerformer
 			.split(',')
 			.map((n) => n.trim())
 			.filter(Boolean)
@@ -507,6 +563,181 @@ function extractCopyright(
 	if (metadata.common.copyright) {
 		return metadata.common.copyright
 	}
+
+	return null
+}
+
+/**
+ * Extract album from metadata
+ */
+function extractAlbum(metadata: mm.IAudioMetadata): string | null {
+	return metadata.common.album ?? null
+}
+
+/**
+ * Extract album artist from metadata
+ */
+function extractAlbumArtist(metadata: mm.IAudioMetadata): string | null {
+	return metadata.common.albumartist ?? null
+}
+
+/**
+ * Extract composer from metadata
+ */
+function extractComposer(metadata: mm.IAudioMetadata): string | null {
+	const composers = metadata.common.composer
+	if (composers && composers.length > 0) {
+		return composers.join(', ')
+	}
+	return null
+}
+
+/**
+ * Extract publisher/label from metadata
+ */
+function extractPublisher(metadata: mm.IAudioMetadata): string | null {
+	// Check common label field
+	if (metadata.common.label && metadata.common.label.length > 0) {
+		return metadata.common.label[0] ?? null
+	}
+
+	// Check native tags for publisher
+	const publisher = getNativeValue(metadata, 'TPUB') // ID3v2 Publisher
+	if (publisher) return publisher
+
+	const publisher2 = getNativeValue(metadata, 'publisher')
+	if (publisher2) return publisher2
+
+	return null
+}
+
+/**
+ * Extract disc number from metadata
+ */
+function extractDiscNumber(metadata: mm.IAudioMetadata): number | null {
+	return metadata.common.disk?.no ?? null
+}
+
+/**
+ * Extract total discs from metadata
+ */
+function extractTotalDiscs(metadata: mm.IAudioMetadata): number | null {
+	return metadata.common.disk?.of ?? null
+}
+
+/**
+ * Extract total tracks from metadata
+ */
+function extractTotalTracks(metadata: mm.IAudioMetadata): number | null {
+	return metadata.common.track?.of ?? null
+}
+
+/**
+ * Extract language from metadata
+ */
+function extractLanguage(metadata: mm.IAudioMetadata): string | null {
+	// Check common language field
+	if (metadata.common.language) {
+		return metadata.common.language
+	}
+
+	// Check native tags
+	const lang = getNativeValue(metadata, 'TLAN') // ID3v2 Language
+	if (lang) return lang
+
+	const lang2 = getNativeValue(metadata, 'language')
+	if (lang2) return lang2
+
+	return null
+}
+
+/**
+ * Extract series/show name from metadata
+ */
+function extractSeries(metadata: mm.IAudioMetadata): string | null {
+	// Check for TV show name (common in iTunes-style metadata)
+	const show = getNativeValue(metadata, 'tvsh') // iTunes show name
+	if (show) return show
+
+	// Check for show tag (MP4)
+	const showTag = getNativeValue(metadata, 'show')
+	if (showTag) return showTag
+
+	// Check for series tag
+	const series = getNativeValue(metadata, 'series')
+	if (series) return series
+
+	// Check for TXXX:series (MP3 custom tag we write to)
+	const txxxSeries = getNativeValue(metadata, 'TXXX:series')
+	if (txxxSeries) return txxxSeries
+
+	// Check for grouping (sometimes used for series)
+	if (metadata.common.grouping) {
+		return metadata.common.grouping
+	}
+
+	return null
+}
+
+/**
+ * Extract series position/episode number from metadata
+ */
+function extractSeriesPosition(metadata: mm.IAudioMetadata): string | null {
+	// Check for episode sort order
+	const episodeSort = getNativeValue(metadata, 'tves') // iTunes episode sort
+	if (episodeSort) return episodeSort
+
+	// Check for episode_sort (MP4)
+	const episodeSortTag = getNativeValue(metadata, 'episode_sort')
+	if (episodeSortTag) return episodeSortTag
+
+	// Check for series-part
+	const seriesPart = getNativeValue(metadata, 'series-part')
+	if (seriesPart) return seriesPart
+
+	// Check for TXXX:series-part (MP3 custom tag we write to)
+	const txxxSeriesPart = getNativeValue(metadata, 'TXXX:series-part')
+	if (txxxSeriesPart) return txxxSeriesPart
+
+	// Check for movement name (classical music)
+	if (metadata.common.movement) {
+		return metadata.common.movement
+	}
+
+	return null
+}
+
+/**
+ * Extract encoded by from metadata
+ */
+function extractEncodedBy(metadata: mm.IAudioMetadata): string | null {
+	// Check common field
+	if (metadata.common.encodedby) {
+		return metadata.common.encodedby
+	}
+
+	// Check native tags
+	const encodedBy = getNativeValue(metadata, 'TENC') // ID3v2 Encoded by
+	if (encodedBy) return encodedBy
+
+	const encodedBy2 = getNativeValue(metadata, 'encoded_by')
+	if (encodedBy2) return encodedBy2
+
+	return null
+}
+
+/**
+ * Extract subtitle from metadata
+ */
+function extractSubtitle(metadata: mm.IAudioMetadata): string | null {
+	// Check common subtitle field
+	if (metadata.common.subtitle && metadata.common.subtitle.length > 0) {
+		return metadata.common.subtitle[0] ?? null
+	}
+
+	// Check native tags
+	const subtitle = getNativeValue(metadata, 'TIT3') // ID3v2 Subtitle
+	if (subtitle) return subtitle
 
 	return null
 }
@@ -635,6 +866,19 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			sizeBytes: stat.size,
 			mimeType: correctMimeType(fileType.mime, filename),
 			fileModifiedAt: Math.floor(stat.mtimeMs / 1000),
+			// Additional metadata fields
+			album: extractAlbum(metadata),
+			albumArtist: extractAlbumArtist(metadata),
+			composer: extractComposer(metadata),
+			publisher: extractPublisher(metadata),
+			discNumber: extractDiscNumber(metadata),
+			totalDiscs: extractTotalDiscs(metadata),
+			totalTracks: extractTotalTracks(metadata),
+			language: extractLanguage(metadata),
+			series: extractSeries(metadata),
+			seriesPosition: extractSeriesPosition(metadata),
+			encodedBy: extractEncodedBy(metadata),
+			subtitle: extractSubtitle(metadata),
 		}
 
 		// Validate with zod
@@ -669,7 +913,10 @@ async function getCachedFileMetadata(
 			if (value === null) return true
 			// Validate cached value structure
 			const result = CachedMediaFileSchema.safeParse(value)
-			return result.success
+			if (!result.success) return false
+			// Check cache version matches current version
+			if (result.data._cacheVersion !== CACHE_VERSION) return false
+			return true
 		},
 	})
 

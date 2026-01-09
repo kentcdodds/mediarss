@@ -86,7 +86,7 @@ type EditableMetadata = {
 	title: string
 	author: string
 	description: string
-	year: string
+	date: string
 	genre: string
 	trackNumber: string
 	copyright: string
@@ -129,7 +129,7 @@ export function MediaDetail(this: Handle) {
 		title: '',
 		author: '',
 		description: '',
-		year: '',
+		date: '',
 		genre: '',
 		trackNumber: '',
 		copyright: '',
@@ -269,13 +269,18 @@ export function MediaDetail(this: Handle) {
 	const startEditingMetadata = () => {
 		if (state.status !== 'success') return
 		const { media } = state.data
+		// Extract date in YYYY-MM-DD format from ISO date string
+		let dateValue = ''
+		if (media.publicationDate) {
+			const pubDate = new Date(media.publicationDate)
+			// Format as YYYY-MM-DD for date input
+			dateValue = pubDate.toISOString().split('T')[0] || ''
+		}
 		editedMetadata = {
 			title: media.title || '',
 			author: media.author || '',
 			description: media.description || '',
-			year: media.publicationDate
-				? new Date(media.publicationDate).getFullYear().toString()
-				: '',
+			date: dateValue,
 			genre: media.genres?.join(', ') || '',
 			trackNumber: media.trackNumber?.toString() || '',
 			copyright: media.copyright || '',
@@ -324,11 +329,9 @@ export function MediaDetail(this: Handle) {
 			if (editedMetadata.description) {
 				payload.description = editedMetadata.description
 			}
-			if (editedMetadata.year) {
-				const year = parseInt(editedMetadata.year, 10)
-				if (!Number.isNaN(year)) {
-					payload.year = year
-				}
+			if (editedMetadata.date) {
+				// Date is already in YYYY-MM-DD format from the date input
+				payload.date = editedMetadata.date
 			}
 			if (editedMetadata.genre) {
 				payload.genre = editedMetadata.genre
@@ -1024,10 +1027,10 @@ export function MediaDetail(this: Handle) {
 											}}
 										>
 											<MetadataField
-												label="Year"
-												value={editedMetadata.year}
-												type="number"
-												onChange={(v) => updateEditedField('year', v)}
+												label="Publication Date"
+												value={editedMetadata.date}
+												type="date"
+												onChange={(v) => updateEditedField('date', v)}
 											/>
 											<MetadataField
 												label="Language"
@@ -1512,7 +1515,7 @@ function MetadataField({
 }: {
 	label: string
 	value: string
-	type?: 'text' | 'number'
+	type?: 'text' | 'number' | 'date'
 	onChange: (value: string) => void
 }) {
 	const inputStyles = {
@@ -1553,6 +1556,25 @@ function MetadataField({
 						value={value}
 						css={inputStyles}
 						on={inputHandler}
+					/>
+				</label>
+			</div>
+		)
+	}
+
+	if (type === 'date') {
+		return (
+			<div>
+				<label css={{ display: 'block' }}>
+					<span css={labelStyles}>{label}</span>
+					<input
+						type="date"
+						value={value}
+						css={inputStyles}
+						on={{
+							change: (e: Event) =>
+								onChange((e.target as HTMLInputElement).value),
+						}}
 					/>
 				</label>
 			</div>

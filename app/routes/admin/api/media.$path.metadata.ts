@@ -21,7 +21,12 @@ const MetadataUpdateSchema = z.object({
 	title: z.string().optional(),
 	author: z.string().optional(),
 	description: z.string().optional(),
-	year: z.number().int().min(1900).max(2100).optional(),
+	date: z
+		.string()
+		.regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, {
+			message: 'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
+		})
+		.optional(),
 	genre: z.string().optional(),
 	trackNumber: z.number().int().min(0).optional(),
 	copyright: z.string().optional(),
@@ -247,7 +252,7 @@ export default {
 				title: metadataUpdate.title,
 				author: metadataUpdate.author,
 				description: metadataUpdate.description,
-				year: metadataUpdate.year,
+				date: metadataUpdate.date,
 				genre: metadataUpdate.genre,
 				trackNumber: metadataUpdate.trackNumber,
 				copyright: metadataUpdate.copyright,

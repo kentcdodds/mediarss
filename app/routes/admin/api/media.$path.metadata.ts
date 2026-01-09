@@ -33,9 +33,15 @@ const MetadataUpdateSchema = z.object({
 				const month = parseInt(parts[1]!, 10)
 				if (month < 1 || month > 12) return false
 				if (parts.length === 2) return true // YYYY-MM
+				// Validate full date using Date constructor (handles month lengths and leap years)
+				const year = parseInt(parts[0]!, 10)
 				const day = parseInt(parts[2]!, 10)
-				// Simple day validation (not accounting for month-specific limits)
-				return day >= 1 && day <= 31
+				const testDate = new Date(year, month - 1, day)
+				return (
+					testDate.getFullYear() === year &&
+					testDate.getMonth() === month - 1 &&
+					testDate.getDate() === day
+				)
 			},
 			{ message: 'Date contains invalid month or day values' },
 		)

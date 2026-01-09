@@ -281,7 +281,7 @@ export function createMediaWidgetResource(
 	const htmlString = generateMediaWidgetHtml({ baseUrl, media })
 
 	// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
-	const hostname = new URL(baseUrl).origin
+	const cspOrigin = new URL(baseUrl).origin
 
 	return createUIResource({
 		uri: getMediaWidgetUIUri(),
@@ -299,8 +299,8 @@ export function createMediaWidgetResource(
 			'openai/widgetDescription':
 				description ?? `Media player for ${media.title}`,
 			'openai/widgetCSP': {
-				connect_domains: [hostname],
-				resource_domains: [hostname],
+				connect_domains: [cspOrigin],
+				resource_domains: [cspOrigin],
 			},
 		},
 		// Enable the Apps SDK adapter for ChatGPT compatibility

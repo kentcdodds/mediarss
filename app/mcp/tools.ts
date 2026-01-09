@@ -850,6 +850,7 @@ export async function initializeTools(
 
 					// Helper to get relative path and media root from absolute path
 					// Sort roots by path length descending so longer (more specific) paths match first
+					const { sep: pathSep } = await import('node:path')
 					const sortedRoots = [...mediaRoots].sort(
 						(a, b) => b.path.length - a.path.length,
 					)
@@ -859,9 +860,11 @@ export async function initializeTools(
 						for (const root of sortedRoots) {
 							// Check for exact match or path with separator to prevent
 							// /media/audio matching /media/audiobooks
-							const rootWithSep = root.path.endsWith('/')
-								? root.path
-								: `${root.path}/`
+							// Use path.sep for cross-platform compatibility (/ on Unix, \ on Windows)
+							const rootWithSep =
+								root.path.endsWith('/') || root.path.endsWith('\\')
+									? root.path
+									: `${root.path}${pathSep}`
 							if (
 								absolutePath === root.path ||
 								absolutePath.startsWith(rootWithSep)
@@ -875,6 +878,22 @@ export async function initializeTools(
 						return null
 					}
 
+					// Pre-filter results to only include items with valid path info
+					// This ensures consistency between human-readable and structured output
+					const resultsWithPaths = limitedResults
+						.map((media) => ({
+							media,
+							pathInfo: getMediaPathInfo(media.path),
+						}))
+						.filter(
+							(
+								item,
+							): item is {
+								media: MediaFile
+								pathInfo: { mediaRoot: string; relativePath: string }
+							} => item.pathInfo !== null,
+						)
+
 					// Format human-readable output
 					const lines: string[] = []
 					lines.push(`## Search Results for "${query}"`)
@@ -884,7 +903,7 @@ export async function initializeTools(
 					)
 					lines.push('')
 
-					if (limitedResults.length === 0) {
+					if (resultsWithPaths.length === 0) {
 						lines.push('No matches found.')
 						lines.push('')
 						lines.push(
@@ -895,10 +914,7 @@ export async function initializeTools(
 							'- Combine terms: "sanderson stormlight"',
 						)
 					} else {
-						for (const media of limitedResults) {
-							const pathInfo = getMediaPathInfo(media.path)
-							if (!pathInfo) continue
-
+						for (const { media, pathInfo } of resultsWithPaths) {
 							lines.push(`### ${media.title}`)
 							if (media.author) {
 								lines.push(`**Author**: ${media.author}`)
@@ -921,18 +937,17 @@ export async function initializeTools(
 						}
 					}
 
-					if (limitedResults.length > 0) {
+					if (resultsWithPaths.length > 0) {
 						lines.push(
 							'Next: Use `add_media_to_curated_feed` to add items to a feed, or `get_media_widget` to play.',
 						)
 					}
 
-					// Build structured results
-					const structuredResults = limitedResults.map((media) => {
-						const pathInfo = getMediaPathInfo(media.path)
-						return {
-							mediaRoot: pathInfo?.mediaRoot ?? '',
-							relativePath: pathInfo?.relativePath ?? '',
+					// Build structured results from the same filtered data
+					const structuredResults = resultsWithPaths.map(
+						({ media, pathInfo }) => ({
+							mediaRoot: pathInfo.mediaRoot,
+							relativePath: pathInfo.relativePath,
 							title: media.title,
 							author: media.author,
 							album: media.album,
@@ -944,8 +959,8 @@ export async function initializeTools(
 							sizeBytes: media.sizeBytes,
 							mimeType: media.mimeType,
 							filename: media.filename,
-						}
-					})
+						}),
+					)
 
 					return {
 						content: [{ type: 'text', text: lines.join('\n') }],

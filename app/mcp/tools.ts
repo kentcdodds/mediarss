@@ -87,6 +87,48 @@ function getFeedById(
 }
 
 /**
+ * Find a token for accessing a specific media file.
+ * Searches through all feeds to find one that has access to the file,
+ * then returns the first active token for that feed.
+ */
+function findTokenForMedia(
+	rootName: string,
+	relativePath: string,
+): { token: string; feed: Feed; type: 'directory' | 'curated' } | null {
+	// Check directory feeds first
+	const directoryFeeds = listDirectoryFeeds()
+	for (const feed of directoryFeeds) {
+		if (isFileAllowed(feed, 'directory', rootName, relativePath)) {
+			const tokens = listActiveDirectoryFeedTokens(feed.id)
+			if (tokens.length > 0) {
+				return {
+					token: tokens[0]!.token,
+					feed,
+					type: 'directory',
+				}
+			}
+		}
+	}
+
+	// Then check curated feeds
+	const curatedFeeds = listCuratedFeeds()
+	for (const feed of curatedFeeds) {
+		if (isFileAllowed(feed, 'curated', rootName, relativePath)) {
+			const tokens = listActiveCuratedFeedTokens(feed.id)
+			if (tokens.length > 0) {
+				return {
+					token: tokens[0]!.token,
+					feed,
+					type: 'curated',
+				}
+			}
+		}
+	}
+
+	return null
+}
+
+/**
  * Format a date timestamp for human-readable output.
  */
 function formatDate(timestamp: number): string {
@@ -583,15 +625,18 @@ export async function initializeTools(
 				title: toolsMetadata.get_media_widget.title,
 				description: toolsMetadata.get_media_widget.description,
 				inputSchema: {
-					token: z
-						.string()
-						.describe('A feed access token (from `get_feed_tokens`)'),
 					mediaRoot: z
 						.string()
 						.describe('Name of the media root (from `list_media_directories`)'),
 					relativePath: z
 						.string()
 						.describe('Path to the media file within the root'),
+					token: z
+						.string()
+						.optional()
+						.describe(
+							'A feed access token (optional). If not provided, uses the first available token from a feed that has access to this file.',
+						),
 				},
 				annotations: {
 					readOnlyHint: true,
@@ -600,22 +645,46 @@ export async function initializeTools(
 				// OpenAI Apps SDK metadata for ChatGPT widget rendering
 				_meta: getMediaWidgetToolMeta(baseUrl),
 			},
-			async ({ token, mediaRoot, relativePath }) => {
-				// Validate token and get feed
-				const result = getFeedByToken(token)
-				if (!result) {
-					return {
-						content: [
-							{
-								type: 'text',
-								text: '❌ Invalid or expired token.\n\nNext: Use `get_feed_tokens` to obtain a valid token for your feed.',
-							},
-						],
-						isError: true,
-					}
-				}
+			async ({ mediaRoot, relativePath, token: providedToken }) => {
+				// If no token provided, find one automatically
+				let token = providedToken
+				let feed: Feed | undefined
+				let type: 'directory' | 'curated' | undefined
 
-				const { feed, type } = result
+				if (token) {
+					// Validate provided token and get feed
+					const result = getFeedByToken(token)
+					if (!result) {
+						return {
+							content: [
+								{
+									type: 'text',
+									text: '❌ Invalid or expired token.\n\nNext: Use `get_feed_tokens` to obtain a valid token for your feed, or omit the token to auto-select one.',
+								},
+							],
+							isError: true,
+						}
+					}
+					feed = result.feed
+					type = result.type
+				} else {
+					// Find a feed that has access to this file and get its first token
+					const autoResult = findTokenForMedia(mediaRoot, relativePath)
+					if (!autoResult) {
+						return {
+							content: [
+								{
+									type: 'text',
+									text: `❌ No feed token available for this media file.\n\nNo existing feed has access to "${mediaRoot}:${relativePath}", or the feeds have no active tokens.\n\nNext: Create a directory feed that includes this file using \`create_directory_feed\` (this automatically creates a token), or use \`create_curated_feed\` and add the media to it.`,
+								},
+							],
+							isError: true,
+						}
+					}
+					token = autoResult.token
+					feed = autoResult.feed
+					type = autoResult.type
+				}
 
 				// Parse and validate the path
 				const parsed = parseMediaPathStrict(`${mediaRoot}/${relativePath}`)

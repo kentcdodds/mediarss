@@ -406,7 +406,8 @@ export async function initializeResources(
 		// Media widget template resource for ChatGPT Apps SDK
 		// This is a template resource that ChatGPT uses to render widgets
 		const widgetUri = getMediaWidgetUIUri()
-		const hostname = new URL(baseUrl).hostname
+		// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
+		const cspOrigin = new URL(baseUrl).origin
 
 		// Pre-generate the placeholder HTML for the template
 		const placeholderHtml = generateMediaWidgetHtml({
@@ -438,8 +439,8 @@ export async function initializeResources(
 				'openai/widgetDescription':
 					'Interactive media player for audio and video files',
 				'openai/widgetCSP': {
-					connect_domains: [hostname],
-					resource_domains: [hostname],
+					connect_domains: [cspOrigin],
+					resource_domains: [cspOrigin],
 				},
 			},
 			adapters: {

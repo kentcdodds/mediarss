@@ -3,6 +3,7 @@
  * Resources are data sources that can be read by the AI.
  */
 
+import { createUIResource } from '@mcp-ui/server'
 import {
 	McpServer,
 	ResourceTemplate,
@@ -21,7 +22,11 @@ import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
-import { generateMediaWidgetHtml, type MediaWidgetData } from './widgets.ts'
+import {
+	generateMediaWidgetHtml,
+	getMediaWidgetUIUri,
+	type MediaWidgetData,
+} from './widgets.ts'
 
 type FeedWithType = (DirectoryFeed | CuratedFeed) & {
 	type: 'directory' | 'curated'
@@ -59,10 +64,15 @@ function getFeedById(id: string): FeedWithType | undefined {
 
 /**
  * Initialize MCP resources based on authorized scopes.
+ *
+ * @param server - The MCP server instance
+ * @param authInfo - Authentication information for the user
+ * @param baseUrl - Base URL of the server (for widget resources)
  */
 export async function initializeResources(
 	server: McpServer,
 	authInfo: AuthInfo,
+	baseUrl: string,
 ): Promise<void> {
 	// Read resources (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
@@ -351,8 +361,8 @@ export async function initializeResources(
 					throw new Error(`Media file not found or not readable.`)
 				}
 
-				// Determine base URL from the request context
-				const baseUrl = getBaseUrlFromExtra(extra)
+				// Determine base URL from the request context, falling back to initialization baseUrl
+				const resolvedBaseUrl = getBaseUrlFromExtra(extra, baseUrl)
 
 				// Build token-based URLs
 				const encodedPath = encodeRelativePath(
@@ -377,7 +387,7 @@ export async function initializeResources(
 
 				// Generate the HTML widget
 				const html = generateMediaWidgetHtml({
-					baseUrl,
+					baseUrl: resolvedBaseUrl,
 					media: mediaData,
 				})
 
@@ -392,6 +402,67 @@ export async function initializeResources(
 				}
 			},
 		)
+
+		// Media widget template resource for ChatGPT Apps SDK
+		// This is a template resource that ChatGPT uses to render widgets
+		const widgetUri = getMediaWidgetUIUri()
+		const hostname = new URL(baseUrl).hostname
+
+		// Pre-generate the placeholder HTML for the template
+		const placeholderHtml = generateMediaWidgetHtml({
+			baseUrl,
+			media: {
+				title: 'Loading...',
+				author: null,
+				duration: null,
+				sizeBytes: 0,
+				mimeType: 'audio/mpeg',
+				publicationDate: null,
+				description: null,
+				narrators: null,
+				genres: null,
+				artworkUrl: '',
+				streamUrl: '',
+			},
+		})
+
+		// Pre-create the UIResource with Apps SDK adapter enabled
+		const templateUiResource = createUIResource({
+			uri: widgetUri,
+			content: {
+				type: 'rawHtml',
+				htmlString: placeholderHtml,
+			},
+			encoding: 'text',
+			metadata: {
+				'openai/widgetDescription':
+					'Interactive media player for audio and video files',
+				'openai/widgetCSP': {
+					connect_domains: [hostname],
+					resource_domains: [hostname],
+				},
+			},
+			adapters: {
+				appsSdk: {
+					enabled: true,
+				},
+			},
+		})
+
+		server.registerResource(
+			'media-widget-template',
+			widgetUri,
+			{
+				description:
+					'Media player widget template for ChatGPT. Use with the get_media_widget tool to render an interactive media player.',
+				mimeType: 'text/html+skybridge',
+			},
+			async (_uri) => {
+				return {
+					contents: [templateUiResource.resource],
+				}
+			},
+		)
 	}
 }
 
@@ -399,7 +470,7 @@ export async function initializeResources(
  * Extract base URL from the extra context provided by the transport.
  * Falls back to a reasonable default if not available.
  */
-function getBaseUrlFromExtra(extra: unknown): string {
+function getBaseUrlFromExtra(extra: unknown, fallback?: string): string {
 	// The transport may pass authInfo which contains issuer info
 	if (extra && typeof extra === 'object' && 'authInfo' in extra) {
 		const authInfo = extra.authInfo as { issuer?: string }
@@ -408,6 +479,6 @@ function getBaseUrlFromExtra(extra: unknown): string {
 		}
 	}
 
-	// Default to environment variable or localhost
-	return Bun.env.PUBLIC_URL ?? 'http://localhost:3000'
+	// Use fallback if provided, otherwise default to environment variable or localhost
+	return fallback ?? Bun.env.PUBLIC_URL ?? 'http://localhost:3000'
 }

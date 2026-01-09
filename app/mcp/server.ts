@@ -11,14 +11,6 @@ import { initializeResources } from './resources.ts'
 import { initializeTools } from './tools.ts'
 
 /**
- * Server context passed to tool/resource/prompt handlers.
- */
-export interface McpContext {
-	authInfo: AuthInfo
-	server: McpServer
-}
-
-/**
  * Create a new MCP server instance.
  */
 export function createMcpServer(): McpServer {
@@ -44,13 +36,18 @@ export function createMcpServer(): McpServer {
 /**
  * Initialize the MCP server with tools, resources, and prompts.
  * Registration is based on the user's authorized scopes.
+ *
+ * @param server - The MCP server instance
+ * @param authInfo - Authentication information for the user
+ * @param baseUrl - Base URL of the server (for widget resources)
  */
 export async function initializeMcpServer(
 	server: McpServer,
 	authInfo: AuthInfo,
+	baseUrl: string,
 ): Promise<void> {
-	await initializeTools(server, authInfo)
-	await initializeResources(server, authInfo)
+	await initializeTools(server, authInfo, baseUrl)
+	await initializeResources(server, authInfo, baseUrl)
 	await initializePrompts(server, authInfo)
 }
 

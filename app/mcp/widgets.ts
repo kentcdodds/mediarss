@@ -112,12 +112,23 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 	// Apply XSS escaping to import map JSON (baseUrl could contain malicious content)
 	const importmapJson = escapeJsonForScript(absoluteImportmap)
 
+	// Check if this is a localhost/development environment
+	const isLocalhost =
+		baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')
+
+	// For local development, we need a more permissive CSP since mcpjam
+	// and other MCP clients may not honor our metadata CSP settings
+	const cspContent = isLocalhost
+		? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* https:; media-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; img-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https:;"
+		: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; media-src 'self' data: blob: https:; img-src 'self' data: blob: https:; connect-src 'self' https:;"
+
 	return html`<!doctype html>
 		<html lang="en">
 			<head>
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<meta name="color-scheme" content="light dark" />
+				<meta http-equiv="Content-Security-Policy" content="${cspContent}" />
 				<title>Media Player</title>
 				${html.raw`<script type="importmap">${importmapJson}</script>`}
 				${html.raw`${modulePreloads}`}

@@ -42,8 +42,8 @@ import type {
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import {
-	type MediaFile,
 	getFileMetadata,
+	type MediaFile,
 	scanAllMediaRoots,
 } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
@@ -849,11 +849,23 @@ export async function initializeTools(
 					const limitedResults = results.slice(0, limit)
 
 					// Helper to get relative path and media root from absolute path
+					// Sort roots by path length descending so longer (more specific) paths match first
+					const sortedRoots = [...mediaRoots].sort(
+						(a, b) => b.path.length - a.path.length,
+					)
 					const getMediaPathInfo = (
 						absolutePath: string,
 					): { mediaRoot: string; relativePath: string } | null => {
-						for (const root of mediaRoots) {
-							if (absolutePath.startsWith(root.path)) {
+						for (const root of sortedRoots) {
+							// Check for exact match or path with separator to prevent
+							// /media/audio matching /media/audiobooks
+							const rootWithSep = root.path.endsWith('/')
+								? root.path
+								: `${root.path}/`
+							if (
+								absolutePath === root.path ||
+								absolutePath.startsWith(rootWithSep)
+							) {
 								const relativePath = absolutePath
 									.slice(root.path.length)
 									.replace(/^[/\\]+/, '') // Remove leading slashes

@@ -8,6 +8,7 @@
 
 import type { Action, RequestContext } from '@remix-run/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { getOrigin } from '#app/helpers/origin.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 
@@ -24,7 +25,7 @@ interface ProtectedResourceMetadata {
 }
 
 function handleGet(context: RequestContext): Response {
-	const origin = `${context.url.protocol}//${context.url.host}`
+	const origin = getOrigin(context.request, context.url)
 
 	const metadata: ProtectedResourceMetadata = {
 		resource: `${origin}/mcp`,

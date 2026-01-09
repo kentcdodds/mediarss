@@ -30,7 +30,7 @@ import {
 	listDirectoryFeeds,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
-import { getItemsForFeed } from '#app/db/feed-items.ts'
+import { addItemToFeed, getItemsForFeed } from '#app/db/feed-items.ts'
 import type {
 	CuratedFeed,
 	CuratedFeedToken,
@@ -1204,6 +1204,219 @@ export async function initializeTools(
 							{
 								type: 'text',
 								text: `❌ Error deleting token: ${message}`,
+							},
+						],
+						isError: true,
+					}
+				}
+			},
+		)
+
+		// Add media to curated feed
+		server.registerTool(
+			toolsMetadata.add_media_to_curated_feed.name,
+			{
+				title: toolsMetadata.add_media_to_curated_feed.title,
+				description: toolsMetadata.add_media_to_curated_feed.description,
+				inputSchema: {
+					feedId: z.string().describe('The curated feed ID'),
+					mediaRoot: z
+						.string()
+						.describe('Name of the media root (from `list_media_directories`)'),
+					relativePath: z
+						.string()
+						.describe('Path to the media file within the root'),
+					position: z
+						.number()
+						.int()
+						.nonnegative()
+						.optional()
+						.describe('Position in the feed (0-indexed, appended if omitted)'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: false,
+				},
+			},
+			async ({ feedId, mediaRoot, relativePath, position }) => {
+				// Check if feed exists and is a curated feed
+				const feed = getCuratedFeedById(feedId)
+				if (!feed) {
+					// Check if it's a directory feed
+					const dirFeed = getDirectoryFeedById(feedId)
+					if (dirFeed) {
+						return {
+							content: [
+								{
+									type: 'text',
+									text: `❌ Feed \`${feedId}\` is a directory feed, not a curated feed.\n\nDirectory feeds automatically include files from their configured folder. Use \`create_curated_feed\` if you need to manually manage items.`,
+								},
+							],
+							isError: true,
+						}
+					}
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Feed with ID \`${feedId}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Validate media root exists
+				const mediaRoots = getMediaRoots()
+				const mr = mediaRoots.find((m) => m.name === mediaRoot)
+
+				if (!mr) {
+					const available = mediaRoots.map((m) => m.name).join(', ')
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Media root "${mediaRoot}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Validate path to prevent directory traversal (including symlink escape)
+				const { resolve, sep, relative } = await import('node:path')
+				const basePath = resolve(mr.path)
+				const fullPath = resolve(basePath, relativePath)
+
+				// Use async fs APIs and realpath to resolve symlinks
+				const fs = await import('node:fs/promises')
+
+				// Resolve media root path first (separate error for misconfigured root)
+				let realBasePath: string
+				try {
+					realBasePath = await fs.realpath(basePath)
+				} catch {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Media root "${mediaRoot}" is not accessible.\n\nThe configured path may not exist or may have been unmounted.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Resolve target file path
+				let realFullPath: string
+				try {
+					realFullPath = await fs.realpath(fullPath)
+				} catch {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ File does not exist: ${mediaRoot}:${relativePath}\n\nNext: Use \`browse_media\` to explore available files.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Check containment using real paths to prevent symlink escape
+				if (
+					realFullPath !== realBasePath &&
+					!realFullPath.startsWith(realBasePath + sep)
+				) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Check if path is a file (not directory)
+				let stat: Awaited<ReturnType<typeof fs.stat>>
+				try {
+					stat = await fs.stat(realFullPath)
+				} catch {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ File is not accessible: ${mediaRoot}:${relativePath}\n\nThe file may have been deleted or you may not have permission to access it.`,
+							},
+						],
+						isError: true,
+					}
+				}
+				if (!stat.isFile()) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Path is not a file: ${mediaRoot}:${relativePath}\n\nOnly files can be added to feeds, not directories.`,
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Normalize the relative path to prevent duplicates (e.g., foo//bar vs foo/bar)
+				const normalizedRelativePath = relative(realBasePath, realFullPath)
+
+				try {
+					// Add the item to the feed with normalized path
+					const feedItem = addItemToFeed(
+						feedId,
+						mediaRoot,
+						normalizedRelativePath,
+						position,
+					)
+
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`✅ Media added to feed successfully!`)
+					lines.push('')
+					lines.push(`## Added Item`)
+					lines.push(`- **Path**: ${mediaRoot}:${normalizedRelativePath}`)
+					lines.push(
+						`- **Position**: ${feedItem.position !== null ? feedItem.position : 'auto'}`,
+					)
+					lines.push(`- **Added**: ${formatDate(feedItem.addedAt)}`)
+					lines.push('')
+					lines.push(
+						`Next: Use \`get_feed\` to see all items in "${feed.name}".`,
+					)
+
+					return {
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							success: true,
+							feedItem: {
+								id: feedItem.id,
+								mediaRoot: feedItem.mediaRoot,
+								relativePath: feedItem.relativePath,
+								position: feedItem.position,
+								addedAt: feedItem.addedAt,
+							},
+							feed: {
+								id: feed.id,
+								name: feed.name,
+							},
+						},
+					}
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Error adding media to feed: ${message}`,
 							},
 						],
 						isError: true,

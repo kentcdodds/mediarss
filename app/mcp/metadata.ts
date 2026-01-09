@@ -193,14 +193,14 @@ Inputs:
 
 Returns: { success, feed: { id, name, description }, token }
 
-Curated feeds start empty. Add media files via the web UI.
+Curated feeds start empty. Add media files via the web UI or \`add_media_to_curated_feed\`.
 A token is auto-generated for immediate use.
 
 Examples:
 - { name: "Favorites" }
 - { name: "Road Trip Playlist", description: "Audiobooks for the drive" }
 
-Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via the admin UI.`,
+Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via \`add_media_to_curated_feed\` or the admin UI.`,
 	},
 
 	update_feed: {
@@ -296,6 +296,34 @@ Examples:
 - { token: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
 
 Next: Fetch the widgetUri as a resource to get the interactive HTML player widget.`,
+	},
+
+	add_media_to_curated_feed: {
+		name: 'add_media_to_curated_feed',
+		title: 'Add Media to Curated Feed',
+		description: `Add a media file to a curated feed.
+
+Inputs:
+- feedId: string (required) — The curated feed ID (from \`list_feeds\`)
+- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
+- relativePath: string (required) — Path to the media file within the root
+- position: number (optional) — Position in the feed (0-indexed non-negative integer, appended if omitted)
+
+Returns: {
+  success,
+  feedItem: { id, mediaRoot, relativePath, position, addedAt },
+  feed: { id, name }
+}
+
+The media file must exist and be accessible within the media root.
+Only works with curated feeds (not directory feeds).
+Paths are normalized to prevent duplicates (e.g., \`foo//bar\` becomes \`foo/bar\`).
+
+Examples:
+- { feedId: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
+- { feedId: "abc123", mediaRoot: "audio", relativePath: "audiobook.m4b", position: 0 }
+
+Next: Use \`get_feed\` to see the updated feed contents.`,
 	},
 } as const satisfies Record<string, ToolMetadata>
 

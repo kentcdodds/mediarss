@@ -300,7 +300,7 @@ export function createMediaWidgetResource(
 				description ?? `Media player for ${media.title}`,
 			'openai/widgetCSP': {
 				connect_domains: [hostname],
-				resource_domains: [baseUrl],
+				resource_domains: [hostname],
 			},
 		},
 		// Enable the Apps SDK adapter for ChatGPT compatibility

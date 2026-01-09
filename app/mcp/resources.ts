@@ -439,7 +439,7 @@ export async function initializeResources(
 					'Interactive media player for audio and video files',
 				'openai/widgetCSP': {
 					connect_domains: [hostname],
-					resource_domains: [baseUrl],
+					resource_domains: [hostname],
 				},
 			},
 			adapters: {

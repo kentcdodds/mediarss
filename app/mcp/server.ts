@@ -11,16 +11,6 @@ import { initializeResources } from './resources.ts'
 import { initializeTools } from './tools.ts'
 
 /**
- * Server context passed to tool/resource/prompt handlers.
- */
-export interface McpContext {
-	authInfo: AuthInfo
-	server: McpServer
-	/** Base URL of the server (for widget resources) */
-	baseUrl: string
-}
-
-/**
  * Create a new MCP server instance.
  */
 export function createMcpServer(): McpServer {

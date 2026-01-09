@@ -754,9 +754,15 @@ export async function initializeTools(
 					},
 				}
 
+				// Include both text and the UIResource for ChatGPT/MCP-UI clients
+				// The UIResource from @mcp-ui/server is designed to be included directly
+				// in tool content arrays per the MCP-UI spec
 				return {
-					// Include both text and the UIResource for ChatGPT/MCP-UI clients
-					content: [{ type: 'text', text: lines.join('\n') }, uiResource],
+					content: [
+						{ type: 'text', text: lines.join('\n') },
+						uiResource,
+						// biome-ignore lint/suspicious/noExplicitAny: UIResource type from @mcp-ui/server is compatible at runtime but TypeScript can't verify cross-package type compatibility
+					] as any,
 					structuredContent,
 				}
 			},

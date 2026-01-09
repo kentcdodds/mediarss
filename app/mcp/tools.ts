@@ -52,7 +52,6 @@ import { toolsMetadata } from './metadata.ts'
 import {
 	createMediaWidgetResource,
 	getMediaWidgetToolMeta,
-	getMediaWidgetUri,
 	type MediaWidgetData,
 } from './widgets.ts'
 
@@ -748,13 +747,6 @@ export async function initializeTools(
 					}
 				}
 
-				// Generate the legacy widget URI (for backwards compatibility)
-				const widgetUri = getMediaWidgetUri(
-					token,
-					parsed.rootName,
-					parsed.relativePath,
-				)
-
 				// Build token-based URLs for media streaming
 				const encodedPath = encodeRelativePath(
 					`${parsed.rootName}/${parsed.relativePath}`,
@@ -809,7 +801,6 @@ export async function initializeTools(
 
 				// Structured content for programmatic access
 				const structuredContent = {
-					widgetUri,
 					metadata: {
 						title: metadata.title,
 						author: metadata.author,

@@ -10,7 +10,6 @@
 
 import { createUIResource, type UIResource } from '@mcp-ui/server'
 import { html } from '@remix-run/html-template'
-import { encodeRelativePath } from '#app/helpers/feed-access.ts'
 
 /**
  * Media data structure for the widget.
@@ -191,44 +190,6 @@ const WIDGET_VERSION = 'v1'
  */
 export function getMediaWidgetUIUri(): `ui://${string}` {
 	return `ui://widget/media-player-${WIDGET_VERSION}.html`
-}
-
-/**
- * Generate the legacy MCP resource URI for a media widget.
- * This is used for backwards compatibility with existing code.
- */
-export function getMediaWidgetUri(
-	token: string,
-	rootName: string,
-	relativePath: string,
-): string {
-	const encodedPath = encodeRelativePath(relativePath)
-	return `media://widget/media/${encodeURIComponent(token)}/${encodeURIComponent(rootName)}/${encodedPath}`
-}
-
-/**
- * Parse a media widget URI to extract token, rootName and relativePath
- */
-export function parseMediaWidgetUri(
-	uri: string,
-): { token: string; rootName: string; relativePath: string } | null {
-	const match = uri.match(/^media:\/\/widget\/media\/([^/]+)\/([^/]+)\/(.+)$/)
-	if (!match) return null
-
-	try {
-		return {
-			token: decodeURIComponent(match[1]!),
-			rootName: decodeURIComponent(match[2]!),
-			// Decode each segment individually to preserve slashes within segments
-			relativePath: match[3]!
-				.split('/')
-				.map((segment) => decodeURIComponent(segment))
-				.join('/'),
-		}
-	} catch {
-		// Return null for malformed percent-encoded sequences
-		return null
-	}
 }
 
 /**

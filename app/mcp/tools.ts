@@ -1228,6 +1228,8 @@ export async function initializeTools(
 						.describe('Path to the media file within the root'),
 					position: z
 						.number()
+						.int()
+						.nonnegative()
 						.optional()
 						.describe('Position in the feed (0-indexed, appended if omitted)'),
 				},
@@ -1281,26 +1283,19 @@ export async function initializeTools(
 					}
 				}
 
-				// Validate path to prevent directory traversal
-				const { resolve, sep } = await import('node:path')
+				// Validate path to prevent directory traversal (including symlink escape)
+				const { resolve, sep, relative } = await import('node:path')
 				const basePath = resolve(mr.path)
 				const fullPath = resolve(basePath, relativePath)
 
-				if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
-					return {
-						content: [
-							{
-								type: 'text',
-								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
-							},
-						],
-						isError: true,
-					}
-				}
-
-				// Check if file exists
-				const fs = await import('node:fs')
-				if (!fs.existsSync(fullPath)) {
+				// Use async fs APIs and realpath to resolve symlinks
+				const fs = await import('node:fs/promises')
+				let realBasePath: string
+				let realFullPath: string
+				try {
+					realBasePath = await fs.realpath(basePath)
+					realFullPath = await fs.realpath(fullPath)
+				} catch {
 					return {
 						content: [
 							{
@@ -1312,7 +1307,24 @@ export async function initializeTools(
 					}
 				}
 
-				const stat = fs.statSync(fullPath)
+				// Check containment using real paths to prevent symlink escape
+				if (
+					realFullPath !== realBasePath &&
+					!realFullPath.startsWith(realBasePath + sep)
+				) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
+							},
+						],
+						isError: true,
+					}
+				}
+
+				// Check if path is a file (not directory)
+				const stat = await fs.stat(realFullPath)
 				if (!stat.isFile()) {
 					return {
 						content: [
@@ -1325,12 +1337,15 @@ export async function initializeTools(
 					}
 				}
 
+				// Normalize the relative path to prevent duplicates (e.g., foo//bar vs foo/bar)
+				const normalizedRelativePath = relative(realBasePath, realFullPath)
+
 				try {
-					// Add the item to the feed
+					// Add the item to the feed with normalized path
 					const feedItem = addItemToFeed(
 						feedId,
 						mediaRoot,
-						relativePath,
+						normalizedRelativePath,
 						position,
 					)
 
@@ -1339,7 +1354,7 @@ export async function initializeTools(
 					lines.push(`✅ Media added to feed successfully!`)
 					lines.push('')
 					lines.push(`## Added Item`)
-					lines.push(`- **Path**: ${mediaRoot}:${relativePath}`)
+					lines.push(`- **Path**: ${mediaRoot}:${normalizedRelativePath}`)
 					lines.push(
 						`- **Position**: ${feedItem.position !== null ? feedItem.position : 'auto'}`,
 					)

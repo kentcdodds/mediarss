@@ -27,11 +27,32 @@ export const serverMetadata = {
 ## Quick Start
 
 1. **Discover your library**: Call \`list_media_directories\` first to see available media roots.
-2. **Browse content**: Use \`browse_media\` to explore directories and find content.
-3. **List feeds**: Use \`list_feeds\` to see existing podcast/media feeds.
-4. **Create feeds**: Use \`create_directory_feed\` or \`create_curated_feed\` to create new feeds.
-5. **Share feeds**: Use \`get_feed_tokens\` to get RSS feed URLs for podcast apps.
-6. **Play media**: Use \`get_media_widget\` to get an interactive media player widget.
+2. **Search for content**: Use \`search_media\` to find specific files by title, author, etc.
+3. **Browse content**: Use \`browse_media\` to explore directories and find content.
+4. **List feeds**: Use \`list_feeds\` to see existing podcast/media feeds.
+5. **Create feeds**: Use \`create_directory_feed\` or \`create_curated_feed\` to create new feeds.
+6. **Share feeds**: Use \`get_feed_tokens\` to get RSS feed URLs for podcast apps.
+7. **Play media**: Use \`get_media_widget\` to get an interactive media player widget.
+
+## Searching Media
+
+The \`search_media\` tool uses fuzzy string matching (match-sorter), NOT natural language or semantic search.
+
+**How it works:**
+- Matches words in any order: "mistborn sanderson" matches "Brandon Sanderson - Mistborn"
+- Case insensitive matching
+- Matches partial words: "mist" matches "Mistborn"
+- Searches across: title, author, album, series, filename, narrators, genres, description
+
+**Good queries:**
+- Exact terms: "Mistborn", "Brandon Sanderson"
+- Partial words: "storm" for "Stormlight"
+- Combined terms: "sanderson stormlight"
+- File extensions: ".m4b", ".mp3"
+
+**Not supported:**
+- Natural language: "find fantasy audiobooks" won't work
+- Semantic meaning: "books about magic" won't find fantasy books
 
 ## Feed Types
 
@@ -325,6 +346,61 @@ Examples:
 - { feedId: "abc123", mediaRoot: "audio", relativePath: "audiobook.m4b", position: 0 }
 
 Next: Use \`get_feed\` to see the updated feed contents.`,
+	},
+
+	search_media: {
+		name: 'search_media',
+		title: 'Search Media',
+		description: `Search for media files using fuzzy string matching.
+
+**Important**: This is NOT a natural language or semantic search. It uses match-sorter for fuzzy string matching against media metadata fields. The search query is matched against text fields like title, author, filename, etc.
+
+Inputs:
+- query: string (required) — The search query to match against media metadata
+- limit: number (optional) — Maximum results to return (default: 20, max: 100)
+
+Returns: {
+  query,
+  results: [{
+    mediaRoot,
+    relativePath,
+    title,
+    author,
+    duration,
+    mimeType,
+    album,
+    series,
+    ...
+  }],
+  total,
+  truncated
+}
+
+Searchable fields (in priority order):
+1. title — Media title from metadata
+2. author — Author/artist name
+3. album — Album name
+4. series — Series name
+5. filename — Original filename
+6. narrators — Narrator names (for audiobooks)
+7. genres — Genre tags
+8. description — Media description
+9. composer, publisher, albumArtist
+
+How match-sorter works:
+- Matches words in any order: "mistborn sanderson" matches "Brandon Sanderson - Mistborn"
+- Case insensitive: "MISTBORN" matches "Mistborn"
+- Matches acronyms: "bfab" matches "Brandon (F)andoms (A)re (B)est"
+- Matches partial words: "mist" matches "Mistborn"
+- Ranks by match quality: exact matches > word starts > contains
+
+Examples:
+- { query: "mistborn" } — Find files with "mistborn" in title, author, etc.
+- { query: "sanderson stormlight" } — Find Stormlight Archive by Brandon Sanderson
+- { query: "narrated by kramer" } — Find audiobooks narrated by Michael Kramer
+- { query: ".m4b" } — Find all M4B audiobook files
+
+Next: Use results with \`add_media_to_curated_feed\` or \`get_media_widget\`.`,
 	},
 } as const satisfies Record<string, ToolMetadata>
 

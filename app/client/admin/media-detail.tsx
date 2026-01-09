@@ -272,9 +272,16 @@ export function MediaDetail(this: Handle) {
 		// Extract date in YYYY-MM-DD format from ISO date string
 		let dateValue = ''
 		if (media.publicationDate) {
-			const pubDate = new Date(media.publicationDate)
-			// Format as YYYY-MM-DD for date input
-			dateValue = pubDate.toISOString().split('T')[0] || ''
+			try {
+				const pubDate = new Date(media.publicationDate)
+				// Check for invalid date before calling toISOString (which throws on invalid dates)
+				if (!Number.isNaN(pubDate.getTime())) {
+					// Format as YYYY-MM-DD for date input
+					dateValue = pubDate.toISOString().split('T')[0] || ''
+				}
+			} catch {
+				// If date parsing fails, leave dateValue empty
+			}
 		}
 		editedMetadata = {
 			title: media.title || '',

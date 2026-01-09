@@ -9,7 +9,7 @@ export type EditableMetadata = {
 	title?: string
 	author?: string // maps to "artist" tag
 	description?: string // maps to "comment" tag
-	date?: string // maps to "date" tag - supports "YYYY" or "YYYY-MM-DD" format
+	date?: string // maps to "date" tag - supports "YYYY", "YYYY-MM", or "YYYY-MM-DD" format
 	genre?: string
 	trackNumber?: number // maps to "track" tag
 	copyright?: string

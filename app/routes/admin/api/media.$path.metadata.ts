@@ -26,6 +26,19 @@ const MetadataUpdateSchema = z.object({
 		.regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, {
 			message: 'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
 		})
+		.refine(
+			(val) => {
+				const parts = val.split('-')
+				if (parts.length === 1) return true // YYYY only
+				const month = parseInt(parts[1]!, 10)
+				if (month < 1 || month > 12) return false
+				if (parts.length === 2) return true // YYYY-MM
+				const day = parseInt(parts[2]!, 10)
+				// Simple day validation (not accounting for month-specific limits)
+				return day >= 1 && day <= 31
+			},
+			{ message: 'Date contains invalid month or day values' },
+		)
 		.optional(),
 	genre: z.string().optional(),
 	trackNumber: z.number().int().min(0).optional(),

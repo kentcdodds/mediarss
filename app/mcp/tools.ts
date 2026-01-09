@@ -818,36 +818,6 @@ export async function initializeTools(
 					// Get media roots for path mapping
 					const mediaRoots = getMediaRoots()
 
-					// Use match-sorter for fuzzy search across multiple fields
-					const results = matchSorter(allMedia, query, {
-						keys: [
-							// Primary search fields (highest priority)
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'title' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'author' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'album' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'series' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'filename' },
-							// Secondary search fields
-							{
-								threshold: matchSorter.rankings.CONTAINS,
-								key: (item: MediaFile) => item.narrators?.join(' ') ?? '',
-							},
-							{
-								threshold: matchSorter.rankings.CONTAINS,
-								key: (item: MediaFile) => item.genres?.join(' ') ?? '',
-							},
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'description' },
-							// Tertiary fields
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'composer' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'publisher' },
-							{ threshold: matchSorter.rankings.CONTAINS, key: 'albumArtist' },
-						],
-					})
-
-					const totalMatches = results.length
-					const truncated = totalMatches > limit
-					const limitedResults = results.slice(0, limit)
-
 					// Helper to get relative path and media root from absolute path
 					// Sort roots by path length descending so longer (more specific) paths match first
 					const { sep: pathSep } = await import('node:path')
@@ -878,9 +848,35 @@ export async function initializeTools(
 						return null
 					}
 
-					// Pre-filter results to only include items with valid path info
-					// This ensures consistency between human-readable and structured output
-					const resultsWithPaths = limitedResults
+					// Use match-sorter for fuzzy search across multiple fields
+					const rawResults = matchSorter(allMedia, query, {
+						keys: [
+							// Primary search fields (highest priority)
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'title' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'author' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'album' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'series' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'filename' },
+							// Secondary search fields
+							{
+								threshold: matchSorter.rankings.CONTAINS,
+								key: (item: MediaFile) => item.narrators?.join(' ') ?? '',
+							},
+							{
+								threshold: matchSorter.rankings.CONTAINS,
+								key: (item: MediaFile) => item.genres?.join(' ') ?? '',
+							},
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'description' },
+							// Tertiary fields
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'composer' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'publisher' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'albumArtist' },
+						],
+					})
+
+					// Filter for valid paths BEFORE limiting to ensure consistent counts
+					// between human-readable and structured output
+					const allResultsWithPaths = rawResults
 						.map((media) => ({
 							media,
 							pathInfo: getMediaPathInfo(media.path),
@@ -893,6 +889,11 @@ export async function initializeTools(
 								pathInfo: { mediaRoot: string; relativePath: string }
 							} => item.pathInfo !== null,
 						)
+
+					// Now calculate totals and apply limit to filtered results
+					const totalMatches = allResultsWithPaths.length
+					const truncated = totalMatches > limit
+					const resultsWithPaths = allResultsWithPaths.slice(0, limit)
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -967,7 +968,7 @@ export async function initializeTools(
 						structuredContent: {
 							query,
 							results: structuredResults,
-							total: resultsWithPaths.length,
+							total: totalMatches,
 							truncated,
 						},
 					}

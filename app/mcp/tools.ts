@@ -848,8 +848,23 @@ export async function initializeTools(
 						return null
 					}
 
-					// Use match-sorter for fuzzy search across multiple fields
-					const rawResults = matchSorter(allMedia, query, {
+					// First, filter to only media with valid path info
+					// Build a map for quick path info lookup
+					const pathInfoMap = new Map<
+						string,
+						{ mediaRoot: string; relativePath: string }
+					>()
+					const validMedia = allMedia.filter((media) => {
+						const pathInfo = getMediaPathInfo(media.path)
+						if (pathInfo) {
+							pathInfoMap.set(media.path, pathInfo)
+							return true
+						}
+						return false
+					})
+
+					// Use match-sorter for fuzzy search on pre-filtered media
+					const searchResults = matchSorter(validMedia, query, {
 						keys: [
 							// Primary search fields (highest priority)
 							{ threshold: matchSorter.rankings.CONTAINS, key: 'title' },
@@ -874,26 +889,17 @@ export async function initializeTools(
 						],
 					})
 
-					// Filter for valid paths BEFORE limiting to ensure consistent counts
-					// between human-readable and structured output
-					const allResultsWithPaths = rawResults
-						.map((media) => ({
-							media,
-							pathInfo: getMediaPathInfo(media.path),
-						}))
-						.filter(
-							(
-								item,
-							): item is {
-								media: MediaFile
-								pathInfo: { mediaRoot: string; relativePath: string }
-							} => item.pathInfo !== null,
-						)
-
-					// Now calculate totals and apply limit to filtered results
-					const totalMatches = allResultsWithPaths.length
+					// Calculate totals and apply limit
+					const totalMatches = searchResults.length
 					const truncated = totalMatches > limit
-					const resultsWithPaths = allResultsWithPaths.slice(0, limit)
+					const limitedResults = searchResults.slice(0, limit)
+
+					// Build results with path info from the map
+					const resultsWithPaths = limitedResults.map((media) => ({
+						media,
+						// Safe to use ! here since we pre-filtered to only valid paths
+						pathInfo: pathInfoMap.get(media.path)!,
+					}))
 
 					// Format human-readable output
 					const lines: string[] = []

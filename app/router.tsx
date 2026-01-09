@@ -39,6 +39,16 @@ import oauthServerMetadataHandlers from '#app/routes/oauth/server-metadata.ts'
 import oauthTokenHandlers from '#app/routes/oauth/token.ts'
 
 /**
+ * CORS headers for static files.
+ * These need to be accessible cross-origin for MCP widgets embedded in external apps.
+ */
+const STATIC_CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+	'Access-Control-Allow-Headers': 'Accept, Content-Type',
+} as const
+
+/**
  * Bun-native static file middleware that uses Bun.file() for proper lazy file handling.
  *
  * See: https://github.com/remix-run/remix/issues/10872
@@ -49,6 +59,26 @@ function bunStaticFiles(
 ): Middleware {
 	const absoluteRoot = path.resolve(root)
 	return async (context, next) => {
+		// Handle CORS preflight requests
+		if (context.method === 'OPTIONS') {
+			const relativePath = context.url.pathname.replace(/^\/+/, '')
+			if (options.filter && !options.filter(relativePath)) {
+				return next()
+			}
+			const filePath = path.join(absoluteRoot, relativePath)
+			const file = Bun.file(filePath)
+			if (!(await file.exists())) {
+				return next()
+			}
+			return new Response(null, {
+				status: 204,
+				headers: {
+					...STATIC_CORS_HEADERS,
+					'Access-Control-Max-Age': '86400',
+				},
+			})
+		}
+
 		if (context.method !== 'GET' && context.method !== 'HEAD') {
 			return next()
 		}
@@ -68,6 +98,7 @@ function bunStaticFiles(
 				...(options.cacheControl
 					? { 'Cache-Control': options.cacheControl }
 					: {}),
+				...STATIC_CORS_HEADERS,
 			},
 		})
 	}

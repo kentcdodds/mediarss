@@ -65,28 +65,58 @@ function resolvePackageExport(
 	return fs.existsSync(resolvedPath) ? resolvedPath : null
 }
 
+/**
+ * CORS headers for bundled JavaScript modules.
+ * These need to be accessible cross-origin for MCP widgets embedded in external apps.
+ */
+const BUNDLING_CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+	'Access-Control-Allow-Headers': 'Accept, Content-Type',
+} as const
+
 export function createBundlingRoutes(rootDir: string) {
 	const clientDir = path.resolve(rootDir, 'app', 'client')
 
 	return {
 		'/app/client/*': async (request: Request) => {
+			// Handle CORS preflight requests
+			if (request.method === 'OPTIONS') {
+				return new Response(null, {
+					status: 204,
+					headers: {
+						...BUNDLING_CORS_HEADERS,
+						'Access-Control-Max-Age': '86400',
+					},
+				})
+			}
+
 			const url = new URL(request.url)
 			const reqPath = path.posix.normalize(url.pathname.replace(/^\/+/, ''))
 			const resolved = path.resolve(rootDir, reqPath)
 
 			// Security: only allow files within /app/client/
 			if (!resolved.startsWith(clientDir + path.sep)) {
-				return new Response('Forbidden', { status: 403 })
+				return new Response('Forbidden', {
+					status: 403,
+					headers: BUNDLING_CORS_HEADERS,
+				})
 			}
 
 			// Only allow .ts and .tsx files
 			if (!resolved.endsWith('.ts') && !resolved.endsWith('.tsx')) {
-				return new Response('Not Found', { status: 404 })
+				return new Response('Not Found', {
+					status: 404,
+					headers: BUNDLING_CORS_HEADERS,
+				})
 			}
 
 			// Check file exists
 			if (!fs.existsSync(resolved)) {
-				return new Response('Not Found', { status: 404 })
+				return new Response('Not Found', {
+					status: 404,
+					headers: BUNDLING_CORS_HEADERS,
+				})
 			}
 
 			const filepath = resolved
@@ -107,17 +137,34 @@ export function createBundlingRoutes(rootDir: string) {
 			})
 
 			return new Response(output, {
-				headers: { 'Content-Type': 'application/javascript' },
+				headers: {
+					'Content-Type': 'application/javascript',
+					...BUNDLING_CORS_HEADERS,
+				},
 			})
 		},
 
 		'/node_modules/*': async (request: Request) => {
+			// Handle CORS preflight requests
+			if (request.method === 'OPTIONS') {
+				return new Response(null, {
+					status: 204,
+					headers: {
+						...BUNDLING_CORS_HEADERS,
+						'Access-Control-Max-Age': '86400',
+					},
+				})
+			}
+
 			const url = new URL(request.url)
 			const specifier = url.pathname.replace('/node_modules/', '')
 			const filepath = resolvePackageExport(specifier, rootDir)
 
 			if (!filepath) {
-				return new Response('Package not found', { status: 404 })
+				return new Response('Package not found', {
+					status: 404,
+					headers: BUNDLING_CORS_HEADERS,
+				})
 			}
 
 			const {
@@ -138,6 +185,7 @@ export function createBundlingRoutes(rootDir: string) {
 						Bun.env.NODE_ENV === 'production'
 							? 'public, max-age=31536000, immutable'
 							: 'no-cache',
+					...BUNDLING_CORS_HEADERS,
 				},
 			})
 		},

@@ -14,15 +14,12 @@
 import type { Action } from '@remix-run/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
-import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
+import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
-import {
-	generateMediaWidgetHtml,
-	type MediaWidgetData,
-} from '#app/mcp/widgets.ts'
+import { generateMediaWidgetHtml } from '#app/mcp/widgets.ts'
 
 /**
  * GET /mcp/widget/:token/*path
@@ -84,30 +81,10 @@ export default {
 		// Determine base URL from the request (respects X-Forwarded-Proto for reverse proxies)
 		const baseUrl = getOrigin(context.request, context.url)
 
-		// Build token-based URLs for artwork and media streaming
-		const encodedPath = encodeRelativePath(`${rootName}/${relativePath}`)
-
-		// Build the widget data with token-based URLs
-		const mediaData: MediaWidgetData = {
-			title: metadata.title,
-			author: metadata.author,
-			duration: metadata.duration,
-			sizeBytes: metadata.sizeBytes,
-			mimeType: metadata.mimeType,
-			publicationDate: metadata.publicationDate?.toISOString() ?? null,
-			description: metadata.description,
-			narrators: metadata.narrators,
-			genres: metadata.genres,
-			// Use token-based public URLs, not admin URLs
-			artworkUrl: `/art/${token}/${encodedPath}`,
-			streamUrl: `/media/${token}/${encodedPath}`,
-		}
-
-		// Generate the HTML widget
-		const html = generateMediaWidgetHtml({
-			baseUrl,
-			media: mediaData,
-		})
+		// Generate the HTML widget shell
+		// Note: Media data is passed via MCP-UI initial-render-data protocol when accessed
+		// through ChatGPT. Direct browser access will show a loading state.
+		const html = generateMediaWidgetHtml({ baseUrl })
 
 		return new Response(html, {
 			headers: {

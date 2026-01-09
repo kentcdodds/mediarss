@@ -16,17 +16,13 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
-import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
+import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
-import {
-	generateMediaWidgetHtml,
-	getMediaWidgetUIUri,
-	type MediaWidgetData,
-} from './widgets.ts'
+import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
 
 type FeedWithType = (DirectoryFeed | CuratedFeed) & {
 	type: 'directory' | 'curated'
@@ -364,31 +360,10 @@ export async function initializeResources(
 				// Determine base URL from the request context, falling back to initialization baseUrl
 				const resolvedBaseUrl = getBaseUrlFromExtra(extra, baseUrl)
 
-				// Build token-based URLs
-				const encodedPath = encodeRelativePath(
-					`${parsed.rootName}/${parsed.relativePath}`,
-				)
-
-				// Build the widget data with token-based URLs
-				const mediaData: MediaWidgetData = {
-					title: metadata.title,
-					author: metadata.author,
-					duration: metadata.duration,
-					sizeBytes: metadata.sizeBytes,
-					mimeType: metadata.mimeType,
-					publicationDate: metadata.publicationDate?.toISOString() ?? null,
-					description: metadata.description,
-					narrators: metadata.narrators,
-					genres: metadata.genres,
-					// Use token-based public URLs, not admin URLs
-					artworkUrl: `/art/${token}/${encodedPath}`,
-					streamUrl: `/media/${token}/${encodedPath}`,
-				}
-
-				// Generate the HTML widget
-				const html = generateMediaWidgetHtml({
+				// Generate the HTML widget (minimal shell - data comes via MCP-UI protocol)
+				// Note: This resource is intended for MCP-UI clients that provide initial-render-data
+				const widgetHtml = generateMediaWidgetHtml({
 					baseUrl: resolvedBaseUrl,
-					media: mediaData,
 				})
 
 				return {
@@ -396,7 +371,7 @@ export async function initializeResources(
 						{
 							uri: uri.toString(),
 							mimeType: 'text/html',
-							text: html,
+							text: widgetHtml,
 						},
 					],
 				}
@@ -410,22 +385,8 @@ export async function initializeResources(
 		const cspOrigin = new URL(baseUrl).origin
 
 		// Pre-generate the placeholder HTML for the template
-		const placeholderHtml = generateMediaWidgetHtml({
-			baseUrl,
-			media: {
-				title: 'Loading...',
-				author: null,
-				duration: null,
-				sizeBytes: 0,
-				mimeType: 'audio/mpeg',
-				publicationDate: null,
-				description: null,
-				narrators: null,
-				genres: null,
-				artworkUrl: '',
-				streamUrl: '',
-			},
-		})
+		// The widget receives actual data via MCP-UI initial-render-data protocol
+		const placeholderHtml = generateMediaWidgetHtml({ baseUrl })
 
 		// Pre-create the UIResource with Apps SDK adapter enabled
 		const templateUiResource = createUIResource({

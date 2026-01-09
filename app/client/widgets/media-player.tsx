@@ -4,32 +4,43 @@
  * A self-contained media player widget that displays media information
  * and provides playback controls. Designed to work within ChatGPT's
  * MCP-UI context.
+ *
+ * Data is received via the MCP-UI initial-render-data protocol,
+ * not embedded inline in the HTML.
  */
 import { createRoot, type Handle } from '@remix-run/component'
+import { z } from 'zod'
+import { waitForRenderData } from './mcp-ui.ts'
 
 /**
- * Media data structure passed from the server
+ * Media data schema for validation
  */
-type MediaData = {
-	title: string
-	author: string | null
-	duration: number | null
-	sizeBytes: number
-	mimeType: string
-	publicationDate: string | null
-	description: string | null
-	narrators: string[] | null
-	genres: string[] | null
-	artworkUrl: string
-	streamUrl: string
-}
+const MediaDataSchema = z.object({
+	title: z.string(),
+	author: z.string().nullable(),
+	duration: z.number().nullable(),
+	sizeBytes: z.number(),
+	mimeType: z.string(),
+	publicationDate: z.string().nullable(),
+	description: z.string().nullable(),
+	narrators: z.array(z.string()).nullable(),
+	genres: z.array(z.string()).nullable(),
+	artworkUrl: z.string(),
+	streamUrl: z.string(),
+})
 
-declare global {
-	interface Window {
-		__MEDIA_DATA__?: MediaData
-		__BASE_URL__?: string
-	}
-}
+type MediaData = z.infer<typeof MediaDataSchema>
+
+/**
+ * Render data schema from MCP-UI protocol
+ * ChatGPT wraps the data in toolInput/toolOutput
+ */
+const RenderDataSchema = z
+	.object({
+		toolInput: MediaDataSchema.passthrough().nullable(),
+		toolOutput: z.object({}).passthrough().nullable(),
+	})
+	.passthrough()
 
 // Color tokens for the widget (dark theme optimized for ChatGPT context)
 const colors = {
@@ -162,30 +173,83 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Media Player Widget Component
+ * Loading state component
  */
-function MediaPlayerWidget(this: Handle) {
-	const media = window.__MEDIA_DATA__
-
-	if (!media) {
-		return () => (
+function LoadingState() {
+	return (
+		<div
+			css={{
+				fontFamily: typography.fontFamily,
+				backgroundColor: colors.background,
+				color: colors.text,
+				minHeight: '100vh',
+				display: 'flex',
+				flexDirection: 'column',
+				alignItems: 'center',
+				justifyContent: 'center',
+				padding: spacing.xl,
+			}}
+		>
 			<div
 				css={{
-					fontFamily: typography.fontFamily,
-					backgroundColor: colors.background,
-					color: colors.text,
-					padding: spacing.xl,
-					textAlign: 'center',
+					fontSize: typography.lg,
+					color: colors.textMuted,
+					marginBottom: spacing.md,
 				}}
 			>
-				<p>No media data available.</p>
+				Loading media player...
 			</div>
-		)
-	}
+		</div>
+	)
+}
 
+/**
+ * Error state component
+ */
+function ErrorState({ message }: { message: string }) {
+	return (
+		<div
+			css={{
+				fontFamily: typography.fontFamily,
+				backgroundColor: colors.background,
+				color: colors.text,
+				minHeight: '100vh',
+				display: 'flex',
+				flexDirection: 'column',
+				alignItems: 'center',
+				justifyContent: 'center',
+				padding: spacing.xl,
+				textAlign: 'center',
+			}}
+		>
+			<div
+				css={{
+					fontSize: typography.lg,
+					color: '#ef4444',
+					marginBottom: spacing.md,
+				}}
+			>
+				Error loading media
+			</div>
+			<div
+				css={{
+					fontSize: typography.sm,
+					color: colors.textMuted,
+				}}
+			>
+				{message}
+			</div>
+		</div>
+	)
+}
+
+/**
+ * Media player content component
+ */
+function MediaPlayerContent({ media }: { media: MediaData }) {
 	const isVideoFile = isVideo(media.mimeType)
 
-	return () => (
+	return (
 		<div
 			css={{
 				fontFamily: typography.fontFamily,
@@ -412,6 +476,70 @@ function MediaPlayerWidget(this: Handle) {
 	)
 }
 
+/**
+ * Media Player Widget App Component
+ *
+ * Handles the lifecycle:
+ * 1. Wait for render data via waitForRenderData (also signals readiness)
+ * 2. Display loading, error, or content based on state
+ */
+function MediaPlayerApp(this: Handle) {
+	let state: 'loading' | 'ready' | 'error' = 'loading'
+	let media: MediaData | null = null
+	let errorMessage = ''
+
+	// Request render data from parent frame
+	void waitForRenderData(RenderDataSchema)
+		.then((renderData) => {
+			console.log('[MediaPlayer] Received render data:', renderData)
+
+			// Extract media from toolInput (ChatGPT wraps data this way)
+			const mediaData = renderData.toolInput
+			if (!mediaData) {
+				state = 'error'
+				errorMessage = 'No media data received'
+				this.update()
+				return
+			}
+
+			media = mediaData
+			state = 'ready'
+			this.update()
+		})
+		.catch((err) => {
+			console.error('[MediaPlayer] Error receiving render data:', err)
+			state = 'error'
+			// Handle Error objects, strings, and other error types
+			if (err instanceof Error) {
+				errorMessage = err.message
+			} else if (typeof err === 'string') {
+				errorMessage = err
+			} else if (err && typeof err === 'object' && 'message' in err) {
+				errorMessage = String(err.message)
+			} else {
+				errorMessage = 'Unknown error'
+			}
+			this.update()
+		})
+
+	return () => {
+		if (state === 'loading') {
+			return <LoadingState />
+		}
+
+		if (state === 'error') {
+			return <ErrorState message={errorMessage} />
+		}
+
+		if (!media) {
+			return <ErrorState message="No media data available" />
+		}
+
+		return <MediaPlayerContent media={media} />
+	}
+}
+
 // Mount the widget
+// Note: waitForRenderData() in MediaPlayerApp already signals readiness to the parent frame
 const rootElement = document.getElementById('root') ?? document.body
-createRoot(rootElement).render(<MediaPlayerWidget />)
+createRoot(rootElement).render(<MediaPlayerApp />)

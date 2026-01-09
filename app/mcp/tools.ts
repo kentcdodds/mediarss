@@ -4,6 +4,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { matchSorter } from 'match-sorter'
 import { z } from 'zod'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import {
@@ -40,7 +41,11 @@ import type {
 } from '#app/db/types.ts'
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
-import { getFileMetadata } from '#app/helpers/media.ts'
+import {
+	type MediaFile,
+	getFileMetadata,
+	scanAllMediaRoots,
+} from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { toolsMetadata } from './metadata.ts'
@@ -764,6 +769,192 @@ export async function initializeTools(
 						// biome-ignore lint/suspicious/noExplicitAny: UIResource type from @mcp-ui/server is compatible at runtime but TypeScript can't verify cross-package type compatibility
 					] as any,
 					structuredContent,
+				}
+			},
+		)
+
+		// Search media files
+		server.registerTool(
+			toolsMetadata.search_media.name,
+			{
+				title: toolsMetadata.search_media.title,
+				description: toolsMetadata.search_media.description,
+				inputSchema: {
+					query: z
+						.string()
+						.describe(
+							'Search query for fuzzy string matching against media metadata',
+						),
+					limit: z
+						.number()
+						.int()
+						.min(1)
+						.max(100)
+						.optional()
+						.describe('Maximum results to return (default: 20, max: 100)'),
+				},
+				annotations: {
+					readOnlyHint: true,
+					destructiveHint: false,
+				},
+			},
+			async ({ query, limit = 20 }) => {
+				try {
+					// Scan all media roots for files
+					const allMedia = await scanAllMediaRoots()
+
+					if (allMedia.length === 0) {
+						return {
+							content: [
+								{
+									type: 'text',
+									text: '❌ No media files found.\n\nMake sure media directories are configured and contain audio/video files.\n\nNext: Use `list_media_directories` to check configuration.',
+								},
+							],
+							isError: true,
+						}
+					}
+
+					// Get media roots for path mapping
+					const mediaRoots = getMediaRoots()
+
+					// Use match-sorter for fuzzy search across multiple fields
+					const results = matchSorter(allMedia, query, {
+						keys: [
+							// Primary search fields (highest priority)
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'title' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'author' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'album' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'series' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'filename' },
+							// Secondary search fields
+							{
+								threshold: matchSorter.rankings.CONTAINS,
+								key: (item: MediaFile) => item.narrators?.join(' ') ?? '',
+							},
+							{
+								threshold: matchSorter.rankings.CONTAINS,
+								key: (item: MediaFile) => item.genres?.join(' ') ?? '',
+							},
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'description' },
+							// Tertiary fields
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'composer' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'publisher' },
+							{ threshold: matchSorter.rankings.CONTAINS, key: 'albumArtist' },
+						],
+					})
+
+					const totalMatches = results.length
+					const truncated = totalMatches > limit
+					const limitedResults = results.slice(0, limit)
+
+					// Helper to get relative path and media root from absolute path
+					const getMediaPathInfo = (
+						absolutePath: string,
+					): { mediaRoot: string; relativePath: string } | null => {
+						for (const root of mediaRoots) {
+							if (absolutePath.startsWith(root.path)) {
+								const relativePath = absolutePath
+									.slice(root.path.length)
+									.replace(/^[/\\]+/, '') // Remove leading slashes
+								return { mediaRoot: root.name, relativePath }
+							}
+						}
+						return null
+					}
+
+					// Format human-readable output
+					const lines: string[] = []
+					lines.push(`## Search Results for "${query}"`)
+					lines.push('')
+					lines.push(
+						`Found ${totalMatches} match${totalMatches === 1 ? '' : 'es'}${truncated ? ` (showing first ${limit})` : ''}`,
+					)
+					lines.push('')
+
+					if (limitedResults.length === 0) {
+						lines.push('No matches found.')
+						lines.push('')
+						lines.push(
+							'**Tips for better results:**',
+							'- Use exact words from titles, authors, or filenames',
+							'- Try partial words (e.g., "mist" for "Mistborn")',
+							'- Search by file extension (e.g., ".m4b")',
+							'- Combine terms: "sanderson stormlight"',
+						)
+					} else {
+						for (const media of limitedResults) {
+							const pathInfo = getMediaPathInfo(media.path)
+							if (!pathInfo) continue
+
+							lines.push(`### ${media.title}`)
+							if (media.author) {
+								lines.push(`**Author**: ${media.author}`)
+							}
+							if (media.album) {
+								lines.push(`**Album**: ${media.album}`)
+							}
+							if (media.series) {
+								lines.push(`**Series**: ${media.series}`)
+							}
+							if (media.narrators && media.narrators.length > 0) {
+								lines.push(`**Narrated by**: ${media.narrators.join(', ')}`)
+							}
+							lines.push(`**Duration**: ${formatDuration(media.duration)}`)
+							lines.push(`**Format**: ${media.mimeType}`)
+							lines.push(
+								`**Path**: \`${pathInfo.mediaRoot}:${pathInfo.relativePath}\``,
+							)
+							lines.push('')
+						}
+					}
+
+					if (limitedResults.length > 0) {
+						lines.push(
+							'Next: Use `add_media_to_curated_feed` to add items to a feed, or `get_media_widget` to play.',
+						)
+					}
+
+					// Build structured results
+					const structuredResults = limitedResults.map((media) => {
+						const pathInfo = getMediaPathInfo(media.path)
+						return {
+							mediaRoot: pathInfo?.mediaRoot ?? '',
+							relativePath: pathInfo?.relativePath ?? '',
+							title: media.title,
+							author: media.author,
+							album: media.album,
+							series: media.series,
+							seriesPosition: media.seriesPosition,
+							narrators: media.narrators,
+							genres: media.genres,
+							duration: media.duration,
+							sizeBytes: media.sizeBytes,
+							mimeType: media.mimeType,
+							filename: media.filename,
+						}
+					})
+
+					return {
+						content: [{ type: 'text', text: lines.join('\n') }],
+						structuredContent: {
+							query,
+							results: structuredResults,
+							total: totalMatches,
+							truncated,
+						},
+					}
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `❌ Error searching media: ${message}`,
+							},
+						],
+						isError: true,
+					}
 				}
 			},
 		)

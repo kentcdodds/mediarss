@@ -297,6 +297,29 @@ Examples:
 
 Next: Fetch the widgetUri as a resource to get the interactive HTML player widget.`,
 	},
+
+	add_media_to_curated_feed: {
+		name: 'add_media_to_curated_feed',
+		title: 'Add Media to Curated Feed',
+		description: `Add a media file to a curated feed.
+
+Inputs:
+- feedId: string (required) — The curated feed ID (from \`list_feeds\`)
+- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
+- relativePath: string (required) — Path to the media file within the root
+- position: number (optional) — Position in the feed (0-indexed, appended if omitted)
+
+Returns: { success, feedItem: { id, mediaRoot, relativePath, position, addedAt } }
+
+The media file must exist and be accessible within the media root.
+Only works with curated feeds (not directory feeds).
+
+Examples:
+- { feedId: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
+- { feedId: "abc123", mediaRoot: "audio", relativePath: "audiobook.m4b", position: 0 }
+
+Next: Use \`get_feed\` to see the updated feed contents.`,
+	},
 } as const satisfies Record<string, ToolMetadata>
 
 /**

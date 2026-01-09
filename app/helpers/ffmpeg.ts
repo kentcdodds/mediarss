@@ -9,7 +9,7 @@ export type EditableMetadata = {
 	title?: string
 	author?: string // maps to "artist" tag
 	description?: string // maps to "comment" tag
-	year?: number // maps to "date" tag
+	date?: string // maps to "date" tag - supports "YYYY", "YYYY-MM", or "YYYY-MM-DD" format
 	genre?: string
 	trackNumber?: number // maps to "track" tag
 	copyright?: string
@@ -37,7 +37,7 @@ const TAG_MAPPINGS = {
 		title: 'title',
 		author: 'artist',
 		description: 'comment',
-		year: 'date',
+		date: 'date',
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
@@ -58,7 +58,7 @@ const TAG_MAPPINGS = {
 		title: 'title',
 		author: 'artist',
 		description: 'comment',
-		year: 'date',
+		date: 'date',
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
@@ -79,7 +79,7 @@ const TAG_MAPPINGS = {
 		title: 'title',
 		author: 'artist',
 		description: 'comment',
-		year: 'date',
+		date: 'date',
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
@@ -133,8 +133,8 @@ function buildMetadataArgs(
 	if (metadata.description !== undefined) {
 		args.push('-metadata', `${mapping.description}=${metadata.description}`)
 	}
-	if (metadata.year !== undefined) {
-		args.push('-metadata', `${mapping.year}=${metadata.year}`)
+	if (metadata.date !== undefined) {
+		args.push('-metadata', `${mapping.date}=${metadata.date}`)
 	}
 	if (metadata.genre !== undefined) {
 		args.push('-metadata', `${mapping.genre}=${metadata.genre}`)

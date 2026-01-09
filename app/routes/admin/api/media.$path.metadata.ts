@@ -21,7 +21,31 @@ const MetadataUpdateSchema = z.object({
 	title: z.string().optional(),
 	author: z.string().optional(),
 	description: z.string().optional(),
-	year: z.number().int().min(1900).max(2100).optional(),
+	date: z
+		.string()
+		.regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, {
+			message: 'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
+		})
+		.refine(
+			(val) => {
+				const parts = val.split('-')
+				if (parts.length === 1) return true // YYYY only
+				const month = parseInt(parts[1]!, 10)
+				if (month < 1 || month > 12) return false
+				if (parts.length === 2) return true // YYYY-MM
+				// Validate full date using Date constructor (handles month lengths and leap years)
+				const year = parseInt(parts[0]!, 10)
+				const day = parseInt(parts[2]!, 10)
+				const testDate = new Date(year, month - 1, day)
+				return (
+					testDate.getFullYear() === year &&
+					testDate.getMonth() === month - 1 &&
+					testDate.getDate() === day
+				)
+			},
+			{ message: 'Date contains invalid month or day values' },
+		)
+		.optional(),
 	genre: z.string().optional(),
 	trackNumber: z.number().int().min(0).optional(),
 	copyright: z.string().optional(),
@@ -247,7 +271,7 @@ export default {
 				title: metadataUpdate.title,
 				author: metadataUpdate.author,
 				description: metadataUpdate.description,
-				year: metadataUpdate.year,
+				date: metadataUpdate.date,
 				genre: metadataUpdate.genre,
 				trackNumber: metadataUpdate.trackNumber,
 				copyright: metadataUpdate.copyright,

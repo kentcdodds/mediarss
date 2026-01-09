@@ -279,21 +279,22 @@ Next: Use \`get_feed_tokens\` to verify deletion or \`create_feed_token\` to iss
 		description: `Get an interactive media player widget for a specific media file.
 
 Inputs:
-- token: string (required) — A feed access token (from \`get_feed_tokens\`)
 - mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
 - relativePath: string (required) — Path to the media file within the root
+- token: string (optional) — A feed access token. If not provided, the first available token from a feed that has access to this file will be used automatically.
 
 Returns: { widgetUri, metadata: { title, author, duration, mimeType, ... } }
 
 The widgetUri can be fetched as a resource to get an HTML media player widget.
 The metadata includes all available information about the media file.
 
-Prerequisites:
-1. Get a feed token using \`get_feed_tokens\` for the feed containing the media
-2. The media file must be accessible via the token's feed
+If no token is provided and no existing feed has access to this file, you'll need to:
+1. Create a feed using \`create_directory_feed\` (this automatically creates a token)
+2. Or create a curated feed and add the media to it
 
 Examples:
-- { token: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
+- { mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
+- { mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b", token: "abc123" }
 
 Next: Fetch the widgetUri as a resource to get the interactive HTML player widget.`,
 	},

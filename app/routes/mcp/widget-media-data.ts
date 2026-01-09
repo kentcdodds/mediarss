@@ -40,9 +40,7 @@ async function findTokenForMedia(
 	relativePath: string,
 ): Promise<string | null> {
 	// Import dynamically to avoid circular dependencies
-	const { listDirectoryFeeds } = await import(
-		'#app/db/directory-feeds.ts'
-	)
+	const { listDirectoryFeeds } = await import('#app/db/directory-feeds.ts')
 	const { listActiveDirectoryFeedTokens } = await import(
 		'#app/db/directory-feed-tokens.ts'
 	)
@@ -93,10 +91,7 @@ export default {
 		try {
 			body = await context.request.json()
 		} catch {
-			return Response.json(
-				{ error: 'Invalid JSON body' },
-				{ status: 400 },
-			)
+			return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
 		}
 
 		// Validate request
@@ -113,7 +108,7 @@ export default {
 		// If no token provided, find one automatically
 		let token = providedToken
 		if (!token) {
-			token = await findTokenForMedia(mediaRoot, relativePath) ?? undefined
+			token = (await findTokenForMedia(mediaRoot, relativePath)) ?? undefined
 			if (!token) {
 				return Response.json(
 					{
@@ -140,19 +135,13 @@ export default {
 		// Parse and validate the path
 		const parsed = parseMediaPathStrict(`${mediaRoot}/${relativePath}`)
 		if (!parsed) {
-			return Response.json(
-				{ error: 'Invalid path format' },
-				{ status: 400 },
-			)
+			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}
 
 		// Get absolute path for the file
 		const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
 		if (!filePath) {
-			return Response.json(
-				{ error: 'Unknown media root' },
-				{ status: 404 },
-			)
+			return Response.json({ error: 'Unknown media root' }, { status: 404 })
 		}
 
 		// Validate file is allowed for this feed

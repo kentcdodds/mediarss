@@ -280,8 +280,8 @@ export function createMediaWidgetResource(
 	// Generate the HTML for the widget
 	const htmlString = generateMediaWidgetHtml({ baseUrl, media })
 
-	// Get the hostname for CSP
-	const hostname = new URL(baseUrl).hostname
+	// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
+	const hostname = new URL(baseUrl).origin
 
 	return createUIResource({
 		uri: getMediaWidgetUIUri(),

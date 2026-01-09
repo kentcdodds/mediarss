@@ -32,6 +32,7 @@ import feedHandlers from '#app/routes/feed.ts'
 import mcpHandlers from '#app/routes/mcp/index.ts'
 import mcpProtectedResourceHandlers from '#app/routes/mcp/oauth-protected-resource.ts'
 import mcpWidgetHandlers from '#app/routes/mcp/widget.ts'
+import mcpWidgetMediaDataHandlers from '#app/routes/mcp/widget-media-data.ts'
 import mediaHandlers from '#app/routes/media.ts'
 import oauthJwksHandlers from '#app/routes/oauth/jwks.ts'
 import oauthRegisterHandlers from '#app/routes/oauth/register.ts'
@@ -146,6 +147,7 @@ router.map(routes.oauthServerMetadata, oauthServerMetadataHandlers)
 // MCP routes (public, require OAuth token)
 router.map(routes.mcpProtectedResource, mcpProtectedResourceHandlers)
 router.map(routes.mcp, mcpHandlers)
+router.map(routes.mcpWidgetMediaData, mcpWidgetMediaDataHandlers)
 router.map(routes.mcpWidget, mcpWidgetHandlers)
 
 // Admin routes - API routes first (more specific), then catch-all

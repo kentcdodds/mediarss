@@ -13,9 +13,9 @@ import { z } from 'zod'
 import { waitForRenderData } from './mcp-ui.ts'
 
 /**
- * Media data schema for validation
+ * Full media data schema for validation (when available from initial-render-data)
  */
-const MediaDataSchema = z.object({
+const FullMediaDataSchema = z.object({
 	title: z.string(),
 	author: z.string().nullable(),
 	duration: z.number().nullable(),
@@ -29,18 +29,76 @@ const MediaDataSchema = z.object({
 	streamUrl: z.string(),
 })
 
-type MediaData = z.infer<typeof MediaDataSchema>
+/**
+ * Minimal input schema (when ChatGPT passes tool input params)
+ * This is what ChatGPT's Apps SDK puts in toolInput - the actual tool parameters
+ */
+const MinimalInputSchema = z.object({
+	mediaRoot: z.string(),
+	relativePath: z.string(),
+	token: z.string().optional(),
+})
+
+type MediaData = z.infer<typeof FullMediaDataSchema>
 
 /**
  * Render data schema from MCP-UI protocol
  * ChatGPT wraps the data in toolInput/toolOutput
+ *
+ * toolInput may contain either:
+ * 1. Full media data (from initial-render-data in MCP-UI hosts)
+ * 2. Minimal path data (from ChatGPT's Apps SDK which passes tool input params)
  */
 const RenderDataSchema = z
 	.object({
-		toolInput: MediaDataSchema.passthrough().nullable(),
-		toolOutput: z.object({}).passthrough().nullable(),
+		toolInput: z.object({}).passthrough().nullable(),
+		toolOutput: z.unknown().nullable(),
 	})
 	.passthrough()
+
+/**
+ * Check if the toolInput contains full media data or just path info
+ */
+function isFullMediaData(input: unknown): input is MediaData {
+	return FullMediaDataSchema.safeParse(input).success
+}
+
+/**
+ * Check if the toolInput contains minimal path data
+ */
+function isMinimalInput(
+	input: unknown,
+): input is z.infer<typeof MinimalInputSchema> {
+	return MinimalInputSchema.safeParse(input).success
+}
+
+/**
+ * Fetch media data from the server API using path and optional token
+ */
+async function fetchMediaData(
+	mediaRoot: string,
+	relativePath: string,
+	token?: string,
+): Promise<MediaData> {
+	const response = await fetch('/mcp/widget/media-data', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ mediaRoot, relativePath, token }),
+	})
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}))
+		const message =
+			(errorData as { error?: string }).error ||
+			`Failed to fetch media data: ${response.status}`
+		throw new Error(message)
+	}
+
+	const data = await response.json()
+	return FullMediaDataSchema.parse(data)
+}
 
 // Color tokens for the widget (dark theme optimized for ChatGPT context)
 const colors = {
@@ -175,7 +233,7 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 /**
  * Loading state component
  */
-function LoadingState() {
+function LoadingState({ message }: { message?: string }) {
 	return (
 		<div
 			css={{
@@ -197,7 +255,7 @@ function LoadingState() {
 					marginBottom: spacing.md,
 				}}
 			>
-				Loading media player...
+				{message || 'Loading media player...'}
 			</div>
 		</div>
 	)
@@ -481,27 +539,61 @@ function MediaPlayerContent({ media }: { media: MediaData }) {
  *
  * Handles the lifecycle:
  * 1. Wait for render data via waitForRenderData (also signals readiness)
- * 2. Display loading, error, or content based on state
+ * 2. If full media data is available, display it directly
+ * 3. If only path data is available (ChatGPT), fetch full data from API
+ * 4. Display loading, error, or content based on state
  */
 function MediaPlayerApp(this: Handle) {
-	let state: 'loading' | 'ready' | 'error' = 'loading'
+	let state: 'loading' | 'fetching' | 'ready' | 'error' = 'loading'
 	let media: MediaData | null = null
 	let errorMessage = ''
 
+	/**
+	 * Process render data and either use it directly or fetch from API
+	 */
+	const processRenderData = async (
+		renderData: z.infer<typeof RenderDataSchema>,
+	) => {
+		console.log('[MediaPlayer] Received render data:', renderData)
+
+		const toolInput = renderData.toolInput
+
+		// Check if we have no input at all
+		if (!toolInput) {
+			throw new Error('No media data received')
+		}
+
+		// Case 1: Full media data is available (from initial-render-data)
+		if (isFullMediaData(toolInput)) {
+			console.log('[MediaPlayer] Full media data available in toolInput')
+			return toolInput
+		}
+
+		// Case 2: Only path data is available (ChatGPT's Apps SDK)
+		if (isMinimalInput(toolInput)) {
+			console.log(
+				'[MediaPlayer] Minimal input detected, fetching from API...',
+			)
+			state = 'fetching'
+			this.update()
+
+			return await fetchMediaData(
+				toolInput.mediaRoot,
+				toolInput.relativePath,
+				toolInput.token,
+			)
+		}
+
+		// Unknown format
+		throw new Error(
+			'Invalid input format: expected media data or path parameters',
+		)
+	}
+
 	// Request render data from parent frame
 	void waitForRenderData(RenderDataSchema)
-		.then((renderData) => {
-			console.log('[MediaPlayer] Received render data:', renderData)
-
-			// Extract media from toolInput (ChatGPT wraps data this way)
-			const mediaData = renderData.toolInput
-			if (!mediaData) {
-				state = 'error'
-				errorMessage = 'No media data received'
-				this.update()
-				return
-			}
-
+		.then(processRenderData)
+		.then((mediaData) => {
 			media = mediaData
 			state = 'ready'
 			this.update()
@@ -523,8 +615,16 @@ function MediaPlayerApp(this: Handle) {
 		})
 
 	return () => {
-		if (state === 'loading') {
-			return <LoadingState />
+		if (state === 'loading' || state === 'fetching') {
+			return (
+				<LoadingState
+					message={
+						state === 'fetching'
+							? 'Fetching media information...'
+							: 'Loading media player...'
+					}
+				/>
+			)
 		}
 
 		if (state === 'error') {

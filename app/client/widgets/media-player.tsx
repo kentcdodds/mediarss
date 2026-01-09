@@ -480,9 +480,8 @@ function MediaPlayerContent({ media }: { media: MediaData }) {
  * Media Player Widget App Component
  *
  * Handles the lifecycle:
- * 1. Signal ready to parent via initMcpUi
- * 2. Wait for render data via waitForRenderData
- * 3. Display loading, error, or content based on state
+ * 1. Wait for render data via waitForRenderData (also signals readiness)
+ * 2. Display loading, error, or content based on state
  */
 function MediaPlayerApp(this: Handle) {
 	let state: 'loading' | 'ready' | 'error' = 'loading'
@@ -510,7 +509,16 @@ function MediaPlayerApp(this: Handle) {
 		.catch((err) => {
 			console.error('[MediaPlayer] Error receiving render data:', err)
 			state = 'error'
-			errorMessage = err instanceof Error ? err.message : 'Unknown error'
+			// Handle Error objects, strings, and other error types
+			if (err instanceof Error) {
+				errorMessage = err.message
+			} else if (typeof err === 'string') {
+				errorMessage = err
+			} else if (err && typeof err === 'object' && 'message' in err) {
+				errorMessage = String(err.message)
+			} else {
+				errorMessage = 'Unknown error'
+			}
 			this.update()
 		})
 

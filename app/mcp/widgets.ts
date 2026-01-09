@@ -109,18 +109,8 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 		.map((url) => `<link rel="modulepreload" href="${escapeHtmlAttr(url)}" />`)
 		.join('\n\t\t\t')
 
-	// Apply XSS escaping to import map JSON (baseUrl could contain malicious content)
+	// Apply XSS escaping to import map JSON for safe embedding in script context
 	const importmapJson = escapeJsonForScript(absoluteImportmap)
-
-	// Check if this is a localhost/development environment
-	const isLocalhost =
-		baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')
-
-	// For local development, we need a more permissive CSP since mcpjam
-	// and other MCP clients may not honor our metadata CSP settings
-	const cspContent = isLocalhost
-		? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:* https:; media-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; img-src 'self' data: blob: http://localhost:* http://127.0.0.1:* https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https:;"
-		: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; media-src 'self' data: blob: https:; img-src 'self' data: blob: https:; connect-src 'self' https:;"
 
 	return html`<!doctype html>
 		<html lang="en">
@@ -128,7 +118,6 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<meta name="color-scheme" content="light dark" />
-				<meta http-equiv="Content-Security-Policy" content="${cspContent}" />
 				<title>Media Player</title>
 				${html.raw`<script type="importmap">${importmapJson}</script>`}
 				${html.raw`${modulePreloads}`}
@@ -217,14 +206,29 @@ export interface CreateMediaWidgetResourceOptions {
 
 /**
  * Resolve relative URLs in media data to absolute URLs.
+ * Handles http://, https://, data:, blob:, and relative URLs correctly.
  */
 function resolveMediaUrls(
 	media: MediaWidgetData,
 	baseUrl: string,
 ): MediaWidgetData {
 	const resolveUrl = (url: string) => {
-		if (url.startsWith('http')) return url
-		return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
+		// Handle empty URLs
+		if (!url) return url
+
+		// Try to parse as absolute URL (handles http://, https://, data:, blob:, etc.)
+		try {
+			new URL(url)
+			return url // Already absolute
+		} catch {
+			// Relative URL - resolve against baseUrl
+			try {
+				return new URL(url, baseUrl).href
+			} catch {
+				// Fallback for malformed URLs
+				return url
+			}
+		}
 	}
 
 	return {

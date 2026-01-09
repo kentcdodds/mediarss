@@ -65,6 +65,7 @@ function sendMcpMessage(
 	type: McpMessageType,
 	payload: McpMessageTypes[McpMessageType],
 	options: MessageOptions = {},
+	timeoutMs = 30000,
 ): McpMessageReturnType<typeof options> {
 	const { schema } = options
 	const messageId = crypto.randomUUID()
@@ -80,14 +81,26 @@ function sendMcpMessage(
 			return
 		}
 
+		const timeoutId = setTimeout(() => {
+			window.removeEventListener('message', handleMessage)
+			reject(new Error(`MCP message '${type}' timed out after ${timeoutMs}ms`))
+		}, timeoutMs)
+
 		window.parent.postMessage({ type, messageId, payload }, '*')
 
 		function handleMessage(event: MessageEvent) {
-			if (event.data.type !== 'ui-message-response') return
-			if (event.data.messageId !== messageId) return
+			if (event.data?.type !== 'ui-message-response') return
+			if (event.data?.messageId !== messageId) return
+			clearTimeout(timeoutId)
 			window.removeEventListener('message', handleMessage)
 
-			const { response, error } = event.data.payload
+			// Safely access payload
+			const eventPayload = event.data?.payload
+			if (!eventPayload) {
+				return reject(new Error('Invalid response: missing payload'))
+			}
+
+			const { response, error } = eventPayload
 
 			if (error) return reject(error)
 			if (!schema) return resolve(response)
@@ -136,7 +149,15 @@ export function waitForRenderData<RenderData>(
 			clearTimeout(timeoutId)
 			window.removeEventListener('message', handleMessage)
 
-			const { renderData, error } = event.data.payload
+			// Safely access payload
+			const eventPayload = event.data?.payload
+			if (!eventPayload) {
+				return reject(
+					new Error('Invalid render data response: missing payload'),
+				)
+			}
+
+			const { renderData, error } = eventPayload
 
 			if (error) return reject(error)
 			if (!schema) return resolve(renderData)

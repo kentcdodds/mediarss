@@ -97,8 +97,12 @@ async function isInitializationRequest(request: Request): Promise<boolean> {
 /**
  * Handle DELETE requests to close a session.
  * This allows clients to gracefully terminate their session per MCP spec.
+ * Requires authentication and verifies session ownership.
  */
-async function handleDelete(sessionId: string | null): Promise<Response> {
+async function handleDelete(
+	sessionId: string | null,
+	authInfo: AuthInfo,
+): Promise<Response> {
 	if (!sessionId) {
 		return new Response(
 			JSON.stringify({
@@ -120,6 +124,26 @@ async function handleDelete(sessionId: string | null): Promise<Response> {
 	if (!session) {
 		// Session already gone - return success anyway (idempotent)
 		return new Response(null, { status: 204 })
+	}
+
+	// Verify session ownership - only the session owner can terminate it
+	const sessionOwner = getAuthExtra(session.authInfo).sub
+	const requestUser = getAuthExtra(authInfo).sub
+	if (sessionOwner !== requestUser) {
+		return new Response(
+			JSON.stringify({
+				jsonrpc: '2.0',
+				error: {
+					code: -32001,
+					message: 'Forbidden: You can only terminate your own sessions',
+				},
+				id: null,
+			}),
+			{
+				status: 403,
+				headers: { 'Content-Type': 'application/json' },
+			},
+		)
 	}
 
 	// Remove from map first to prevent concurrent access during close
@@ -155,7 +179,7 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 
 	// Handle DELETE requests for session termination (after auth check)
 	if (request.method === 'DELETE') {
-		return handleDelete(sessionId)
+		return handleDelete(sessionId, authInfo)
 	}
 
 	// Check for existing session

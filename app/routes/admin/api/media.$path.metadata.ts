@@ -12,7 +12,7 @@ import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
-import { parseMediaPath } from '#app/helpers/path-parsing.ts'
+import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
 
 /**
  * Request body schema for metadata updates.
@@ -126,11 +126,10 @@ function isMediaInDirectoryFeed(
 	feed: DirectoryFeed,
 ): boolean {
 	const paths = parseDirectoryPaths(feed)
-	const mediaPath = `${rootName}:${relativePath}`
+	const normalizedFile = `${rootName}:${normalizePath(relativePath)}`
 
 	for (const dirPath of paths) {
-		const normalizedFile = mediaPath.replace(/\\/g, '/')
-		const normalizedDir = dirPath.replace(/\\/g, '/')
+		const normalizedDir = normalizePath(dirPath)
 
 		if (
 			normalizedFile.startsWith(normalizedDir + '/') ||
@@ -154,12 +153,14 @@ function getAssignmentsForMedia(
 	const assignments: FeedAssignment[] = []
 
 	// Check curated feed assignments
+	const normalizedRelativePath = normalizePath(relativePath)
 	for (const feed of curatedFeeds) {
 		const items = getItemsForFeed(feed.id)
 		if (
 			items.some(
 				(item) =>
-					item.mediaRoot === rootName && item.relativePath === relativePath,
+					item.mediaRoot === rootName &&
+					item.relativePath === normalizedRelativePath,
 			)
 		) {
 			assignments.push({

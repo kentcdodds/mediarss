@@ -31,7 +31,11 @@ import {
 	listDirectoryFeeds,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
-import { addItemToFeed, getItemsForFeed } from '#app/db/feed-items.ts'
+import {
+	addItemToFeed,
+	getItemsForFeed,
+	removeItemFromFeed,
+} from '#app/db/feed-items.ts'
 import type {
 	CuratedFeed,
 	CuratedFeedToken,
@@ -46,7 +50,11 @@ import {
 	type MediaFile,
 	scanAllMediaRoots,
 } from '#app/helpers/media.ts'
-import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
+import {
+	createMediaKey,
+	normalizePath,
+	parseMediaPathStrict,
+} from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { toolsMetadata } from './metadata.ts'
 import {
@@ -1006,7 +1014,7 @@ export async function initializeTools(
 
 					if (resultsWithPaths.length > 0) {
 						lines.push(
-							'Next: Use `add_media_to_curated_feed` to add items to a feed, or `get_media_widget` to play.',
+							'Next: Use `add_media_to_feeds` to add items to a feed, or `get_media_widget` to play.',
 						)
 					}
 
@@ -1542,215 +1550,488 @@ export async function initializeTools(
 			},
 		)
 
-		// Add media to curated feed
+		// Add media to feeds (supports single or bulk operations)
 		server.registerTool(
-			toolsMetadata.add_media_to_curated_feed.name,
+			toolsMetadata.add_media_to_feeds.name,
 			{
-				title: toolsMetadata.add_media_to_curated_feed.title,
-				description: toolsMetadata.add_media_to_curated_feed.description,
+				title: toolsMetadata.add_media_to_feeds.title,
+				description: toolsMetadata.add_media_to_feeds.description,
 				inputSchema: {
-					feedId: z.string().describe('The curated feed ID'),
-					mediaRoot: z
-						.string()
-						.describe('Name of the media root (from `list_media_directories`)'),
-					relativePath: z
-						.string()
-						.describe('Path to the media file within the root'),
-					position: z
-						.number()
-						.int()
-						.nonnegative()
-						.optional()
-						.describe('Position in the feed (0-indexed, appended if omitted)'),
+					items: z
+						.array(
+							z.object({
+								mediaRoot: z.string().describe('Name of the media root'),
+								relativePath: z
+									.string()
+									.describe('Path to the media file within the root'),
+							}),
+						)
+						.min(1)
+						.describe('Media files to add'),
+					feedIds: z
+						.array(z.string())
+						.min(1)
+						.describe('Curated feed IDs to add the items to'),
 				},
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
 				},
 			},
-			async ({ feedId, mediaRoot, relativePath, position }) => {
-				// Check if feed exists and is a curated feed
-				const feed = getCuratedFeedById(feedId)
-				if (!feed) {
-					// Check if it's a directory feed
-					const dirFeed = getDirectoryFeedById(feedId)
-					if (dirFeed) {
-						return {
-							content: [
-								{
-									type: 'text',
-									text: `❌ Feed \`${feedId}\` is a directory feed, not a curated feed.\n\nDirectory feeds automatically include files from their configured folder. Use \`create_curated_feed\` if you need to manually manage items.`,
-								},
-							],
-							isError: true,
-						}
-					}
-					return {
-						content: [
-							{
-								type: 'text',
-								text: `❌ Feed with ID \`${feedId}\` not found.\n\nNext: Use \`list_feeds\` to see available feeds.`,
-							},
-						],
-						isError: true,
-					}
-				}
-
-				// Validate media root exists
+			async ({ items, feedIds }) => {
 				const mediaRoots = getMediaRoots()
-				const mr = mediaRoots.find((m) => m.name === mediaRoot)
-
-				if (!mr) {
-					const available = mediaRoots.map((m) => m.name).join(', ')
-					return {
-						content: [
-							{
-								type: 'text',
-								text: `❌ Media root "${mediaRoot}" not found.\n\nAvailable roots: ${available || 'none'}\n\nNext: Use \`list_media_directories\` to see available roots.`,
-							},
-						],
-						isError: true,
-					}
-				}
-
-				// Validate path to prevent directory traversal (including symlink escape)
 				const { resolve, sep, relative } = await import('node:path')
-				const basePath = resolve(mr.path)
-				const fullPath = resolve(basePath, relativePath)
-
-				// Use async fs APIs and realpath to resolve symlinks
 				const fs = await import('node:fs/promises')
 
-				// Resolve media root path first (separate error for misconfigured root)
-				let realBasePath: string
-				try {
-					realBasePath = await fs.realpath(basePath)
-				} catch {
+				// Validate all feeds first
+				const feedErrors: string[] = []
+				const validFeeds: Array<{ id: string; name: string }> = []
+
+				for (const feedId of feedIds) {
+					const feed = getCuratedFeedById(feedId)
+					if (!feed) {
+						const dirFeed = getDirectoryFeedById(feedId)
+						if (dirFeed) {
+							feedErrors.push(
+								`Feed \`${feedId}\` is a directory feed (only curated feeds supported)`,
+							)
+						} else {
+							feedErrors.push(`Feed \`${feedId}\` not found`)
+						}
+					} else {
+						validFeeds.push({ id: feed.id, name: feed.name })
+					}
+				}
+
+				if (validFeeds.length === 0) {
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `❌ Media root "${mediaRoot}" is not accessible.\n\nThe configured path may not exist or may have been unmounted.`,
+								text: `❌ No valid curated feeds found.\n\nErrors:\n${feedErrors.map((e) => `- ${e}`).join('\n')}\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
 					}
 				}
 
-				// Resolve target file path
-				let realFullPath: string
-				try {
-					realFullPath = await fs.realpath(fullPath)
-				} catch {
+				// Pre-validate all media items and normalize paths
+				type ValidatedItem = {
+					mediaRoot: string
+					relativePath: string
+					normalizedPath: string
+				}
+				type ItemError = {
+					mediaRoot: string
+					relativePath: string
+					error: string
+				}
+
+				const validatedItems: ValidatedItem[] = []
+				const itemErrors: ItemError[] = []
+
+				for (const item of items) {
+					const mr = mediaRoots.find((m) => m.name === item.mediaRoot)
+					if (!mr) {
+						itemErrors.push({
+							...item,
+							error: `Media root "${item.mediaRoot}" not found`,
+						})
+						continue
+					}
+
+					const basePath = resolve(mr.path)
+					const fullPath = resolve(basePath, item.relativePath)
+
+					// Resolve real paths to prevent symlink escape
+					let realBasePath: string
+					let realFullPath: string
+					try {
+						realBasePath = await fs.realpath(basePath)
+					} catch {
+						itemErrors.push({
+							...item,
+							error: `Media root "${item.mediaRoot}" is not accessible`,
+						})
+						continue
+					}
+
+					try {
+						realFullPath = await fs.realpath(fullPath)
+					} catch {
+						itemErrors.push({
+							...item,
+							error: 'File does not exist',
+						})
+						continue
+					}
+
+					// Check containment
+					if (
+						realFullPath !== realBasePath &&
+						!realFullPath.startsWith(realBasePath + sep)
+					) {
+						itemErrors.push({
+							...item,
+							error: 'Invalid path: directory traversal not allowed',
+						})
+						continue
+					}
+
+					// Check if file (not directory)
+					try {
+						const stat = await fs.stat(realFullPath)
+						if (!stat.isFile()) {
+							itemErrors.push({
+								...item,
+								error: 'Path is a directory, not a file',
+							})
+							continue
+						}
+					} catch {
+						itemErrors.push({
+							...item,
+							error: 'File is not accessible',
+						})
+						continue
+					}
+
+					// Normalize path using centralized utility
+					const normalizedPath = normalizePath(
+						relative(realBasePath, realFullPath),
+					)
+					validatedItems.push({
+						mediaRoot: item.mediaRoot,
+						relativePath: item.relativePath,
+						normalizedPath,
+					})
+				}
+
+				if (validatedItems.length === 0) {
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `❌ File does not exist: ${mediaRoot}:${relativePath}\n\nNext: Use \`browse_media\` to explore available files.`,
+								text: `❌ No valid media items found.\n\nErrors:\n${itemErrors.map((e) => `- ${e.mediaRoot}:${e.relativePath}: ${e.error}`).join('\n')}\n\nNext: Use \`browse_media\` or \`search_media\` to find valid media files.`,
 							},
 						],
 						isError: true,
 					}
 				}
 
-				// Check containment using real paths to prevent symlink escape
-				if (
-					realFullPath !== realBasePath &&
-					!realFullPath.startsWith(realBasePath + sep)
-				) {
-					return {
-						content: [
-							{
-								type: 'text',
-								text: '❌ Invalid path: directory traversal is not allowed.\n\nUse relative paths within the media root only.',
-							},
-						],
-						isError: true,
-					}
+				// Process each feed
+				type FeedResult = {
+					feedId: string
+					feedName: string
+					added: Array<{ mediaRoot: string; relativePath: string }>
+					skipped: Array<{
+						mediaRoot: string
+						relativePath: string
+						reason: string
+					}>
+					errors: Array<{
+						mediaRoot: string
+						relativePath: string
+						error: string
+					}>
 				}
 
-				// Check if path is a file (not directory)
-				let stat: Awaited<ReturnType<typeof fs.stat>>
-				try {
-					stat = await fs.stat(realFullPath)
-				} catch {
-					return {
-						content: [
-							{
-								type: 'text',
-								text: `❌ File is not accessible: ${mediaRoot}:${relativePath}\n\nThe file may have been deleted or you may not have permission to access it.`,
-							},
-						],
-						isError: true,
-					}
-				}
-				if (!stat.isFile()) {
-					return {
-						content: [
-							{
-								type: 'text',
-								text: `❌ Path is not a file: ${mediaRoot}:${relativePath}\n\nOnly files can be added to feeds, not directories.`,
-							},
-						],
-						isError: true,
-					}
-				}
+				const results: FeedResult[] = []
+				let totalAdded = 0
+				let totalSkipped = 0
+				let totalErrors = itemErrors.length * validFeeds.length
 
-				// Normalize the relative path to prevent duplicates (e.g., foo//bar vs foo/bar)
-				const normalizedRelativePath = relative(realBasePath, realFullPath)
+				for (const feed of validFeeds) {
+					const feedResult: FeedResult = {
+						feedId: feed.id,
+						feedName: feed.name,
+						added: [],
+						skipped: [],
+						errors: [],
+					}
 
-				try {
-					// Add the item to the feed with normalized path
-					const feedItem = addItemToFeed(
-						feedId,
-						mediaRoot,
-						normalizedRelativePath,
-						position,
+					// Get existing items to check for duplicates (normalize for consistent comparison)
+					const existingItems = getItemsForFeed(feed.id)
+					const existingSet = new Set(
+						existingItems.map((i) =>
+							createMediaKey(i.mediaRoot, i.relativePath),
+						),
 					)
 
-					// Format human-readable output
-					const lines: string[] = []
-					lines.push(`✅ Media added to feed successfully!`)
-					lines.push('')
-					lines.push(`## Added Item`)
-					lines.push(`- **Path**: ${mediaRoot}:${normalizedRelativePath}`)
+					for (const item of validatedItems) {
+						const itemKey = createMediaKey(item.mediaRoot, item.normalizedPath)
+
+						if (existingSet.has(itemKey)) {
+							feedResult.skipped.push({
+								mediaRoot: item.mediaRoot,
+								relativePath: item.normalizedPath,
+								reason: 'Already in feed',
+							})
+							totalSkipped++
+							continue
+						}
+
+						try {
+							addItemToFeed(feed.id, item.mediaRoot, item.normalizedPath)
+							feedResult.added.push({
+								mediaRoot: item.mediaRoot,
+								relativePath: item.normalizedPath,
+							})
+							totalAdded++
+							// Add to set to prevent duplicates within same batch
+							existingSet.add(itemKey)
+						} catch (error) {
+							const message =
+								error instanceof Error ? error.message : String(error)
+							feedResult.errors.push({
+								mediaRoot: item.mediaRoot,
+								relativePath: item.normalizedPath,
+								error: message,
+							})
+							totalErrors++
+						}
+					}
+
+					// Add item validation errors to each feed result
+					for (const err of itemErrors) {
+						feedResult.errors.push(err)
+					}
+
+					results.push(feedResult)
+				}
+
+				// Format human-readable output
+				const lines: string[] = []
+				const noErrors = totalErrors === 0 && feedErrors.length === 0
+				const didChange = totalAdded > 0
+				const isNoOp = !didChange && totalSkipped > 0 && noErrors
+
+				if (noErrors && didChange) {
+					lines.push(`✅ Add completed successfully!`)
+				} else if (isNoOp) {
 					lines.push(
-						`- **Position**: ${feedItem.position !== null ? feedItem.position : 'auto'}`,
+						`✅ Add completed (no changes needed - items already in feeds).`,
 					)
-					lines.push(`- **Added**: ${formatDate(feedItem.addedAt)}`)
-					lines.push('')
-					lines.push(
-						`Next: Use \`get_feed\` to see all items in "${feed.name}".`,
-					)
+				} else if (didChange) {
+					lines.push(`⚠️ Add completed with some issues.`)
+				} else {
+					lines.push(`❌ Add failed.`)
+				}
 
-					return {
-						content: [{ type: 'text', text: lines.join('\n') }],
-						structuredContent: {
-							success: true,
-							feedItem: {
-								id: feedItem.id,
-								mediaRoot: feedItem.mediaRoot,
-								relativePath: feedItem.relativePath,
-								position: feedItem.position,
-								addedAt: feedItem.addedAt,
-							},
-							feed: {
-								id: feed.id,
-								name: feed.name,
-							},
+				lines.push('')
+				lines.push(`## Summary`)
+				lines.push(`- **Feeds processed**: ${validFeeds.length}`)
+				lines.push(`- **Items per feed**: ${items.length}`)
+				lines.push(`- **Total added**: ${totalAdded}`)
+				if (totalSkipped > 0) {
+					lines.push(`- **Skipped (duplicates)**: ${totalSkipped}`)
+				}
+				if (totalErrors > 0) {
+					lines.push(`- **Errors**: ${totalErrors}`)
+				}
+
+				if (feedErrors.length > 0) {
+					lines.push('')
+					lines.push(`### Feed Errors`)
+					for (const err of feedErrors) {
+						lines.push(`- ${err}`)
+					}
+				}
+
+				lines.push('')
+				lines.push(`### Results by Feed`)
+				for (const result of results) {
+					lines.push(
+						`- **${result.feedName}**: ${result.added.length} added, ${result.skipped.length} skipped, ${result.errors.length} errors`,
+					)
+				}
+
+				lines.push('')
+				lines.push('Next: Use `get_feed` to verify the feeds were updated.')
+
+				return {
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						success: noErrors || isNoOp,
+						feedErrors,
+						itemErrors,
+						results,
+						summary: {
+							totalFeeds: validFeeds.length,
+							totalItems: items.length,
+							totalAdded,
+							totalSkipped,
+							totalErrors,
 						},
+					},
+				}
+			},
+		)
+
+		// Remove media from feeds (supports single or bulk operations)
+		server.registerTool(
+			toolsMetadata.remove_media_from_feeds.name,
+			{
+				title: toolsMetadata.remove_media_from_feeds.title,
+				description: toolsMetadata.remove_media_from_feeds.description,
+				inputSchema: {
+					items: z
+						.array(
+							z.object({
+								mediaRoot: z.string().describe('Name of the media root'),
+								relativePath: z
+									.string()
+									.describe('Path to the media file within the root'),
+							}),
+						)
+						.min(1)
+						.describe('Media files to remove'),
+					feedIds: z
+						.array(z.string())
+						.min(1)
+						.describe('Curated feed IDs to remove the items from'),
+				},
+				annotations: {
+					readOnlyHint: false,
+					destructiveHint: true,
+				},
+			},
+			async ({ items, feedIds }) => {
+				// Validate all feeds first
+				const feedErrors: string[] = []
+				const validFeeds: Array<{ id: string; name: string }> = []
+
+				for (const feedId of feedIds) {
+					const feed = getCuratedFeedById(feedId)
+					if (!feed) {
+						const dirFeed = getDirectoryFeedById(feedId)
+						if (dirFeed) {
+							feedErrors.push(
+								`Feed \`${feedId}\` is a directory feed (only curated feeds supported)`,
+							)
+						} else {
+							feedErrors.push(`Feed \`${feedId}\` not found`)
+						}
+					} else {
+						validFeeds.push({ id: feed.id, name: feed.name })
 					}
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error)
+				}
+
+				if (validFeeds.length === 0) {
 					return {
 						content: [
 							{
 								type: 'text',
-								text: `❌ Error adding media to feed: ${message}`,
+								text: `❌ No valid curated feeds found.\n\nErrors:\n${feedErrors.map((e) => `- ${e}`).join('\n')}\n\nNext: Use \`list_feeds\` to see available feeds.`,
 							},
 						],
 						isError: true,
 					}
+				}
+
+				// Process each feed
+				type FeedResult = {
+					feedId: string
+					feedName: string
+					removed: Array<{ mediaRoot: string; relativePath: string }>
+					notFound: Array<{ mediaRoot: string; relativePath: string }>
+				}
+
+				const results: FeedResult[] = []
+				let totalRemoved = 0
+				let totalNotFound = 0
+
+				for (const feed of validFeeds) {
+					const feedResult: FeedResult = {
+						feedId: feed.id,
+						feedName: feed.name,
+						removed: [],
+						notFound: [],
+					}
+
+					for (const item of items) {
+						// Normalize path for consistent matching with stored paths
+						const normalizedPath = normalizePath(item.relativePath)
+						const removed = removeItemFromFeed(
+							feed.id,
+							item.mediaRoot,
+							normalizedPath,
+						)
+
+						if (removed) {
+							feedResult.removed.push({
+								mediaRoot: item.mediaRoot,
+								relativePath: normalizedPath,
+							})
+							totalRemoved++
+						} else {
+							feedResult.notFound.push({
+								mediaRoot: item.mediaRoot,
+								relativePath: normalizedPath,
+							})
+							totalNotFound++
+						}
+					}
+
+					results.push(feedResult)
+				}
+
+				// Format human-readable output
+				const lines: string[] = []
+
+				if (totalRemoved > 0 && totalNotFound === 0) {
+					lines.push(`✅ Bulk remove completed successfully!`)
+				} else if (totalRemoved > 0) {
+					lines.push(`⚠️ Bulk remove completed. Some items were not found.`)
+				} else {
+					lines.push(
+						`❌ No items were removed. None of the items were found in the specified feeds.`,
+					)
+				}
+
+				lines.push('')
+				lines.push(`## Summary`)
+				lines.push(`- **Feeds processed**: ${validFeeds.length}`)
+				lines.push(`- **Items per feed**: ${items.length}`)
+				lines.push(`- **Total removed**: ${totalRemoved}`)
+				if (totalNotFound > 0) {
+					lines.push(`- **Not found**: ${totalNotFound}`)
+				}
+
+				if (feedErrors.length > 0) {
+					lines.push('')
+					lines.push(`### Feed Errors`)
+					for (const err of feedErrors) {
+						lines.push(`- ${err}`)
+					}
+				}
+
+				lines.push('')
+				lines.push(`### Results by Feed`)
+				for (const result of results) {
+					lines.push(
+						`- **${result.feedName}**: ${result.removed.length} removed, ${result.notFound.length} not found`,
+					)
+				}
+
+				lines.push('')
+				lines.push('Next: Use `get_feed` to verify the feeds were updated.')
+
+				return {
+					content: [{ type: 'text', text: lines.join('\n') }],
+					structuredContent: {
+						success:
+							totalRemoved > 0 ||
+							(totalNotFound === 0 && feedErrors.length === 0),
+						feedErrors,
+						results,
+						summary: {
+							totalFeeds: validFeeds.length,
+							totalItems: items.length,
+							totalRemoved,
+							totalNotFound,
+						},
+					},
 				}
 			},
 		)

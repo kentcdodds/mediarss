@@ -95,12 +95,14 @@ function getAssignmentsForMedia(
 	const assignments: FeedAssignment[] = []
 
 	// Check curated feed assignments
+	const normalizedRelativePath = normalizePath(relativePath)
 	for (const feed of curatedFeeds) {
 		const items = getItemsForFeed(feed.id)
 		if (
 			items.some(
 				(item) =>
-					item.mediaRoot === rootName && item.relativePath === relativePath,
+					item.mediaRoot === rootName &&
+					item.relativePath === normalizedRelativePath,
 			)
 		) {
 			assignments.push({

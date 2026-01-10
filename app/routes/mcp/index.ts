@@ -122,12 +122,14 @@ async function handleDelete(sessionId: string | null): Promise<Response> {
 		return new Response(null, { status: 204 })
 	}
 
+	// Remove from map first to prevent concurrent access during close
+	sessions.delete(sessionId)
+
 	try {
 		await session.transport.close()
 	} catch (err) {
 		console.error(`[MCP] Error closing session ${sessionId}:`, err)
 	}
-	sessions.delete(sessionId)
 
 	console.log(`[MCP] Session ${sessionId} closed by client request`)
 	return new Response(null, { status: 204 })
@@ -141,12 +143,7 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 	const issuer = getOrigin(request, context.url)
 	const sessionId = request.headers.get('mcp-session-id')
 
-	// Handle DELETE requests for session termination
-	if (request.method === 'DELETE') {
-		return handleDelete(sessionId)
-	}
-
-	// Validate authentication
+	// Validate authentication first - required for all MCP operations per spec
 	const authInfo = await resolveAuthInfo(
 		request.headers.get('authorization'),
 		issuer,
@@ -154,6 +151,11 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 
 	if (!authInfo) {
 		return handleUnauthorized(request)
+	}
+
+	// Handle DELETE requests for session termination (after auth check)
+	if (request.method === 'DELETE') {
+		return handleDelete(sessionId)
 	}
 
 	// Check for existing session

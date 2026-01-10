@@ -3,7 +3,6 @@ import '#app/config/init-env.ts'
 
 import getPort from 'get-port'
 import { getEnv } from '#app/config/env.ts'
-import { initBundleVersion } from '#app/helpers/bundle-version.ts'
 import { warmMediaCache } from '#app/helpers/media.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
@@ -24,9 +23,6 @@ ensureDefaultClient()
 // Initialize OAuth signing key at startup to prevent race conditions
 // when multiple concurrent requests arrive before any key exists
 await ensureSigningKey()
-
-// Initialize bundle version for cache busting
-await initBundleVersion()
 
 function startServer(port: number) {
 	return Bun.serve({

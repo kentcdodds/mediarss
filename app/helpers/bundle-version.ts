@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import fs from 'node:fs'
 import path from 'node:path'
 
 /**
@@ -12,28 +13,23 @@ import path from 'node:path'
  * - The app version is bumped (new release)
  * - Dependencies are updated (lock file changes)
  *
- * The version is computed once at startup and cached.
+ * The version is computed once at module load time and cached.
  */
-
-let cachedVersion: string | null = null
-
-async function computeVersion(): Promise<string> {
+function computeVersion(): string {
 	const rootDir = path.resolve(import.meta.dir, '..', '..')
 
 	// Get app version from package.json
 	const packageJsonPath = path.join(rootDir, 'package.json')
-	const packageJsonText = await Bun.file(packageJsonPath).text()
-	const packageJson = JSON.parse(packageJsonText)
+	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
 	const appVersion = packageJson.version || '0.0.0'
 
 	// Get hash of lock file (captures dependency changes)
 	const lockFilePath = path.join(rootDir, 'bun.lock')
 	let lockHash = 'nolockfile'
-	const lockFile = Bun.file(lockFilePath)
-	if (await lockFile.exists()) {
-		const lockContent = await lockFile.arrayBuffer()
+	if (fs.existsSync(lockFilePath)) {
+		const lockContent = fs.readFileSync(lockFilePath)
 		lockHash = createHash('sha256')
-			.update(new Uint8Array(lockContent))
+			.update(lockContent)
 			.digest('hex')
 			.slice(0, 8)
 	}
@@ -44,27 +40,14 @@ async function computeVersion(): Promise<string> {
 	return `v${appVersion}-${lockHash}`
 }
 
-/**
- * Initialize the bundle version at startup.
- * This must be called before any calls to getBundleVersion().
- */
-export async function initBundleVersion(): Promise<void> {
-	if (cachedVersion === null) {
-		cachedVersion = await computeVersion()
-	}
-}
+// Compute version at module load time (startup)
+const cachedVersion = computeVersion()
 
 /**
  * Get the bundle version string for cache busting.
- * This value is computed once at startup and cached.
- * initBundleVersion() must be called before using this function.
+ * This value is computed once at module load time and cached.
  */
 export function getBundleVersion(): string {
-	if (cachedVersion === null) {
-		throw new Error(
-			'Bundle version not initialized. Call initBundleVersion() at startup.',
-		)
-	}
 	return cachedVersion
 }
 

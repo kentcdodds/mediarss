@@ -13,11 +13,8 @@ import path from 'node:path'
  * - The app version is bumped (new release)
  * - Dependencies are updated (lock file changes)
  *
- * The version is computed once at startup and cached.
+ * The version is computed once at module load time and cached.
  */
-
-let cachedVersion: string | null = null
-
 function computeVersion(): string {
 	const rootDir = path.resolve(import.meta.dir, '..', '..')
 
@@ -43,27 +40,30 @@ function computeVersion(): string {
 	return `v${appVersion}-${lockHash}`
 }
 
+// Compute version at module load time (startup)
+const cachedVersion = computeVersion()
+
 /**
  * Get the bundle version string for cache busting.
- * This value is computed once at startup and cached.
+ * This value is computed once at module load time and cached.
  */
 export function getBundleVersion(): string {
-	if (cachedVersion === null) {
-		cachedVersion = computeVersion()
-	}
 	return cachedVersion
 }
 
 /**
  * Append the bundle version as a query parameter to a URL path.
+ * Uses URL and URLSearchParams for proper encoding and fragment handling.
  *
- * @param urlPath - The URL path (e.g., '/app/client/entry.tsx')
+ * @param urlPath - The URL path (e.g., '/app/client/entry.tsx' or '/page#section')
  * @returns The URL with version query param (e.g., '/app/client/entry.tsx?v=v1.8.1-a3b2c1d4')
  */
 export function versionedUrl(urlPath: string): string {
-	const version = getBundleVersion()
-	const separator = urlPath.includes('?') ? '&' : '?'
-	return `${urlPath}${separator}v=${version}`
+	// Use a dummy base to parse relative paths
+	const url = new URL(urlPath, 'http://localhost')
+	url.searchParams.set('v', getBundleVersion())
+	// Return just the path + search + hash (without the dummy origin)
+	return url.pathname + url.search + url.hash
 }
 
 /**

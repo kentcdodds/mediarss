@@ -50,7 +50,11 @@ import {
 	type MediaFile,
 	scanAllMediaRoots,
 } from '#app/helpers/media.ts'
-import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
+import {
+	createMediaKey,
+	normalizePath,
+	parseMediaPathStrict,
+} from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { toolsMetadata } from './metadata.ts'
 import {
@@ -1010,7 +1014,7 @@ export async function initializeTools(
 
 					if (resultsWithPaths.length > 0) {
 						lines.push(
-							'Next: Use `add_media_to_curated_feed` to add items to a feed, or `get_media_widget` to play.',
+							'Next: Use `add_media_to_feeds` to add items to a feed, or `get_media_widget` to play.',
 						)
 					}
 
@@ -1692,8 +1696,10 @@ export async function initializeTools(
 						continue
 					}
 
-					// Normalize path
-					const normalizedPath = relative(realBasePath, realFullPath)
+					// Normalize path using centralized utility
+					const normalizedPath = normalizePath(
+						relative(realBasePath, realFullPath),
+					)
 					validatedItems.push({
 						mediaRoot: item.mediaRoot,
 						relativePath: item.relativePath,
@@ -1744,19 +1750,21 @@ export async function initializeTools(
 						errors: [],
 					}
 
-					// Get existing items to check for duplicates
+					// Get existing items to check for duplicates (normalize for consistent comparison)
 					const existingItems = getItemsForFeed(feed.id)
 					const existingSet = new Set(
-						existingItems.map((i) => `${i.mediaRoot}:${i.relativePath}`),
+						existingItems.map((i) =>
+							createMediaKey(i.mediaRoot, i.relativePath),
+						),
 					)
 
 					for (const item of validatedItems) {
-						const itemKey = `${item.mediaRoot}:${item.normalizedPath}`
+						const itemKey = createMediaKey(item.mediaRoot, item.normalizedPath)
 
 						if (existingSet.has(itemKey)) {
 							feedResult.skipped.push({
 								mediaRoot: item.mediaRoot,
-								relativePath: item.relativePath,
+								relativePath: item.normalizedPath,
 								reason: 'Already in feed',
 							})
 							totalSkipped++
@@ -1777,7 +1785,7 @@ export async function initializeTools(
 								error instanceof Error ? error.message : String(error)
 							feedResult.errors.push({
 								mediaRoot: item.mediaRoot,
-								relativePath: item.relativePath,
+								relativePath: item.normalizedPath,
 								error: message,
 							})
 							totalErrors++
@@ -1794,14 +1802,20 @@ export async function initializeTools(
 
 				// Format human-readable output
 				const lines: string[] = []
-				const allSuccess = totalErrors === 0
+				const noErrors = totalErrors === 0 && feedErrors.length === 0
+				const didChange = totalAdded > 0
+				const isNoOp = !didChange && totalSkipped > 0 && noErrors
 
-				if (allSuccess && totalSkipped === 0) {
-					lines.push(`✅ Bulk add completed successfully!`)
-				} else if (totalAdded > 0) {
-					lines.push(`⚠️ Bulk add completed with some issues.`)
+				if (noErrors && didChange) {
+					lines.push(`✅ Add completed successfully!`)
+				} else if (isNoOp) {
+					lines.push(
+						`✅ Add completed (no changes needed - items already in feeds).`,
+					)
+				} else if (didChange) {
+					lines.push(`⚠️ Add completed with some issues.`)
 				} else {
-					lines.push(`❌ Bulk add failed.`)
+					lines.push(`❌ Add failed.`)
 				}
 
 				lines.push('')
@@ -1838,7 +1852,9 @@ export async function initializeTools(
 				return {
 					content: [{ type: 'text', text: lines.join('\n') }],
 					structuredContent: {
-						success: totalAdded > 0,
+						success: noErrors || isNoOp,
+						feedErrors,
+						itemErrors,
 						results,
 						summary: {
 							totalFeeds: validFeeds.length,
@@ -1934,22 +1950,24 @@ export async function initializeTools(
 					}
 
 					for (const item of items) {
+						// Normalize path for consistent matching with stored paths
+						const normalizedPath = normalizePath(item.relativePath)
 						const removed = removeItemFromFeed(
 							feed.id,
 							item.mediaRoot,
-							item.relativePath,
+							normalizedPath,
 						)
 
 						if (removed) {
 							feedResult.removed.push({
 								mediaRoot: item.mediaRoot,
-								relativePath: item.relativePath,
+								relativePath: normalizedPath,
 							})
 							totalRemoved++
 						} else {
 							feedResult.notFound.push({
 								mediaRoot: item.mediaRoot,
-								relativePath: item.relativePath,
+								relativePath: normalizedPath,
 							})
 							totalNotFound++
 						}
@@ -2002,7 +2020,10 @@ export async function initializeTools(
 				return {
 					content: [{ type: 'text', text: lines.join('\n') }],
 					structuredContent: {
-						success: totalRemoved > 0,
+						success:
+							totalRemoved > 0 ||
+							(totalNotFound === 0 && feedErrors.length === 0),
+						feedErrors,
 						results,
 						summary: {
 							totalFeeds: validFeeds.length,

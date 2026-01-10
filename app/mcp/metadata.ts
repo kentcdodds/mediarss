@@ -214,14 +214,14 @@ Inputs:
 
 Returns: { success, feed: { id, name, description }, token }
 
-Curated feeds start empty. Add media files via the web UI or \`add_media_to_curated_feed\`.
+Curated feeds start empty. Add media files via the web UI or \`add_media_to_feeds\`.
 A token is auto-generated for immediate use.
 
 Examples:
 - { name: "Favorites" }
 - { name: "Road Trip Playlist", description: "Audiobooks for the drive" }
 
-Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via \`add_media_to_curated_feed\` or the admin UI.`,
+Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via \`add_media_to_feeds\` or the admin UI.`,
 	},
 
 	update_feed: {
@@ -372,7 +372,7 @@ Examples:
 - { query: "narrated by kramer" } — Find audiobooks narrated by Michael Kramer
 - { query: ".m4b" } — Find all M4B audiobook files
 
-Next: Use results with \`add_media_to_curated_feed\` or \`get_media_widget\`.`,
+Next: Use results with \`add_media_to_feeds\` or \`get_media_widget\`.`,
 	},
 
 	add_media_to_feeds: {

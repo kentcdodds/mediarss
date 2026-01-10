@@ -4,6 +4,33 @@ export type ParsedMediaPath = {
 }
 
 /**
+ * Normalize a relative path to use forward slashes and remove redundant segments.
+ * This ensures consistent path storage and comparison across platforms.
+ *
+ * - Replaces backslashes with forward slashes (Windows compatibility)
+ * - Removes duplicate slashes (foo//bar -> foo/bar)
+ * - Removes leading/trailing slashes
+ * - Does NOT resolve '..' segments (that should be done with realpath for security)
+ */
+export function normalizePath(path: string): string {
+	return path
+		.replace(/\\/g, '/') // Convert backslashes to forward slashes
+		.replace(/\/+/g, '/') // Remove duplicate slashes
+		.replace(/^\/+|\/+$/g, '') // Remove leading/trailing slashes
+}
+
+/**
+ * Create a canonical key for a media item (used for deduplication).
+ * Normalizes the path and combines with media root.
+ */
+export function createMediaKey(
+	mediaRoot: string,
+	relativePath: string,
+): string {
+	return `${mediaRoot}:${normalizePath(relativePath)}`
+}
+
+/**
  * Parse the path parameter into root name and relative path.
  * Allows empty relativePath (for admin routes that may reference just a root).
  * Format: "rootName" or "rootName/relative/path/to/file.mp3"

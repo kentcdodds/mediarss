@@ -9,7 +9,7 @@ import {
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
-import { parseMediaPath } from '#app/helpers/path-parsing.ts'
+import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
 
 type FeedAssignment = {
 	feedId: string
@@ -68,11 +68,10 @@ function isMediaInDirectoryFeed(
 	feed: DirectoryFeed,
 ): boolean {
 	const paths = parseDirectoryPaths(feed)
-	const mediaPath = `${rootName}:${relativePath}`
+	const normalizedFile = `${rootName}:${normalizePath(relativePath)}`
 
 	for (const dirPath of paths) {
-		const normalizedFile = mediaPath.replace(/\\/g, '/')
-		const normalizedDir = dirPath.replace(/\\/g, '/')
+		const normalizedDir = normalizePath(dirPath)
 
 		if (
 			normalizedFile.startsWith(normalizedDir + '/') ||

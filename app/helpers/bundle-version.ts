@@ -53,31 +53,17 @@ export function getBundleVersion(): string {
 
 /**
  * Append the bundle version as a query parameter to a URL path.
- * Handles fragment identifiers (#) correctly by inserting the query param before the fragment.
- * URL-encodes the version to handle special characters like '+'.
+ * Uses URL and URLSearchParams for proper encoding and fragment handling.
  *
  * @param urlPath - The URL path (e.g., '/app/client/entry.tsx' or '/page#section')
  * @returns The URL with version query param (e.g., '/app/client/entry.tsx?v=v1.8.1-a3b2c1d4')
  */
 export function versionedUrl(urlPath: string): string {
-	const version = encodeURIComponent(getBundleVersion())
-
-	// Split URL into base and fragment parts
-	const fragmentIndex = urlPath.indexOf('#')
-	let base: string
-	let fragment: string
-
-	if (fragmentIndex !== -1) {
-		base = urlPath.slice(0, fragmentIndex)
-		fragment = urlPath.slice(fragmentIndex)
-	} else {
-		base = urlPath
-		fragment = ''
-	}
-
-	// Append version query param to base
-	const separator = base.includes('?') ? '&' : '?'
-	return `${base}${separator}v=${version}${fragment}`
+	// Use a dummy base to parse relative paths
+	const url = new URL(urlPath, 'http://localhost')
+	url.searchParams.set('v', getBundleVersion())
+	// Return just the path + search + hash (without the dummy origin)
+	return url.pathname + url.search + url.hash
 }
 
 /**

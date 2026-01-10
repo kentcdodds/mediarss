@@ -320,34 +320,6 @@ Examples:
 Next: Fetch the widgetUri as a resource to get the interactive HTML player widget.`,
 	},
 
-	add_media_to_curated_feed: {
-		name: 'add_media_to_curated_feed',
-		title: 'Add Media to Curated Feed',
-		description: `Add a media file to a curated feed.
-
-Inputs:
-- feedId: string (required) — The curated feed ID (from \`list_feeds\`)
-- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
-- relativePath: string (required) — Path to the media file within the root
-- position: number (optional) — Position in the feed (0-indexed non-negative integer, appended if omitted)
-
-Returns: {
-  success,
-  feedItem: { id, mediaRoot, relativePath, position, addedAt },
-  feed: { id, name }
-}
-
-The media file must exist and be accessible within the media root.
-Only works with curated feeds (not directory feeds).
-Paths are normalized to prevent duplicates (e.g., \`foo//bar\` becomes \`foo/bar\`).
-
-Examples:
-- { feedId: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
-- { feedId: "abc123", mediaRoot: "audio", relativePath: "audiobook.m4b", position: 0 }
-
-Next: Use \`get_feed\` to see the updated feed contents.`,
-	},
-
 	search_media: {
 		name: 'search_media',
 		title: 'Search Media',
@@ -403,19 +375,14 @@ Examples:
 Next: Use results with \`add_media_to_curated_feed\` or \`get_media_widget\`.`,
 	},
 
-	bulk_add_media_to_feeds: {
-		name: 'bulk_add_media_to_feeds',
-		title: 'Bulk Add Media to Feeds',
-		description: `Add multiple media files to multiple curated feeds in a single operation.
-
-This is the most efficient way to add media to feeds when you have:
-- Multiple media files to add to one feed
-- One media file to add to multiple feeds
-- Multiple media files to add to multiple feeds
+	add_media_to_feeds: {
+		name: 'add_media_to_feeds',
+		title: 'Add Media to Feeds',
+		description: `Add media files to curated feeds. Works for single items or bulk operations.
 
 Inputs:
-- items: Array of { mediaRoot: string, relativePath: string } (required) — Media files to add
-- feedIds: Array of string (required) — Curated feed IDs to add the items to
+- items: Array of { mediaRoot: string, relativePath: string } (required) — Media files to add (1 or more)
+- feedIds: Array of string (required) — Curated feed IDs to add the items to (1 or more)
 
 Returns: {
   success: boolean,
@@ -441,6 +408,8 @@ Directory feeds are rejected (only curated feeds supported).
 Invalid paths are reported as errors but don't stop other operations.
 
 Examples:
+- Add 1 item to 1 feed:
+  { items: [{ mediaRoot: "audio", relativePath: "book.m4b" }], feedIds: ["feed1"] }
 - Add 3 books to 1 feed:
   { items: [{ mediaRoot: "audio", relativePath: "Paddington/01.m4b" }, ...], feedIds: ["feed1"] }
 - Add 1 book to 4 feeds:
@@ -451,39 +420,14 @@ Examples:
 Next: Use \`get_feed\` to verify the feeds were updated.`,
 	},
 
-	remove_media_from_curated_feed: {
-		name: 'remove_media_from_curated_feed',
-		title: 'Remove Media from Curated Feed',
-		description: `Remove a media file from a curated feed.
+	remove_media_from_feeds: {
+		name: 'remove_media_from_feeds',
+		title: 'Remove Media from Feeds',
+		description: `Remove media files from curated feeds. Works for single items or bulk operations.
 
 Inputs:
-- feedId: string (required) — The curated feed ID (from \`list_feeds\`)
-- mediaRoot: string (required) — Name of the media root
-- relativePath: string (required) — Path to the media file within the root
-
-Returns: {
-  success: boolean,
-  removed: { mediaRoot, relativePath },
-  feed: { id, name }
-}
-
-Only works with curated feeds (not directory feeds).
-Returns an error if the item is not in the feed.
-
-Example:
-- { feedId: "abc123", mediaRoot: "audio", relativePath: "Brandon Sanderson/Mistborn/01.m4b" }
-
-Next: Use \`get_feed\` to see the updated feed contents.`,
-	},
-
-	bulk_remove_media_from_feeds: {
-		name: 'bulk_remove_media_from_feeds',
-		title: 'Bulk Remove Media from Feeds',
-		description: `Remove multiple media files from multiple curated feeds in a single operation.
-
-Inputs:
-- items: Array of { mediaRoot: string, relativePath: string } (required) — Media files to remove
-- feedIds: Array of string (required) — Curated feed IDs to remove the items from
+- items: Array of { mediaRoot: string, relativePath: string } (required) — Media files to remove (1 or more)
+- feedIds: Array of string (required) — Curated feed IDs to remove the items from (1 or more)
 
 Returns: {
   success: boolean,
@@ -506,6 +450,8 @@ Items not in a feed are reported as notFound but don't cause errors.
 Directory feeds are rejected (only curated feeds supported).
 
 Examples:
+- Remove 1 item from 1 feed:
+  { items: [{ mediaRoot: "audio", relativePath: "book.m4b" }], feedIds: ["feed1"] }
 - Remove 3 items from 1 feed:
   { items: [...3 items...], feedIds: ["feed1"] }
 - Remove 1 item from 4 feeds:

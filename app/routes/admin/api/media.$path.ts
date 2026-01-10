@@ -75,8 +75,7 @@ function isMediaInDirectoryFeed(
 
 		if (
 			normalizedFile.startsWith(normalizedDir + '/') ||
-			normalizedFile === normalizedDir ||
-			normalizedFile.startsWith(normalizedDir)
+			normalizedFile === normalizedDir
 		) {
 			return true
 		}

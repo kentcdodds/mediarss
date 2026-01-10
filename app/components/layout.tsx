@@ -1,19 +1,9 @@
 import { html, type SafeHtml } from '@remix-run/html-template'
-
-const importmap = {
-	imports: {
-		'@remix-run/component': '/node_modules/@remix-run/component',
-		'@remix-run/component/jsx-runtime':
-			'/node_modules/@remix-run/component/jsx-runtime',
-		'@remix-run/component/jsx-dev-runtime':
-			'/node_modules/@remix-run/component/jsx-dev-runtime',
-		'@remix-run/interaction': '/node_modules/@remix-run/interaction',
-		'@remix-run/interaction/press':
-			'/node_modules/@remix-run/interaction/press',
-		'match-sorter': '/node_modules/match-sorter',
-		zod: '/node_modules/zod',
-	},
-}
+import { baseImportMap } from '#app/config/import-map.ts'
+import {
+	versionedImportMap,
+	versionedUrl,
+} from '#app/helpers/bundle-version.ts'
 
 export function Layout({
 	children,
@@ -24,9 +14,13 @@ export function Layout({
 	title?: string
 	entryScript?: string | false
 }) {
+	// Apply cache-busting version to all import map URLs
+	const versionedImports = versionedImportMap(baseImportMap)
+	const importmap = { imports: versionedImports }
+
 	const importmapJson = JSON.stringify(importmap)
 	const importmapScript = html.raw`<script type="importmap">${importmapJson}</script>`
-	const modulePreloads = Object.values(importmap.imports).map(
+	const modulePreloads = Object.values(versionedImports).map(
 		(value) => html`<link rel="modulepreload" href="${value}" />`,
 	)
 
@@ -44,7 +38,7 @@ export function Layout({
 			<div id="root">${children ?? ''}</div>
 			${
 				entryScript
-					? html`<script type="module" src="${entryScript}"></script>`
+					? html`<script type="module" src="${versionedUrl(entryScript)}"></script>`
 					: ''
 			}
 		</body>

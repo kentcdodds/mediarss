@@ -10,6 +10,12 @@
 
 import { createUIResource, type UIResource } from '@mcp-ui/server'
 import { html } from '@remix-run/html-template'
+import { baseImportMap } from '#app/config/import-map.ts'
+import {
+	getBundleVersion,
+	versionedImportMap,
+	versionedUrl,
+} from '#app/helpers/bundle-version.ts'
 
 /**
  * Media data structure for the widget.
@@ -35,25 +41,6 @@ export type MediaWidgetData = {
 export interface MediaWidgetOptions {
 	/** Base URL of the server (for resolving relative URLs) */
 	baseUrl: string
-}
-
-/**
- * Import map for the widget, matching the one in layout.tsx
- * This allows the widget to use bare module specifiers.
- */
-const importmap = {
-	imports: {
-		'@remix-run/component': '/node_modules/@remix-run/component',
-		'@remix-run/component/jsx-runtime':
-			'/node_modules/@remix-run/component/jsx-runtime',
-		'@remix-run/component/jsx-dev-runtime':
-			'/node_modules/@remix-run/component/jsx-dev-runtime',
-		'@remix-run/interaction': '/node_modules/@remix-run/interaction',
-		'@remix-run/interaction/press':
-			'/node_modules/@remix-run/interaction/press',
-		'match-sorter': '/node_modules/match-sorter',
-		zod: '/node_modules/zod',
-	},
 }
 
 /**
@@ -89,13 +76,16 @@ function escapeJsonForScript(data: unknown): string {
 export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 	const { baseUrl } = options
 
-	// The widget entry script URL
-	const widgetScript = `${baseUrl}/app/client/widgets/media-player.tsx`
+	// Get versioned import map with cache-busting query params
+	const versionedImports = versionedImportMap(baseImportMap)
 
-	// Build absolute import map URLs
+	// The widget entry script URL with cache-busting version
+	const widgetScript = `${baseUrl}${versionedUrl('/app/client/widgets/media-player.tsx')}`
+
+	// Build absolute import map URLs (versioned URLs already include query params)
 	const absoluteImportmap = {
 		imports: Object.fromEntries(
-			Object.entries(importmap.imports).map(([key, value]) => [
+			Object.entries(versionedImports).map(([key, value]) => [
 				key,
 				`${baseUrl}${value}`,
 			]),
@@ -179,17 +169,13 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 }
 
 /**
- * Widget URI version for cache busting.
- * Increment this when making breaking changes to the widget.
- */
-const WIDGET_VERSION = 'v1'
-
-/**
  * Get the MCP-UI widget URI for a media player.
  * Uses the `ui://` scheme required by ChatGPT's Apps SDK.
+ * The version is automatically derived from the bundle version for cache busting.
  */
 export function getMediaWidgetUIUri(): `ui://${string}` {
-	return `ui://widget/media-player-${WIDGET_VERSION}.html`
+	const version = getBundleVersion()
+	return `ui://widget/media-player-${version}.html`
 }
 
 /**

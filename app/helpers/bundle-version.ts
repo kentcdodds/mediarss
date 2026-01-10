@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto'
-import fs from 'node:fs'
 import path from 'node:path'
 
 /**
@@ -18,21 +17,23 @@ import path from 'node:path'
 
 let cachedVersion: string | null = null
 
-function computeVersion(): string {
+async function computeVersion(): Promise<string> {
 	const rootDir = path.resolve(import.meta.dir, '..', '..')
 
 	// Get app version from package.json
 	const packageJsonPath = path.join(rootDir, 'package.json')
-	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+	const packageJsonText = await Bun.file(packageJsonPath).text()
+	const packageJson = JSON.parse(packageJsonText)
 	const appVersion = packageJson.version || '0.0.0'
 
 	// Get hash of lock file (captures dependency changes)
 	const lockFilePath = path.join(rootDir, 'bun.lock')
 	let lockHash = 'nolockfile'
-	if (fs.existsSync(lockFilePath)) {
-		const lockContent = fs.readFileSync(lockFilePath)
+	const lockFile = Bun.file(lockFilePath)
+	if (await lockFile.exists()) {
+		const lockContent = await lockFile.arrayBuffer()
 		lockHash = createHash('sha256')
-			.update(lockContent)
+			.update(new Uint8Array(lockContent))
 			.digest('hex')
 			.slice(0, 8)
 	}
@@ -44,26 +45,56 @@ function computeVersion(): string {
 }
 
 /**
+ * Initialize the bundle version at startup.
+ * This must be called before any calls to getBundleVersion().
+ */
+export async function initBundleVersion(): Promise<void> {
+	if (cachedVersion === null) {
+		cachedVersion = await computeVersion()
+	}
+}
+
+/**
  * Get the bundle version string for cache busting.
  * This value is computed once at startup and cached.
+ * initBundleVersion() must be called before using this function.
  */
 export function getBundleVersion(): string {
 	if (cachedVersion === null) {
-		cachedVersion = computeVersion()
+		throw new Error(
+			'Bundle version not initialized. Call initBundleVersion() at startup.',
+		)
 	}
 	return cachedVersion
 }
 
 /**
  * Append the bundle version as a query parameter to a URL path.
+ * Handles fragment identifiers (#) correctly by inserting the query param before the fragment.
+ * URL-encodes the version to handle special characters like '+'.
  *
- * @param urlPath - The URL path (e.g., '/app/client/entry.tsx')
+ * @param urlPath - The URL path (e.g., '/app/client/entry.tsx' or '/page#section')
  * @returns The URL with version query param (e.g., '/app/client/entry.tsx?v=v1.8.1-a3b2c1d4')
  */
 export function versionedUrl(urlPath: string): string {
-	const version = getBundleVersion()
-	const separator = urlPath.includes('?') ? '&' : '?'
-	return `${urlPath}${separator}v=${version}`
+	const version = encodeURIComponent(getBundleVersion())
+
+	// Split URL into base and fragment parts
+	const fragmentIndex = urlPath.indexOf('#')
+	let base: string
+	let fragment: string
+
+	if (fragmentIndex !== -1) {
+		base = urlPath.slice(0, fragmentIndex)
+		fragment = urlPath.slice(fragmentIndex)
+	} else {
+		base = urlPath
+		fragment = ''
+	}
+
+	// Append version query param to base
+	const separator = base.includes('?') ? '&' : '?'
+	return `${base}${separator}v=${version}${fragment}`
 }
 
 /**

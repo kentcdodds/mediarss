@@ -2190,7 +2190,7 @@ function UploadModal({
 					>
 						<input
 							type="file"
-							accept="audio/*,video/*"
+							accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
 							id="upload-file-input"
 							css={{
 								position: 'absolute',

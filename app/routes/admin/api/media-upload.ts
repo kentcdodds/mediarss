@@ -6,35 +6,11 @@ import { getMediaRootByName, getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 
 /**
- * Allowed MIME types for media upload
- */
-const ALLOWED_MIME_TYPES = new Set([
-	// Audio
-	'audio/mpeg',
-	'audio/mp4',
-	'audio/x-m4a',
-	'audio/ogg',
-	'audio/flac',
-	'audio/wav',
-	'audio/x-wav',
-	'audio/webm',
-	'audio/aac',
-	'audio/x-aac',
-	// Video
-	'video/mp4',
-	'video/x-matroska',
-	'video/webm',
-	'video/quicktime',
-	'video/x-msvideo',
-	'video/x-flv',
-	'video/ogg',
-])
-
-/**
- * Check if a MIME type is allowed for upload
+ * Check if a MIME type is allowed for upload.
+ * We're permissive here - any audio or video MIME type is allowed.
  */
 function isAllowedMimeType(mime: string): boolean {
-	return ALLOWED_MIME_TYPES.has(mime)
+	return mime.startsWith('audio/') || mime.startsWith('video/')
 }
 
 /**

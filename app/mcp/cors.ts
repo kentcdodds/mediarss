@@ -83,6 +83,7 @@ export function withCors({
 
 /**
  * CORS headers for MCP endpoints.
+ * Note: DELETE is supported for session termination per MCP spec.
  */
 export const MCP_CORS_HEADERS = {
 	'Access-Control-Allow-Origin': '*',

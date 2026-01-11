@@ -67,6 +67,70 @@ type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
 /**
+ * ChatGPT / MCP clients may retry tool calls if the connection drops or a response
+ * isn't received in time. Our create feed tools used to be non-idempotent, so
+ * a retry could create duplicate feeds with identical settings.
+ *
+ * We avoid that by treating identical create requests within a short window as
+ * duplicates and returning the already-created feed instead.
+ */
+const MCP_CREATE_DEDUPE_WINDOW_SECONDS = 120
+
+function normalizeOptionalText(text: string | undefined): string {
+	return text ?? ''
+}
+
+function findRecentMatchingCuratedFeed(params: {
+	name: string
+	description: string
+	now: number
+}): CuratedFeed | undefined {
+	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
+	// listCuratedFeeds() is already sorted newest-first
+	for (const feed of listCuratedFeeds()) {
+		if (feed.createdAt < cutoff) break
+		// Be fairly strict so we don't "dedupe" unrelated older feeds.
+		if (
+			feed.name === params.name &&
+			feed.description === params.description &&
+			feed.sortFields === 'position' &&
+			feed.sortOrder === 'asc' &&
+			feed.language === 'en' &&
+			feed.explicit === 'no'
+		) {
+			return feed
+		}
+	}
+	return undefined
+}
+
+function findRecentMatchingDirectoryFeed(params: {
+	name: string
+	description: string
+	directoryPathsJson: string
+	now: number
+}): DirectoryFeed | undefined {
+	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
+	// listDirectoryFeeds() is already sorted newest-first
+	for (const feed of listDirectoryFeeds()) {
+		if (feed.createdAt < cutoff) break
+		// Be fairly strict so we don't "dedupe" unrelated older feeds.
+		if (
+			feed.name === params.name &&
+			feed.description === params.description &&
+			feed.directoryPaths === params.directoryPathsJson &&
+			feed.sortFields === 'filename' &&
+			feed.sortOrder === 'asc' &&
+			feed.language === 'en' &&
+			feed.explicit === 'no'
+		) {
+			return feed
+		}
+	}
+	return undefined
+}
+
+/**
  * Get all feeds (both directory and curated)
  */
 function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
@@ -1123,18 +1187,39 @@ export async function initializeTools(
 				}
 
 				try {
-					const feed = createDirectoryFeed({
+					const now = Math.floor(Date.now() / 1000)
+					const normalizedDescription = normalizeOptionalText(description)
+					const directoryPathsJson = JSON.stringify([
+						`${mediaRoot}:${directoryPath}`,
+					])
+
+					const existing = findRecentMatchingDirectoryFeed({
 						name,
-						description: description || undefined,
-						directoryPaths: [`${mediaRoot}:${directoryPath}`],
+						description: normalizedDescription,
+						directoryPathsJson,
+						now,
 					})
 
-					// Create initial token
-					const token = createDirectoryFeedToken({ feedId: feed.id })
+					const feed = existing
+						? existing
+						: createDirectoryFeed({
+								name,
+								description: normalizedDescription || undefined,
+								directoryPaths: [`${mediaRoot}:${directoryPath}`],
+							})
+
+					// Prefer re-using an existing active token when deduping.
+					const token =
+						listActiveDirectoryFeedTokens(feed.id)[0] ??
+						createDirectoryFeedToken({ feedId: feed.id })
 
 					// Format human-readable output
 					const lines: string[] = []
-					lines.push(`✅ Feed created successfully!`)
+					lines.push(
+						existing
+							? `ℹ️ Feed already exists (duplicate create request detected).`
+							: `✅ Feed created successfully!`,
+					)
 					lines.push('')
 					lines.push(`## ${feed.name}`)
 					lines.push(`- **ID**: \`${feed.id}\``)
@@ -1155,6 +1240,8 @@ export async function initializeTools(
 						content: [{ type: 'text', text: lines.join('\n') }],
 						structuredContent: {
 							success: true,
+							created: !existing,
+							deduplicated: Boolean(existing),
 							feed: {
 								id: feed.id,
 								name: feed.name,
@@ -1200,17 +1287,34 @@ export async function initializeTools(
 			},
 			async ({ name, description }) => {
 				try {
-					const feed = createCuratedFeed({
+					const now = Math.floor(Date.now() / 1000)
+					const normalizedDescription = normalizeOptionalText(description)
+
+					const existing = findRecentMatchingCuratedFeed({
 						name,
-						description: description || undefined,
+						description: normalizedDescription,
+						now,
 					})
 
-					// Create initial token
-					const token = createCuratedFeedToken({ feedId: feed.id })
+					const feed = existing
+						? existing
+						: createCuratedFeed({
+								name,
+								description: normalizedDescription || undefined,
+							})
+
+					// Prefer re-using an existing active token when deduping.
+					const token =
+						listActiveCuratedFeedTokens(feed.id)[0] ??
+						createCuratedFeedToken({ feedId: feed.id })
 
 					// Format human-readable output
 					const lines: string[] = []
-					lines.push(`✅ Feed created successfully!`)
+					lines.push(
+						existing
+							? `ℹ️ Feed already exists (duplicate create request detected).`
+							: `✅ Feed created successfully!`,
+					)
 					lines.push('')
 					lines.push(`## ${feed.name}`)
 					lines.push(`- **ID**: \`${feed.id}\``)
@@ -1228,6 +1332,8 @@ export async function initializeTools(
 						content: [{ type: 'text', text: lines.join('\n') }],
 						structuredContent: {
 							success: true,
+							created: !existing,
+							deduplicated: Boolean(existing),
 							feed: {
 								id: feed.id,
 								name: feed.name,

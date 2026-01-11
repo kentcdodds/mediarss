@@ -303,6 +303,7 @@ async function validateDirectoryPathsUpdate(
 > {
 	const mediaRoots = getMediaRoots()
 	const { resolve, sep } = await import('node:path')
+	const fs = await import('node:fs/promises')
 
 	const errors: string[] = []
 	const normalized: string[] = []
@@ -318,7 +319,7 @@ async function validateDirectoryPathsUpdate(
 		}
 
 		const mediaRoot = trimmed.slice(0, colonIndex)
-		const relativePath = trimmed.slice(colonIndex + 1)
+		const relativePath = normalizePath(trimmed.slice(colonIndex + 1).trim())
 
 		const mr = mediaRoots.find((m) => m.name === mediaRoot)
 		if (!mr) {
@@ -329,14 +330,47 @@ async function validateDirectoryPathsUpdate(
 			continue
 		}
 
-		// Prevent directory traversal by requiring resolved paths stay within root.
+		// Prevent traversal and symlink escape where possible.
+		// - Always validate with resolve() to prevent obvious traversal
+		// - Additionally validate with realpath() when the target exists (symlink-safe)
 		const basePath = resolve(mr.path)
 		const fullPath = resolve(basePath, relativePath)
+
 		if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
 			errors.push(
 				`Invalid directory path "${entry}" (directory traversal is not allowed).`,
 			)
 			continue
+		}
+
+		// If the media root itself isn't accessible, fail early.
+		let realBasePath: string
+		try {
+			realBasePath = await fs.realpath(basePath)
+		} catch {
+			errors.push(
+				`Media root "${mediaRoot}" is not accessible while validating "${entry}".`,
+			)
+			continue
+		}
+
+		// If the target exists, enforce containment using real paths (symlink-safe).
+		// If it doesn't exist, keep the resolve() containment check above.
+		try {
+			const realFullPath = await fs.realpath(
+				resolve(realBasePath, relativePath),
+			)
+			if (
+				realFullPath !== realBasePath &&
+				!realFullPath.startsWith(realBasePath + sep)
+			) {
+				errors.push(
+					`Invalid directory path "${entry}" (directory traversal is not allowed).`,
+				)
+				continue
+			}
+		} catch {
+			// ignore: allow non-existent targets as long as resolve()-containment passed
 		}
 
 		normalized.push(`${mediaRoot}:${relativePath}`)
@@ -1298,12 +1332,14 @@ export async function initializeTools(
 						.describe('Description shown in podcast apps'),
 					subtitle: z
 						.string()
+						.max(255)
 						.optional()
 						.describe(
 							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
 						),
 					imageUrl: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('Custom feed artwork URL (or null to clear)'),
@@ -1319,6 +1355,7 @@ export async function initializeTools(
 						.describe('iTunes owner name (or null to clear)'),
 					ownerEmail: z
 						.string()
+						.email()
 						.nullable()
 						.optional()
 						.describe('iTunes owner email (or null to clear)'),
@@ -1337,6 +1374,7 @@ export async function initializeTools(
 						.describe('Category string (or null to clear)'),
 					link: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('Website link for the feed (or null to clear)'),
@@ -1606,12 +1644,14 @@ export async function initializeTools(
 						.describe('Description shown in podcast apps'),
 					subtitle: z
 						.string()
+						.max(255)
 						.optional()
 						.describe(
 							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
 						),
 					imageUrl: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('Custom feed artwork URL (or null to clear)'),
@@ -1627,6 +1667,7 @@ export async function initializeTools(
 						.describe('iTunes owner name (or null to clear)'),
 					ownerEmail: z
 						.string()
+						.email()
 						.nullable()
 						.optional()
 						.describe('iTunes owner email (or null to clear)'),
@@ -1645,6 +1686,7 @@ export async function initializeTools(
 						.describe('Category string (or null to clear)'),
 					link: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('Website link for the feed (or null to clear)'),
@@ -1846,11 +1888,13 @@ export async function initializeTools(
 						.describe('New description (omit to keep current)'),
 					subtitle: z
 						.string()
+						.max(255)
 						.nullable()
 						.optional()
 						.describe('New subtitle/tagline (or null to clear)'),
 					imageUrl: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('New feed artwork URL (or null to clear)'),
@@ -1866,6 +1910,7 @@ export async function initializeTools(
 						.describe('New iTunes owner name (or null to clear)'),
 					ownerEmail: z
 						.string()
+						.email()
 						.nullable()
 						.optional()
 						.describe('New iTunes owner email (or null to clear)'),
@@ -1884,6 +1929,7 @@ export async function initializeTools(
 						.describe('New category (or null to clear)'),
 					link: z
 						.string()
+						.url()
 						.nullable()
 						.optional()
 						.describe('New website link (or null to clear)'),

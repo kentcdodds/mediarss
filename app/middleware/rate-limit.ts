@@ -67,18 +67,20 @@ function getLimiter(pathname: string, method: string): RateLimiter {
 
 /**
  * Check if a response status indicates a failure that should incur a rate limit penalty.
- * Failures include client errors (4xx) and server errors (5xx), but we exclude
- * certain status codes that aren't indicative of abuse attempts.
+ * Failures include client errors (4xx), but we exclude certain status codes that
+ * aren't indicative of abuse attempts.
  */
 function isFailedResponse(status: number): boolean {
-	// 4xx client errors (except 404 Not Found and 405 Method Not Allowed which are
-	// often legitimate navigation/crawling) and 5xx server errors
 	if (status >= 400 && status < 500) {
-		// 401 Unauthorized and 403 Forbidden are common brute force targets
-		// 429 Too Many Requests is already rate limited
-		// 400 Bad Request could indicate probing
-		// Exclude 404 and 405 as they're typically not abuse attempts
-		return status !== 404 && status !== 405
+		// Penalize 4xx errors that indicate potential abuse:
+		// - 401 Unauthorized and 403 Forbidden are common brute force targets
+		// - 400 Bad Request could indicate probing
+		//
+		// Exclude from penalty:
+		// - 404 Not Found: legitimate navigation/crawling
+		// - 405 Method Not Allowed: legitimate navigation/crawling
+		// - 429 Too Many Requests: already rate limited, don't double-penalize
+		return status !== 404 && status !== 405 && status !== 429
 	}
 	// Server errors (5xx) - don't penalize client for server issues
 	return false
@@ -139,14 +141,17 @@ export function rateLimit(): Middleware {
 
 		// Apply failure penalty for failed requests (10x cost)
 		// This gives clients 1/10th the effective rate limit for failed requests
+		let remaining = result.remaining
 		if (isFailedResponse(response.status)) {
-			limiter.recordFailure(key)
+			const penalty = limiter.recordFailure(key)
+			// Adjust remaining to account for the penalty just applied
+			remaining = Math.max(0, remaining - penalty)
 		}
 
 		// Clone response to add headers (responses may be immutable)
 		const newHeaders = new Headers(response.headers)
 		newHeaders.set('X-RateLimit-Limit', String(limiter.getMaxRequests()))
-		newHeaders.set('X-RateLimit-Remaining', String(result.remaining))
+		newHeaders.set('X-RateLimit-Remaining', String(remaining))
 
 		return new Response(response.body, {
 			status: response.status,

@@ -365,9 +365,9 @@ test('rate limiter applies 10x penalty for 400 Bad Request responses', async () 
 
 test('rate limiter does NOT apply penalty for 404 Not Found responses', async () => {
 	const uniqueIp = `no-penalty-404-test-${Date.now()}`
-	// Admin read limit is 10 for tests
 
 	// Multiple 404 responses should not trigger penalty
+	// (404s are typically legitimate navigation/crawling, not abuse)
 	for (let i = 0; i < 5; i++) {
 		const response = await callRateLimiterWithResponseStatus(
 			'/admin/api/feeds',
@@ -378,7 +378,7 @@ test('rate limiter does NOT apply penalty for 404 Not Found responses', async ()
 		expect(response.status).toBe(404)
 	}
 
-	// Should still have quota remaining (5 requests out of 10, no penalty)
+	// Should still have quota remaining (only 5 of 100 slots used, no penalty applied)
 	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
 	invariant(response, 'Expected response')
 	expect(response.status).toBe(200)
@@ -399,6 +399,27 @@ test('rate limiter does NOT apply penalty for 405 Method Not Allowed responses',
 	}
 
 	// Should still have quota remaining
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter does NOT apply penalty for 429 Too Many Requests responses', async () => {
+	const uniqueIp = `no-penalty-429-test-${Date.now()}`
+
+	// 429 responses should not trigger penalty (avoid double-penalizing)
+	// This could happen if an upstream service returns 429
+	for (let i = 0; i < 5; i++) {
+		const response = await callRateLimiterWithResponseStatus(
+			'/admin/api/feeds',
+			429,
+			{ ip: uniqueIp },
+		)
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(429)
+	}
+
+	// Should still have quota remaining (only 5 of 100 slots used, no penalty applied)
 	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
 	invariant(response, 'Expected response')
 	expect(response.status).toBe(200)

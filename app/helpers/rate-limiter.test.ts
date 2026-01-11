@@ -122,7 +122,8 @@ test('RateLimiter.recordFailure applies penalty to reduce effective rate limit',
 
 	// Record a failure with default penalty (9 additional slots)
 	// Total consumed: 1 (initial) + 9 (penalty) = 10
-	ctx.limiter.recordFailure('ip1')
+	const penalty = ctx.limiter.recordFailure('ip1')
+	expect(penalty).toBe(9) // Returns the penalty applied
 
 	// Should have 10 remaining (20 - 10 = 10)
 	const result = ctx.limiter.check('ip1')
@@ -167,9 +168,9 @@ test('RateLimiter.recordFailure ignores zero or negative penalty', () => {
 	// Make one request
 	expect(ctx.limiter.check('ip1').allowed).toBe(true)
 
-	// Record failures with zero and negative penalty (should be ignored)
-	ctx.limiter.recordFailure('ip1', 0)
-	ctx.limiter.recordFailure('ip1', -5)
+	// Record failures with zero and negative penalty (should be ignored and return 0)
+	expect(ctx.limiter.recordFailure('ip1', 0)).toBe(0)
+	expect(ctx.limiter.recordFailure('ip1', -5)).toBe(0)
 
 	// Should still have 4 remaining
 	const result = ctx.limiter.check('ip1')

@@ -88,9 +88,13 @@ export class RateLimiter {
 	 *
 	 * @param key - The rate limit key (typically IP + limiter name)
 	 * @param penalty - Additional slots to consume (default: 9, for 10x total)
+	 * @returns The penalty that was applied (0 if penalty was non-positive)
 	 */
-	recordFailure(key: string, penalty: number = DEFAULT_FAILURE_PENALTY): void {
-		if (penalty <= 0) return
+	recordFailure(
+		key: string,
+		penalty: number = DEFAULT_FAILURE_PENALTY,
+	): number {
+		if (penalty <= 0) return 0
 
 		const now = Date.now()
 		const windowStart = now - this.#windowMs
@@ -105,6 +109,7 @@ export class RateLimiter {
 		}
 
 		this.#requests.set(key, recentTimestamps)
+		return penalty
 	}
 
 	/**

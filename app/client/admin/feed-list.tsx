@@ -477,6 +477,7 @@ function FilterButton({
 	return (
 		<button
 			type="button"
+			aria-pressed={active}
 			css={{
 				padding: `${spacing.xs} ${spacing.sm}`,
 				fontSize: typography.fontSize.xs,

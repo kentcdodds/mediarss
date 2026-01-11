@@ -296,7 +296,7 @@ export function FeedList(this: Handle) {
 				{feeds.length === 0 ? (
 					<EmptyState />
 				) : filteredFeeds.length === 0 ? (
-					<NoResults searchQuery={searchQuery} />
+					<NoResults searchQuery={searchQuery} filterType={filterType} />
 				) : (
 					<div
 						css={{
@@ -402,7 +402,16 @@ function EmptyState() {
 	)
 }
 
-function NoResults({ searchQuery }: { searchQuery: string }) {
+function NoResults({
+	searchQuery,
+	filterType,
+}: {
+	searchQuery: string
+	filterType: FilterType
+}) {
+	const filterLabel = filterType !== 'all' ? ` ${filterType}` : ''
+	const hasSearch = searchQuery.trim().length > 0
+
 	return (
 		<div
 			css={{
@@ -421,7 +430,9 @@ function NoResults({ searchQuery }: { searchQuery: string }) {
 					marginBottom: spacing.md,
 				}}
 			>
-				No feeds match "{searchQuery}"
+				{hasSearch
+					? `No${filterLabel} feeds match "${searchQuery}"`
+					: `No${filterLabel} feeds found`}
 			</p>
 			<p
 				css={{
@@ -430,7 +441,11 @@ function NoResults({ searchQuery }: { searchQuery: string }) {
 					margin: 0,
 				}}
 			>
-				Try a different search term
+				{hasSearch
+					? 'Try a different search term'
+					: filterType !== 'all'
+						? 'Try selecting a different filter'
+						: 'Create your first feed to get started'}
 			</p>
 		</div>
 	)
@@ -533,8 +548,17 @@ function FeedCard({ feed }: { feed: Feed }) {
 						error: (e: Event) => {
 							// Fallback to placeholder if no artwork
 							const img = e.target as HTMLImageElement
+							// Guard against repeated error events
+							if (img.dataset.fallback) return
+							img.dataset.fallback = 'true'
+							// Escape XML special characters for the SVG
+							const char = feed.name.trim()[0]?.toUpperCase() ?? '?'
+							const escapedChar = char
+								.replace(/&/g, '&amp;')
+								.replace(/</g, '&lt;')
+								.replace(/>/g, '&gt;')
 							img.src = `data:image/svg+xml,${encodeURIComponent(
-								`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1a1a2e"/><text x="32" y="40" font-family="system-ui" font-size="24" font-weight="bold" fill="#e94560" text-anchor="middle">${feed.name.trim()[0]?.toUpperCase() ?? '?'}</text></svg>`,
+								`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1a1a2e"/><text x="32" y="40" font-family="system-ui" font-size="24" font-weight="bold" fill="#e94560" text-anchor="middle">${escapedChar}</text></svg>`,
 							)}`
 						},
 					}}
@@ -593,7 +617,7 @@ function FeedCard({ feed }: { feed: Feed }) {
 								color: colors.textMuted,
 								margin: 0,
 								display: '-webkit-box',
-								WebkitLineClamp: '2',
+								WebkitLineClamp: 2,
 								WebkitBoxOrient: 'vertical',
 								overflow: 'hidden',
 							}}

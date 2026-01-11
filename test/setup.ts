@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, type Mock, spyOn } from 'bun:test'
+import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 
 export let consoleError: Mock<typeof console.error>
 export let consoleWarn: Mock<typeof console.warn>
 
 beforeEach(() => {
+	// Reset rate limiters between tests to ensure clean state
+	// This is important since failed requests now incur penalties
+	resetRateLimiters()
+
 	const originalConsoleError = console.error
 	consoleError = spyOn(console, 'error')
 	consoleError.mockImplementation(

@@ -66,8 +66,31 @@ function getLimiter(pathname: string, method: string): RateLimiter {
 }
 
 /**
+ * Check if a response status indicates a failure that should incur a rate limit penalty.
+ * Failures include client errors (4xx) and server errors (5xx), but we exclude
+ * certain status codes that aren't indicative of abuse attempts.
+ */
+function isFailedResponse(status: number): boolean {
+	// 4xx client errors (except 404 Not Found and 405 Method Not Allowed which are
+	// often legitimate navigation/crawling) and 5xx server errors
+	if (status >= 400 && status < 500) {
+		// 401 Unauthorized and 403 Forbidden are common brute force targets
+		// 429 Too Many Requests is already rate limited
+		// 400 Bad Request could indicate probing
+		// Exclude 404 and 405 as they're typically not abuse attempts
+		return status !== 404 && status !== 405
+	}
+	// Server errors (5xx) - don't penalize client for server issues
+	return false
+}
+
+/**
  * Rate limiting middleware.
  * Applies different rate limits based on route pattern and HTTP method.
+ *
+ * Failed requests (4xx errors except 404/405) incur a 10x penalty, effectively
+ * giving clients 1/10th the rate limit when making failed requests. This helps
+ * prevent brute force attacks and credential stuffing.
  *
  * Skipped paths: /admin/health, /assets/*
  */
@@ -110,9 +133,15 @@ export function rateLimit(): Middleware {
 			})
 		}
 
-		// Add rate limit headers to successful responses
+		// Process the request
 		const response = await next()
 		invariant(response, 'Expected response from next()')
+
+		// Apply failure penalty for failed requests (10x cost)
+		// This gives clients 1/10th the effective rate limit for failed requests
+		if (isFailedResponse(response.status)) {
+			limiter.recordFailure(key)
+		}
 
 		// Clone response to add headers (responses may be immutable)
 		const newHeaders = new Headers(response.headers)

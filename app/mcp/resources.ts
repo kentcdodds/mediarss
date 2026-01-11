@@ -24,9 +24,9 @@ import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
 
-type FeedWithType = (DirectoryFeed | CuratedFeed) & {
-	type: 'directory' | 'curated'
-}
+type FeedWithType =
+	| (DirectoryFeed & { type: 'directory' })
+	| (CuratedFeed & { type: 'curated' })
 
 /**
  * Get all feeds (both directory and curated)

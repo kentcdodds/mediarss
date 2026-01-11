@@ -66,6 +66,10 @@ import {
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
+type FeedWithType =
+	| (DirectoryFeed & { type: 'directory' })
+	| (CuratedFeed & { type: 'curated' })
+
 /**
  * ChatGPT / MCP clients may retry tool calls if the connection drops or a response
  * isn't received in time. Our create feed tools used to be non-idempotent, so
@@ -185,7 +189,7 @@ function findRecentMatchingDirectoryFeed(params: {
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+function getAllFeeds(): Array<FeedWithType> {
 	const directoryFeeds = listDirectoryFeeds().map((f) => ({
 		...f,
 		type: 'directory' as const,
@@ -202,9 +206,7 @@ function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(
-	id: string,
-): (Feed & { type: 'directory' | 'curated' }) | undefined {
+function getFeedById(id: string): FeedWithType | undefined {
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
@@ -292,6 +294,59 @@ function formatDuration(seconds: number | null): string {
 		return `${minutes}m ${secs}s`
 	}
 	return `${secs}s`
+}
+
+async function validateDirectoryPathsUpdate(
+	directoryPaths: Array<string>,
+): Promise<
+	{ ok: true; directoryPaths: Array<string> } | { ok: false; error: string }
+> {
+	const mediaRoots = getMediaRoots()
+	const { resolve, sep } = await import('node:path')
+
+	const errors: string[] = []
+	const normalized: string[] = []
+
+	for (const entry of directoryPaths) {
+		const trimmed = entry.trim()
+		const colonIndex = trimmed.indexOf(':')
+		if (colonIndex <= 0 || colonIndex === trimmed.length - 1) {
+			errors.push(
+				`Invalid directoryPaths entry "${entry}". Expected "mediaRoot:relativePath".`,
+			)
+			continue
+		}
+
+		const mediaRoot = trimmed.slice(0, colonIndex)
+		const relativePath = trimmed.slice(colonIndex + 1)
+
+		const mr = mediaRoots.find((m) => m.name === mediaRoot)
+		if (!mr) {
+			const available = mediaRoots.map((m) => m.name).join(', ')
+			errors.push(
+				`Unknown media root "${mediaRoot}" in directoryPaths entry "${entry}". Available: ${available || 'none'}`,
+			)
+			continue
+		}
+
+		// Prevent directory traversal by requiring resolved paths stay within root.
+		const basePath = resolve(mr.path)
+		const fullPath = resolve(basePath, relativePath)
+		if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
+			errors.push(
+				`Invalid directory path "${entry}" (directory traversal is not allowed).`,
+			)
+			continue
+		}
+
+		normalized.push(`${mediaRoot}:${relativePath}`)
+	}
+
+	if (errors.length > 0) {
+		return { ok: false, error: errors.map((e) => `- ${e}`).join('\n') }
+	}
+
+	return { ok: true, directoryPaths: normalized }
 }
 
 /**
@@ -1512,6 +1567,7 @@ export async function initializeTools(
 								feedType: feed.feedType,
 								sortFields: feed.sortFields,
 								sortOrder: feed.sortOrder,
+								directoryPaths: feed.directoryPaths,
 								filterIn: feed.filterIn,
 								filterOut: feed.filterOut,
 								overrides: feed.overrides,
@@ -1932,6 +1988,23 @@ export async function initializeTools(
 					}
 
 					if (feed.type === 'directory') {
+						if (directoryPaths) {
+							const validation =
+								await validateDirectoryPathsUpdate(directoryPaths)
+							if (!validation.ok) {
+								return {
+									content: [
+										{
+											type: 'text',
+											text: `❌ Invalid directoryPaths.\n\n${validation.error}`,
+										},
+									],
+									isError: true,
+								}
+							}
+							directoryPaths = validation.directoryPaths
+						}
+
 						updateDirectoryFeed(id, {
 							name,
 							description,
@@ -2013,6 +2086,13 @@ export async function initializeTools(
 								feedType: updatedFeed.feedType,
 								sortFields: updatedFeed.sortFields,
 								sortOrder: updatedFeed.sortOrder,
+								...(updatedFeed.type === 'directory'
+									? {
+											directoryPaths: updatedFeed.directoryPaths,
+											filterIn: updatedFeed.filterIn,
+											filterOut: updatedFeed.filterOut,
+										}
+									: {}),
 								overrides: updatedFeed.overrides,
 								type: updatedFeed.type,
 							},

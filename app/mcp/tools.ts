@@ -66,6 +66,10 @@ import {
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
+type FeedWithType =
+	| (DirectoryFeed & { type: 'directory' })
+	| (CuratedFeed & { type: 'curated' })
+
 /**
  * ChatGPT / MCP clients may retry tool calls if the connection drops or a response
  * isn't received in time. Our create feed tools used to be non-idempotent, so
@@ -83,6 +87,20 @@ function normalizeOptionalText(text: string | undefined): string {
 function findRecentMatchingCuratedFeed(params: {
 	name: string
 	description: string
+	subtitle: string | null
+	sortFields: string
+	sortOrder: 'asc' | 'desc'
+	imageUrl: string | null
+	author: string | null
+	ownerName: string | null
+	ownerEmail: string | null
+	language: string
+	explicit: string
+	category: string | null
+	link: string | null
+	copyright: string | null
+	feedType: 'episodic' | 'serial'
+	overrides: string | null
 	now: number
 }): CuratedFeed | undefined {
 	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
@@ -93,10 +111,20 @@ function findRecentMatchingCuratedFeed(params: {
 		if (
 			feed.name === params.name &&
 			feed.description === params.description &&
-			feed.sortFields === 'position' &&
-			feed.sortOrder === 'asc' &&
-			feed.language === 'en' &&
-			feed.explicit === 'no'
+			feed.subtitle === params.subtitle &&
+			feed.sortFields === params.sortFields &&
+			feed.sortOrder === params.sortOrder &&
+			feed.imageUrl === params.imageUrl &&
+			feed.author === params.author &&
+			feed.ownerName === params.ownerName &&
+			feed.ownerEmail === params.ownerEmail &&
+			feed.language === params.language &&
+			feed.explicit === params.explicit &&
+			feed.category === params.category &&
+			feed.link === params.link &&
+			feed.copyright === params.copyright &&
+			(feed.feedType ?? 'episodic') === params.feedType &&
+			feed.overrides === params.overrides
 		) {
 			return feed
 		}
@@ -107,7 +135,23 @@ function findRecentMatchingCuratedFeed(params: {
 function findRecentMatchingDirectoryFeed(params: {
 	name: string
 	description: string
+	subtitle: string | null
 	directoryPathsJson: string
+	sortFields: string
+	sortOrder: 'asc' | 'desc'
+	imageUrl: string | null
+	author: string | null
+	ownerName: string | null
+	ownerEmail: string | null
+	language: string
+	explicit: string
+	category: string | null
+	link: string | null
+	copyright: string | null
+	feedType: 'episodic' | 'serial'
+	filterIn: string | null
+	filterOut: string | null
+	overrides: string | null
 	now: number
 }): DirectoryFeed | undefined {
 	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
@@ -118,11 +162,23 @@ function findRecentMatchingDirectoryFeed(params: {
 		if (
 			feed.name === params.name &&
 			feed.description === params.description &&
+			feed.subtitle === params.subtitle &&
 			feed.directoryPaths === params.directoryPathsJson &&
-			feed.sortFields === 'filename' &&
-			feed.sortOrder === 'asc' &&
-			feed.language === 'en' &&
-			feed.explicit === 'no'
+			feed.sortFields === params.sortFields &&
+			feed.sortOrder === params.sortOrder &&
+			feed.imageUrl === params.imageUrl &&
+			feed.author === params.author &&
+			feed.ownerName === params.ownerName &&
+			feed.ownerEmail === params.ownerEmail &&
+			feed.language === params.language &&
+			feed.explicit === params.explicit &&
+			feed.category === params.category &&
+			feed.link === params.link &&
+			feed.copyright === params.copyright &&
+			(feed.feedType ?? 'episodic') === params.feedType &&
+			feed.filterIn === params.filterIn &&
+			feed.filterOut === params.filterOut &&
+			feed.overrides === params.overrides
 		) {
 			return feed
 		}
@@ -133,7 +189,7 @@ function findRecentMatchingDirectoryFeed(params: {
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+function getAllFeeds(): Array<FeedWithType> {
 	const directoryFeeds = listDirectoryFeeds().map((f) => ({
 		...f,
 		type: 'directory' as const,
@@ -150,9 +206,7 @@ function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(
-	id: string,
-): (Feed & { type: 'directory' | 'curated' }) | undefined {
+function getFeedById(id: string): FeedWithType | undefined {
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
@@ -242,6 +296,93 @@ function formatDuration(seconds: number | null): string {
 	return `${secs}s`
 }
 
+async function validateDirectoryPathsUpdate(
+	directoryPaths: Array<string>,
+): Promise<
+	{ ok: true; directoryPaths: Array<string> } | { ok: false; error: string }
+> {
+	const mediaRoots = getMediaRoots()
+	const { resolve, sep } = await import('node:path')
+	const fs = await import('node:fs/promises')
+
+	const errors: string[] = []
+	const normalized: string[] = []
+
+	for (const entry of directoryPaths) {
+		const trimmed = entry.trim()
+		const colonIndex = trimmed.indexOf(':')
+		if (colonIndex <= 0 || colonIndex === trimmed.length - 1) {
+			errors.push(
+				`Invalid directoryPaths entry "${entry}". Expected "mediaRoot:relativePath".`,
+			)
+			continue
+		}
+
+		const mediaRoot = trimmed.slice(0, colonIndex)
+		const relativePath = normalizePath(trimmed.slice(colonIndex + 1).trim())
+
+		const mr = mediaRoots.find((m) => m.name === mediaRoot)
+		if (!mr) {
+			const available = mediaRoots.map((m) => m.name).join(', ')
+			errors.push(
+				`Unknown media root "${mediaRoot}" in directoryPaths entry "${entry}". Available: ${available || 'none'}`,
+			)
+			continue
+		}
+
+		// Prevent traversal and symlink escape where possible.
+		// - Always validate with resolve() to prevent obvious traversal
+		// - Additionally validate with realpath() when the target exists (symlink-safe)
+		const basePath = resolve(mr.path)
+		const fullPath = resolve(basePath, relativePath)
+
+		if (fullPath !== basePath && !fullPath.startsWith(basePath + sep)) {
+			errors.push(
+				`Invalid directory path "${entry}" (directory traversal is not allowed).`,
+			)
+			continue
+		}
+
+		// If the media root itself isn't accessible, fail early.
+		let realBasePath: string
+		try {
+			realBasePath = await fs.realpath(basePath)
+		} catch {
+			errors.push(
+				`Media root "${mediaRoot}" is not accessible while validating "${entry}".`,
+			)
+			continue
+		}
+
+		// If the target exists, enforce containment using real paths (symlink-safe).
+		// If it doesn't exist, keep the resolve() containment check above.
+		try {
+			const realFullPath = await fs.realpath(
+				resolve(realBasePath, relativePath),
+			)
+			if (
+				realFullPath !== realBasePath &&
+				!realFullPath.startsWith(realBasePath + sep)
+			) {
+				errors.push(
+					`Invalid directory path "${entry}" (directory traversal is not allowed).`,
+				)
+				continue
+			}
+		} catch {
+			// ignore: allow non-existent targets as long as resolve()-containment passed
+		}
+
+		normalized.push(`${mediaRoot}:${relativePath}`)
+	}
+
+	if (errors.length > 0) {
+		return { ok: false, error: errors.map((e) => `- ${e}`).join('\n') }
+	}
+
+	return { ok: true, directoryPaths: normalized }
+}
+
 /**
  * Initialize MCP tools based on authorized scopes.
  *
@@ -290,6 +431,7 @@ export async function initializeTools(
 								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
 							)
 							if (feed.description) lines.push(`  ${feed.description}`)
+							if (feed.subtitle) lines.push(`  _${feed.subtitle}_`)
 						}
 						lines.push('')
 					}
@@ -301,6 +443,7 @@ export async function initializeTools(
 								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
 							)
 							if (feed.description) lines.push(`  ${feed.description}`)
+							if (feed.subtitle) lines.push(`  _${feed.subtitle}_`)
 						}
 						lines.push('')
 					}
@@ -317,8 +460,30 @@ export async function initializeTools(
 							id: feed.id,
 							name: feed.name,
 							description: feed.description,
+							subtitle: feed.subtitle,
+							imageUrl: feed.imageUrl,
+							author: feed.author,
+							ownerName: feed.ownerName,
+							ownerEmail: feed.ownerEmail,
+							language: feed.language,
+							explicit: feed.explicit,
+							category: feed.category,
+							link: feed.link,
+							copyright: feed.copyright,
+							feedType: feed.feedType,
+							sortFields: feed.sortFields,
+							sortOrder: feed.sortOrder,
+							...(feed.type === 'directory'
+								? {
+										directoryPaths: feed.directoryPaths,
+										filterIn: feed.filterIn,
+										filterOut: feed.filterOut,
+									}
+								: {}),
+							overrides: feed.overrides,
 							type: feed.type,
 							createdAt: feed.createdAt,
+							updatedAt: feed.updatedAt,
 						})),
 						total: feeds.length,
 					},
@@ -369,6 +534,9 @@ export async function initializeTools(
 				if (feed.description) {
 					lines.push(`- **Description**: ${feed.description}`)
 				}
+				if (feed.subtitle) {
+					lines.push(`- **Subtitle**: ${feed.subtitle}`)
+				}
 
 				if (feed.type === 'curated') {
 					lines.push('')
@@ -402,8 +570,30 @@ export async function initializeTools(
 							id: feed.id,
 							name: feed.name,
 							description: feed.description,
+							subtitle: feed.subtitle,
+							imageUrl: feed.imageUrl,
+							author: feed.author,
+							ownerName: feed.ownerName,
+							ownerEmail: feed.ownerEmail,
+							language: feed.language,
+							explicit: feed.explicit,
+							category: feed.category,
+							link: feed.link,
+							copyright: feed.copyright,
+							feedType: feed.feedType,
+							sortFields: feed.sortFields,
+							sortOrder: feed.sortOrder,
+							...(feed.type === 'directory'
+								? {
+										directoryPaths: feed.directoryPaths,
+										filterIn: feed.filterIn,
+										filterOut: feed.filterOut,
+									}
+								: {}),
+							overrides: feed.overrides,
 							type: feed.type,
 							createdAt: feed.createdAt,
+							updatedAt: feed.updatedAt,
 						},
 						items: items.map((item: FeedItem) => ({
 							id: item.id,
@@ -1140,6 +1330,90 @@ export async function initializeTools(
 						.string()
 						.optional()
 						.describe('Description shown in podcast apps'),
+					subtitle: z
+						.string()
+						.max(255)
+						.optional()
+						.describe(
+							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
+						),
+					imageUrl: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('Custom feed artwork URL (or null to clear)'),
+					author: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Feed author/creator name (or null to clear)'),
+					ownerName: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('iTunes owner name (or null to clear)'),
+					ownerEmail: z
+						.string()
+						.email()
+						.nullable()
+						.optional()
+						.describe('iTunes owner email (or null to clear)'),
+					language: z
+						.string()
+						.optional()
+						.describe('Language code (default: "en")'),
+					explicit: z
+						.string()
+						.optional()
+						.describe('Explicit flag (e.g., "no", "yes", "clean")'),
+					category: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Category string (or null to clear)'),
+					link: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('Website link for the feed (or null to clear)'),
+					copyright: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Copyright notice (or null to clear)'),
+					feedType: z
+						.enum(['episodic', 'serial'])
+						.optional()
+						.describe('Feed type (Apple Podcasts): "episodic" or "serial"'),
+					sortFields: z
+						.string()
+						.optional()
+						.describe(
+							'Item sort fields (default: "filename"). For example: "pubDate,track".',
+						),
+					sortOrder: z
+						.enum(['asc', 'desc'])
+						.optional()
+						.describe('Sort order (default: "asc")'),
+					filterIn: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Include filter (or null to clear)'),
+					filterOut: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Exclude filter (or null to clear)'),
+					overrides: z
+						.string()
+						.nullable()
+						.optional()
+						.describe(
+							'JSON string of per-item metadata overrides (advanced) (or null to clear)',
+						),
 					mediaRoot: z.string().describe('Name from `list_media_directories`'),
 					directoryPath: z
 						.string()
@@ -1152,7 +1426,28 @@ export async function initializeTools(
 					destructiveHint: false,
 				},
 			},
-			async ({ name, description, mediaRoot, directoryPath }) => {
+			async ({
+				name,
+				description,
+				subtitle,
+				imageUrl,
+				author,
+				ownerName,
+				ownerEmail,
+				language,
+				explicit,
+				category,
+				link,
+				copyright,
+				feedType,
+				sortFields,
+				sortOrder,
+				filterIn,
+				filterOut,
+				overrides,
+				mediaRoot,
+				directoryPath,
+			}) => {
 				const mediaRoots = getMediaRoots()
 				const mr = mediaRoots.find((m) => m.name === mediaRoot)
 
@@ -1189,6 +1484,22 @@ export async function initializeTools(
 				try {
 					const now = Math.floor(Date.now() / 1000)
 					const normalizedDescription = normalizeOptionalText(description)
+					const normalizedSubtitle = subtitle ?? null
+					const normalizedSortFields = sortFields ?? 'filename'
+					const normalizedSortOrder = sortOrder ?? 'asc'
+					const normalizedImageUrl = imageUrl ?? null
+					const normalizedAuthor = author ?? null
+					const normalizedOwnerName = ownerName ?? null
+					const normalizedOwnerEmail = ownerEmail ?? null
+					const normalizedLanguage = language ?? 'en'
+					const normalizedExplicit = explicit ?? 'no'
+					const normalizedCategory = category ?? null
+					const normalizedLink = link ?? null
+					const normalizedCopyright = copyright ?? null
+					const normalizedFeedType = feedType ?? 'episodic'
+					const normalizedFilterIn = filterIn ?? null
+					const normalizedFilterOut = filterOut ?? null
+					const normalizedOverrides = overrides ?? null
 					const directoryPathsJson = JSON.stringify([
 						`${mediaRoot}:${directoryPath}`,
 					])
@@ -1196,7 +1507,23 @@ export async function initializeTools(
 					const existing = findRecentMatchingDirectoryFeed({
 						name,
 						description: normalizedDescription,
+						subtitle: normalizedSubtitle,
 						directoryPathsJson,
+						sortFields: normalizedSortFields,
+						sortOrder: normalizedSortOrder,
+						imageUrl: normalizedImageUrl,
+						author: normalizedAuthor,
+						ownerName: normalizedOwnerName,
+						ownerEmail: normalizedOwnerEmail,
+						language: normalizedLanguage,
+						explicit: normalizedExplicit,
+						category: normalizedCategory,
+						link: normalizedLink,
+						copyright: normalizedCopyright,
+						feedType: normalizedFeedType,
+						filterIn: normalizedFilterIn,
+						filterOut: normalizedFilterOut,
+						overrides: normalizedOverrides,
 						now,
 					})
 
@@ -1205,7 +1532,23 @@ export async function initializeTools(
 						: createDirectoryFeed({
 								name,
 								description: normalizedDescription || undefined,
+								subtitle: normalizedSubtitle,
 								directoryPaths: [`${mediaRoot}:${directoryPath}`],
+								sortFields: normalizedSortFields,
+								sortOrder: normalizedSortOrder,
+								imageUrl: normalizedImageUrl,
+								author: normalizedAuthor,
+								ownerName: normalizedOwnerName,
+								ownerEmail: normalizedOwnerEmail,
+								language: normalizedLanguage,
+								explicit: normalizedExplicit,
+								category: normalizedCategory,
+								link: normalizedLink,
+								copyright: normalizedCopyright,
+								feedType: normalizedFeedType,
+								filterIn: normalizedFilterIn,
+								filterOut: normalizedFilterOut,
+								overrides: normalizedOverrides,
 							})
 
 					// Prefer re-using an existing active token when deduping.
@@ -1228,6 +1571,9 @@ export async function initializeTools(
 					if (feed.description) {
 						lines.push(`- **Description**: ${feed.description}`)
 					}
+					if (feed.subtitle) {
+						lines.push(`- **Subtitle**: ${feed.subtitle}`)
+					}
 					lines.push('')
 					lines.push(`### RSS Feed URL`)
 					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
@@ -1246,6 +1592,23 @@ export async function initializeTools(
 								id: feed.id,
 								name: feed.name,
 								description: feed.description,
+								subtitle: feed.subtitle,
+								imageUrl: feed.imageUrl,
+								author: feed.author,
+								ownerName: feed.ownerName,
+								ownerEmail: feed.ownerEmail,
+								language: feed.language,
+								explicit: feed.explicit,
+								category: feed.category,
+								link: feed.link,
+								copyright: feed.copyright,
+								feedType: feed.feedType,
+								sortFields: feed.sortFields,
+								sortOrder: feed.sortOrder,
+								directoryPaths: feed.directoryPaths,
+								filterIn: feed.filterIn,
+								filterOut: feed.filterOut,
+								overrides: feed.overrides,
 								type: 'directory',
 							},
 							token: token.token,
@@ -1279,20 +1642,137 @@ export async function initializeTools(
 						.string()
 						.optional()
 						.describe('Description shown in podcast apps'),
+					subtitle: z
+						.string()
+						.max(255)
+						.optional()
+						.describe(
+							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
+						),
+					imageUrl: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('Custom feed artwork URL (or null to clear)'),
+					author: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Feed author/creator name (or null to clear)'),
+					ownerName: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('iTunes owner name (or null to clear)'),
+					ownerEmail: z
+						.string()
+						.email()
+						.nullable()
+						.optional()
+						.describe('iTunes owner email (or null to clear)'),
+					language: z
+						.string()
+						.optional()
+						.describe('Language code (default: "en")'),
+					explicit: z
+						.string()
+						.optional()
+						.describe('Explicit flag (e.g., "no", "yes", "clean")'),
+					category: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Category string (or null to clear)'),
+					link: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('Website link for the feed (or null to clear)'),
+					copyright: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Copyright notice (or null to clear)'),
+					feedType: z
+						.enum(['episodic', 'serial'])
+						.optional()
+						.describe('Feed type (Apple Podcasts): "episodic" or "serial"'),
+					sortFields: z
+						.string()
+						.optional()
+						.describe('Item sort fields (default: "position")'),
+					sortOrder: z
+						.enum(['asc', 'desc'])
+						.optional()
+						.describe('Sort order (default: "asc")'),
+					overrides: z
+						.string()
+						.nullable()
+						.optional()
+						.describe(
+							'JSON string of per-item metadata overrides (advanced) (or null to clear)',
+						),
 				},
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
 				},
 			},
-			async ({ name, description }) => {
+			async ({
+				name,
+				description,
+				subtitle,
+				imageUrl,
+				author,
+				ownerName,
+				ownerEmail,
+				language,
+				explicit,
+				category,
+				link,
+				copyright,
+				feedType,
+				sortFields,
+				sortOrder,
+				overrides,
+			}) => {
 				try {
 					const now = Math.floor(Date.now() / 1000)
 					const normalizedDescription = normalizeOptionalText(description)
+					const normalizedSubtitle = subtitle ?? null
+					const normalizedSortFields = sortFields ?? 'position'
+					const normalizedSortOrder = sortOrder ?? 'asc'
+					const normalizedImageUrl = imageUrl ?? null
+					const normalizedAuthor = author ?? null
+					const normalizedOwnerName = ownerName ?? null
+					const normalizedOwnerEmail = ownerEmail ?? null
+					const normalizedLanguage = language ?? 'en'
+					const normalizedExplicit = explicit ?? 'no'
+					const normalizedCategory = category ?? null
+					const normalizedLink = link ?? null
+					const normalizedCopyright = copyright ?? null
+					const normalizedFeedType = feedType ?? 'episodic'
+					const normalizedOverrides = overrides ?? null
 
 					const existing = findRecentMatchingCuratedFeed({
 						name,
 						description: normalizedDescription,
+						subtitle: normalizedSubtitle,
+						sortFields: normalizedSortFields,
+						sortOrder: normalizedSortOrder,
+						imageUrl: normalizedImageUrl,
+						author: normalizedAuthor,
+						ownerName: normalizedOwnerName,
+						ownerEmail: normalizedOwnerEmail,
+						language: normalizedLanguage,
+						explicit: normalizedExplicit,
+						category: normalizedCategory,
+						link: normalizedLink,
+						copyright: normalizedCopyright,
+						feedType: normalizedFeedType,
+						overrides: normalizedOverrides,
 						now,
 					})
 
@@ -1301,6 +1781,20 @@ export async function initializeTools(
 						: createCuratedFeed({
 								name,
 								description: normalizedDescription || undefined,
+								subtitle: normalizedSubtitle,
+								sortFields: normalizedSortFields,
+								sortOrder: normalizedSortOrder,
+								imageUrl: normalizedImageUrl,
+								author: normalizedAuthor,
+								ownerName: normalizedOwnerName,
+								ownerEmail: normalizedOwnerEmail,
+								language: normalizedLanguage,
+								explicit: normalizedExplicit,
+								category: normalizedCategory,
+								link: normalizedLink,
+								copyright: normalizedCopyright,
+								feedType: normalizedFeedType,
+								overrides: normalizedOverrides,
 							})
 
 					// Prefer re-using an existing active token when deduping.
@@ -1322,6 +1816,9 @@ export async function initializeTools(
 					if (feed.description) {
 						lines.push(`- **Description**: ${feed.description}`)
 					}
+					if (feed.subtitle) {
+						lines.push(`- **Subtitle**: ${feed.subtitle}`)
+					}
 					lines.push('')
 					lines.push(`### RSS Feed URL`)
 					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
@@ -1338,6 +1835,20 @@ export async function initializeTools(
 								id: feed.id,
 								name: feed.name,
 								description: feed.description,
+								subtitle: feed.subtitle,
+								imageUrl: feed.imageUrl,
+								author: feed.author,
+								ownerName: feed.ownerName,
+								ownerEmail: feed.ownerEmail,
+								language: feed.language,
+								explicit: feed.explicit,
+								category: feed.category,
+								link: feed.link,
+								copyright: feed.copyright,
+								feedType: feed.feedType,
+								sortFields: feed.sortFields,
+								sortOrder: feed.sortOrder,
+								overrides: feed.overrides,
 								type: 'curated',
 							},
 							token: token.token,
@@ -1375,13 +1886,120 @@ export async function initializeTools(
 						.string()
 						.optional()
 						.describe('New description (omit to keep current)'),
+					subtitle: z
+						.string()
+						.max(255)
+						.nullable()
+						.optional()
+						.describe('New subtitle/tagline (or null to clear)'),
+					imageUrl: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('New feed artwork URL (or null to clear)'),
+					author: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('New author/creator (or null to clear)'),
+					ownerName: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('New iTunes owner name (or null to clear)'),
+					ownerEmail: z
+						.string()
+						.email()
+						.nullable()
+						.optional()
+						.describe('New iTunes owner email (or null to clear)'),
+					language: z
+						.string()
+						.optional()
+						.describe('New language code (omit to keep current)'),
+					explicit: z
+						.string()
+						.optional()
+						.describe('New explicit flag (omit to keep current)'),
+					category: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('New category (or null to clear)'),
+					link: z
+						.string()
+						.url()
+						.nullable()
+						.optional()
+						.describe('New website link (or null to clear)'),
+					copyright: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('New copyright notice (or null to clear)'),
+					feedType: z
+						.enum(['episodic', 'serial'])
+						.optional()
+						.describe('New feed type (Apple Podcasts): "episodic" or "serial"'),
+					sortFields: z
+						.string()
+						.optional()
+						.describe('New sort fields (omit to keep current)'),
+					sortOrder: z
+						.enum(['asc', 'desc'])
+						.optional()
+						.describe('New sort order (omit to keep current)'),
+					overrides: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('New overrides JSON string (or null to clear)'),
+					// Directory-feed-only fields
+					directoryPaths: z
+						.array(z.string())
+						.optional()
+						.describe(
+							'Directory feed only: array of "mediaRoot:relativePath" entries',
+						),
+					filterIn: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Directory feed only: include filter (or null to clear)'),
+					filterOut: z
+						.string()
+						.nullable()
+						.optional()
+						.describe('Directory feed only: exclude filter (or null to clear)'),
 				},
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
 				},
 			},
-			async ({ id, name, description }) => {
+			async ({
+				id,
+				name,
+				description,
+				subtitle,
+				imageUrl,
+				author,
+				ownerName,
+				ownerEmail,
+				language,
+				explicit,
+				category,
+				link,
+				copyright,
+				feedType,
+				sortFields,
+				sortOrder,
+				overrides,
+				directoryPaths,
+				filterIn,
+				filterOut,
+			}) => {
 				const feed = getFeedById(id)
 
 				if (!feed) {
@@ -1397,17 +2015,81 @@ export async function initializeTools(
 				}
 
 				try {
+					if (feed.type === 'curated') {
+						const hasDirectoryOnlyUpdates =
+							directoryPaths !== undefined ||
+							filterIn !== undefined ||
+							filterOut !== undefined
+						if (hasDirectoryOnlyUpdates) {
+							return {
+								content: [
+									{
+										type: 'text',
+										text: `❌ Cannot update directory-only fields on a curated feed.\n\nCurated feed: \`${id}\`\n\nRemove directoryPaths/filterIn/filterOut from the request and try again.`,
+									},
+								],
+								isError: true,
+							}
+						}
+					}
+
 					if (feed.type === 'directory') {
+						if (directoryPaths) {
+							const validation =
+								await validateDirectoryPathsUpdate(directoryPaths)
+							if (!validation.ok) {
+								return {
+									content: [
+										{
+											type: 'text',
+											text: `❌ Invalid directoryPaths.\n\n${validation.error}`,
+										},
+									],
+									isError: true,
+								}
+							}
+							directoryPaths = validation.directoryPaths
+						}
+
 						updateDirectoryFeed(id, {
-							name: name ?? feed.name,
-							description:
-								description !== undefined ? description : feed.description,
+							name,
+							description,
+							subtitle,
+							directoryPaths,
+							sortFields,
+							sortOrder,
+							imageUrl,
+							author,
+							ownerName,
+							ownerEmail,
+							language,
+							explicit,
+							category,
+							link,
+							copyright,
+							feedType,
+							filterIn,
+							filterOut,
+							overrides,
 						})
 					} else {
 						updateCuratedFeed(id, {
-							name: name ?? feed.name,
-							description:
-								description !== undefined ? description : feed.description,
+							name,
+							description,
+							subtitle,
+							sortFields,
+							sortOrder,
+							imageUrl,
+							author,
+							ownerName,
+							ownerEmail,
+							language,
+							explicit,
+							category,
+							link,
+							copyright,
+							feedType,
+							overrides,
 						})
 					}
 
@@ -1423,6 +2105,9 @@ export async function initializeTools(
 					if (updatedFeed.description) {
 						lines.push(`- **Description**: ${updatedFeed.description}`)
 					}
+					if (updatedFeed.subtitle) {
+						lines.push(`- **Subtitle**: ${updatedFeed.subtitle}`)
+					}
 					lines.push('')
 					lines.push('Next: Use `get_feed` to see full details.')
 
@@ -1434,6 +2119,27 @@ export async function initializeTools(
 								id: updatedFeed.id,
 								name: updatedFeed.name,
 								description: updatedFeed.description,
+								subtitle: updatedFeed.subtitle,
+								imageUrl: updatedFeed.imageUrl,
+								author: updatedFeed.author,
+								ownerName: updatedFeed.ownerName,
+								ownerEmail: updatedFeed.ownerEmail,
+								language: updatedFeed.language,
+								explicit: updatedFeed.explicit,
+								category: updatedFeed.category,
+								link: updatedFeed.link,
+								copyright: updatedFeed.copyright,
+								feedType: updatedFeed.feedType,
+								sortFields: updatedFeed.sortFields,
+								sortOrder: updatedFeed.sortOrder,
+								...(updatedFeed.type === 'directory'
+									? {
+											directoryPaths: updatedFeed.directoryPaths,
+											filterIn: updatedFeed.filterIn,
+											filterOut: updatedFeed.filterOut,
+										}
+									: {}),
+								overrides: updatedFeed.overrides,
 								type: updatedFeed.type,
 							},
 						},

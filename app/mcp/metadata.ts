@@ -96,7 +96,7 @@ export const toolsMetadata = {
 		title: 'List Feeds',
 		description: `List all available podcast and media feeds.
 
-Returns: Array of feeds with { id, name, description, type, createdAt }
+Returns: Array of feeds with { id, name, description, subtitle, type, createdAt, updatedAt, ...metadata }
 
 Types:
 - \`directory\`: Auto-includes all media from a folder
@@ -117,7 +117,7 @@ Example response:
 Inputs:
 - id: string (required) — The feed ID from \`list_feeds\`
 
-Returns: { feed: { id, name, description, type, createdAt }, items: [...], itemCount }
+Returns: { feed: { id, name, description, subtitle, ...metadata, type, createdAt, updatedAt }, items: [...], itemCount }
 
 For curated feeds, items shows all added media files with their paths.
 For directory feeds, items are dynamically loaded from the folder.
@@ -188,10 +188,13 @@ Next: Use \`create_feed_token\` to generate additional tokens, or \`delete_feed_
 Inputs:
 - name: string (required) — Display name for the feed
 - description: string (optional) — Description shown in podcast apps
+- subtitle: string (optional) — Short subtitle/tagline shown in podcast apps
+- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- sortFields, sortOrder, filterIn, filterOut, overrides: (optional) — Advanced feed configuration
 - mediaRoot: string (required) — Name from \`list_media_directories\`
 - directoryPath: string (required) — Path within the media root
 
-Returns: { success, feed: { id, name, description }, token }
+Returns: { success, feed: { id, name, description, subtitle, ...metadata }, token }
 
 The feed will automatically include all media files in the directory.
 A token is auto-generated for immediate use.
@@ -211,8 +214,11 @@ Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Use \`get_feed\` to verify.
 Inputs:
 - name: string (required) — Display name for the feed
 - description: string (optional) — Description shown in podcast apps
+- subtitle: string (optional) — Short subtitle/tagline shown in podcast apps
+- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- sortFields, sortOrder, overrides: (optional) — Advanced feed configuration
 
-Returns: { success, feed: { id, name, description }, token }
+Returns: { success, feed: { id, name, description, subtitle, ...metadata }, token }
 
 Curated feeds start empty. Add media files via the web UI or \`add_media_to_feeds\`.
 A token is auto-generated for immediate use.
@@ -227,14 +233,18 @@ Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via \`add_media_t
 	update_feed: {
 		name: 'update_feed',
 		title: 'Update Feed',
-		description: `Update a feed's name or description.
+		description: `Update a feed's metadata and configuration.
 
 Inputs:
 - id: string (required) — The feed ID
 - name: string (optional) — New name
 - description: string (optional) — New description
+- subtitle: string|null (optional) — New subtitle/tagline (null clears it)
+- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- sortFields, sortOrder, overrides: (optional) — Feed configuration
+- directoryPaths, filterIn, filterOut: (optional) — Directory-feed-only settings
 
-Returns: { success, message }
+Returns: { success, feed: { id, name, description, subtitle, ...metadata } }
 
 Only provided fields are updated. Omit fields to keep current values.
 

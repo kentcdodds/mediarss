@@ -1,6 +1,10 @@
 /**
  * In-memory rate limiter using sliding window algorithm.
  * Tracks requests by IP address and enforces configurable limits.
+ *
+ * Supports failure penalties: failed requests (4xx/5xx) can be recorded
+ * with a penalty multiplier, effectively reducing the rate limit for
+ * devices that generate failed requests. This helps prevent brute force attacks.
  */
 
 interface RateLimiterOptions {
@@ -11,6 +15,9 @@ interface RateLimiterOptions {
 	/** Time window in milliseconds (default: 60000 = 1 minute) */
 	windowMs?: number
 }
+
+/** Default penalty multiplier for failed requests (10x = 1/10th rate limit) */
+const DEFAULT_FAILURE_PENALTY = 9
 
 /**
  * Rate limiter class that tracks request timestamps per key (typically IP).
@@ -68,6 +75,41 @@ export class RateLimiter {
 	 */
 	isAllowed(key: string): boolean {
 		return this.check(key).allowed
+	}
+
+	/**
+	 * Record a failed request, applying a penalty to the rate limit.
+	 * This adds additional timestamps to effectively reduce the rate limit
+	 * for clients that generate failed requests (e.g., brute force attempts).
+	 *
+	 * By default, a failed request consumes 10x the normal rate limit
+	 * (the initial request + 9 penalty slots), giving the client 1/10th
+	 * the effective rate limit for failed requests.
+	 *
+	 * @param key - The rate limit key (typically IP + limiter name)
+	 * @param penalty - Additional slots to consume (default: 9, for 10x total)
+	 * @returns The penalty that was applied (0 if penalty was non-positive)
+	 */
+	recordFailure(
+		key: string,
+		penalty: number = DEFAULT_FAILURE_PENALTY,
+	): number {
+		if (penalty <= 0) return 0
+
+		const now = Date.now()
+		const windowStart = now - this.#windowMs
+
+		// Get existing timestamps and filter to current window
+		const timestamps = this.#requests.get(key) ?? []
+		const recentTimestamps = timestamps.filter((t) => t > windowStart)
+
+		// Add penalty timestamps (all at current time)
+		for (let i = 0; i < penalty; i++) {
+			recentTimestamps.push(now)
+		}
+
+		this.#requests.set(key, recentTimestamps)
+		return penalty
 	}
 
 	/**

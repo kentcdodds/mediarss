@@ -3,12 +3,14 @@ import { invariant } from '@epic-web/invariant'
 import type { RequestContext } from '@remix-run/fetch-router'
 import { consoleWarn } from '#test/setup.ts'
 
-// Configure lower rate limits for faster tests BEFORE importing any source code
+// Configure rate limits for testing BEFORE importing any source code
+// Note: With failure penalty (10x cost for failed requests), these limits must
+// be high enough for other tests that make failed requests intentionally
 const TEST_RATE_LIMITS = {
-	RATE_LIMIT_ADMIN_READ: '10',
-	RATE_LIMIT_ADMIN_WRITE: '5',
-	RATE_LIMIT_MEDIA: '10',
-	RATE_LIMIT_DEFAULT: '10',
+	RATE_LIMIT_ADMIN_READ: '100',
+	RATE_LIMIT_ADMIN_WRITE: '50',
+	RATE_LIMIT_MEDIA: '100',
+	RATE_LIMIT_DEFAULT: '100',
 }
 
 // Set environment variables BEFORE importing source code
@@ -241,4 +243,220 @@ test('rate limiter tracks different route types independently', async () => {
 	})
 	invariant(mediaResponse, 'Expected response')
 	expect(mediaResponse.status).toBe(200)
+})
+
+/**
+ * Helper to call the rate limit middleware with a custom response status.
+ */
+async function callRateLimiterWithResponseStatus(
+	pathname: string,
+	responseStatus: number,
+	options: {
+		method?: string
+		ip?: string
+		headers?: Record<string, string>
+	} = {},
+) {
+	const { method = 'GET', ip, headers = {} } = options
+	if (ip) headers['X-Forwarded-For'] = ip
+
+	const request = new Request(`http://localhost${pathname}`, {
+		method,
+		headers,
+	})
+	const context = {
+		request,
+		url: new URL(request.url),
+		method: request.method,
+		params: {},
+	} as RequestContext
+
+	const middleware = rateLimit()
+	const next = () =>
+		Promise.resolve(new Response('Response', { status: responseStatus }))
+	return middleware(context, next)
+}
+
+test('rate limiter applies 10x penalty for 401 Unauthorized responses', async () => {
+	// Rate limit blocking logs a warning, which is expected
+	consoleWarn.mockImplementation(() => {})
+
+	const uniqueIp = `failure-401-test-${Date.now()}`
+	const adminReadLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ, 10)
+
+	// Make requests until we're 10 away from the limit
+	// Then a single 401 should consume 10 slots (1 + 9 penalty) and block us
+	for (let i = 0; i < adminReadLimit - 10; i++) {
+		await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	}
+
+	// One failed 401 request should consume 10 slots (1 initial + 9 penalty)
+	const failedResponse = await callRateLimiterWithResponseStatus(
+		'/admin/api/feeds',
+		401,
+		{ ip: uniqueIp },
+	)
+	invariant(failedResponse, 'Expected response')
+	expect(failedResponse.status).toBe(401)
+
+	// Should now be blocked (used 90 + 10 = 100, at limit)
+	const blockedResponse = await callRateLimiter('/admin/api/feeds', {
+		ip: uniqueIp,
+	})
+	invariant(blockedResponse, 'Expected response')
+	expect(blockedResponse.status).toBe(429)
+})
+
+test('rate limiter applies 10x penalty for 403 Forbidden responses', async () => {
+	consoleWarn.mockImplementation(() => {})
+
+	const uniqueIp = `failure-403-test-${Date.now()}`
+	const adminReadLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ, 10)
+
+	// Make requests until we're 10 away from the limit
+	for (let i = 0; i < adminReadLimit - 10; i++) {
+		await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	}
+
+	// One failed 403 request should consume 10 slots
+	const failedResponse = await callRateLimiterWithResponseStatus(
+		'/admin/api/feeds',
+		403,
+		{ ip: uniqueIp },
+	)
+	invariant(failedResponse, 'Expected response')
+	expect(failedResponse.status).toBe(403)
+
+	// Should now be blocked
+	const blockedResponse = await callRateLimiter('/admin/api/feeds', {
+		ip: uniqueIp,
+	})
+	invariant(blockedResponse, 'Expected response')
+	expect(blockedResponse.status).toBe(429)
+})
+
+test('rate limiter applies 10x penalty for 400 Bad Request responses', async () => {
+	consoleWarn.mockImplementation(() => {})
+
+	const uniqueIp = `failure-400-test-${Date.now()}`
+	const adminReadLimit = parseInt(TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ, 10)
+
+	// Make requests until we're 10 away from the limit
+	for (let i = 0; i < adminReadLimit - 10; i++) {
+		await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	}
+
+	// One failed 400 request should consume 10 slots
+	const failedResponse = await callRateLimiterWithResponseStatus(
+		'/admin/api/feeds',
+		400,
+		{ ip: uniqueIp },
+	)
+	invariant(failedResponse, 'Expected response')
+	expect(failedResponse.status).toBe(400)
+
+	// Should now be blocked
+	const blockedResponse = await callRateLimiter('/admin/api/feeds', {
+		ip: uniqueIp,
+	})
+	invariant(blockedResponse, 'Expected response')
+	expect(blockedResponse.status).toBe(429)
+})
+
+test('rate limiter does NOT apply penalty for 404 Not Found responses', async () => {
+	const uniqueIp = `no-penalty-404-test-${Date.now()}`
+
+	// Multiple 404 responses should not trigger penalty
+	// (404s are typically legitimate navigation/crawling, not abuse)
+	for (let i = 0; i < 5; i++) {
+		const response = await callRateLimiterWithResponseStatus(
+			'/admin/api/feeds',
+			404,
+			{ ip: uniqueIp },
+		)
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(404)
+	}
+
+	// Should still have quota remaining (only 5 of 100 slots used, no penalty applied)
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter does NOT apply penalty for 405 Method Not Allowed responses', async () => {
+	const uniqueIp = `no-penalty-405-test-${Date.now()}`
+
+	// Multiple 405 responses should not trigger penalty
+	for (let i = 0; i < 5; i++) {
+		const response = await callRateLimiterWithResponseStatus(
+			'/admin/api/feeds',
+			405,
+			{ ip: uniqueIp },
+		)
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(405)
+	}
+
+	// Should still have quota remaining
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter does NOT apply penalty for 429 Too Many Requests responses', async () => {
+	const uniqueIp = `no-penalty-429-test-${Date.now()}`
+
+	// 429 responses should not trigger penalty (avoid double-penalizing)
+	// This could happen if an upstream service returns 429
+	for (let i = 0; i < 5; i++) {
+		const response = await callRateLimiterWithResponseStatus(
+			'/admin/api/feeds',
+			429,
+			{ ip: uniqueIp },
+		)
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(429)
+	}
+
+	// Should still have quota remaining (only 5 of 100 slots used, no penalty applied)
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter does NOT apply penalty for 500 Server Error responses', async () => {
+	const uniqueIp = `no-penalty-500-test-${Date.now()}`
+
+	// Server errors should not penalize the client
+	for (let i = 0; i < 5; i++) {
+		const response = await callRateLimiterWithResponseStatus(
+			'/admin/api/feeds',
+			500,
+			{ ip: uniqueIp },
+		)
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(500)
+	}
+
+	// Should still have quota remaining
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
+})
+
+test('rate limiter does NOT apply penalty for 200 OK responses', async () => {
+	const uniqueIp = `no-penalty-200-test-${Date.now()}`
+
+	// Successful responses should not trigger any penalty
+	for (let i = 0; i < 9; i++) {
+		const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+		invariant(response, 'Expected response')
+		expect(response.status).toBe(200)
+	}
+
+	// 10th request should still work (at limit, not over)
+	const response = await callRateLimiter('/admin/api/feeds', { ip: uniqueIp })
+	invariant(response, 'Expected response')
+	expect(response.status).toBe(200)
 })

@@ -12,8 +12,13 @@ import { createRoot, type Handle } from '@remix-run/component'
 import { z } from 'zod'
 import { waitForRenderData } from './mcp-ui.ts'
 
+// =============================================================================
+// SCHEMAS
+// =============================================================================
+
 /**
- * Media data schema for validation
+ * The widget's required input schema - this is what the widget renders.
+ * DO NOT CHANGE THIS SCHEMA - the adapter must conform to it.
  */
 const MediaDataSchema = z.object({
 	title: z.string(),
@@ -32,17 +37,250 @@ const MediaDataSchema = z.object({
 type MediaData = z.infer<typeof MediaDataSchema>
 
 /**
- * Render data schema from MCP-UI protocol
- * ChatGPT wraps the data in toolInput/toolOutput
+ * Schema for the MediaRSS tool's structured output.
+ * This is what the tool returns in structuredContent.
+ */
+const ToolOutputSchema = z.object({
+	metadata: z.object({
+		title: z.string(),
+		author: z.string().nullable(),
+		duration: z.number().nullable(),
+		sizeBytes: z.number(),
+		mimeType: z.string(),
+		publicationDate: z.string().nullable(),
+		description: z.string().nullable(),
+		narrators: z.array(z.string()).nullable(),
+		genres: z.array(z.string()).nullable(),
+	}),
+	access: z.object({
+		token: z.string(),
+		mediaRoot: z.string(),
+		relativePath: z.string(),
+	}),
+})
+
+type ToolOutput = z.infer<typeof ToolOutputSchema>
+
+/**
+ * Render data schema from MCP-UI protocol.
+ * ChatGPT provides toolInput (tool's input params) and toolOutput (tool's result).
  */
 const RenderDataSchema = z
 	.object({
-		toolInput: MediaDataSchema.passthrough().nullable(),
-		toolOutput: z.object({}).passthrough().nullable(),
+		toolInput: z.unknown().nullable(),
+		toolOutput: z.unknown().nullable(),
 	})
 	.passthrough()
 
-// Color tokens for the widget (dark theme optimized for ChatGPT context)
+// =============================================================================
+// ADAPTER LAYER
+// =============================================================================
+
+/**
+ * Encode a relative path for use in URLs.
+ * Handles special characters properly.
+ */
+function encodeRelativePath(path: string): string {
+	return path
+		.split('/')
+		.map((segment) => encodeURIComponent(segment))
+		.join('/')
+}
+
+/**
+ * Derive the artwork URL from access info.
+ * Uses the /art/:token/:path endpoint.
+ */
+function deriveArtworkUrl(access: ToolOutput['access']): string {
+	const encodedPath = encodeRelativePath(
+		`${access.mediaRoot}/${access.relativePath}`,
+	)
+	return `/art/${access.token}/${encodedPath}`
+}
+
+/**
+ * Derive the stream URL from access info.
+ * Uses the /media/:token/:path endpoint.
+ */
+function deriveStreamUrl(access: ToolOutput['access']): string {
+	const encodedPath = encodeRelativePath(
+		`${access.mediaRoot}/${access.relativePath}`,
+	)
+	return `/media/${access.token}/${encodedPath}`
+}
+
+/**
+ * Adapter: Maps the MediaRSS tool output to the widget's expected MediaData format.
+ *
+ * This is the explicit adapter layer that transforms:
+ *   { metadata: {...}, access: {...} }
+ * into:
+ *   { title, author, ..., artworkUrl, streamUrl }
+ *
+ * @throws Error if the input doesn't match the expected tool output shape
+ */
+function adaptToolOutputToMediaData(toolOutput: unknown): MediaData {
+	// Parse and validate the tool output structure
+	const parsed = ToolOutputSchema.parse(toolOutput)
+
+	// Map metadata fields directly and derive URLs from access
+	const adapted: MediaData = {
+		title: parsed.metadata.title,
+		author: parsed.metadata.author,
+		duration: parsed.metadata.duration,
+		sizeBytes: parsed.metadata.sizeBytes,
+		mimeType: parsed.metadata.mimeType,
+		publicationDate: parsed.metadata.publicationDate,
+		description: parsed.metadata.description,
+		narrators: parsed.metadata.narrators,
+		genres: parsed.metadata.genres,
+		artworkUrl: deriveArtworkUrl(parsed.access),
+		streamUrl: deriveStreamUrl(parsed.access),
+	}
+
+	// Runtime validation: ensure all required fields are present
+	// This will throw if any field is missing, making regressions impossible to miss
+	return MediaDataSchema.parse(adapted)
+}
+
+/**
+ * Check if data matches the full MediaData schema (already adapted or from initial-render-data).
+ */
+function isFullMediaData(data: unknown): data is MediaData {
+	return MediaDataSchema.safeParse(data).success
+}
+
+/**
+ * Check if data matches the tool output schema (needs adaptation).
+ */
+function isToolOutput(data: unknown): data is ToolOutput {
+	return ToolOutputSchema.safeParse(data).success
+}
+
+/**
+ * Schema for minimal input (path params from toolInput when toolOutput is unavailable).
+ */
+const MinimalInputSchema = z.object({
+	mediaRoot: z.string(),
+	relativePath: z.string(),
+	token: z.string().optional(),
+})
+
+/**
+ * Check if data is minimal path input.
+ */
+function isMinimalInput(
+	data: unknown,
+): data is z.infer<typeof MinimalInputSchema> {
+	return MinimalInputSchema.safeParse(data).success
+}
+
+/**
+ * Fetch media data from the server API when toolOutput is unavailable.
+ * This is a fallback for when ChatGPT doesn't populate toolOutput.
+ */
+async function fetchMediaDataFromApi(
+	mediaRoot: string,
+	relativePath: string,
+	token?: string,
+): Promise<MediaData> {
+	const response = await fetch('/mcp/widget/media-data', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ mediaRoot, relativePath, token }),
+	})
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}))
+		throw new Error(
+			(errorData as { error?: string }).error ||
+				`Failed to fetch media data: ${response.status}`,
+		)
+	}
+
+	const data = await response.json()
+	return MediaDataSchema.parse(data)
+}
+
+/**
+ * Extract and adapt media data from render data.
+ *
+ * Handles multiple input scenarios in priority order:
+ * 1. toolOutput contains { metadata, access } → adapt it
+ * 2. toolOutput contains full MediaData → use directly
+ * 3. toolInput contains full MediaData (initial-render-data passthrough) → use directly
+ * 4. toolInput contains { metadata, access } → adapt it
+ * 5. toolInput contains minimal path params → fetch from API (fallback)
+ *
+ * @throws Error with descriptive message if no valid data source is found
+ */
+async function extractMediaData(
+	renderData: z.infer<typeof RenderDataSchema>,
+): Promise<MediaData> {
+	const { toolInput, toolOutput } = renderData
+
+	// Priority 1: toolOutput with metadata + access (standard ChatGPT flow)
+	if (toolOutput && isToolOutput(toolOutput)) {
+		console.log('[MediaPlayer] Adapting toolOutput to MediaData')
+		return adaptToolOutputToMediaData(toolOutput)
+	}
+
+	// Priority 2: toolOutput already has full MediaData
+	if (toolOutput && isFullMediaData(toolOutput)) {
+		console.log('[MediaPlayer] Using toolOutput as MediaData directly')
+		return toolOutput
+	}
+
+	// Priority 3: toolInput has full MediaData (initial-render-data passthrough)
+	if (toolInput && isFullMediaData(toolInput)) {
+		console.log('[MediaPlayer] Using toolInput as MediaData directly')
+		return toolInput
+	}
+
+	// Priority 4: toolInput has metadata + access
+	if (toolInput && isToolOutput(toolInput)) {
+		console.log('[MediaPlayer] Adapting toolInput to MediaData')
+		return adaptToolOutputToMediaData(toolInput)
+	}
+
+	// Priority 5: toolInput has minimal path params - fetch from API
+	// This is a fallback for when ChatGPT doesn't populate toolOutput
+	if (toolInput && isMinimalInput(toolInput)) {
+		console.log(
+			'[MediaPlayer] toolOutput unavailable, fetching from API using toolInput path params',
+		)
+		return fetchMediaDataFromApi(
+			toolInput.mediaRoot,
+			toolInput.relativePath,
+			toolInput.token,
+		)
+	}
+
+	// No valid data source found - provide detailed error
+	const availableData = {
+		hasToolInput: toolInput !== null && toolInput !== undefined,
+		hasToolOutput: toolOutput !== null && toolOutput !== undefined,
+		toolInputKeys:
+			toolInput && typeof toolInput === 'object'
+				? Object.keys(toolInput as object)
+				: [],
+		toolOutputKeys:
+			toolOutput && typeof toolOutput === 'object'
+				? Object.keys(toolOutput as object)
+				: [],
+	}
+
+	throw new Error(
+		`No valid media data found in renderData. ` +
+			`Expected toolOutput with {metadata, access} or full MediaData. ` +
+			`Available: ${JSON.stringify(availableData)}`,
+	)
+}
+
+// =============================================================================
+// UI COMPONENTS
+// =============================================================================
+
 const colors = {
 	background: '#0a0a0a',
 	surface: '#141414',
@@ -78,9 +316,6 @@ const radius = {
 	lg: '0.75rem',
 }
 
-/**
- * Format duration in seconds to human-readable format.
- */
 function formatDuration(seconds: number | null): string {
 	if (seconds === null || seconds === 0) return '—'
 
@@ -97,9 +332,6 @@ function formatDuration(seconds: number | null): string {
 	return `${secs}s`
 }
 
-/**
- * Format file size in bytes to human-readable format.
- */
 function formatFileSize(bytes: number): string {
 	if (bytes === 0) return '0 B'
 
@@ -111,9 +343,6 @@ function formatFileSize(bytes: number): string {
 	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
 }
 
-/**
- * Format a date to a readable string.
- */
 function formatDate(dateStr: string | null): string {
 	if (!dateStr) return '—'
 
@@ -131,16 +360,10 @@ function formatDate(dateStr: string | null): string {
 	}
 }
 
-/**
- * Check if MIME type is video
- */
 function isVideo(mimeType: string): boolean {
 	return mimeType.startsWith('video/')
 }
 
-/**
- * Metadata item display component
- */
 function MetadataItem({ label, value }: { label: string; value: string }) {
 	return (
 		<div
@@ -172,9 +395,6 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 	)
 }
 
-/**
- * Loading state component
- */
 function LoadingState() {
 	return (
 		<div
@@ -203,9 +423,6 @@ function LoadingState() {
 	)
 }
 
-/**
- * Error state component
- */
 function ErrorState({ message }: { message: string }) {
 	return (
 		<div
@@ -243,9 +460,6 @@ function ErrorState({ message }: { message: string }) {
 	)
 }
 
-/**
- * Media player content component
- */
 function MediaPlayerContent({ media }: { media: MediaData }) {
 	const isVideoFile = isVideo(media.mimeType)
 
@@ -476,12 +690,17 @@ function MediaPlayerContent({ media }: { media: MediaData }) {
 	)
 }
 
+// =============================================================================
+// MAIN APP COMPONENT
+// =============================================================================
+
 /**
  * Media Player Widget App Component
  *
  * Handles the lifecycle:
  * 1. Wait for render data via waitForRenderData (also signals readiness)
- * 2. Display loading, error, or content based on state
+ * 2. Use adapter to extract and transform media data from toolOutput
+ * 3. Display loading, error, or content based on state
  */
 function MediaPlayerApp(this: Handle) {
 	let state: 'loading' | 'ready' | 'error' = 'loading'
@@ -490,26 +709,17 @@ function MediaPlayerApp(this: Handle) {
 
 	// Request render data from parent frame
 	void waitForRenderData(RenderDataSchema)
-		.then((renderData) => {
+		.then(async (renderData) => {
 			console.log('[MediaPlayer] Received render data:', renderData)
 
-			// Extract media from toolInput (ChatGPT wraps data this way)
-			const mediaData = renderData.toolInput
-			if (!mediaData) {
-				state = 'error'
-				errorMessage = 'No media data received'
-				this.update()
-				return
-			}
-
-			media = mediaData
+			// Use the adapter to extract and transform media data
+			media = await extractMediaData(renderData)
 			state = 'ready'
 			this.update()
 		})
 		.catch((err) => {
 			console.error('[MediaPlayer] Error receiving render data:', err)
 			state = 'error'
-			// Handle Error objects, strings, and other error types
 			if (err instanceof Error) {
 				errorMessage = err.message
 			} else if (typeof err === 'string') {
@@ -540,6 +750,5 @@ function MediaPlayerApp(this: Handle) {
 }
 
 // Mount the widget
-// Note: waitForRenderData() in MediaPlayerApp already signals readiness to the parent frame
 const rootElement = document.getElementById('root') ?? document.body
 createRoot(rootElement).render(<MediaPlayerApp />)

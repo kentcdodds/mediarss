@@ -13,6 +13,7 @@ export default route({
 	mcp: '/mcp',
 	mcpProtectedResource: '/.well-known/oauth-protected-resource/mcp',
 	mcpWidget: '/mcp/widget/:token/*path',
+	mcpWidgetMediaData: '/mcp/widget/media-data',
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',

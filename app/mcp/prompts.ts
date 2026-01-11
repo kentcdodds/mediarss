@@ -16,7 +16,9 @@ import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { promptsMetadata } from './metadata.ts'
 
-type Feed = DirectoryFeed | CuratedFeed
+type FeedWithType =
+	| (DirectoryFeed & { type: 'directory' })
+	| (CuratedFeed & { type: 'curated' })
 
 /**
  * Format a date timestamp for human-readable output.
@@ -29,7 +31,7 @@ function formatDate(timestamp: number): string {
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
+function getAllFeeds(): Array<FeedWithType> {
 	const directoryFeeds = listDirectoryFeeds().map((f) => ({
 		...f,
 		type: 'directory' as const,
@@ -46,9 +48,7 @@ function getAllFeeds(): Array<Feed & { type: 'directory' | 'curated' }> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(
-	id: string,
-): (Feed & { type: 'directory' | 'curated' }) | undefined {
+function getFeedById(id: string): FeedWithType | undefined {
 	const directoryFeed = getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 

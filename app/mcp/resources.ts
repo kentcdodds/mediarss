@@ -24,9 +24,9 @@ import { type AuthInfo, hasScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
 
-type FeedWithType = (DirectoryFeed | CuratedFeed) & {
-	type: 'directory' | 'curated'
-}
+type FeedWithType =
+	| (DirectoryFeed & { type: 'directory' })
+	| (CuratedFeed & { type: 'curated' })
 
 /**
  * Get all feeds (both directory and curated)
@@ -95,8 +95,30 @@ export async function initializeResources(
 										id: feed.id,
 										name: feed.name,
 										description: feed.description,
+										subtitle: feed.subtitle,
+										imageUrl: feed.imageUrl,
+										author: feed.author,
+										ownerName: feed.ownerName,
+										ownerEmail: feed.ownerEmail,
+										language: feed.language,
+										explicit: feed.explicit,
+										category: feed.category,
+										link: feed.link,
+										copyright: feed.copyright,
+										feedType: feed.feedType,
+										sortFields: feed.sortFields,
+										sortOrder: feed.sortOrder,
+										...(feed.type === 'directory'
+											? {
+													directoryPaths: feed.directoryPaths,
+													filterIn: feed.filterIn,
+													filterOut: feed.filterOut,
+												}
+											: {}),
+										overrides: feed.overrides,
 										type: feed.type,
 										createdAt: feed.createdAt,
+										updatedAt: feed.updatedAt,
 									})),
 									total: feeds.length,
 									directoryCount: feeds.filter((f) => f.type === 'directory')
@@ -160,8 +182,30 @@ export async function initializeResources(
 										id: feed.id,
 										name: feed.name,
 										description: feed.description,
+										subtitle: feed.subtitle,
+										imageUrl: feed.imageUrl,
+										author: feed.author,
+										ownerName: feed.ownerName,
+										ownerEmail: feed.ownerEmail,
+										language: feed.language,
+										explicit: feed.explicit,
+										category: feed.category,
+										link: feed.link,
+										copyright: feed.copyright,
+										feedType: feed.feedType,
+										sortFields: feed.sortFields,
+										sortOrder: feed.sortOrder,
+										...(feed.type === 'directory'
+											? {
+													directoryPaths: feed.directoryPaths,
+													filterIn: feed.filterIn,
+													filterOut: feed.filterOut,
+												}
+											: {}),
+										overrides: feed.overrides,
 										type: feed.type,
 										createdAt: feed.createdAt,
+										updatedAt: feed.updatedAt,
 									},
 									items:
 										feed.type === 'curated'

@@ -22,8 +22,9 @@ export type RSSGeneratorOptions = {
 	adminUrl: string
 	/**
 	 * The sort fields used to order items in this feed.
-	 * When sorting is NOT by publication date, synthetic dates will be generated
-	 * to ensure podcast clients display items in the correct order.
+	 * When sorting is NOT by publication date, episode titles will be prefixed
+	 * with numbers (e.g., "001. Title") to enable title-based sorting in podcast
+	 * clients while preserving the actual publication dates.
 	 */
 	sortFields: string
 }
@@ -61,8 +62,8 @@ function cdata(str: string | null | undefined | object): string {
 
 /**
  * Check if the sort fields indicate sorting by publication date.
- * When sorting by publication date, the actual pubDate metadata is meaningful
- * and should be used. For any other sort order, we need synthetic dates.
+ * When sorting by publication date, no title numbering is needed.
+ * For any other sort order, titles are prefixed with episode numbers.
  */
 export function isSortingByPubDate(sortFields: string): boolean {
 	const pubDateFields = ['pubDate', 'publicationDate']
@@ -72,36 +73,35 @@ export function isSortingByPubDate(sortFields: string): boolean {
 }
 
 /**
- * Generate a synthetic publication date based on item index.
+ * Format an episode number prefix for title-based sorting in podcast clients.
  *
- * BACKGROUND: Podcast clients like PocketCasts don't have an option to display
- * episodes in their original feed order - they only support sorting by metadata
- * fields like publication date. This means if we want episodes to appear in a
- * specific order (e.g., by track number for audiobooks, or by filename), we need
- * to generate synthetic publication dates that reflect the desired order.
+ * BACKGROUND: Podcast clients like PocketCasts support sorting by title, which
+ * allows us to maintain a specific episode order by prefixing titles with
+ * zero-padded numbers. This is more sensible than synthetic publication dates
+ * because it preserves the actual publication dates while still enabling
+ * proper ordering.
  *
- * The synthetic dates start from January 1, 1990 and increment by one day for
- * each successive item. This ensures:
- * - Dates are in the past (so items don't appear as "future" releases)
- * - The correct order is maintained when clients sort by pubDate
- * - There's enough granularity for feeds with thousands of items
+ * The number is zero-padded based on the total number of items to ensure
+ * proper lexicographic sorting (e.g., "001" sorts before "010" before "100").
  *
  * @param index - The 0-based index of the item in the sorted feed
- * @returns A Date object representing the synthetic publication date
+ * @param totalItems - The total number of items in the feed (for padding calculation)
+ * @returns A string prefix like "001. " or "0001. "
  */
-export function getSyntheticPubDate(index: number): Date {
-	const baseDate = new Date('1990-01-01T00:00:00Z')
-	const oneDayMs = 24 * 60 * 60 * 1000
-	return new Date(baseDate.getTime() + index * oneDayMs)
+export function formatEpisodeNumber(index: number, totalItems: number): string {
+	// Calculate the number of digits needed based on total items
+	// e.g., 100 items needs 3 digits (001-100), 1000 items needs 4 digits (0001-1000)
+	const digits = Math.max(1, Math.ceil(Math.log10(totalItems + 1)))
+	const episodeNumber = (index + 1).toString().padStart(digits, '0')
+	return `${episodeNumber}. `
 }
 
 /**
  * Generate a fallback publication date for items without one.
  * Uses a base date of 1900-01-01 and increments by 1 minute per item index.
- * This ensures sort order is preserved when podcast clients sort by pubDate.
  *
- * Note: This is only used when sorting by pubDate but an item is missing its
- * publication date metadata. For non-pubDate sorting, use getSyntheticPubDate.
+ * Note: This is only used as a fallback when an item is missing its
+ * publication date metadata.
  */
 function getFallbackDate(index: number): Date {
 	const baseDate = new Date('1900-01-01T00:00:00Z')
@@ -164,30 +164,11 @@ function getArtworkUrl(
 }
 
 /**
- * Build the description with optional original publication date appended.
- * When using synthetic dates, we preserve the actual publication date in the
- * description so users can still see when the content was originally published.
+ * Build the description for an RSS item.
+ * Returns the description as-is, or an empty string if not provided.
  */
-function buildDescription(
-	description: string | null | undefined,
-	originalPubDate: Date | null,
-	useSyntheticDates: boolean,
-): string {
-	const baseDescription = description || ''
-
-	// Only append original date if we're using synthetic dates and have an actual date
-	if (useSyntheticDates && originalPubDate) {
-		const dateStr = originalPubDate.toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-			timeZone: 'UTC',
-		})
-		const separator = baseDescription ? '\n\n' : ''
-		return `${baseDescription}${separator}Originally published: ${dateStr}`
-	}
-
-	return baseDescription
+function buildDescription(description: string | null | undefined): string {
+	return description || ''
 }
 
 /**
@@ -195,42 +176,37 @@ function buildDescription(
  *
  * @param item - The media file to generate an item for
  * @param index - The 0-based index of this item in the feed
+ * @param totalItems - Total number of items in the feed (for episode number padding)
  * @param baseUrl - The base URL for the server
  * @param token - The token used to access this feed
  * @param cacheVersion - Cache version for artwork URLs
- * @param useSyntheticDates - If true, use synthetic dates based on index instead
- *                           of actual publication dates. This is used when items
- *                           are sorted by something other than pubDate.
+ * @param useTitleNumbering - If true, prefix titles with episode numbers for
+ *                            title-based sorting in podcast clients.
  */
 function generateItem(
 	item: MediaFile,
 	index: number,
+	totalItems: number,
 	baseUrl: string,
 	token: string,
 	cacheVersion: number,
-	useSyntheticDates: boolean,
+	useTitleNumbering: boolean,
 ): string {
 	const itemId = generateItemId(item)
 
-	// Determine the publication date to use:
-	// - If using synthetic dates (non-pubDate sorting), always use synthetic dates
-	//   to ensure podcast clients display items in the correct order
-	// - Otherwise, use the item's actual publication date, or a fallback if missing
-	let pubDate: string
-	if (useSyntheticDates) {
-		pubDate = formatRssDate(getSyntheticPubDate(index))
-	} else {
-		pubDate = item.publicationDate
-			? formatRssDate(item.publicationDate)
-			: formatRssDate(getFallbackDate(index))
-	}
+	// Always use the item's actual publication date, or a fallback if missing
+	const pubDate = item.publicationDate
+		? formatRssDate(item.publicationDate)
+		: formatRssDate(getFallbackDate(index))
 
-	// Build description, potentially with original publication date appended
-	const description = buildDescription(
-		item.description,
-		item.publicationDate,
-		useSyntheticDates,
-	)
+	// When not sorting by pubDate, prefix titles with episode numbers
+	// so podcast clients can sort by title to maintain the intended order
+	const titlePrefix = useTitleNumbering
+		? formatEpisodeNumber(index, totalItems)
+		: ''
+	const title = `${titlePrefix}${item.title}`
+
+	const description = buildDescription(item.description)
 
 	const mediaUrl = getMediaUrl(baseUrl, token, item.path)
 	const artworkUrl = getArtworkUrl(baseUrl, token, item.path, cacheVersion)
@@ -238,13 +214,13 @@ function generateItem(
 
 	return `    <item>
       <guid isPermaLink="false">${escapeXml(itemId)}</guid>
-      <title>${escapeXml(item.title)}</title>
+      <title>${escapeXml(title)}</title>
       <description>${cdata(description)}</description>
       <pubDate>${pubDate}</pubDate>
       ${item.author ? `<author>${escapeXml(item.author)}</author>` : ''}
       <content:encoded>${cdata(description)}</content:encoded>
       <enclosure url="${escapeXml(mediaUrl)}" length="${item.sizeBytes}" type="${escapeXml(item.mimeType)}" />
-      <itunes:title>${escapeXml(item.title)}</itunes:title>
+      <itunes:title>${escapeXml(title)}</itunes:title>
       ${item.author ? `<itunes:author>${escapeXml(item.author)}</itunes:author>` : ''}
       ${duration ? `<itunes:duration>${duration}</itunes:duration>` : ''}
       <itunes:image href="${escapeXml(artworkUrl)}" />
@@ -266,19 +242,19 @@ function _isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
  * Generate a complete RSS feed XML string.
  *
  * When the feed is sorted by something other than publication date (e.g., track
- * number, filename, or manual position), synthetic publication dates are generated
- * to ensure podcast clients like PocketCasts display episodes in the correct order.
- * This is necessary because most podcast clients don't support displaying episodes
- * in their original feed order - they only allow sorting by metadata fields.
+ * number, filename, or manual position), episode titles are prefixed with numbers
+ * (e.g., "001. Title", "002. Title") to enable title-based sorting in podcast
+ * clients like PocketCasts. This preserves the actual publication dates while
+ * still maintaining the intended episode order.
  */
 export function generateRssFeed(options: RSSGeneratorOptions): string {
 	const { feed, items, baseUrl, token, feedUrl, adminUrl, sortFields } = options
 
-	// Determine if we need to use synthetic publication dates.
-	// When sorting by pubDate, use actual publication dates (or fallbacks for missing ones).
-	// For any other sort order, use synthetic dates to preserve the intended order
-	// in podcast clients that sort by publication date.
-	const useSyntheticDates = !isSortingByPubDate(sortFields)
+	// Determine if we need to use title numbering for ordering.
+	// When sorting by pubDate, no numbering is needed as clients will sort correctly.
+	// For any other sort order, prefix titles with episode numbers so clients
+	// can sort by title to maintain the intended order.
+	const useTitleNumbering = !isSortingByPubDate(sortFields)
 
 	// Get feed metadata
 	const title = escapeXml(feed.name)
@@ -310,15 +286,17 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	const lastBuildDate = formatRssDate(new Date())
 
 	// Generate items
+	const totalItems = items.length
 	const itemsXml = items
 		.map((item, index) =>
 			generateItem(
 				item,
 				index,
+				totalItems,
 				baseUrl,
 				token,
 				cacheVersion,
-				useSyntheticDates,
+				useTitleNumbering,
 			),
 		)
 		.join('\n')

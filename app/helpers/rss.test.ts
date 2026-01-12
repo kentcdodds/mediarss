@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { getSyntheticPubDate, isSortingByPubDate } from './rss.ts'
+import { formatEpisodeNumber, isSortingByPubDate } from './rss.ts'
 
 test('isSortingByPubDate correctly identifies pubDate as primary sort field', () => {
 	// Returns true when pubDate/publicationDate is the primary sort field
@@ -19,38 +19,41 @@ test('isSortingByPubDate correctly identifies pubDate as primary sort field', ()
 	expect(isSortingByPubDate('title,publicationDate')).toBe(false)
 })
 
-test('getSyntheticPubDate generates sequential dates starting from January 1, 1990', () => {
-	// Verify the base date (index 0)
-	const date0 = getSyntheticPubDate(0)
-	expect(date0.getUTCFullYear()).toBe(1990)
-	expect(date0.getUTCMonth()).toBe(0) // January
-	expect(date0.getUTCDate()).toBe(1)
+test('formatEpisodeNumber generates zero-padded episode numbers', () => {
+	// Edge case: single item feed
+	expect(formatEpisodeNumber(0, 1)).toBe('1. ')
 
-	// Verify sequential dates increment by one day
-	const date1 = getSyntheticPubDate(1)
-	expect(date1.getUTCFullYear()).toBe(1990)
-	expect(date1.getUTCMonth()).toBe(0)
-	expect(date1.getUTCDate()).toBe(2)
+	// Edge case: empty feed (handled by Math.max(1, ...) safeguard)
+	expect(formatEpisodeNumber(0, 0)).toBe('1. ')
 
-	const oneDayMs = 24 * 60 * 60 * 1000
-	const date10 = getSyntheticPubDate(10)
-	expect(date1.getTime() - date0.getTime()).toBe(oneDayMs)
-	expect(date10.getTime() - date0.getTime()).toBe(10 * oneDayMs)
+	// Single digit total (1-9 items): 1 digit
+	expect(formatEpisodeNumber(0, 5)).toBe('1. ')
+	expect(formatEpisodeNumber(4, 5)).toBe('5. ')
 
-	// Verify dates maintain strict ordering for a range of indices
-	const dates = Array.from({ length: 100 }, (_, i) => getSyntheticPubDate(i))
-	for (let i = 1; i < dates.length; i++) {
-		expect(dates[i]!.getTime()).toBeGreaterThan(dates[i - 1]!.getTime())
-	}
+	// Double digit total (10-99 items): 2 digits
+	expect(formatEpisodeNumber(0, 10)).toBe('01. ')
+	expect(formatEpisodeNumber(9, 10)).toBe('10. ')
+	expect(formatEpisodeNumber(0, 99)).toBe('01. ')
+	expect(formatEpisodeNumber(98, 99)).toBe('99. ')
 
-	// Verify large indices work correctly (index 1000 = ~2.7 years after 1990-01-01)
-	const date1000 = getSyntheticPubDate(1000)
-	expect(date1000.getUTCFullYear()).toBe(1992)
-	expect(date1000.getUTCMonth()).toBe(8) // September (0-indexed)
-	expect(date1000.getUTCDate()).toBe(27)
+	// Triple digit total (100-999 items): 3 digits
+	expect(formatEpisodeNumber(0, 100)).toBe('001. ')
+	expect(formatEpisodeNumber(99, 100)).toBe('100. ')
+	expect(formatEpisodeNumber(0, 500)).toBe('001. ')
+	expect(formatEpisodeNumber(499, 500)).toBe('500. ')
 
-	// All dates should be in the past (even with 10000+ items)
-	const now = new Date()
-	const largeIndexDate = getSyntheticPubDate(10000)
-	expect(largeIndexDate.getTime()).toBeLessThan(now.getTime())
+	// Quad digit total (1000+ items): 4 digits
+	expect(formatEpisodeNumber(0, 1000)).toBe('0001. ')
+	expect(formatEpisodeNumber(999, 1000)).toBe('1000. ')
+})
+
+test('formatEpisodeNumber maintains lexicographic ordering', () => {
+	// Verify that formatted numbers sort correctly as strings
+	const numbers = Array.from({ length: 150 }, (_, i) =>
+		formatEpisodeNumber(i, 150),
+	)
+
+	// Sort as strings and verify order is maintained
+	const sorted = [...numbers].sort()
+	expect(sorted).toEqual(numbers)
 })

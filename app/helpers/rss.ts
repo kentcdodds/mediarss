@@ -62,8 +62,8 @@ function cdata(str: string | null | undefined | object): string {
 
 /**
  * Check if the sort fields indicate sorting by publication date.
- * When sorting by publication date, the actual pubDate metadata is meaningful
- * and should be used. For any other sort order, we need synthetic dates.
+ * When sorting by publication date, no title numbering is needed.
+ * For any other sort order, titles are prefixed with episode numbers.
  */
 export function isSortingByPubDate(sortFields: string): boolean {
 	const pubDateFields = ['pubDate', 'publicationDate']
@@ -94,21 +94,6 @@ export function formatEpisodeNumber(index: number, totalItems: number): string {
 	const digits = Math.max(1, Math.ceil(Math.log10(totalItems + 1)))
 	const episodeNumber = (index + 1).toString().padStart(digits, '0')
 	return `${episodeNumber}. `
-}
-
-/**
- * Generate a synthetic publication date based on item index.
- *
- * @deprecated This function is kept for backwards compatibility with existing tests.
- * New code should rely on title-based sorting with formatEpisodeNumber instead.
- *
- * @param index - The 0-based index of the item in the sorted feed
- * @returns A Date object representing the synthetic publication date
- */
-export function getSyntheticPubDate(index: number): Date {
-	const baseDate = new Date('1990-01-01T00:00:00Z')
-	const oneDayMs = 24 * 60 * 60 * 1000
-	return new Date(baseDate.getTime() + index * oneDayMs)
 }
 
 /**

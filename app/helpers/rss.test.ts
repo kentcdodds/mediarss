@@ -20,6 +20,12 @@ test('isSortingByPubDate correctly identifies pubDate as primary sort field', ()
 })
 
 test('formatEpisodeNumber generates zero-padded episode numbers', () => {
+	// Edge case: single item feed
+	expect(formatEpisodeNumber(0, 1)).toBe('1. ')
+
+	// Edge case: empty feed (handled by Math.max(1, ...) safeguard)
+	expect(formatEpisodeNumber(0, 0)).toBe('1. ')
+
 	// Single digit total (1-9 items): 1 digit
 	expect(formatEpisodeNumber(0, 5)).toBe('1. ')
 	expect(formatEpisodeNumber(4, 5)).toBe('5. ')

@@ -99,10 +99,9 @@ export function formatEpisodeNumber(index: number, totalItems: number): string {
 /**
  * Generate a fallback publication date for items without one.
  * Uses a base date of 1900-01-01 and increments by 1 minute per item index.
- * This ensures sort order is preserved when podcast clients sort by pubDate.
  *
- * Note: This is only used when sorting by pubDate but an item is missing its
- * publication date metadata. For non-pubDate sorting, use getSyntheticPubDate.
+ * Note: This is only used as a fallback when an item is missing its
+ * publication date metadata.
  */
 function getFallbackDate(index: number): Date {
 	const baseDate = new Date('1900-01-01T00:00:00Z')

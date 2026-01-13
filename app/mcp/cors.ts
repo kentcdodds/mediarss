@@ -70,14 +70,20 @@ export function withCors({
 		// Call the original handler
 		const response = await handler(context)
 
-		// Add CORS headers to ALL responses, including early returns
-		const newHeaders = mergeHeaders(response.headers, corsHeaders)
+		// Add CORS headers directly to the response
+		// NOTE: We modify headers in place rather than creating a new Response
+		// because creating a new Response with response.body converts file bodies
+		// to ReadableStreams, which causes Bun to use Transfer-Encoding: chunked
+		// instead of Content-Length. This breaks download progress in clients.
+		const corsHeadersObj =
+			corsHeaders instanceof Headers
+				? Object.fromEntries(corsHeaders.entries())
+				: corsHeaders
+		for (const [key, value] of Object.entries(corsHeadersObj)) {
+			response.headers.set(key, value)
+		}
 
-		return new Response(response.body, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: newHeaders,
-		})
+		return response
 	}
 }
 

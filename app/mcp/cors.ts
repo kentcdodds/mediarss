@@ -75,12 +75,14 @@ export function withCors({
 		// because creating a new Response with response.body converts file bodies
 		// to ReadableStreams, which causes Bun to use Transfer-Encoding: chunked
 		// instead of Content-Length. This breaks download progress in clients.
-		const corsHeadersObj =
-			corsHeaders instanceof Headers
-				? Object.fromEntries(corsHeaders.entries())
-				: corsHeaders
-		for (const [key, value] of Object.entries(corsHeadersObj)) {
-			response.headers.set(key, value)
+		if (corsHeaders instanceof Headers) {
+			corsHeaders.forEach((value, key) => {
+				response.headers.set(key, value)
+			})
+		} else {
+			for (const [key, value] of Object.entries(corsHeaders)) {
+				response.headers.set(key, value)
+			}
 		}
 
 		return response

@@ -148,15 +148,14 @@ export function rateLimit(): Middleware {
 			remaining = Math.max(0, remaining - penalty)
 		}
 
-		// Clone response to add headers (responses may be immutable)
-		const newHeaders = new Headers(response.headers)
-		newHeaders.set('X-RateLimit-Limit', String(limiter.getMaxRequests()))
-		newHeaders.set('X-RateLimit-Remaining', String(remaining))
+		// Add rate limit headers directly to the response
+		// NOTE: We modify headers in place rather than creating a new Response
+		// because creating a new Response with response.body converts file bodies
+		// to ReadableStreams, which causes Bun to use Transfer-Encoding: chunked
+		// instead of Content-Length. This breaks download progress in podcast apps.
+		response.headers.set('X-RateLimit-Limit', String(limiter.getMaxRequests()))
+		response.headers.set('X-RateLimit-Remaining', String(remaining))
 
-		return new Response(response.body, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: newHeaders,
-		})
+		return response
 	}
 }

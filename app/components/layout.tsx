@@ -35,7 +35,8 @@ export function Layout({
 			${importmapScript} ${modulePreloads}
 		</head>
 		<body>
-			<div id="root">${children ?? ''}</div>
+			<a href="#main-content" class="skip-link">Skip to main content</a>
+			<div id="root"><main id="main-content">${children ?? ''}</main></div>
 			${
 				entryScript
 					? html`<script type="module" src="${versionedUrl(entryScript)}"></script>`

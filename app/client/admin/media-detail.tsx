@@ -889,6 +889,10 @@ export function MediaDetail(this: Handle) {
 
 							{metadataMessage && !isEditingMetadata && (
 								<div
+									role={metadataMessage.type === 'error' ? 'alert' : 'status'}
+									aria-live={
+										metadataMessage.type === 'error' ? 'assertive' : 'polite'
+									}
 									css={{
 										padding: spacing.sm,
 										borderRadius: radius.md,
@@ -1207,6 +1211,10 @@ export function MediaDetail(this: Handle) {
 
 							{saveMessage && (
 								<div
+									role={saveMessage.type === 'error' ? 'alert' : 'status'}
+									aria-live={
+										saveMessage.type === 'error' ? 'assertive' : 'polite'
+									}
 									css={{
 										padding: spacing.sm,
 										borderRadius: radius.md,
@@ -1427,7 +1435,10 @@ export function MediaDetail(this: Handle) {
 
 function LoadingSpinner() {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: role="status" is appropriate for loading states, <output> is for form results
 		<div
+			role="status"
+			aria-live="polite"
 			css={{
 				display: 'flex',
 				justifyContent: 'center',
@@ -1447,7 +1458,23 @@ function LoadingSpinner() {
 						to: { transform: 'rotate(360deg)' },
 					},
 				}}
+				aria-hidden="true"
 			/>
+			<span
+				css={{
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: 0,
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: 0,
+				}}
+			>
+				Loading...
+			</span>
 		</div>
 	)
 }
@@ -1455,6 +1482,7 @@ function LoadingSpinner() {
 function ErrorMessage({ message }: { message: string }) {
 	return (
 		<div
+			role="alert"
 			css={{
 				padding: spacing.xl,
 				backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -1489,7 +1517,7 @@ function ErrorMessage({ message }: { message: string }) {
 
 function MetadataItem({ label, value }: { label: string; value: string }) {
 	return (
-		<div>
+		<dl css={{ margin: 0 }}>
 			<dt
 				css={{
 					fontSize: typography.fontSize.xs,
@@ -1510,7 +1538,7 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 			>
 				{value}
 			</dd>
-		</div>
+		</dl>
 	)
 }
 

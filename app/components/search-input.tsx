@@ -36,7 +36,8 @@ export function SearchInput({
 			}}
 		>
 			<input
-				type="text"
+				type="search"
+				aria-label={placeholder}
 				placeholder={placeholder}
 				value={value}
 				css={{

@@ -1399,6 +1399,8 @@ export function FeedDetail(this: Handle) {
 							{/* Error Message */}
 							{artworkError && (
 								<div
+									role="alert"
+									aria-live="assertive"
 									css={{
 										padding: spacing.sm,
 										backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -1500,6 +1502,7 @@ export function FeedDetail(this: Handle) {
 							css={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '400px' }}
 						>
 							<table
+								aria-label="Media items in this feed"
 								css={{
 									width: '100%',
 									borderCollapse: 'collapse',
@@ -1521,13 +1524,31 @@ export function FeedDetail(this: Handle) {
 									>
 										{isManualSort && (
 											<th
+												scope="col"
 												css={{
 													width: '32px',
 													padding: `${spacing.sm} ${spacing.xs}`,
 												}}
-											/>
+											>
+												<span
+													css={{
+														position: 'absolute',
+														width: '1px',
+														height: '1px',
+														padding: 0,
+														margin: '-1px',
+														overflow: 'hidden',
+														clip: 'rect(0, 0, 0, 0)',
+														whiteSpace: 'nowrap',
+														border: 0,
+													}}
+												>
+													Drag handle
+												</span>
+											</th>
 										)}
 										<th
+											scope="col"
 											css={{
 												textAlign: 'left',
 												padding: `${spacing.sm} ${spacing.md}`,
@@ -1542,12 +1563,30 @@ export function FeedDetail(this: Handle) {
 											#
 										</th>
 										<th
+											scope="col"
 											css={{
 												width: '48px',
 												padding: `${spacing.sm}`,
 											}}
-										/>
+										>
+											<span
+												css={{
+													position: 'absolute',
+													width: '1px',
+													height: '1px',
+													padding: 0,
+													margin: '-1px',
+													overflow: 'hidden',
+													clip: 'rect(0, 0, 0, 0)',
+													whiteSpace: 'nowrap',
+													border: 0,
+												}}
+											>
+												Artwork
+											</span>
+										</th>
 										<th
+											scope="col"
 											css={{
 												textAlign: 'left',
 												padding: `${spacing.sm} ${spacing.md}`,
@@ -1561,6 +1600,7 @@ export function FeedDetail(this: Handle) {
 											Title
 										</th>
 										<th
+											scope="col"
 											css={{
 												textAlign: 'left',
 												padding: `${spacing.sm} ${spacing.md}`,
@@ -1577,6 +1617,7 @@ export function FeedDetail(this: Handle) {
 											Author
 										</th>
 										<th
+											scope="col"
 											css={{
 												textAlign: 'right',
 												padding: `${spacing.sm} ${spacing.md}`,
@@ -1594,6 +1635,7 @@ export function FeedDetail(this: Handle) {
 											Duration
 										</th>
 										<th
+											scope="col"
 											css={{
 												textAlign: 'right',
 												padding: `${spacing.sm} ${spacing.md}`,
@@ -1612,6 +1654,7 @@ export function FeedDetail(this: Handle) {
 										</th>
 										{extraSortColumn && (
 											<th
+												scope="col"
 												css={{
 													textAlign: 'left',
 													padding: `${spacing.sm} ${spacing.md}`,
@@ -1630,6 +1673,7 @@ export function FeedDetail(this: Handle) {
 										)}
 										{isCurated && (
 											<th
+												scope="col"
 												css={{
 													textAlign: 'center',
 													padding: `${spacing.sm} ${spacing.md}`,
@@ -1645,12 +1689,29 @@ export function FeedDetail(this: Handle) {
 											</th>
 										)}
 										<th
+											scope="col"
 											css={{
 												textAlign: 'center',
 												padding: `${spacing.sm} ${spacing.md}`,
 												width: '60px',
 											}}
-										/>
+										>
+											<span
+												css={{
+													position: 'absolute',
+													width: '1px',
+													height: '1px',
+													padding: 0,
+													margin: '-1px',
+													overflow: 'hidden',
+													clip: 'rect(0, 0, 0, 0)',
+													whiteSpace: 'nowrap',
+													border: 0,
+												}}
+											>
+												View details
+											</span>
+										</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -1814,7 +1875,7 @@ export function FeedDetail(this: Handle) {
 																<button
 																	type="button"
 																	disabled={index === 0 || itemActionLoading}
-																	title="Move up"
+																	aria-label={`Move ${item.title} up`}
 																	css={{
 																		padding: spacing.xs,
 																		fontSize: typography.fontSize.sm,
@@ -1836,6 +1897,10 @@ export function FeedDetail(this: Handle) {
 																						color: colors.text,
 																						borderColor: colors.text,
 																					},
+																		'&:focus': {
+																			outline: `2px solid ${colors.primary}`,
+																			outlineOffset: '2px',
+																		},
 																	}}
 																	on={{
 																		click: () =>
@@ -1850,7 +1915,7 @@ export function FeedDetail(this: Handle) {
 																		index === items.length - 1 ||
 																		itemActionLoading
 																	}
-																	title="Move down"
+																	aria-label={`Move ${item.title} down`}
 																	css={{
 																		padding: spacing.xs,
 																		fontSize: typography.fontSize.sm,
@@ -1874,6 +1939,10 @@ export function FeedDetail(this: Handle) {
 																						color: colors.text,
 																						borderColor: colors.text,
 																					},
+																		'&:focus': {
+																			outline: `2px solid ${colors.primary}`,
+																			outlineOffset: '2px',
+																		},
 																	}}
 																	on={{
 																		click: () =>
@@ -1887,7 +1956,7 @@ export function FeedDetail(this: Handle) {
 														<button
 															type="button"
 															disabled={itemActionLoading}
-															title="Remove"
+															aria-label={`Remove ${item.title} from feed`}
 															css={{
 																padding: spacing.xs,
 																fontSize: typography.fontSize.sm,
@@ -1905,6 +1974,10 @@ export function FeedDetail(this: Handle) {
 																	: {
 																			backgroundColor: 'rgba(239, 68, 68, 0.1)',
 																		},
+																'&:focus': {
+																	outline: '2px solid #ef4444',
+																	outlineOffset: '2px',
+																},
 															}}
 															on={{ click: () => removeItem(item) }}
 														>
@@ -2156,7 +2229,10 @@ export function FeedDetail(this: Handle) {
 
 function LoadingSpinner() {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: role="status" is appropriate for loading states, <output> is for form results
 		<div
+			role="status"
+			aria-live="polite"
 			css={{
 				display: 'flex',
 				justifyContent: 'center',
@@ -2176,7 +2252,23 @@ function LoadingSpinner() {
 						to: { transform: 'rotate(360deg)' },
 					},
 				}}
+				aria-hidden="true"
 			/>
+			<span
+				css={{
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: 0,
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: 0,
+				}}
+			>
+				Loading...
+			</span>
 		</div>
 	)
 }
@@ -2184,6 +2276,7 @@ function LoadingSpinner() {
 function ErrorMessage({ message }: { message: string }) {
 	return (
 		<div
+			role="alert"
 			css={{
 				padding: spacing.xl,
 				backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -2226,7 +2319,7 @@ function InfoItem({
 	mono?: boolean
 }) {
 	return (
-		<div>
+		<dl css={{ margin: 0 }}>
 			<dt
 				css={{
 					fontSize: typography.fontSize.xs,
@@ -2249,7 +2342,7 @@ function InfoItem({
 			>
 				{value}
 			</dd>
-		</div>
+		</dl>
 	)
 }
 

@@ -115,7 +115,12 @@ export function RouterOutlet(this: Handle) {
 	return () => {
 		const result = router.match()
 		if (!result) {
-			return <div>404 - Not Found</div>
+			return (
+				<div role="alert" aria-live="polite">
+					<h1>404 - Page Not Found</h1>
+					<p>The requested page could not be found.</p>
+				</div>
+			)
 		}
 		const { route, match } = result
 		const Component = route.component

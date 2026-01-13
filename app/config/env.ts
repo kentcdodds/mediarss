@@ -85,6 +85,17 @@ const EnvSchema = z.object({
 		.string()
 		.optional()
 		.default('https://github.com/kentcdodds/mediarss'),
+
+	// Security: Admin authentication (one of these should be set in production)
+	// Option 1: Basic auth password (any username accepted)
+	ADMIN_PASSWORD: z.string().optional(),
+	// Option 2: Cloudflare Access team domain for JWT validation
+	CLOUDFLARE_ACCESS_TEAM_DOMAIN: z.string().optional(),
+
+	// Security: Allowed hosts for Host header validation
+	// Comma-separated list (e.g., "example.com,www.example.com")
+	// Prevents host header injection attacks
+	ALLOWED_HOSTS: z.string().optional(),
 })
 
 export type Env = z.infer<typeof EnvSchema>

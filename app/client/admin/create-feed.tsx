@@ -1059,6 +1059,7 @@ function FeedTypeButton({
 	return (
 		<button
 			type="button"
+			aria-pressed={selected}
 			css={{
 				flex: 1,
 				padding: spacing.lg,
@@ -1070,6 +1071,10 @@ function FeedTypeButton({
 				transition: `all ${transitions.fast}`,
 				'&:hover': {
 					borderColor: colors.primary,
+				},
+				'&:focus': {
+					outline: `2px solid ${colors.primary}`,
+					outlineOffset: '2px',
 				},
 			}}
 			on={{ click: onClick }}
@@ -1146,6 +1151,7 @@ function FormField({
 function ErrorBox({ message }: { message: string }) {
 	return (
 		<div
+			role="alert"
 			css={{
 				padding: spacing.md,
 				backgroundColor: 'rgba(239, 68, 68, 0.1)',

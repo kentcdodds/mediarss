@@ -320,7 +320,10 @@ export function FeedList(this: Handle) {
 
 function LoadingSpinner() {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: role="status" is appropriate for loading states, <output> is for form results
 		<div
+			role="status"
+			aria-live="polite"
 			css={{
 				display: 'flex',
 				justifyContent: 'center',
@@ -340,7 +343,23 @@ function LoadingSpinner() {
 						to: { transform: 'rotate(360deg)' },
 					},
 				}}
+				aria-hidden="true"
 			/>
+			<span
+				css={{
+					position: 'absolute',
+					width: '1px',
+					height: '1px',
+					padding: 0,
+					margin: '-1px',
+					overflow: 'hidden',
+					clip: 'rect(0, 0, 0, 0)',
+					whiteSpace: 'nowrap',
+					border: 0,
+				}}
+			>
+				Loading...
+			</span>
 		</div>
 	)
 }
@@ -348,6 +367,7 @@ function LoadingSpinner() {
 function ErrorMessage({ message }: { message: string }) {
 	return (
 		<div
+			role="alert"
 			css={{
 				padding: spacing.xl,
 				backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -491,6 +511,10 @@ function FilterButton({
 				'&:hover': {
 					borderColor: activeColor,
 					color: active ? colors.background : colors.text,
+				},
+				'&:focus': {
+					outline: `2px solid ${activeColor}`,
+					outlineOffset: '2px',
 				},
 			}}
 			on={{ click: onClick }}

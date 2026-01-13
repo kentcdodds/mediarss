@@ -577,9 +577,13 @@ export function ModalAlert({ type, children }: ModalAlertProps) {
 	}
 
 	const styles = colorMap[type]
+	// Use role="alert" for errors (urgent), role="status" for info/warning (polite)
+	const role = type === 'error' ? 'alert' : 'status'
 
 	return (
 		<div
+			role={role}
+			aria-live={type === 'error' ? 'assertive' : 'polite'}
 			css={{
 				backgroundColor: styles.bg,
 				borderRadius: radius.md,

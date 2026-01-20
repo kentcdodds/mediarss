@@ -35,7 +35,7 @@
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "^5.16.3",
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "@remix-run/component": "^0.2.1",
+    "@remix-run/component": "^0.3.0",
     "@remix-run/fetch-router": "^0.14.0",
     "@remix-run/html-template": "^0.3.0",
     "@remix-run/interaction": "^0.3.0",

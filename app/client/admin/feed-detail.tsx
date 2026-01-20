@@ -192,7 +192,7 @@ type BrowseState =
 /**
  * FeedDetail component - displays feed information and manages tokens.
  */
-export function FeedDetail(this: Handle) {
+export function FeedDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let copiedToken: string | null = null
 	let showCreateForm = false
@@ -244,40 +244,40 @@ export function FeedDetail(this: Handle) {
 	let artworkImageKey = 0 // Used to force image refresh after upload
 
 	// Fetch media roots for file picker
-	fetch('/admin/api/directories', { signal: this.signal })
+	fetch('/admin/api/directories', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<{ roots: Array<MediaRoot> }>
 		})
 		.then((data) => {
 			rootsState = { status: 'success', roots: data.roots }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			rootsState = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	// Browse a directory for the file picker
 	const browse = (rootName: string, path: string) => {
 		browseState = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		const params = new URLSearchParams({ root: rootName, path })
-		fetch(`/admin/api/browse?${params}`, { signal: this.signal })
+		fetch(`/admin/api/browse?${params}`, { signal: handle.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<{ entries: Array<DirectoryEntry> }>
 			})
 			.then((data) => {
 				browseState = { status: 'success', entries: data.entries }
-				this.update()
+				handle.update()
 			})
 			.catch((err) => {
-				if (this.signal.aborted) return
+				if (handle.signal.aborted) return
 				browseState = { status: 'error', message: err.message }
-				this.update()
+				handle.update()
 			})
 	}
 
@@ -325,7 +325,7 @@ export function FeedDetail(this: Handle) {
 				selectedFilePaths.push(mediaPath)
 			}
 		}
-		this.update()
+		handle.update()
 	}
 
 	const isFileSelected = (filename: string): boolean => {
@@ -348,7 +348,7 @@ export function FeedDetail(this: Handle) {
 		selectedFilePaths = []
 		pickerPath = ''
 		browseState = { status: 'idle' }
-		this.update()
+		handle.update()
 
 		// Auto-select first root and browse it
 		if (rootsState.status === 'success' && rootsState.roots.length > 0) {
@@ -365,7 +365,7 @@ export function FeedDetail(this: Handle) {
 	const closeAddFilesModal = () => {
 		showAddFilesModal = false
 		selectedFilePaths = []
-		this.update()
+		handle.update()
 	}
 
 	const confirmAddFiles = async () => {
@@ -377,9 +377,9 @@ export function FeedDetail(this: Handle) {
 	const fetchFeed = (id: string) => {
 		feedId = id
 		state = { status: 'loading' }
-		this.update()
+		handle.update()
 
-		fetch(`/admin/api/feeds/${id}`, { signal: this.signal })
+		fetch(`/admin/api/feeds/${id}`, { signal: handle.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<FeedResponse>
@@ -391,12 +391,12 @@ export function FeedDetail(this: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
-				this.update()
+				handle.update()
 			})
 			.catch((err) => {
-				if (this.signal.aborted) return
+				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
-				this.update()
+				handle.update()
 			})
 	}
 
@@ -405,10 +405,10 @@ export function FeedDetail(this: Handle) {
 		try {
 			await navigator.clipboard.writeText(url)
 			copiedToken = token
-			this.update()
+			handle.update()
 			setTimeout(() => {
 				copiedToken = null
-				this.update()
+				handle.update()
 			}, 2000)
 		} catch {
 			console.error('Failed to copy to clipboard text:', url)
@@ -417,7 +417,7 @@ export function FeedDetail(this: Handle) {
 
 	const createToken = async () => {
 		createLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/tokens`, {
@@ -435,7 +435,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to create token:', err)
 		} finally {
 			createLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -475,31 +475,31 @@ export function FeedDetail(this: Handle) {
 		}
 		editError = null
 		isEditing = true
-		this.update()
+		handle.update()
 	}
 
 	const cancelEditing = () => {
 		isEditing = false
 		editError = null
-		this.update()
+		handle.update()
 	}
 
 	const saveEdit = async (isDirectory: boolean) => {
 		if (!editForm.name.trim()) {
 			editError = 'Name is required'
-			this.update()
+			handle.update()
 			return
 		}
 
 		if (isDirectory && editForm.directoryPaths.length === 0) {
 			editError = 'At least one directory is required'
-			this.update()
+			handle.update()
 			return
 		}
 
 		editLoading = true
 		editError = null
-		this.update()
+		handle.update()
 
 		try {
 			const body: Record<string, unknown> = {
@@ -533,16 +533,16 @@ export function FeedDetail(this: Handle) {
 			fetchFeed(feedId)
 		} catch (err) {
 			editError = err instanceof Error ? err.message : 'Failed to update feed'
-			this.update()
+			handle.update()
 		} finally {
 			editLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const deleteFeed = async () => {
 		deleteLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}`, {
@@ -560,7 +560,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to delete feed:', err)
 			deleteLoading = false
 			showDeleteConfirm = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -568,7 +568,7 @@ export function FeedDetail(this: Handle) {
 	const uploadArtwork = async (file: File) => {
 		artworkUploadLoading = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const formData = new FormData()
@@ -590,17 +590,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to upload artwork'
-			this.update()
+			handle.update()
 		} finally {
 			artworkUploadLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const deleteArtwork = async () => {
 		artworkDeleteLoading = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/artwork`, {
@@ -618,17 +618,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to delete artwork'
-			this.update()
+			handle.update()
 		} finally {
 			artworkDeleteLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const saveImageUrl = async () => {
 		imageUrlSaving = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const newImageUrl = imageUrlInput.trim() || null
@@ -649,10 +649,10 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to save image URL'
-			this.update()
+			handle.update()
 		} finally {
 			imageUrlSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -660,7 +660,7 @@ export function FeedDetail(this: Handle) {
 		imageUrlInput = ''
 		imageUrlSaving = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}`, {
@@ -680,17 +680,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to clear image URL'
-			this.update()
+			handle.update()
 		} finally {
 			imageUrlSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	// Item management functions (curated feeds only)
 	const removeItem = async (item: MediaItem) => {
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/items`, {
@@ -704,7 +704,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to remove item:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -716,7 +716,7 @@ export function FeedDetail(this: Handle) {
 		if (toIndex < 0 || toIndex >= items.length) return
 
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		// Create new order with swapped positions
 		const newOrder = items.map((item) => toMediaPath(item))
@@ -735,14 +735,14 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to reorder items:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	// Drag-and-drop handlers
 	const handleDragStart = (index: number) => {
 		draggingIndex = index
-		this.update()
+		handle.update()
 	}
 
 	const handleDragOver = (e: DragEvent, index: number) => {
@@ -750,27 +750,27 @@ export function FeedDetail(this: Handle) {
 		if (draggingIndex === null || draggingIndex === index) return
 		if (dragOverIndex !== index) {
 			dragOverIndex = index
-			this.update()
+			handle.update()
 		}
 	}
 
 	const handleDragLeave = () => {
 		dragOverIndex = null
-		this.update()
+		handle.update()
 	}
 
 	const handleDrop = async (items: Array<MediaItem>, targetIndex: number) => {
 		if (draggingIndex === null || draggingIndex === targetIndex) {
 			draggingIndex = null
 			dragOverIndex = null
-			this.update()
+			handle.update()
 			return
 		}
 
 		const fromIndex = draggingIndex
 		draggingIndex = null
 		dragOverIndex = null
-		this.update()
+		handle.update()
 
 		await moveItem(items, fromIndex, targetIndex)
 	}
@@ -778,14 +778,14 @@ export function FeedDetail(this: Handle) {
 	const handleDragEnd = () => {
 		draggingIndex = null
 		dragOverIndex = null
-		this.update()
+		handle.update()
 	}
 
 	const addItems = async (paths: Array<string>) => {
 		if (paths.length === 0) return
 
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/items`, {
@@ -800,7 +800,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to add items:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -840,7 +840,7 @@ export function FeedDetail(this: Handle) {
 						onConfirm={deleteFeed}
 						onCancel={() => {
 							showDeleteConfirm = false
-							this.update()
+							handle.update()
 						}}
 					/>
 				)}
@@ -997,7 +997,7 @@ export function FeedDetail(this: Handle) {
 								on={{
 									click: () => {
 										showDeleteConfirm = true
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -1046,42 +1046,42 @@ export function FeedDetail(this: Handle) {
 							error={editError}
 							onNameChange={(value) => {
 								editForm.name = value
-								this.update()
+								handle.update()
 							}}
 							onDescriptionChange={(value) => {
 								editForm.description = value
-								this.update()
+								handle.update()
 							}}
 							onSubtitleChange={(value) => {
 								editForm.subtitle = value
-								this.update()
+								handle.update()
 							}}
 							onSortFieldsChange={(value) => {
 								editForm.sortFields = value
-								this.update()
+								handle.update()
 							}}
 							onSortOrderChange={(value) => {
 								editForm.sortOrder = value
-								this.update()
+								handle.update()
 							}}
 							onFeedTypeChange={(value) => {
 								editForm.feedType = value
-								this.update()
+								handle.update()
 							}}
 							onLinkChange={(value) => {
 								editForm.link = value
-								this.update()
+								handle.update()
 							}}
 							onCopyrightChange={(value) => {
 								editForm.copyright = value
-								this.update()
+								handle.update()
 							}}
 							onSave={() => saveEdit(isDirectory)}
 							onDirectoryPathsChange={
 								isDirectory
 									? (paths) => {
 											editForm.directoryPaths = paths
-											this.update()
+											handle.update()
 										}
 									: undefined
 							}
@@ -1326,13 +1326,13 @@ export function FeedDetail(this: Handle) {
 										on={{
 											input: (e) => {
 												imageUrlInput = (e.target as HTMLInputElement).value
-												this.update()
+												handle.update()
 											},
 											focus: () => {
 												// Initialize with current value on focus if empty
 												if (!imageUrlInput && feed.imageUrl) {
 													imageUrlInput = feed.imageUrl
-													this.update()
+													handle.update()
 												}
 											},
 										}}
@@ -1992,7 +1992,7 @@ export function FeedDetail(this: Handle) {
 								on={{
 									click: () => {
 										showCreateForm = true
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -2044,7 +2044,7 @@ export function FeedDetail(this: Handle) {
 									on={{
 										input: (e) => {
 											newTokenLabel = (e.target as HTMLInputElement).value
-											this.update()
+											handle.update()
 										},
 									}}
 								/>
@@ -2090,7 +2090,7 @@ export function FeedDetail(this: Handle) {
 										click: () => {
 											showCreateForm = false
 											newTokenLabel = ''
-											this.update()
+											handle.update()
 										},
 									}}
 								>
@@ -2155,7 +2155,7 @@ export function FeedDetail(this: Handle) {
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -2181,8 +2181,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -2216,16 +2216,16 @@ function ErrorMessage({ message }: { message: string }) {
 	)
 }
 
-function InfoItem({
-	label,
-	value,
-	mono,
-}: {
-	label: string
-	value: string
-	mono?: boolean
-}) {
-	return (
+function InfoItem() {
+	return ({
+		label,
+		value,
+		mono,
+	}: {
+		label: string
+		value: string
+		mono?: boolean
+	}) => (
 		<div>
 			<dt
 				css={{
@@ -2253,92 +2253,97 @@ function InfoItem({
 	)
 }
 
-function DirectoriesInfo({ directoryPaths }: { directoryPaths: string }) {
-	let paths: Array<string> = []
-	try {
-		paths = JSON.parse(directoryPaths) as Array<string>
-	} catch {
-		paths = []
-	}
+function DirectoriesInfo() {
+	return ({ directoryPaths }: { directoryPaths: string }) => {
+		let paths: Array<string> = []
+		try {
+			paths = JSON.parse(directoryPaths) as Array<string>
+		} catch {
+			paths = []
+		}
 
-	return (
-		<div css={{ gridColumn: paths.length > 1 ? '1 / -1' : undefined }}>
-			<dt
-				css={{
-					fontSize: typography.fontSize.xs,
-					color: colors.textMuted,
-					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
-					marginBottom: spacing.xs,
-				}}
-			>
-				{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
-			</dt>
-			<dd css={{ margin: 0 }}>
-				{paths.length === 0 ? (
-					<span
-						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
-					>
-						No directories configured
-					</span>
-				) : paths.length === 1 ? (
-					<span
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-							fontFamily: 'monospace',
-							wordBreak: 'break-all',
-						}}
-					>
-						{paths[0]}
-					</span>
-				) : (
-					<ul
-						css={{
-							listStyle: 'none',
-							padding: 0,
-							margin: 0,
-							display: 'flex',
-							flexDirection: 'column',
-							gap: spacing.xs,
-						}}
-					>
-						{paths.map((path, _index) => (
-							<li
-								key={path}
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-									fontFamily: 'monospace',
-									wordBreak: 'break-all',
-									padding: `${spacing.xs} ${spacing.sm}`,
-									backgroundColor: colors.background,
-									borderRadius: radius.sm,
-									border: `1px solid ${colors.border}`,
-								}}
-							>
-								{path}
-							</li>
-						))}
-					</ul>
-				)}
-			</dd>
-		</div>
-	)
+		return (
+			<div css={{ gridColumn: paths.length > 1 ? '1 / -1' : undefined }}>
+				<dt
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+						marginBottom: spacing.xs,
+					}}
+				>
+					{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
+				</dt>
+				<dd css={{ margin: 0 }}>
+					{paths.length === 0 ? (
+						<span
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}}
+						>
+							No directories configured
+						</span>
+					) : paths.length === 1 ? (
+						<span
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+								fontFamily: 'monospace',
+								wordBreak: 'break-all',
+							}}
+						>
+							{paths[0]}
+						</span>
+					) : (
+						<ul
+							css={{
+								listStyle: 'none',
+								padding: 0,
+								margin: 0,
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+							}}
+						>
+							{paths.map((path, _index) => (
+								<li
+									key={path}
+									css={{
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										fontFamily: 'monospace',
+										wordBreak: 'break-all',
+										padding: `${spacing.xs} ${spacing.sm}`,
+										backgroundColor: colors.background,
+										borderRadius: radius.sm,
+										border: `1px solid ${colors.border}`,
+									}}
+								>
+									{path}
+								</li>
+							))}
+						</ul>
+					)}
+				</dd>
+			</div>
+		)
+	}
 }
 
-function TokenCard({
-	token,
-	isCopied,
-	onCopy,
-	onRevoke,
-}: {
-	token: Token
-	isCopied: boolean
-	onCopy: () => void
-	onRevoke: () => void
-}) {
-	return (
+function TokenCard() {
+	return ({
+		token,
+		isCopied,
+		onCopy,
+		onRevoke,
+	}: {
+		token: Token
+		isCopied: boolean
+		onCopy: () => void
+		onRevoke: () => void
+	}) => (
 		<div
 			css={{
 				display: 'flex',
@@ -2440,42 +2445,42 @@ const inputStyles = {
 	},
 }
 
-function EditForm({
-	form,
-	isDirectory,
-	isLoading,
-	error,
-	onNameChange,
-	onDescriptionChange,
-	onSubtitleChange,
-	onSortFieldsChange,
-	onSortOrderChange,
-	onFeedTypeChange,
-	onLinkChange,
-	onCopyrightChange,
-	onDirectoryPathsChange,
-	rootsState,
-	onSave,
-	onCancel,
-}: {
-	form: EditFormState
-	isDirectory: boolean
-	isLoading: boolean
-	error: string | null
-	onNameChange: (value: string) => void
-	onDescriptionChange: (value: string) => void
-	onSubtitleChange: (value: string) => void
-	onSortFieldsChange: (value: string) => void
-	onSortOrderChange: (value: 'asc' | 'desc') => void
-	onFeedTypeChange: (value: 'episodic' | 'serial') => void
-	onLinkChange: (value: string) => void
-	onCopyrightChange: (value: string) => void
-	onDirectoryPathsChange?: (paths: Array<string>) => void
-	rootsState: RootsState
-	onSave: () => void
-	onCancel: () => void
-}) {
-	return (
+function EditForm() {
+	return ({
+		form,
+		isDirectory,
+		isLoading,
+		error,
+		onNameChange,
+		onDescriptionChange,
+		onSubtitleChange,
+		onSortFieldsChange,
+		onSortOrderChange,
+		onFeedTypeChange,
+		onLinkChange,
+		onCopyrightChange,
+		onDirectoryPathsChange,
+		rootsState,
+		onSave,
+		onCancel,
+	}: {
+		form: EditFormState
+		isDirectory: boolean
+		isLoading: boolean
+		error: string | null
+		onNameChange: (value: string) => void
+		onDescriptionChange: (value: string) => void
+		onSubtitleChange: (value: string) => void
+		onSortFieldsChange: (value: string) => void
+		onSortOrderChange: (value: 'asc' | 'desc') => void
+		onFeedTypeChange: (value: 'episodic' | 'serial') => void
+		onLinkChange: (value: string) => void
+		onCopyrightChange: (value: string) => void
+		onDirectoryPathsChange?: (paths: Array<string>) => void
+		rootsState: RootsState
+		onSave: () => void
+		onCancel: () => void
+	}) => (
 		<div>
 			<div css={{ marginBottom: spacing.md }}>
 				<label
@@ -2853,7 +2858,7 @@ function EditForm({
 	)
 }
 
-function DirectoryPathsEditor(this: Handle) {
+function DirectoryPathsEditor(handle: Handle) {
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''
@@ -2861,7 +2866,7 @@ function DirectoryPathsEditor(this: Handle) {
 
 	const fetchDirectory = async (root: string, path: string) => {
 		browseState = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(
@@ -2879,7 +2884,7 @@ function DirectoryPathsEditor(this: Handle) {
 				message: err instanceof Error ? err.message : 'Failed to browse',
 			}
 		}
-		this.update()
+		handle.update()
 	}
 
 	const selectRoot = (rootName: string) => {
@@ -2921,7 +2926,7 @@ function DirectoryPathsEditor(this: Handle) {
 			selectedRoot = null
 			currentPath = ''
 			browseState = { status: 'idle' }
-			this.update()
+			handle.update()
 		}
 
 		const removePath = (index: number) => {
@@ -3214,22 +3219,22 @@ function DirectoryPathsEditor(this: Handle) {
 	}
 }
 
-function DeleteConfirmModal({
-	feedName,
-	tokenCount,
-	itemCount,
-	isLoading,
-	onConfirm,
-	onCancel,
-}: {
-	feedName: string
-	tokenCount: number
-	itemCount: number
-	isLoading: boolean
-	onConfirm: () => void
-	onCancel: () => void
-}) {
-	return (
+function DeleteConfirmModal() {
+	return ({
+		feedName,
+		tokenCount,
+		itemCount,
+		isLoading,
+		onConfirm,
+		onCancel,
+	}: {
+		feedName: string
+		tokenCount: number
+		itemCount: number
+		isLoading: boolean
+		onConfirm: () => void
+		onCancel: () => void
+	}) => (
 		<Modal
 			title="Delete Feed"
 			subtitle={`Are you sure you want to delete ${feedName}?`}
@@ -3283,426 +3288,437 @@ function DeleteConfirmModal({
 	)
 }
 
-function AddFilesModal({
-	rootsState,
-	browseState,
-	pickerRoot,
-	pickerPath,
-	selectedCount,
-	isLoading,
-	onSelectRoot,
-	onNavigateToDir,
-	onNavigateUp,
-	onToggleFile,
-	isFileSelected,
-	isFileInFeed,
-	onConfirm,
-	onCancel,
-}: {
-	rootsState: RootsState
-	browseState: BrowseState
-	pickerRoot: string | null
-	pickerPath: string
-	selectedCount: number
-	isLoading: boolean
-	onSelectRoot: (name: string) => void
-	onNavigateToDir: (name: string) => void
-	onNavigateUp: () => void
-	onToggleFile: (filename: string) => void
-	isFileSelected: (filename: string) => boolean
-	isFileInFeed: (filename: string) => boolean
-	onConfirm: () => void
-	onCancel: () => void
-}) {
-	const pathParts = pickerPath ? pickerPath.split('/') : []
+function AddFilesModal() {
+	return ({
+		rootsState,
+		browseState,
+		pickerRoot,
+		pickerPath,
+		selectedCount,
+		isLoading,
+		onSelectRoot,
+		onNavigateToDir,
+		onNavigateUp,
+		onToggleFile,
+		isFileSelected,
+		isFileInFeed,
+		onConfirm,
+		onCancel,
+	}: {
+		rootsState: RootsState
+		browseState: BrowseState
+		pickerRoot: string | null
+		pickerPath: string
+		selectedCount: number
+		isLoading: boolean
+		onSelectRoot: (name: string) => void
+		onNavigateToDir: (name: string) => void
+		onNavigateUp: () => void
+		onToggleFile: (filename: string) => void
+		isFileSelected: (filename: string) => boolean
+		isFileInFeed: (filename: string) => boolean
+		onConfirm: () => void
+		onCancel: () => void
+	}) => {
+		const pathParts = pickerPath ? pickerPath.split('/') : []
 
-	return (
-		<Modal
-			title="Add Files to Feed"
-			subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
-			size="lg"
-			onClose={onCancel}
-			footer={
-				<div
-					css={{
-						display: 'flex',
-						gap: spacing.sm,
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						width: '100%',
-					}}
-				>
-					<span
-						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
-					>
-						{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
-					</span>
-					<ModalFooter>
-						<ModalButton
-							variant="secondary"
-							disabled={isLoading}
-							onClick={onCancel}
-						>
-							Cancel
-						</ModalButton>
-						<ModalButton
-							variant="primary"
-							disabled={isLoading || selectedCount === 0}
-							onClick={onConfirm}
-						>
-							{isLoading
-								? 'Adding...'
-								: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
-						</ModalButton>
-					</ModalFooter>
-				</div>
-			}
-		>
-			{/* File picker */}
-			<div
-				css={{
-					minHeight: '250px',
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					overflow: 'hidden',
-					display: 'flex',
-					flexDirection: 'column',
-				}}
-			>
-				{/* Root selector */}
-				{rootsState.status === 'loading' && (
-					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-						<span css={{ color: colors.textMuted }}>
-							Loading media roots...
-						</span>
-					</div>
-				)}
-
-				{rootsState.status === 'error' && (
-					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-						<span css={{ color: '#ef4444' }}>Error: {rootsState.message}</span>
-					</div>
-				)}
-
-				{rootsState.status === 'success' && rootsState.roots.length === 0 && (
+		return (
+			<Modal
+				title="Add Files to Feed"
+				subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
+				size="lg"
+				onClose={onCancel}
+				footer={
 					<div
 						css={{
-							padding: spacing.xl,
-							textAlign: 'center',
-							color: colors.textMuted,
+							display: 'flex',
+							gap: spacing.sm,
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							width: '100%',
 						}}
 					>
-						<div
-							css={{
-								width: '48px',
-								height: '48px',
-								margin: `0 auto ${spacing.md}`,
-								borderRadius: radius.md,
-								backgroundColor: colors.background,
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								fontSize: '24px',
-							}}
-						>
-							📂
-						</div>
-						<p
-							css={{
-								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.text,
-								margin: `0 0 ${spacing.sm} 0`,
-							}}
-						>
-							No media files available
-						</p>
-						<p
+						<span
 							css={{
 								fontSize: typography.fontSize.sm,
 								color: colors.textMuted,
-								margin: 0,
-								maxWidth: '400px',
-								marginLeft: 'auto',
-								marginRight: 'auto',
 							}}
 						>
-							To add files to this feed, first add media files to one of your
-							configured media path directories. Check your{' '}
-							<code
-								css={{
-									fontSize: typography.fontSize.xs,
-									backgroundColor: colors.background,
-									padding: `${spacing.xs} ${spacing.xs}`,
-									borderRadius: radius.sm,
-									fontFamily: 'monospace',
-								}}
+							{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
+						</span>
+						<ModalFooter>
+							<ModalButton
+								variant="secondary"
+								disabled={isLoading}
+								onClick={onCancel}
 							>
-								MEDIA_PATHS
-							</code>{' '}
-							environment variable to see where media should be stored.
-						</p>
+								Cancel
+							</ModalButton>
+							<ModalButton
+								variant="primary"
+								disabled={isLoading || selectedCount === 0}
+								onClick={onConfirm}
+							>
+								{isLoading
+									? 'Adding...'
+									: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
+							</ModalButton>
+						</ModalFooter>
 					</div>
-				)}
+				}
+			>
+				{/* File picker */}
+				<div
+					css={{
+						minHeight: '250px',
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						overflow: 'hidden',
+						display: 'flex',
+						flexDirection: 'column',
+					}}
+				>
+					{/* Root selector */}
+					{rootsState.status === 'loading' && (
+						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+							<span css={{ color: colors.textMuted }}>
+								Loading media roots...
+							</span>
+						</div>
+					)}
 
-				{rootsState.status === 'success' && rootsState.roots.length > 0 && (
-					<>
+					{rootsState.status === 'error' && (
+						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+							<span css={{ color: '#ef4444' }}>
+								Error: {rootsState.message}
+							</span>
+						</div>
+					)}
+
+					{rootsState.status === 'success' && rootsState.roots.length === 0 && (
 						<div
 							css={{
-								padding: spacing.sm,
-								backgroundColor: colors.background,
-								borderBottom: `1px solid ${colors.border}`,
-								display: 'flex',
-								gap: spacing.sm,
-								flexWrap: 'wrap',
+								padding: spacing.xl,
+								textAlign: 'center',
+								color: colors.textMuted,
 							}}
 						>
-							{rootsState.roots.map((root) => (
-								<button
-									key={root.name}
-									type="button"
+							<div
+								css={{
+									width: '48px',
+									height: '48px',
+									margin: `0 auto ${spacing.md}`,
+									borderRadius: radius.md,
+									backgroundColor: colors.background,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									fontSize: '24px',
+								}}
+							>
+								📂
+							</div>
+							<p
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									margin: `0 0 ${spacing.sm} 0`,
+								}}
+							>
+								No media files available
+							</p>
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: 0,
+									maxWidth: '400px',
+									marginLeft: 'auto',
+									marginRight: 'auto',
+								}}
+							>
+								To add files to this feed, first add media files to one of your
+								configured media path directories. Check your{' '}
+								<code
 									css={{
-										padding: `${spacing.xs} ${spacing.sm}`,
 										fontSize: typography.fontSize.xs,
+										backgroundColor: colors.background,
+										padding: `${spacing.xs} ${spacing.xs}`,
 										borderRadius: radius.sm,
-										border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-										backgroundColor:
-											pickerRoot === root.name ? colors.primary : 'transparent',
-										color:
-											pickerRoot === root.name
-												? colors.background
-												: colors.text,
-										cursor: 'pointer',
-										transition: `all ${transitions.fast}`,
-										'&:hover': {
-											borderColor: colors.primary,
-										},
+										fontFamily: 'monospace',
 									}}
-									on={{ click: () => onSelectRoot(root.name) }}
 								>
-									{root.name}
-								</button>
-							))}
+									MEDIA_PATHS
+								</code>{' '}
+								environment variable to see where media should be stored.
+							</p>
 						</div>
+					)}
 
-						{/* Path breadcrumb */}
-						{pickerRoot && (
+					{rootsState.status === 'success' && rootsState.roots.length > 0 && (
+						<>
 							<div
 								css={{
 									padding: spacing.sm,
 									backgroundColor: colors.background,
 									borderBottom: `1px solid ${colors.border}`,
-									fontSize: typography.fontSize.sm,
-									fontFamily: 'monospace',
-									color: colors.textMuted,
 									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.xs,
+									gap: spacing.sm,
+									flexWrap: 'wrap',
 								}}
 							>
-								<span css={{ color: colors.primary }}>{pickerRoot}</span>
-								{pathParts.map((part, i) => (
-									<span key={i}>
-										<span css={{ color: colors.textMuted }}>/</span>
-										<span>{part}</span>
-									</span>
+								{rootsState.roots.map((root) => (
+									<button
+										key={root.name}
+										type="button"
+										css={{
+											padding: `${spacing.xs} ${spacing.sm}`,
+											fontSize: typography.fontSize.xs,
+											borderRadius: radius.sm,
+											border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+											backgroundColor:
+												pickerRoot === root.name
+													? colors.primary
+													: 'transparent',
+											color:
+												pickerRoot === root.name
+													? colors.background
+													: colors.text,
+											cursor: 'pointer',
+											transition: `all ${transitions.fast}`,
+											'&:hover': {
+												borderColor: colors.primary,
+											},
+										}}
+										on={{ click: () => onSelectRoot(root.name) }}
+									>
+										{root.name}
+									</button>
 								))}
-								{!pickerPath && (
-									<span css={{ color: colors.textMuted }}>/</span>
-								)}
 							</div>
-						)}
 
-						{/* File listing */}
-						<div
-							css={{
-								flex: 1,
-								minHeight: '150px',
-								maxHeight: '300px',
-								overflowY: 'auto',
-								backgroundColor: colors.surface,
-							}}
-						>
-							{!pickerRoot && (
+							{/* Path breadcrumb */}
+							{pickerRoot && (
 								<div
 									css={{
-										padding: spacing.lg,
-										textAlign: 'center',
+										padding: spacing.sm,
+										backgroundColor: colors.background,
+										borderBottom: `1px solid ${colors.border}`,
+										fontSize: typography.fontSize.sm,
+										fontFamily: 'monospace',
 										color: colors.textMuted,
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.xs,
 									}}
 								>
-									Select a media root to browse files
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'loading' && (
-								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-									<span css={{ color: colors.textMuted }}>Loading...</span>
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'error' && (
-								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-									<span css={{ color: '#ef4444' }}>{browseState.message}</span>
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'success' && (
-								<div>
-									{pickerPath && (
-										<button
-											type="button"
-											css={fileItemStyles}
-											on={{ click: onNavigateUp }}
-										>
-											<span css={{ marginRight: spacing.sm }}>📁</span>
-											<span>..</span>
-										</button>
+									<span css={{ color: colors.primary }}>{pickerRoot}</span>
+									{pathParts.map((part, i) => (
+										<span key={i}>
+											<span css={{ color: colors.textMuted }}>/</span>
+											<span>{part}</span>
+										</span>
+									))}
+									{!pickerPath && (
+										<span css={{ color: colors.textMuted }}>/</span>
 									)}
+								</div>
+							)}
 
-									{browseState.entries.length === 0 && !pickerPath && (
-										<div
-											css={{
-												padding: spacing.xl,
-												textAlign: 'center',
-												color: colors.textMuted,
-											}}
-										>
-											<div
-												css={{
-													width: '40px',
-													height: '40px',
-													margin: `0 auto ${spacing.sm}`,
-													borderRadius: radius.md,
-													backgroundColor: colors.background,
-													display: 'flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-													fontSize: '20px',
-												}}
-											>
-												📂
-											</div>
-											<p
-												css={{
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.text,
-													margin: `0 0 ${spacing.xs} 0`,
-												}}
-											>
-												No files in this directory
-											</p>
-											<p
-												css={{
-													fontSize: typography.fontSize.xs,
-													color: colors.textMuted,
-													margin: 0,
-												}}
-											>
-												Add media files to{' '}
-												<code
-													css={{
-														fontFamily: 'monospace',
-														backgroundColor: colors.background,
-														padding: `0 ${spacing.xs}`,
-														borderRadius: radius.sm,
-													}}
-												>
-													{pickerRoot}
-												</code>{' '}
-												to see them here.
-											</p>
-										</div>
-									)}
+							{/* File listing */}
+							<div
+								css={{
+									flex: 1,
+									minHeight: '150px',
+									maxHeight: '300px',
+									overflowY: 'auto',
+									backgroundColor: colors.surface,
+								}}
+							>
+								{!pickerRoot && (
+									<div
+										css={{
+											padding: spacing.lg,
+											textAlign: 'center',
+											color: colors.textMuted,
+										}}
+									>
+										Select a media root to browse files
+									</div>
+								)}
 
-									{/* Directories */}
-									{browseState.entries
-										.filter((e) => e.type === 'directory')
-										.map((entry) => (
+								{pickerRoot && browseState.status === 'loading' && (
+									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+										<span css={{ color: colors.textMuted }}>Loading...</span>
+									</div>
+								)}
+
+								{pickerRoot && browseState.status === 'error' && (
+									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+										<span css={{ color: '#ef4444' }}>
+											{browseState.message}
+										</span>
+									</div>
+								)}
+
+								{pickerRoot && browseState.status === 'success' && (
+									<div>
+										{pickerPath && (
 											<button
-												key={entry.name}
 												type="button"
 												css={fileItemStyles}
-												on={{ click: () => onNavigateToDir(entry.name) }}
+												on={{ click: onNavigateUp }}
 											>
 												<span css={{ marginRight: spacing.sm }}>📁</span>
-												<span>{entry.name}</span>
+												<span>..</span>
 											</button>
-										))}
+										)}
 
-									{/* Files with checkboxes */}
-									{browseState.entries
-										.filter((e) => e.type === 'file')
-										.map((entry) => {
-											const selected = isFileSelected(entry.name)
-											const inFeed = isFileInFeed(entry.name)
-											return (
+										{browseState.entries.length === 0 && !pickerPath && (
+											<div
+												css={{
+													padding: spacing.xl,
+													textAlign: 'center',
+													color: colors.textMuted,
+												}}
+											>
+												<div
+													css={{
+														width: '40px',
+														height: '40px',
+														margin: `0 auto ${spacing.sm}`,
+														borderRadius: radius.md,
+														backgroundColor: colors.background,
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontSize: '20px',
+													}}
+												>
+													📂
+												</div>
+												<p
+													css={{
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+														margin: `0 0 ${spacing.xs} 0`,
+													}}
+												>
+													No files in this directory
+												</p>
+												<p
+													css={{
+														fontSize: typography.fontSize.xs,
+														color: colors.textMuted,
+														margin: 0,
+													}}
+												>
+													Add media files to{' '}
+													<code
+														css={{
+															fontFamily: 'monospace',
+															backgroundColor: colors.background,
+															padding: `0 ${spacing.xs}`,
+															borderRadius: radius.sm,
+														}}
+													>
+														{pickerRoot}
+													</code>{' '}
+													to see them here.
+												</p>
+											</div>
+										)}
+
+										{/* Directories */}
+										{browseState.entries
+											.filter((e) => e.type === 'directory')
+											.map((entry) => (
 												<button
 													key={entry.name}
 													type="button"
-													disabled={inFeed}
-													css={{
-														...fileItemStyles,
-														backgroundColor: selected
-															? colors.primarySoft
-															: inFeed
-																? 'rgba(128, 128, 128, 0.05)'
-																: 'transparent',
-														opacity: inFeed ? 0.5 : 1,
-														cursor: inFeed ? 'not-allowed' : 'pointer',
-													}}
-													on={{
-														click: () => {
-															if (!inFeed) onToggleFile(entry.name)
-														},
-													}}
+													css={fileItemStyles}
+													on={{ click: () => onNavigateToDir(entry.name) }}
 												>
-													<span
+													<span css={{ marginRight: spacing.sm }}>📁</span>
+													<span>{entry.name}</span>
+												</button>
+											))}
+
+										{/* Files with checkboxes */}
+										{browseState.entries
+											.filter((e) => e.type === 'file')
+											.map((entry) => {
+												const selected = isFileSelected(entry.name)
+												const inFeed = isFileInFeed(entry.name)
+												return (
+													<button
+														key={entry.name}
+														type="button"
+														disabled={inFeed}
 														css={{
-															marginRight: spacing.sm,
-															width: '16px',
-															height: '16px',
-															border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
-															borderRadius: radius.sm,
-															backgroundColor: inFeed
-																? colors.border
-																: selected
-																	? colors.primary
+															...fileItemStyles,
+															backgroundColor: selected
+																? colors.primarySoft
+																: inFeed
+																	? 'rgba(128, 128, 128, 0.05)'
 																	: 'transparent',
-															display: 'inline-flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															fontSize: '12px',
-															color: colors.background,
+															opacity: inFeed ? 0.5 : 1,
+															cursor: inFeed ? 'not-allowed' : 'pointer',
+														}}
+														on={{
+															click: () => {
+																if (!inFeed) onToggleFile(entry.name)
+															},
 														}}
 													>
-														{(selected || inFeed) && '✓'}
-													</span>
-													<span css={{ marginRight: spacing.sm }}>📄</span>
-													<span>{entry.name}</span>
-													{inFeed && (
 														<span
 															css={{
-																marginLeft: 'auto',
-																fontSize: typography.fontSize.xs,
-																color: colors.textMuted,
+																marginRight: spacing.sm,
+																width: '16px',
+																height: '16px',
+																border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
+																borderRadius: radius.sm,
+																backgroundColor: inFeed
+																	? colors.border
+																	: selected
+																		? colors.primary
+																		: 'transparent',
+																display: 'inline-flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																fontSize: '12px',
+																color: colors.background,
 															}}
 														>
-															Already in feed
+															{(selected || inFeed) && '✓'}
 														</span>
-													)}
-												</button>
-											)
-										})}
-								</div>
-							)}
-						</div>
-					</>
-				)}
-			</div>
-		</Modal>
-	)
+														<span css={{ marginRight: spacing.sm }}>📄</span>
+														<span>{entry.name}</span>
+														{inFeed && (
+															<span
+																css={{
+																	marginLeft: 'auto',
+																	fontSize: typography.fontSize.xs,
+																	color: colors.textMuted,
+																}}
+															>
+																Already in feed
+															</span>
+														)}
+													</button>
+												)
+											})}
+									</div>
+								)}
+							</div>
+						</>
+					)}
+				</div>
+			</Modal>
+		)
+	}
 }
 
 const fileItemStyles = {

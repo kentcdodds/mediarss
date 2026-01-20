@@ -8,10 +8,10 @@ import {
 	typography,
 } from '#app/styles/tokens.ts'
 
-type Props = { initial?: number }
+type Setup = { initial?: number }
 
-export function Counter(this: Handle, { initial }: Props) {
-	let count = initial ?? 0
+export function Counter(handle: Handle, setup: Setup = {}) {
+	let count = setup.initial ?? 0
 	return () => (
 		<button
 			type="button"
@@ -36,7 +36,7 @@ export function Counter(this: Handle, { initial }: Props) {
 			on={{
 				[press]: () => {
 					count++
-					this.update()
+					handle.update()
 				},
 			}}
 		>

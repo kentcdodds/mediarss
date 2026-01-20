@@ -114,7 +114,7 @@ function isVideo(mimeType: string): boolean {
 /**
  * MediaDetail component - displays full metadata, feed assignments, and media player
  */
-export function MediaDetail(this: Handle) {
+export function MediaDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let currentPath = ''
 	let selectedFeedIds: Set<string> = new Set()
@@ -150,11 +150,11 @@ export function MediaDetail(this: Handle) {
 	const fetchMedia = async (encodedPath: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/media/${encodedPath}`, {
-				signal: this.signal,
+				signal: handle.signal,
 			})
 
 			if (!res.ok) {
@@ -172,14 +172,14 @@ export function MediaDetail(this: Handle) {
 					.map((a) => a.feedId),
 			)
 
-			this.update()
+			handle.update()
 		} catch (err) {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			state = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -189,7 +189,7 @@ export function MediaDetail(this: Handle) {
 		} else {
 			selectedFeedIds.add(feedId)
 		}
-		this.update()
+		handle.update()
 	}
 
 	const saveAssignments = async () => {
@@ -197,7 +197,7 @@ export function MediaDetail(this: Handle) {
 
 		saving = true
 		saveMessage = null
-		this.update()
+		handle.update()
 
 		try {
 			const { media } = state.data
@@ -230,13 +230,13 @@ export function MediaDetail(this: Handle) {
 			}
 		} finally {
 			saving = false
-			this.update()
+			handle.update()
 
 			// Clear success message after 3 seconds
 			if (saveMessage?.type === 'success') {
 				setTimeout(() => {
 					saveMessage = null
-					this.update()
+					handle.update()
 				}, 3000)
 			}
 		}
@@ -306,13 +306,13 @@ export function MediaDetail(this: Handle) {
 		}
 		isEditingMetadata = true
 		metadataMessage = null
-		this.update()
+		handle.update()
 	}
 
 	const cancelEditingMetadata = () => {
 		isEditingMetadata = false
 		metadataMessage = null
-		this.update()
+		handle.update()
 	}
 
 	const saveMetadata = async () => {
@@ -321,7 +321,7 @@ export function MediaDetail(this: Handle) {
 		const savePath = currentPath
 		savingMetadata = true
 		metadataMessage = null
-		this.update()
+		handle.update()
 
 		try {
 			// Build the update payload with only changed fields
@@ -394,7 +394,7 @@ export function MediaDetail(this: Handle) {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
-				signal: this.signal,
+				signal: handle.signal,
 			})
 
 			if (!res.ok) {
@@ -403,7 +403,7 @@ export function MediaDetail(this: Handle) {
 			}
 
 			// Don't update state if user navigated away
-			if (this.signal.aborted || currentPath !== savePath) return
+			if (handle.signal.aborted || currentPath !== savePath) return
 
 			// Update state with the response
 			const data = (await res.json()) as MediaDetailResponse
@@ -415,24 +415,24 @@ export function MediaDetail(this: Handle) {
 			// Clear success message after 3 seconds
 			setTimeout(() => {
 				metadataMessage = null
-				this.update()
+				handle.update()
 			}, 3000)
 		} catch (err) {
 			// Ignore abort errors
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			metadataMessage = {
 				type: 'error',
 				text: err instanceof Error ? err.message : 'Failed to save metadata',
 			}
 		} finally {
 			savingMetadata = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const updateEditedField = (field: keyof EditableMetadata, value: string) => {
 		editedMetadata[field] = value
-		this.update()
+		handle.update()
 	}
 
 	return () => {
@@ -1426,7 +1426,7 @@ export function MediaDetail(this: Handle) {
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -1452,8 +1452,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -1487,8 +1487,8 @@ function ErrorMessage({ message }: { message: string }) {
 	)
 }
 
-function MetadataItem({ label, value }: { label: string; value: string }) {
-	return (
+function MetadataItem() {
+	return ({ label, value }: { label: string; value: string }) => (
 		<div>
 			<dt
 				css={{
@@ -1514,53 +1514,89 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 	)
 }
 
-function MetadataField({
-	label,
-	value,
-	type = 'text',
-	onChange,
-}: {
-	label: string
-	value: string
-	type?: 'text' | 'number' | 'date'
-	onChange: (value: string) => void
-}) {
-	const inputStyles = {
-		width: '100%',
-		padding: spacing.sm,
-		fontSize: typography.fontSize.sm,
-		color: colors.text,
-		backgroundColor: colors.background,
-		border: `1px solid ${colors.border}`,
-		borderRadius: radius.md,
-		outline: 'none',
-		transition: `border-color ${transitions.fast}`,
-		'&:focus': {
-			borderColor: colors.primary,
-		},
-	}
+function MetadataField() {
+	return ({
+		label,
+		value,
+		type = 'text',
+		onChange,
+	}: {
+		label: string
+		value: string
+		type?: 'text' | 'number' | 'date'
+		onChange: (value: string) => void
+	}) => {
+		const inputStyles = {
+			width: '100%',
+			padding: spacing.sm,
+			fontSize: typography.fontSize.sm,
+			color: colors.text,
+			backgroundColor: colors.background,
+			border: `1px solid ${colors.border}`,
+			borderRadius: radius.md,
+			outline: 'none',
+			transition: `border-color ${transitions.fast}`,
+			'&:focus': {
+				borderColor: colors.primary,
+			},
+		}
 
-	const labelStyles = {
-		display: 'block',
-		fontSize: typography.fontSize.xs,
-		color: colors.textMuted,
-		textTransform: 'uppercase' as const,
-		letterSpacing: '0.05em',
-		marginBottom: spacing.xs,
-	}
+		const labelStyles = {
+			display: 'block',
+			fontSize: typography.fontSize.xs,
+			color: colors.textMuted,
+			textTransform: 'uppercase' as const,
+			letterSpacing: '0.05em',
+			marginBottom: spacing.xs,
+		}
 
-	const inputHandler = {
-		input: (e: Event) => onChange((e.target as HTMLInputElement).value),
-	}
+		const inputHandler = {
+			input: (e: Event) => onChange((e.target as HTMLInputElement).value),
+		}
 
-	if (type === 'number') {
+		if (type === 'number') {
+			return (
+				<div>
+					<label css={{ display: 'block' }}>
+						<span css={labelStyles}>{label}</span>
+						<input
+							type="number"
+							value={value}
+							css={inputStyles}
+							on={inputHandler}
+						/>
+					</label>
+				</div>
+			)
+		}
+
+		if (type === 'date') {
+			return (
+				<div>
+					<label css={{ display: 'block' }}>
+						<span css={labelStyles}>{label}</span>
+						<input
+							type="date"
+							value={value}
+							css={inputStyles}
+							on={{
+								change: (e: Event) =>
+									onChange((e.target as HTMLInputElement).value),
+							}}
+						/>
+					</label>
+				</div>
+			)
+		}
+
 		return (
 			<div>
 				<label css={{ display: 'block' }}>
 					<span css={labelStyles}>{label}</span>
 					<input
-						type="number"
+						type="text"
 						value={value}
+						list={undefined}
 						css={inputStyles}
 						on={inputHandler}
 					/>
@@ -1568,52 +1604,18 @@ function MetadataField({
 			</div>
 		)
 	}
-
-	if (type === 'date') {
-		return (
-			<div>
-				<label css={{ display: 'block' }}>
-					<span css={labelStyles}>{label}</span>
-					<input
-						type="date"
-						value={value}
-						css={inputStyles}
-						on={{
-							change: (e: Event) =>
-								onChange((e.target as HTMLInputElement).value),
-						}}
-					/>
-				</label>
-			</div>
-		)
-	}
-
-	return (
-		<div>
-			<label css={{ display: 'block' }}>
-				<span css={labelStyles}>{label}</span>
-				<input
-					type="text"
-					value={value}
-					list={undefined}
-					css={inputStyles}
-					on={inputHandler}
-				/>
-			</label>
-		</div>
-	)
 }
 
-function MetadataTextArea({
-	label,
-	value,
-	onChange,
-}: {
-	label: string
-	value: string
-	onChange: (value: string) => void
-}) {
-	return (
+function MetadataTextArea() {
+	return ({
+		label,
+		value,
+		onChange,
+	}: {
+		label: string
+		value: string
+		onChange: (value: string) => void
+	}) => (
 		<div>
 			<label
 				css={{

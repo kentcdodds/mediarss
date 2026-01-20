@@ -636,69 +636,71 @@ export function CreateFeed(handle: Handle) {
 						</FormField>
 
 						<FormField label="Select Directories" required>
-							{rootsState.status === 'loading' && (
-								<p css={{ color: colors.textMuted, margin: 0 }}>
-									Loading media roots...
-								</p>
-							)}
-							{rootsState.status === 'error' && (
-								<p css={{ color: '#ef4444', margin: 0 }}>
-									Error: {rootsState.message}
-								</p>
-							)}
-							{rootsState.status === 'success' && (
-								<div>
-									<div
-										css={{
-											display: 'flex',
-											gap: spacing.sm,
-											flexWrap: 'wrap',
-											marginBottom: spacing.md,
-										}}
-									>
-										{rootsState.roots.map((root) => (
-											<button
-												key={root.name}
-												type="button"
-												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													fontSize: typography.fontSize.sm,
-													borderRadius: radius.md,
-													border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
-													backgroundColor:
-														directoryForm.selectedRoot === root.name
-															? colors.primary
-															: colors.background,
-													color:
-														directoryForm.selectedRoot === root.name
-															? colors.background
-															: colors.text,
-													cursor: 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': {
-														borderColor: colors.primary,
-													},
-												}}
-												on={{ click: () => selectDirectoryRoot(root.name) }}
-											>
-												{root.name}
-											</button>
-										))}
-									</div>
+							<div>
+								{rootsState.status === 'loading' && (
+									<p css={{ color: colors.textMuted, margin: 0 }}>
+										Loading media roots...
+									</p>
+								)}
+								{rootsState.status === 'error' && (
+									<p css={{ color: '#ef4444', margin: 0 }}>
+										Error: {rootsState.message}
+									</p>
+								)}
+								{rootsState.status === 'success' && (
+									<div>
+										<div
+											css={{
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+												marginBottom: spacing.md,
+											}}
+										>
+											{rootsState.roots.map((root) => (
+												<button
+													key={root.name}
+													type="button"
+													css={{
+														padding: `${spacing.sm} ${spacing.md}`,
+														fontSize: typography.fontSize.sm,
+														borderRadius: radius.md,
+														border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
+														backgroundColor:
+															directoryForm.selectedRoot === root.name
+																? colors.primary
+																: colors.background,
+														color:
+															directoryForm.selectedRoot === root.name
+																? colors.background
+																: colors.text,
+														cursor: 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': {
+															borderColor: colors.primary,
+														},
+													}}
+													on={{ click: () => selectDirectoryRoot(root.name) }}
+												>
+													{root.name}
+												</button>
+											))}
+										</div>
 
-									{directoryForm.selectedRoot && (
-										<DirectoryBrowserWithAdd
-											rootName={directoryForm.selectedRoot}
-											currentPath={directoryForm.currentPath}
-											browseState={browseState}
-											onNavigateUp={navigateDirectoryUp}
-											onNavigateToDir={navigateDirectoryToDir}
-											onAddDirectory={addCurrentDirectory}
-											isCurrentSelected={isCurrentDirectorySelected()}
-										/>
-									)}
-								</div>
-							)}
+										{directoryForm.selectedRoot && (
+											<DirectoryBrowserWithAdd
+												rootName={directoryForm.selectedRoot}
+												currentPath={directoryForm.currentPath}
+												browseState={browseState}
+												onNavigateUp={navigateDirectoryUp}
+												onNavigateToDir={navigateDirectoryToDir}
+												onAddDirectory={addCurrentDirectory}
+												isCurrentSelected={isCurrentDirectorySelected()}
+											/>
+										)}
+									</div>
+								)}
+							</div>
 						</FormField>
 
 						{directoryForm.selectedDirectories.length > 0 && (
@@ -911,34 +913,36 @@ export function CreateFeed(handle: Handle) {
 						</FormField>
 
 						<FormField label="Select Files">
-							{rootsState.status === 'loading' && (
-								<p css={{ color: colors.textMuted, margin: 0 }}>
-									Loading media roots...
-								</p>
-							)}
-							{rootsState.status === 'error' && (
-								<p css={{ color: '#ef4444', margin: 0 }}>
-									Error: {rootsState.message}
-								</p>
-							)}
-							{rootsState.status === 'success' && (
-								<FilePicker
-									roots={rootsState.roots}
-									pickerRoot={pickerRoot}
-									pickerPath={pickerPath}
-									browseState={browseState}
-									searchFilter={pickerSearch}
-									onSearchChange={(value) => {
-										pickerSearch = value
-										handle.update()
-									}}
-									onSelectRoot={selectPickerRoot}
-									onNavigateToDir={navigatePickerToDir}
-									onNavigateUp={navigatePickerUp}
-									onToggleFile={toggleFileSelection}
-									isFileSelected={isFileSelected}
-								/>
-							)}
+							<div>
+								{rootsState.status === 'loading' && (
+									<p css={{ color: colors.textMuted, margin: 0 }}>
+										Loading media roots...
+									</p>
+								)}
+								{rootsState.status === 'error' && (
+									<p css={{ color: '#ef4444', margin: 0 }}>
+										Error: {rootsState.message}
+									</p>
+								)}
+								{rootsState.status === 'success' && (
+									<FilePicker
+										roots={rootsState.roots}
+										pickerRoot={pickerRoot}
+										pickerPath={pickerPath}
+										browseState={browseState}
+										searchFilter={pickerSearch}
+										onSearchChange={(value) => {
+											pickerSearch = value
+											handle.update()
+										}}
+										onSelectRoot={selectPickerRoot}
+										onNavigateToDir={navigatePickerToDir}
+										onNavigateUp={navigatePickerUp}
+										onToggleFile={toggleFileSelection}
+										isFileSelected={isFileSelected}
+									/>
+								)}
+							</div>
 						</FormField>
 
 						{curatedForm.selectedFiles.length > 0 && (

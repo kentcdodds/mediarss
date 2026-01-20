@@ -186,7 +186,7 @@ export function VersionPage(handle: Handle) {
 							/>
 							<InfoRow
 								label="Message"
-								value={data.commit.message.split('\n')[0]}
+								value={data.commit.message.split('\n')[0] ?? ''}
 							/>
 							<InfoRow
 								label="Date"

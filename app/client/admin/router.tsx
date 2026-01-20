@@ -7,7 +7,7 @@ type RouteMatch = {
 }
 
 type RouteComponent = (
-	handle?: Handle,
+	handle: Handle,
 	setup?: unknown,
 ) => (props: { params: Record<string, string> }) => JSX.Element
 

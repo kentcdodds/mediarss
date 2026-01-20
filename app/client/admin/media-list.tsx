@@ -2077,7 +2077,11 @@ function UploadModal() {
 						>
 							{isSuccess ? 'Close' : 'Cancel'}
 						</ModalButton>
-						{!isSuccess && (
+						{isSuccess ? (
+							<ModalButton variant="primary" onClick={onReset}>
+								Upload Another
+							</ModalButton>
+						) : (
 							<ModalButton
 								variant="primary"
 								disabled={isUploading || !hasFile || !selectedRoot}
@@ -2086,16 +2090,11 @@ function UploadModal() {
 								{isUploading ? 'Uploading...' : 'Upload'}
 							</ModalButton>
 						)}
-						{isSuccess && (
-							<ModalButton variant="primary" onClick={onReset}>
-								Upload Another
-							</ModalButton>
-						)}
 					</ModalFooter>
 				}
 			>
 				{/* Success message */}
-				{isSuccess && (
+				{isSuccess ? (
 					<div
 						css={{
 							padding: spacing.lg,
@@ -2159,10 +2158,10 @@ function UploadModal() {
 							</code>
 						</p>
 					</div>
-				)}
+				) : null}
 
 				{/* Error message */}
-				{isError && (
+				{isError ? (
 					<div
 						css={{
 							padding: spacing.lg,
@@ -2182,10 +2181,10 @@ function UploadModal() {
 							{uploadState.message}
 						</p>
 					</div>
-				)}
+				) : null}
 
 				{/* File input */}
-				{!isSuccess && (
+				{!isSuccess ? (
 					<ModalSection title="Select File">
 						<div
 							css={{
@@ -2301,10 +2300,10 @@ function UploadModal() {
 							</label>
 						</div>
 					</ModalSection>
-				)}
+				) : null}
 
 				{/* Destination */}
-				{!isSuccess && (
+				{!isSuccess ? (
 					<ModalSection title="Destination">
 						{mediaRoots.length === 0 ? (
 							<p
@@ -2435,10 +2434,10 @@ function UploadModal() {
 							</div>
 						)}
 					</ModalSection>
-				)}
+				) : null}
 
 				{/* Upload progress */}
-				{isUploading && (
+				{isUploading ? (
 					<div
 						css={{
 							marginTop: spacing.lg,
@@ -2478,7 +2477,7 @@ function UploadModal() {
 							</span>
 						</div>
 					</div>
-				)}
+				) : null}
 			</Modal>
 		)
 	}

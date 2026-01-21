@@ -1,4 +1,4 @@
-import type { Handle } from 'remix/component'
+import type { Component, Handle } from 'remix/component'
 import { TypedEventTarget } from 'remix/interaction'
 
 type RouteMatch = {
@@ -6,10 +6,16 @@ type RouteMatch = {
 	params: Record<string, string>
 }
 
+type RouteComponent = Component<
+	Record<string, never>,
+	undefined,
+	{ params: Record<string, string> }
+>
+
 type Route = {
 	pattern: RegExp
 	paramNames: Array<string>
-	component: (props: { params: Record<string, string> }) => JSX.Element
+	component: RouteComponent
 }
 
 /**
@@ -28,10 +34,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Register a route with a pattern and component.
 	 * Pattern supports :param syntax for dynamic segments.
 	 */
-	register(
-		pattern: string,
-		component: (props: { params: Record<string, string> }) => JSX.Element,
-	) {
+	register(pattern: string, component: RouteComponent) {
 		const paramNames: Array<string> = []
 		const regexPattern = pattern
 			.replace(/:([^/]+)/g, (_, name) => {
@@ -100,8 +103,8 @@ window.addEventListener('popstate', router.handlePopState)
  * Currently uses full page refreshes to work around a Remix DOM bug.
  * TODO: Re-enable client-side navigation once the bug is fixed.
  */
-export function Link(renderProps: { href: string } & Record<string, unknown>) {
-	return <a {...renderProps} />
+export function Link() {
+	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
 }
 
 /**

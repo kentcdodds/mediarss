@@ -1426,7 +1426,7 @@ export function MediaDetail(this: Handle) {
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -1452,8 +1452,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -1487,8 +1487,8 @@ function ErrorMessage({ message }: { message: string }) {
 	)
 }
 
-function MetadataItem({ label, value }: { label: string; value: string }) {
-	return (
+function MetadataItem() {
+	return ({ label, value }: { label: string; value: string }) => (
 		<div>
 			<dt
 				css={{
@@ -1514,53 +1514,89 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
 	)
 }
 
-function MetadataField({
-	label,
-	value,
-	type = 'text',
-	onChange,
-}: {
-	label: string
-	value: string
-	type?: 'text' | 'number' | 'date'
-	onChange: (value: string) => void
-}) {
-	const inputStyles = {
-		width: '100%',
-		padding: spacing.sm,
-		fontSize: typography.fontSize.sm,
-		color: colors.text,
-		backgroundColor: colors.background,
-		border: `1px solid ${colors.border}`,
-		borderRadius: radius.md,
-		outline: 'none',
-		transition: `border-color ${transitions.fast}`,
-		'&:focus': {
-			borderColor: colors.primary,
-		},
-	}
+function MetadataField() {
+	return ({
+		label,
+		value,
+		type = 'text',
+		onChange,
+	}: {
+		label: string
+		value: string
+		type?: 'text' | 'number' | 'date'
+		onChange: (value: string) => void
+	}) => {
+		const inputStyles = {
+			width: '100%',
+			padding: spacing.sm,
+			fontSize: typography.fontSize.sm,
+			color: colors.text,
+			backgroundColor: colors.background,
+			border: `1px solid ${colors.border}`,
+			borderRadius: radius.md,
+			outline: 'none',
+			transition: `border-color ${transitions.fast}`,
+			'&:focus': {
+				borderColor: colors.primary,
+			},
+		}
 
-	const labelStyles = {
-		display: 'block',
-		fontSize: typography.fontSize.xs,
-		color: colors.textMuted,
-		textTransform: 'uppercase' as const,
-		letterSpacing: '0.05em',
-		marginBottom: spacing.xs,
-	}
+		const labelStyles = {
+			display: 'block',
+			fontSize: typography.fontSize.xs,
+			color: colors.textMuted,
+			textTransform: 'uppercase' as const,
+			letterSpacing: '0.05em',
+			marginBottom: spacing.xs,
+		}
 
-	const inputHandler = {
-		input: (e: Event) => onChange((e.target as HTMLInputElement).value),
-	}
+		const inputHandler = {
+			input: (e: Event) => onChange((e.target as HTMLInputElement).value),
+		}
 
-	if (type === 'number') {
+		if (type === 'number') {
+			return (
+				<div>
+					<label css={{ display: 'block' }}>
+						<span css={labelStyles}>{label}</span>
+						<input
+							type="number"
+							value={value}
+							css={inputStyles}
+							on={inputHandler}
+						/>
+					</label>
+				</div>
+			)
+		}
+
+		if (type === 'date') {
+			return (
+				<div>
+					<label css={{ display: 'block' }}>
+						<span css={labelStyles}>{label}</span>
+						<input
+							type="date"
+							value={value}
+							css={inputStyles}
+							on={{
+								change: (e: Event) =>
+									onChange((e.target as HTMLInputElement).value),
+							}}
+						/>
+					</label>
+				</div>
+			)
+		}
+
 		return (
 			<div>
 				<label css={{ display: 'block' }}>
 					<span css={labelStyles}>{label}</span>
 					<input
-						type="number"
+						type="text"
 						value={value}
+						list={undefined}
 						css={inputStyles}
 						on={inputHandler}
 					/>
@@ -1568,52 +1604,18 @@ function MetadataField({
 			</div>
 		)
 	}
-
-	if (type === 'date') {
-		return (
-			<div>
-				<label css={{ display: 'block' }}>
-					<span css={labelStyles}>{label}</span>
-					<input
-						type="date"
-						value={value}
-						css={inputStyles}
-						on={{
-							change: (e: Event) =>
-								onChange((e.target as HTMLInputElement).value),
-						}}
-					/>
-				</label>
-			</div>
-		)
-	}
-
-	return (
-		<div>
-			<label css={{ display: 'block' }}>
-				<span css={labelStyles}>{label}</span>
-				<input
-					type="text"
-					value={value}
-					list={undefined}
-					css={inputStyles}
-					on={inputHandler}
-				/>
-			</label>
-		</div>
-	)
 }
 
-function MetadataTextArea({
-	label,
-	value,
-	onChange,
-}: {
-	label: string
-	value: string
-	onChange: (value: string) => void
-}) {
-	return (
+function MetadataTextArea() {
+	return ({
+		label,
+		value,
+		onChange,
+	}: {
+		label: string
+		value: string
+		onChange: (value: string) => void
+	}) => (
 		<div>
 			<label
 				css={{

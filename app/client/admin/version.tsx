@@ -1,4 +1,4 @@
-import type { Handle } from 'remix/component'
+import type { Handle, RemixNode } from 'remix/component'
 import {
 	formatDate,
 	formatRelativeTime,
@@ -231,14 +231,8 @@ export function VersionPage(this: Handle) {
 	}
 }
 
-function InfoCard({
-	title,
-	children,
-}: {
-	title: string
-	children: JSX.Element | Array<JSX.Element>
-}) {
-	return (
+function InfoCard() {
+	return ({ title, children }: { title: string; children: RemixNode }) => (
 		<div
 			css={{
 				backgroundColor: colors.surface,
@@ -281,14 +275,8 @@ function InfoCard({
 	)
 }
 
-function InfoRow({
-	label,
-	value,
-}: {
-	label: string
-	value: string | JSX.Element
-}) {
-	return (
+function InfoRow() {
+	return ({ label, value }: { label: string; value: RemixNode }) => (
 		<div
 			css={{
 				display: 'flex',

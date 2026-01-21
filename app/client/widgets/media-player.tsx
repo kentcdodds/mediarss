@@ -141,8 +141,8 @@ function isVideo(mimeType: string): boolean {
 /**
  * Metadata item display component
  */
-function MetadataItem({ label, value }: { label: string; value: string }) {
-	return (
+function MetadataItem() {
+	return ({ label, value }: { label: string; value: string }) => (
 		<div
 			css={{
 				display: 'flex',
@@ -176,7 +176,7 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
  * Loading state component
  */
 function LoadingState() {
-	return (
+	return () => (
 		<div
 			css={{
 				fontFamily: typography.fontFamily,
@@ -206,8 +206,8 @@ function LoadingState() {
 /**
  * Error state component
  */
-function ErrorState({ message }: { message: string }) {
-	return (
+function ErrorState() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				fontFamily: typography.fontFamily,
@@ -246,161 +246,195 @@ function ErrorState({ message }: { message: string }) {
 /**
  * Media player content component
  */
-function MediaPlayerContent({ media }: { media: MediaData }) {
-	const isVideoFile = isVideo(media.mimeType)
+function MediaPlayerContent() {
+	return ({ media }: { media: MediaData }) => {
+		const isVideoFile = isVideo(media.mimeType)
 
-	return (
-		<div
-			css={{
-				fontFamily: typography.fontFamily,
-				backgroundColor: colors.background,
-				color: colors.text,
-				minHeight: '100vh',
-				padding: spacing.lg,
-			}}
-		>
-			{/* Main container */}
+		return (
 			<div
 				css={{
-					maxWidth: '800px',
-					margin: '0 auto',
+					fontFamily: typography.fontFamily,
+					backgroundColor: colors.background,
+					color: colors.text,
+					minHeight: '100vh',
+					padding: spacing.lg,
 				}}
 			>
-				{/* Header with artwork and title */}
+				{/* Main container */}
 				<div
 					css={{
-						display: 'flex',
-						gap: spacing.lg,
-						marginBottom: spacing.xl,
-						'@media (max-width: 640px)': {
-							flexDirection: 'column',
-							alignItems: 'center',
-							textAlign: 'center',
-						},
+						maxWidth: '800px',
+						margin: '0 auto',
 					}}
 				>
-					{/* Artwork */}
+					{/* Header with artwork and title */}
 					<div
 						css={{
-							width: '200px',
-							height: '200px',
-							flexShrink: 0,
-							borderRadius: radius.lg,
-							overflow: 'hidden',
-							backgroundColor: colors.surface,
-							border: `1px solid ${colors.border}`,
-							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-						}}
-					>
-						<img
-							src={media.artworkUrl}
-							alt={media.title}
-							css={{
-								width: '100%',
-								height: '100%',
-								objectFit: 'cover',
-							}}
-						/>
-					</div>
-
-					{/* Title and author */}
-					<div
-						css={{
-							flex: 1,
 							display: 'flex',
-							flexDirection: 'column',
-							justifyContent: 'center',
-							minWidth: 0,
+							gap: spacing.lg,
+							marginBottom: spacing.xl,
+							'@media (max-width: 640px)': {
+								flexDirection: 'column',
+								alignItems: 'center',
+								textAlign: 'center',
+							},
 						}}
 					>
-						<h1
+						{/* Artwork */}
+						<div
 							css={{
-								fontSize: typography['2xl'],
-								fontWeight: 700,
-								color: colors.text,
-								margin: 0,
-								lineHeight: 1.2,
-								wordBreak: 'break-word',
-								'@media (max-width: 640px)': {
-									fontSize: typography.xl,
-								},
+								width: '200px',
+								height: '200px',
+								flexShrink: 0,
+								borderRadius: radius.lg,
+								overflow: 'hidden',
+								backgroundColor: colors.surface,
+								border: `1px solid ${colors.border}`,
+								boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
 							}}
 						>
-							{media.title}
-						</h1>
-						{media.author && (
-							<p
+							<img
+								src={media.artworkUrl}
+								alt={media.title}
 								css={{
-									fontSize: typography.lg,
-									color: colors.textMuted,
-									margin: `${spacing.sm} 0 0 0`,
+									width: '100%',
+									height: '100%',
+									objectFit: 'cover',
+								}}
+							/>
+						</div>
+
+						{/* Title and author */}
+						<div
+							css={{
+								flex: 1,
+								display: 'flex',
+								flexDirection: 'column',
+								justifyContent: 'center',
+								minWidth: 0,
+							}}
+						>
+							<h1
+								css={{
+									fontSize: typography['2xl'],
+									fontWeight: 700,
+									color: colors.text,
+									margin: 0,
+									lineHeight: 1.2,
+									wordBreak: 'break-word',
+									'@media (max-width: 640px)': {
+										fontSize: typography.xl,
+									},
 								}}
 							>
-								by {media.author}
-							</p>
+								{media.title}
+							</h1>
+							{media.author && (
+								<p
+									css={{
+										fontSize: typography.lg,
+										color: colors.textMuted,
+										margin: `${spacing.sm} 0 0 0`,
+									}}
+								>
+									by {media.author}
+								</p>
+							)}
+							{media.narrators && media.narrators.length > 0 && (
+								<p
+									css={{
+										fontSize: typography.sm,
+										color: colors.textMuted,
+										margin: `${spacing.xs} 0 0 0`,
+									}}
+								>
+									Narrated by {media.narrators.join(', ')}
+								</p>
+							)}
+						</div>
+					</div>
+
+					{/* Media Player */}
+					<div
+						css={{
+							backgroundColor: colors.surface,
+							borderRadius: radius.lg,
+							border: `1px solid ${colors.border}`,
+							padding: spacing.md,
+							marginBottom: spacing.xl,
+						}}
+					>
+						{isVideoFile ? (
+							// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
+							<video
+								src={media.streamUrl}
+								controls
+								preload="metadata"
+								css={{
+									width: '100%',
+									borderRadius: radius.md,
+									backgroundColor: '#000',
+								}}
+							>
+								Your browser does not support video playback.
+							</video>
+						) : (
+							// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
+							<audio
+								src={media.streamUrl}
+								controls
+								preload="metadata"
+								css={{
+									width: '100%',
+								}}
+							>
+								Your browser does not support audio playback.
+							</audio>
 						)}
-						{media.narrators && media.narrators.length > 0 && (
+					</div>
+
+					{/* Description */}
+					{media.description && (
+						<div
+							css={{
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: spacing.lg,
+								marginBottom: spacing.xl,
+							}}
+						>
+							<h2
+								css={{
+									fontSize: typography.base,
+									fontWeight: 600,
+									color: colors.text,
+									margin: `0 0 ${spacing.md} 0`,
+								}}
+							>
+								Description
+							</h2>
 							<p
 								css={{
 									fontSize: typography.sm,
-									color: colors.textMuted,
-									margin: `${spacing.xs} 0 0 0`,
+									color: colors.text,
+									margin: 0,
+									lineHeight: 1.7,
+									whiteSpace: 'pre-wrap',
 								}}
 							>
-								Narrated by {media.narrators.join(', ')}
+								{media.description}
 							</p>
-						)}
-					</div>
-				</div>
-
-				{/* Media Player */}
-				<div
-					css={{
-						backgroundColor: colors.surface,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
-						padding: spacing.md,
-						marginBottom: spacing.xl,
-					}}
-				>
-					{isVideoFile ? (
-						// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
-						<video
-							src={media.streamUrl}
-							controls
-							preload="metadata"
-							css={{
-								width: '100%',
-								borderRadius: radius.md,
-								backgroundColor: '#000',
-							}}
-						>
-							Your browser does not support video playback.
-						</video>
-					) : (
-						// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
-						<audio
-							src={media.streamUrl}
-							controls
-							preload="metadata"
-							css={{
-								width: '100%',
-							}}
-						>
-							Your browser does not support audio playback.
-						</audio>
+						</div>
 					)}
-				</div>
 
-				{/* Description */}
-				{media.description && (
+					{/* Metadata Grid */}
 					<div
 						css={{
 							backgroundColor: colors.surface,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
 							padding: spacing.lg,
-							marginBottom: spacing.xl,
 						}}
 					>
 						<h2
@@ -411,69 +445,37 @@ function MediaPlayerContent({ media }: { media: MediaData }) {
 								margin: `0 0 ${spacing.md} 0`,
 							}}
 						>
-							Description
+							Details
 						</h2>
-						<p
+						<div
 							css={{
-								fontSize: typography.sm,
-								color: colors.text,
-								margin: 0,
-								lineHeight: 1.7,
-								whiteSpace: 'pre-wrap',
+								display: 'grid',
+								gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+								gap: spacing.lg,
 							}}
 						>
-							{media.description}
-						</p>
-					</div>
-				)}
-
-				{/* Metadata Grid */}
-				<div
-					css={{
-						backgroundColor: colors.surface,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
-						padding: spacing.lg,
-					}}
-				>
-					<h2
-						css={{
-							fontSize: typography.base,
-							fontWeight: 600,
-							color: colors.text,
-							margin: `0 0 ${spacing.md} 0`,
-						}}
-					>
-						Details
-					</h2>
-					<div
-						css={{
-							display: 'grid',
-							gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-							gap: spacing.lg,
-						}}
-					>
-						<MetadataItem
-							label="Duration"
-							value={formatDuration(media.duration)}
-						/>
-						<MetadataItem
-							label="Size"
-							value={formatFileSize(media.sizeBytes)}
-						/>
-						<MetadataItem label="Format" value={media.mimeType} />
-						<MetadataItem
-							label="Published"
-							value={formatDate(media.publicationDate)}
-						/>
-						{media.genres && media.genres.length > 0 && (
-							<MetadataItem label="Genres" value={media.genres.join(', ')} />
-						)}
+							<MetadataItem
+								label="Duration"
+								value={formatDuration(media.duration)}
+							/>
+							<MetadataItem
+								label="Size"
+								value={formatFileSize(media.sizeBytes)}
+							/>
+							<MetadataItem label="Format" value={media.mimeType} />
+							<MetadataItem
+								label="Published"
+								value={formatDate(media.publicationDate)}
+							/>
+							{media.genres && media.genres.length > 0 && (
+								<MetadataItem label="Genres" value={media.genres.join(', ')} />
+							)}
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }
 
 /**

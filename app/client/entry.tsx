@@ -3,7 +3,7 @@ import { colors, spacing, typography } from '#app/styles/tokens.ts'
 import { Counter } from './counter.tsx'
 
 function App() {
-	return (
+	return () => (
 		<main
 			css={{
 				fontFamily: typography.fontFamily,
@@ -22,7 +22,7 @@ function App() {
 			>
 				Home
 			</h1>
-			<Counter initial={5} />
+			<Counter setup={{ initial: 5 }} />
 		</main>
 	)
 }

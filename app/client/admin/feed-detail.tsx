@@ -2155,7 +2155,7 @@ export function FeedDetail(this: Handle) {
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -2181,8 +2181,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -2216,16 +2216,16 @@ function ErrorMessage({ message }: { message: string }) {
 	)
 }
 
-function InfoItem({
-	label,
-	value,
-	mono,
-}: {
-	label: string
-	value: string
-	mono?: boolean
-}) {
-	return (
+function InfoItem() {
+	return ({
+		label,
+		value,
+		mono,
+	}: {
+		label: string
+		value: string
+		mono?: boolean
+	}) => (
 		<div>
 			<dt
 				css={{
@@ -2253,92 +2253,97 @@ function InfoItem({
 	)
 }
 
-function DirectoriesInfo({ directoryPaths }: { directoryPaths: string }) {
-	let paths: Array<string> = []
-	try {
-		paths = JSON.parse(directoryPaths) as Array<string>
-	} catch {
-		paths = []
-	}
+function DirectoriesInfo() {
+	return ({ directoryPaths }: { directoryPaths: string }) => {
+		let paths: Array<string> = []
+		try {
+			paths = JSON.parse(directoryPaths) as Array<string>
+		} catch {
+			paths = []
+		}
 
-	return (
-		<div css={{ gridColumn: paths.length > 1 ? '1 / -1' : undefined }}>
-			<dt
-				css={{
-					fontSize: typography.fontSize.xs,
-					color: colors.textMuted,
-					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
-					marginBottom: spacing.xs,
-				}}
-			>
-				{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
-			</dt>
-			<dd css={{ margin: 0 }}>
-				{paths.length === 0 ? (
-					<span
-						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
-					>
-						No directories configured
-					</span>
-				) : paths.length === 1 ? (
-					<span
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-							fontFamily: 'monospace',
-							wordBreak: 'break-all',
-						}}
-					>
-						{paths[0]}
-					</span>
-				) : (
-					<ul
-						css={{
-							listStyle: 'none',
-							padding: 0,
-							margin: 0,
-							display: 'flex',
-							flexDirection: 'column',
-							gap: spacing.xs,
-						}}
-					>
-						{paths.map((path, _index) => (
-							<li
-								key={path}
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-									fontFamily: 'monospace',
-									wordBreak: 'break-all',
-									padding: `${spacing.xs} ${spacing.sm}`,
-									backgroundColor: colors.background,
-									borderRadius: radius.sm,
-									border: `1px solid ${colors.border}`,
-								}}
-							>
-								{path}
-							</li>
-						))}
-					</ul>
-				)}
-			</dd>
-		</div>
-	)
+		return (
+			<div css={{ gridColumn: paths.length > 1 ? '1 / -1' : undefined }}>
+				<dt
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+						marginBottom: spacing.xs,
+					}}
+				>
+					{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
+				</dt>
+				<dd css={{ margin: 0 }}>
+					{paths.length === 0 ? (
+						<span
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}}
+						>
+							No directories configured
+						</span>
+					) : paths.length === 1 ? (
+						<span
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+								fontFamily: 'monospace',
+								wordBreak: 'break-all',
+							}}
+						>
+							{paths[0]}
+						</span>
+					) : (
+						<ul
+							css={{
+								listStyle: 'none',
+								padding: 0,
+								margin: 0,
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+							}}
+						>
+							{paths.map((path, _index) => (
+								<li
+									key={path}
+									css={{
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										fontFamily: 'monospace',
+										wordBreak: 'break-all',
+										padding: `${spacing.xs} ${spacing.sm}`,
+										backgroundColor: colors.background,
+										borderRadius: radius.sm,
+										border: `1px solid ${colors.border}`,
+									}}
+								>
+									{path}
+								</li>
+							))}
+						</ul>
+					)}
+				</dd>
+			</div>
+		)
+	}
 }
 
-function TokenCard({
-	token,
-	isCopied,
-	onCopy,
-	onRevoke,
-}: {
-	token: Token
-	isCopied: boolean
-	onCopy: () => void
-	onRevoke: () => void
-}) {
-	return (
+function TokenCard() {
+	return ({
+		token,
+		isCopied,
+		onCopy,
+		onRevoke,
+	}: {
+		token: Token
+		isCopied: boolean
+		onCopy: () => void
+		onRevoke: () => void
+	}) => (
 		<div
 			css={{
 				display: 'flex',
@@ -2440,42 +2445,42 @@ const inputStyles = {
 	},
 }
 
-function EditForm({
-	form,
-	isDirectory,
-	isLoading,
-	error,
-	onNameChange,
-	onDescriptionChange,
-	onSubtitleChange,
-	onSortFieldsChange,
-	onSortOrderChange,
-	onFeedTypeChange,
-	onLinkChange,
-	onCopyrightChange,
-	onDirectoryPathsChange,
-	rootsState,
-	onSave,
-	onCancel,
-}: {
-	form: EditFormState
-	isDirectory: boolean
-	isLoading: boolean
-	error: string | null
-	onNameChange: (value: string) => void
-	onDescriptionChange: (value: string) => void
-	onSubtitleChange: (value: string) => void
-	onSortFieldsChange: (value: string) => void
-	onSortOrderChange: (value: 'asc' | 'desc') => void
-	onFeedTypeChange: (value: 'episodic' | 'serial') => void
-	onLinkChange: (value: string) => void
-	onCopyrightChange: (value: string) => void
-	onDirectoryPathsChange?: (paths: Array<string>) => void
-	rootsState: RootsState
-	onSave: () => void
-	onCancel: () => void
-}) {
-	return (
+function EditForm() {
+	return ({
+		form,
+		isDirectory,
+		isLoading,
+		error,
+		onNameChange,
+		onDescriptionChange,
+		onSubtitleChange,
+		onSortFieldsChange,
+		onSortOrderChange,
+		onFeedTypeChange,
+		onLinkChange,
+		onCopyrightChange,
+		onDirectoryPathsChange,
+		rootsState,
+		onSave,
+		onCancel,
+	}: {
+		form: EditFormState
+		isDirectory: boolean
+		isLoading: boolean
+		error: string | null
+		onNameChange: (value: string) => void
+		onDescriptionChange: (value: string) => void
+		onSubtitleChange: (value: string) => void
+		onSortFieldsChange: (value: string) => void
+		onSortOrderChange: (value: 'asc' | 'desc') => void
+		onFeedTypeChange: (value: 'episodic' | 'serial') => void
+		onLinkChange: (value: string) => void
+		onCopyrightChange: (value: string) => void
+		onDirectoryPathsChange?: (paths: Array<string>) => void
+		rootsState: RootsState
+		onSave: () => void
+		onCancel: () => void
+	}) => (
 		<div>
 			<div css={{ marginBottom: spacing.md }}>
 				<label
@@ -3214,22 +3219,22 @@ function DirectoryPathsEditor(this: Handle) {
 	}
 }
 
-function DeleteConfirmModal({
-	feedName,
-	tokenCount,
-	itemCount,
-	isLoading,
-	onConfirm,
-	onCancel,
-}: {
-	feedName: string
-	tokenCount: number
-	itemCount: number
-	isLoading: boolean
-	onConfirm: () => void
-	onCancel: () => void
-}) {
-	return (
+function DeleteConfirmModal() {
+	return ({
+		feedName,
+		tokenCount,
+		itemCount,
+		isLoading,
+		onConfirm,
+		onCancel,
+	}: {
+		feedName: string
+		tokenCount: number
+		itemCount: number
+		isLoading: boolean
+		onConfirm: () => void
+		onCancel: () => void
+	}) => (
 		<Modal
 			title="Delete Feed"
 			subtitle={`Are you sure you want to delete ${feedName}?`}
@@ -3283,426 +3288,437 @@ function DeleteConfirmModal({
 	)
 }
 
-function AddFilesModal({
-	rootsState,
-	browseState,
-	pickerRoot,
-	pickerPath,
-	selectedCount,
-	isLoading,
-	onSelectRoot,
-	onNavigateToDir,
-	onNavigateUp,
-	onToggleFile,
-	isFileSelected,
-	isFileInFeed,
-	onConfirm,
-	onCancel,
-}: {
-	rootsState: RootsState
-	browseState: BrowseState
-	pickerRoot: string | null
-	pickerPath: string
-	selectedCount: number
-	isLoading: boolean
-	onSelectRoot: (name: string) => void
-	onNavigateToDir: (name: string) => void
-	onNavigateUp: () => void
-	onToggleFile: (filename: string) => void
-	isFileSelected: (filename: string) => boolean
-	isFileInFeed: (filename: string) => boolean
-	onConfirm: () => void
-	onCancel: () => void
-}) {
-	const pathParts = pickerPath ? pickerPath.split('/') : []
+function AddFilesModal() {
+	return ({
+		rootsState,
+		browseState,
+		pickerRoot,
+		pickerPath,
+		selectedCount,
+		isLoading,
+		onSelectRoot,
+		onNavigateToDir,
+		onNavigateUp,
+		onToggleFile,
+		isFileSelected,
+		isFileInFeed,
+		onConfirm,
+		onCancel,
+	}: {
+		rootsState: RootsState
+		browseState: BrowseState
+		pickerRoot: string | null
+		pickerPath: string
+		selectedCount: number
+		isLoading: boolean
+		onSelectRoot: (name: string) => void
+		onNavigateToDir: (name: string) => void
+		onNavigateUp: () => void
+		onToggleFile: (filename: string) => void
+		isFileSelected: (filename: string) => boolean
+		isFileInFeed: (filename: string) => boolean
+		onConfirm: () => void
+		onCancel: () => void
+	}) => {
+		const pathParts = pickerPath ? pickerPath.split('/') : []
 
-	return (
-		<Modal
-			title="Add Files to Feed"
-			subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
-			size="lg"
-			onClose={onCancel}
-			footer={
-				<div
-					css={{
-						display: 'flex',
-						gap: spacing.sm,
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						width: '100%',
-					}}
-				>
-					<span
-						css={{ fontSize: typography.fontSize.sm, color: colors.textMuted }}
-					>
-						{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
-					</span>
-					<ModalFooter>
-						<ModalButton
-							variant="secondary"
-							disabled={isLoading}
-							onClick={onCancel}
-						>
-							Cancel
-						</ModalButton>
-						<ModalButton
-							variant="primary"
-							disabled={isLoading || selectedCount === 0}
-							onClick={onConfirm}
-						>
-							{isLoading
-								? 'Adding...'
-								: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
-						</ModalButton>
-					</ModalFooter>
-				</div>
-			}
-		>
-			{/* File picker */}
-			<div
-				css={{
-					minHeight: '250px',
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					overflow: 'hidden',
-					display: 'flex',
-					flexDirection: 'column',
-				}}
-			>
-				{/* Root selector */}
-				{rootsState.status === 'loading' && (
-					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-						<span css={{ color: colors.textMuted }}>
-							Loading media roots...
-						</span>
-					</div>
-				)}
-
-				{rootsState.status === 'error' && (
-					<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-						<span css={{ color: '#ef4444' }}>Error: {rootsState.message}</span>
-					</div>
-				)}
-
-				{rootsState.status === 'success' && rootsState.roots.length === 0 && (
+		return (
+			<Modal
+				title="Add Files to Feed"
+				subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
+				size="lg"
+				onClose={onCancel}
+				footer={
 					<div
 						css={{
-							padding: spacing.xl,
-							textAlign: 'center',
-							color: colors.textMuted,
+							display: 'flex',
+							gap: spacing.sm,
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							width: '100%',
 						}}
 					>
-						<div
-							css={{
-								width: '48px',
-								height: '48px',
-								margin: `0 auto ${spacing.md}`,
-								borderRadius: radius.md,
-								backgroundColor: colors.background,
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								fontSize: '24px',
-							}}
-						>
-							📂
-						</div>
-						<p
-							css={{
-								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.text,
-								margin: `0 0 ${spacing.sm} 0`,
-							}}
-						>
-							No media files available
-						</p>
-						<p
+						<span
 							css={{
 								fontSize: typography.fontSize.sm,
 								color: colors.textMuted,
-								margin: 0,
-								maxWidth: '400px',
-								marginLeft: 'auto',
-								marginRight: 'auto',
 							}}
 						>
-							To add files to this feed, first add media files to one of your
-							configured media path directories. Check your{' '}
-							<code
-								css={{
-									fontSize: typography.fontSize.xs,
-									backgroundColor: colors.background,
-									padding: `${spacing.xs} ${spacing.xs}`,
-									borderRadius: radius.sm,
-									fontFamily: 'monospace',
-								}}
+							{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
+						</span>
+						<ModalFooter>
+							<ModalButton
+								variant="secondary"
+								disabled={isLoading}
+								onClick={onCancel}
 							>
-								MEDIA_PATHS
-							</code>{' '}
-							environment variable to see where media should be stored.
-						</p>
+								Cancel
+							</ModalButton>
+							<ModalButton
+								variant="primary"
+								disabled={isLoading || selectedCount === 0}
+								onClick={onConfirm}
+							>
+								{isLoading
+									? 'Adding...'
+									: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
+							</ModalButton>
+						</ModalFooter>
 					</div>
-				)}
+				}
+			>
+				{/* File picker */}
+				<div
+					css={{
+						minHeight: '250px',
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						overflow: 'hidden',
+						display: 'flex',
+						flexDirection: 'column',
+					}}
+				>
+					{/* Root selector */}
+					{rootsState.status === 'loading' && (
+						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+							<span css={{ color: colors.textMuted }}>
+								Loading media roots...
+							</span>
+						</div>
+					)}
 
-				{rootsState.status === 'success' && rootsState.roots.length > 0 && (
-					<>
+					{rootsState.status === 'error' && (
+						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+							<span css={{ color: '#ef4444' }}>
+								Error: {rootsState.message}
+							</span>
+						</div>
+					)}
+
+					{rootsState.status === 'success' && rootsState.roots.length === 0 && (
 						<div
 							css={{
-								padding: spacing.sm,
-								backgroundColor: colors.background,
-								borderBottom: `1px solid ${colors.border}`,
-								display: 'flex',
-								gap: spacing.sm,
-								flexWrap: 'wrap',
+								padding: spacing.xl,
+								textAlign: 'center',
+								color: colors.textMuted,
 							}}
 						>
-							{rootsState.roots.map((root) => (
-								<button
-									key={root.name}
-									type="button"
+							<div
+								css={{
+									width: '48px',
+									height: '48px',
+									margin: `0 auto ${spacing.md}`,
+									borderRadius: radius.md,
+									backgroundColor: colors.background,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									fontSize: '24px',
+								}}
+							>
+								📂
+							</div>
+							<p
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									margin: `0 0 ${spacing.sm} 0`,
+								}}
+							>
+								No media files available
+							</p>
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: 0,
+									maxWidth: '400px',
+									marginLeft: 'auto',
+									marginRight: 'auto',
+								}}
+							>
+								To add files to this feed, first add media files to one of your
+								configured media path directories. Check your{' '}
+								<code
 									css={{
-										padding: `${spacing.xs} ${spacing.sm}`,
 										fontSize: typography.fontSize.xs,
+										backgroundColor: colors.background,
+										padding: `${spacing.xs} ${spacing.xs}`,
 										borderRadius: radius.sm,
-										border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-										backgroundColor:
-											pickerRoot === root.name ? colors.primary : 'transparent',
-										color:
-											pickerRoot === root.name
-												? colors.background
-												: colors.text,
-										cursor: 'pointer',
-										transition: `all ${transitions.fast}`,
-										'&:hover': {
-											borderColor: colors.primary,
-										},
+										fontFamily: 'monospace',
 									}}
-									on={{ click: () => onSelectRoot(root.name) }}
 								>
-									{root.name}
-								</button>
-							))}
+									MEDIA_PATHS
+								</code>{' '}
+								environment variable to see where media should be stored.
+							</p>
 						</div>
+					)}
 
-						{/* Path breadcrumb */}
-						{pickerRoot && (
+					{rootsState.status === 'success' && rootsState.roots.length > 0 && (
+						<>
 							<div
 								css={{
 									padding: spacing.sm,
 									backgroundColor: colors.background,
 									borderBottom: `1px solid ${colors.border}`,
-									fontSize: typography.fontSize.sm,
-									fontFamily: 'monospace',
-									color: colors.textMuted,
 									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.xs,
+									gap: spacing.sm,
+									flexWrap: 'wrap',
 								}}
 							>
-								<span css={{ color: colors.primary }}>{pickerRoot}</span>
-								{pathParts.map((part, i) => (
-									<span key={i}>
-										<span css={{ color: colors.textMuted }}>/</span>
-										<span>{part}</span>
-									</span>
+								{rootsState.roots.map((root) => (
+									<button
+										key={root.name}
+										type="button"
+										css={{
+											padding: `${spacing.xs} ${spacing.sm}`,
+											fontSize: typography.fontSize.xs,
+											borderRadius: radius.sm,
+											border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+											backgroundColor:
+												pickerRoot === root.name
+													? colors.primary
+													: 'transparent',
+											color:
+												pickerRoot === root.name
+													? colors.background
+													: colors.text,
+											cursor: 'pointer',
+											transition: `all ${transitions.fast}`,
+											'&:hover': {
+												borderColor: colors.primary,
+											},
+										}}
+										on={{ click: () => onSelectRoot(root.name) }}
+									>
+										{root.name}
+									</button>
 								))}
-								{!pickerPath && (
-									<span css={{ color: colors.textMuted }}>/</span>
-								)}
 							</div>
-						)}
 
-						{/* File listing */}
-						<div
-							css={{
-								flex: 1,
-								minHeight: '150px',
-								maxHeight: '300px',
-								overflowY: 'auto',
-								backgroundColor: colors.surface,
-							}}
-						>
-							{!pickerRoot && (
+							{/* Path breadcrumb */}
+							{pickerRoot && (
 								<div
 									css={{
-										padding: spacing.lg,
-										textAlign: 'center',
+										padding: spacing.sm,
+										backgroundColor: colors.background,
+										borderBottom: `1px solid ${colors.border}`,
+										fontSize: typography.fontSize.sm,
+										fontFamily: 'monospace',
 										color: colors.textMuted,
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.xs,
 									}}
 								>
-									Select a media root to browse files
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'loading' && (
-								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-									<span css={{ color: colors.textMuted }}>Loading...</span>
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'error' && (
-								<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-									<span css={{ color: '#ef4444' }}>{browseState.message}</span>
-								</div>
-							)}
-
-							{pickerRoot && browseState.status === 'success' && (
-								<div>
-									{pickerPath && (
-										<button
-											type="button"
-											css={fileItemStyles}
-											on={{ click: onNavigateUp }}
-										>
-											<span css={{ marginRight: spacing.sm }}>📁</span>
-											<span>..</span>
-										</button>
+									<span css={{ color: colors.primary }}>{pickerRoot}</span>
+									{pathParts.map((part, i) => (
+										<span key={i}>
+											<span css={{ color: colors.textMuted }}>/</span>
+											<span>{part}</span>
+										</span>
+									))}
+									{!pickerPath && (
+										<span css={{ color: colors.textMuted }}>/</span>
 									)}
+								</div>
+							)}
 
-									{browseState.entries.length === 0 && !pickerPath && (
-										<div
-											css={{
-												padding: spacing.xl,
-												textAlign: 'center',
-												color: colors.textMuted,
-											}}
-										>
-											<div
-												css={{
-													width: '40px',
-													height: '40px',
-													margin: `0 auto ${spacing.sm}`,
-													borderRadius: radius.md,
-													backgroundColor: colors.background,
-													display: 'flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-													fontSize: '20px',
-												}}
-											>
-												📂
-											</div>
-											<p
-												css={{
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.text,
-													margin: `0 0 ${spacing.xs} 0`,
-												}}
-											>
-												No files in this directory
-											</p>
-											<p
-												css={{
-													fontSize: typography.fontSize.xs,
-													color: colors.textMuted,
-													margin: 0,
-												}}
-											>
-												Add media files to{' '}
-												<code
-													css={{
-														fontFamily: 'monospace',
-														backgroundColor: colors.background,
-														padding: `0 ${spacing.xs}`,
-														borderRadius: radius.sm,
-													}}
-												>
-													{pickerRoot}
-												</code>{' '}
-												to see them here.
-											</p>
-										</div>
-									)}
+							{/* File listing */}
+							<div
+								css={{
+									flex: 1,
+									minHeight: '150px',
+									maxHeight: '300px',
+									overflowY: 'auto',
+									backgroundColor: colors.surface,
+								}}
+							>
+								{!pickerRoot && (
+									<div
+										css={{
+											padding: spacing.lg,
+											textAlign: 'center',
+											color: colors.textMuted,
+										}}
+									>
+										Select a media root to browse files
+									</div>
+								)}
 
-									{/* Directories */}
-									{browseState.entries
-										.filter((e) => e.type === 'directory')
-										.map((entry) => (
+								{pickerRoot && browseState.status === 'loading' && (
+									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+										<span css={{ color: colors.textMuted }}>Loading...</span>
+									</div>
+								)}
+
+								{pickerRoot && browseState.status === 'error' && (
+									<div css={{ padding: spacing.lg, textAlign: 'center' }}>
+										<span css={{ color: '#ef4444' }}>
+											{browseState.message}
+										</span>
+									</div>
+								)}
+
+								{pickerRoot && browseState.status === 'success' && (
+									<div>
+										{pickerPath && (
 											<button
-												key={entry.name}
 												type="button"
 												css={fileItemStyles}
-												on={{ click: () => onNavigateToDir(entry.name) }}
+												on={{ click: onNavigateUp }}
 											>
 												<span css={{ marginRight: spacing.sm }}>📁</span>
-												<span>{entry.name}</span>
+												<span>..</span>
 											</button>
-										))}
+										)}
 
-									{/* Files with checkboxes */}
-									{browseState.entries
-										.filter((e) => e.type === 'file')
-										.map((entry) => {
-											const selected = isFileSelected(entry.name)
-											const inFeed = isFileInFeed(entry.name)
-											return (
+										{browseState.entries.length === 0 && !pickerPath && (
+											<div
+												css={{
+													padding: spacing.xl,
+													textAlign: 'center',
+													color: colors.textMuted,
+												}}
+											>
+												<div
+													css={{
+														width: '40px',
+														height: '40px',
+														margin: `0 auto ${spacing.sm}`,
+														borderRadius: radius.md,
+														backgroundColor: colors.background,
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontSize: '20px',
+													}}
+												>
+													📂
+												</div>
+												<p
+													css={{
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+														margin: `0 0 ${spacing.xs} 0`,
+													}}
+												>
+													No files in this directory
+												</p>
+												<p
+													css={{
+														fontSize: typography.fontSize.xs,
+														color: colors.textMuted,
+														margin: 0,
+													}}
+												>
+													Add media files to{' '}
+													<code
+														css={{
+															fontFamily: 'monospace',
+															backgroundColor: colors.background,
+															padding: `0 ${spacing.xs}`,
+															borderRadius: radius.sm,
+														}}
+													>
+														{pickerRoot}
+													</code>{' '}
+													to see them here.
+												</p>
+											</div>
+										)}
+
+										{/* Directories */}
+										{browseState.entries
+											.filter((e) => e.type === 'directory')
+											.map((entry) => (
 												<button
 													key={entry.name}
 													type="button"
-													disabled={inFeed}
-													css={{
-														...fileItemStyles,
-														backgroundColor: selected
-															? colors.primarySoft
-															: inFeed
-																? 'rgba(128, 128, 128, 0.05)'
-																: 'transparent',
-														opacity: inFeed ? 0.5 : 1,
-														cursor: inFeed ? 'not-allowed' : 'pointer',
-													}}
-													on={{
-														click: () => {
-															if (!inFeed) onToggleFile(entry.name)
-														},
-													}}
+													css={fileItemStyles}
+													on={{ click: () => onNavigateToDir(entry.name) }}
 												>
-													<span
+													<span css={{ marginRight: spacing.sm }}>📁</span>
+													<span>{entry.name}</span>
+												</button>
+											))}
+
+										{/* Files with checkboxes */}
+										{browseState.entries
+											.filter((e) => e.type === 'file')
+											.map((entry) => {
+												const selected = isFileSelected(entry.name)
+												const inFeed = isFileInFeed(entry.name)
+												return (
+													<button
+														key={entry.name}
+														type="button"
+														disabled={inFeed}
 														css={{
-															marginRight: spacing.sm,
-															width: '16px',
-															height: '16px',
-															border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
-															borderRadius: radius.sm,
-															backgroundColor: inFeed
-																? colors.border
-																: selected
-																	? colors.primary
+															...fileItemStyles,
+															backgroundColor: selected
+																? colors.primarySoft
+																: inFeed
+																	? 'rgba(128, 128, 128, 0.05)'
 																	: 'transparent',
-															display: 'inline-flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															fontSize: '12px',
-															color: colors.background,
+															opacity: inFeed ? 0.5 : 1,
+															cursor: inFeed ? 'not-allowed' : 'pointer',
+														}}
+														on={{
+															click: () => {
+																if (!inFeed) onToggleFile(entry.name)
+															},
 														}}
 													>
-														{(selected || inFeed) && '✓'}
-													</span>
-													<span css={{ marginRight: spacing.sm }}>📄</span>
-													<span>{entry.name}</span>
-													{inFeed && (
 														<span
 															css={{
-																marginLeft: 'auto',
-																fontSize: typography.fontSize.xs,
-																color: colors.textMuted,
+																marginRight: spacing.sm,
+																width: '16px',
+																height: '16px',
+																border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
+																borderRadius: radius.sm,
+																backgroundColor: inFeed
+																	? colors.border
+																	: selected
+																		? colors.primary
+																		: 'transparent',
+																display: 'inline-flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																fontSize: '12px',
+																color: colors.background,
 															}}
 														>
-															Already in feed
+															{(selected || inFeed) && '✓'}
 														</span>
-													)}
-												</button>
-											)
-										})}
-								</div>
-							)}
-						</div>
-					</>
-				)}
-			</div>
-		</Modal>
-	)
+														<span css={{ marginRight: spacing.sm }}>📄</span>
+														<span>{entry.name}</span>
+														{inFeed && (
+															<span
+																css={{
+																	marginLeft: 'auto',
+																	fontSize: typography.fontSize.xs,
+																	color: colors.textMuted,
+																}}
+															>
+																Already in feed
+															</span>
+														)}
+													</button>
+												)
+											})}
+									</div>
+								)}
+							</div>
+						</>
+					)}
+				</div>
+			</Modal>
+		)
+	}
 }
 
 const fileItemStyles = {

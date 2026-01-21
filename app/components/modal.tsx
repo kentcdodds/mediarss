@@ -1,4 +1,4 @@
-import type { Handle } from 'remix/component'
+import type { Handle, RemixNode } from 'remix/component'
 import {
 	colors,
 	mq,
@@ -57,13 +57,13 @@ type ModalProps = {
 	/**
 	 * Content to render in the modal body.
 	 */
-	children: JSX.Element | JSX.Element[]
+	children: RemixNode
 
 	/**
 	 * Optional footer content (e.g., action buttons).
 	 * If provided, renders in a sticky footer with proper spacing.
 	 */
-	footer?: JSX.Element | JSX.Element[]
+	footer?: RemixNode
 }
 
 const sizeMap: Record<ModalSize, string> = {
@@ -425,32 +425,34 @@ type ModalFooterProps = {
 	/**
 	 * Footer content (typically buttons).
 	 */
-	children: JSX.Element | JSX.Element[]
+	children: RemixNode
 }
 
 /**
  * Container for modal footer actions with proper spacing and alignment.
  */
-export function ModalFooter({ align = 'right', children }: ModalFooterProps) {
-	const justifyMap = {
-		left: 'flex-start',
-		center: 'center',
-		right: 'flex-end',
-		'space-between': 'space-between',
-	}
+export function ModalFooter() {
+	return ({ align = 'right', children }: ModalFooterProps) => {
+		const justifyMap = {
+			left: 'flex-start',
+			center: 'center',
+			right: 'flex-end',
+			'space-between': 'space-between',
+		}
 
-	return (
-		<div
-			css={{
-				display: 'flex',
-				gap: spacing.sm,
-				justifyContent: justifyMap[align],
-				flexWrap: 'wrap',
-			}}
-		>
-			{children}
-		</div>
-	)
+		return (
+			<div
+				css={{
+					display: 'flex',
+					gap: spacing.sm,
+					justifyContent: justifyMap[align],
+					flexWrap: 'wrap',
+				}}
+			>
+				{children}
+			</div>
+		)
+	}
 }
 
 type ModalButtonVariant = 'primary' | 'secondary' | 'danger'
@@ -478,61 +480,63 @@ type ModalButtonProps = {
 	/**
 	 * Button content.
 	 */
-	children: string | JSX.Element | JSX.Element[]
+	children: RemixNode
 }
 
 /**
  * A styled button for use within modal footers.
  */
-export function ModalButton({
-	variant = 'secondary',
-	disabled = false,
-	onClick,
-	children,
-}: ModalButtonProps) {
-	const baseStyles = {
-		padding: `${spacing.sm} ${spacing.lg}`,
-		fontSize: typography.fontSize.sm,
-		fontWeight: typography.fontWeight.medium,
-		borderRadius: radius.md,
-		cursor: disabled ? 'not-allowed' : 'pointer',
-		transition: `all ${transitions.fast}`,
-		border: 'none',
-		'&:focus': {
-			outline: `2px solid ${colors.primary}`,
-			outlineOffset: '2px',
-		},
-	}
+export function ModalButton() {
+	return ({
+		variant = 'secondary',
+		disabled = false,
+		onClick,
+		children,
+	}: ModalButtonProps) => {
+		const baseStyles = {
+			padding: `${spacing.sm} ${spacing.lg}`,
+			fontSize: typography.fontSize.sm,
+			fontWeight: typography.fontWeight.medium,
+			borderRadius: radius.md,
+			cursor: disabled ? 'not-allowed' : 'pointer',
+			transition: `all ${transitions.fast}`,
+			border: 'none',
+			'&:focus': {
+				outline: `2px solid ${colors.primary}`,
+				outlineOffset: '2px',
+			},
+		}
 
-	const variantStyles: Record<ModalButtonVariant, Record<string, unknown>> = {
-		primary: {
-			color: colors.background,
-			backgroundColor: disabled ? colors.border : colors.primary,
-			'&:hover': disabled ? {} : { backgroundColor: colors.primaryHover },
-		},
-		secondary: {
-			color: colors.text,
-			backgroundColor: 'transparent',
-			border: `1px solid ${colors.border}`,
-			'&:hover': disabled ? {} : { backgroundColor: colors.background },
-		},
-		danger: {
-			color: '#fff',
-			backgroundColor: disabled ? colors.border : colors.error,
-			'&:hover': disabled ? {} : { backgroundColor: colors.errorHover },
-		},
-	}
+		const variantStyles: Record<ModalButtonVariant, Record<string, unknown>> = {
+			primary: {
+				color: colors.background,
+				backgroundColor: disabled ? colors.border : colors.primary,
+				'&:hover': disabled ? {} : { backgroundColor: colors.primaryHover },
+			},
+			secondary: {
+				color: colors.text,
+				backgroundColor: 'transparent',
+				border: `1px solid ${colors.border}`,
+				'&:hover': disabled ? {} : { backgroundColor: colors.background },
+			},
+			danger: {
+				color: '#fff',
+				backgroundColor: disabled ? colors.border : colors.error,
+				'&:hover': disabled ? {} : { backgroundColor: colors.errorHover },
+			},
+		}
 
-	return (
-		<button
-			type="button"
-			disabled={disabled}
-			css={{ ...baseStyles, ...variantStyles[variant] }}
-			on={{ click: onClick }}
-		>
-			{children}
-		</button>
-	)
+		return (
+			<button
+				type="button"
+				disabled={disabled}
+				css={{ ...baseStyles, ...variantStyles[variant] }}
+				on={{ click: onClick }}
+			>
+				{children}
+			</button>
+		)
+	}
 }
 
 // ============================================================================
@@ -551,59 +555,61 @@ type ModalAlertProps = {
 	/**
 	 * Alert content.
 	 */
-	children: JSX.Element | JSX.Element[] | string
+	children: RemixNode
 }
 
 /**
  * A styled alert box for displaying warnings, errors, or info within modals.
  */
-export function ModalAlert({ type, children }: ModalAlertProps) {
-	const colorMap = {
-		warning: {
-			bg: 'rgba(245, 158, 11, 0.1)',
-			border: 'rgba(245, 158, 11, 0.3)',
-			text: '#d97706',
-		},
-		error: {
-			bg: 'rgba(239, 68, 68, 0.1)',
-			border: 'rgba(239, 68, 68, 0.3)',
-			text: '#ef4444',
-		},
-		info: {
-			bg: 'rgba(59, 130, 246, 0.1)',
-			border: 'rgba(59, 130, 246, 0.3)',
-			text: '#3b82f6',
-		},
-	}
+export function ModalAlert() {
+	return ({ type, children }: ModalAlertProps) => {
+		const colorMap = {
+			warning: {
+				bg: 'rgba(245, 158, 11, 0.1)',
+				border: 'rgba(245, 158, 11, 0.3)',
+				text: '#d97706',
+			},
+			error: {
+				bg: 'rgba(239, 68, 68, 0.1)',
+				border: 'rgba(239, 68, 68, 0.3)',
+				text: '#ef4444',
+			},
+			info: {
+				bg: 'rgba(59, 130, 246, 0.1)',
+				border: 'rgba(59, 130, 246, 0.3)',
+				text: '#3b82f6',
+			},
+		}
 
-	const styles = colorMap[type]
+		const styles = colorMap[type]
 
-	return (
-		<div
-			css={{
-				backgroundColor: styles.bg,
-				borderRadius: radius.md,
-				padding: spacing.md,
-				border: `1px solid ${styles.border}`,
-			}}
-		>
+		return (
 			<div
 				css={{
-					color: styles.text,
-					fontSize: typography.fontSize.sm,
+					backgroundColor: styles.bg,
+					borderRadius: radius.md,
+					padding: spacing.md,
+					border: `1px solid ${styles.border}`,
 				}}
 			>
-				{children}
+				<div
+					css={{
+						color: styles.text,
+						fontSize: typography.fontSize.sm,
+					}}
+				>
+					{children}
+				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }
 
 /**
  * A divider line for separating content within modals.
  */
 export function ModalDivider() {
-	return (
+	return () => (
 		<hr
 			css={{
 				border: 'none',
@@ -623,14 +629,14 @@ type ModalSectionProps = {
 	/**
 	 * Section content.
 	 */
-	children: JSX.Element | JSX.Element[]
+	children: RemixNode
 }
 
 /**
  * A section within modal content, optionally with a title.
  */
-export function ModalSection({ title, children }: ModalSectionProps) {
-	return (
+export function ModalSection() {
+	return ({ title, children }: ModalSectionProps) => (
 		<div
 			css={{ marginBottom: spacing.lg, '&:last-child': { marginBottom: 0 } }}
 		>
@@ -657,7 +663,7 @@ type ModalListProps = {
 	/**
 	 * List content (typically a series of ModalListItem components).
 	 */
-	children: JSX.Element | JSX.Element[]
+	children: RemixNode
 
 	/**
 	 * Maximum height before scrolling.
@@ -669,8 +675,8 @@ type ModalListProps = {
 /**
  * A scrollable list container for modal content.
  */
-export function ModalList({ children, maxHeight = '60vh' }: ModalListProps) {
-	return (
+export function ModalList() {
+	return ({ children, maxHeight = '60vh' }: ModalListProps) => (
 		<div
 			css={{
 				display: 'flex',

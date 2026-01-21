@@ -1149,182 +1149,184 @@ export function MediaList(this: Handle) {
 	}
 }
 
-function Pagination({
-	currentPage,
-	totalPages,
-	onPageChange,
-}: {
-	currentPage: number
-	totalPages: number
-	onPageChange: (page: number) => void
-}) {
-	// Generate page numbers to display
-	const getPageNumbers = () => {
-		const pages: Array<number | 'ellipsis'> = []
-		const showEllipsis = totalPages > 7
+function Pagination() {
+	return ({
+		currentPage,
+		totalPages,
+		onPageChange,
+	}: {
+		currentPage: number
+		totalPages: number
+		onPageChange: (page: number) => void
+	}) => {
+		// Generate page numbers to display
+		const getPageNumbers = () => {
+			const pages: Array<number | 'ellipsis'> = []
+			const showEllipsis = totalPages > 7
 
-		if (!showEllipsis) {
-			for (let i = 1; i <= totalPages; i++) {
-				pages.push(i)
+			if (!showEllipsis) {
+				for (let i = 1; i <= totalPages; i++) {
+					pages.push(i)
+				}
+			} else {
+				pages.push(1)
+
+				if (currentPage > 3) {
+					pages.push('ellipsis')
+				}
+
+				const start = Math.max(2, currentPage - 1)
+				const end = Math.min(totalPages - 1, currentPage + 1)
+
+				for (let i = start; i <= end; i++) {
+					pages.push(i)
+				}
+
+				if (currentPage < totalPages - 2) {
+					pages.push('ellipsis')
+				}
+
+				pages.push(totalPages)
 			}
-		} else {
-			pages.push(1)
 
-			if (currentPage > 3) {
-				pages.push('ellipsis')
-			}
-
-			const start = Math.max(2, currentPage - 1)
-			const end = Math.min(totalPages - 1, currentPage + 1)
-
-			for (let i = start; i <= end; i++) {
-				pages.push(i)
-			}
-
-			if (currentPage < totalPages - 2) {
-				pages.push('ellipsis')
-			}
-
-			pages.push(totalPages)
+			return pages
 		}
 
-		return pages
-	}
+		const pageNumbers = getPageNumbers()
 
-	const pageNumbers = getPageNumbers()
-
-	return (
-		<div
-			css={{
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-				gap: spacing.sm,
-				marginTop: spacing.xl,
-				flexWrap: 'wrap',
-			}}
-		>
-			<button
-				type="button"
-				disabled={currentPage === 1}
-				css={{
-					padding: `${spacing.sm} ${spacing.md}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: currentPage === 1 ? colors.textMuted : colors.text,
-					backgroundColor: colors.surface,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-					transition: `all ${transitions.fast}`,
-					'&:hover':
-						currentPage === 1 ? {} : { backgroundColor: colors.background },
-					[mq.mobile]: {
-						flex: 1,
-					},
-				}}
-				on={{ click: () => onPageChange(currentPage - 1) }}
-			>
-				← Previous
-			</button>
-
+		return (
 			<div
 				css={{
 					display: 'flex',
-					gap: spacing.xs,
-					[mq.mobile]: {
+					justifyContent: 'center',
+					alignItems: 'center',
+					gap: spacing.sm,
+					marginTop: spacing.xl,
+					flexWrap: 'wrap',
+				}}
+			>
+				<button
+					type="button"
+					disabled={currentPage === 1}
+					css={{
+						padding: `${spacing.sm} ${spacing.md}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: currentPage === 1 ? colors.textMuted : colors.text,
+						backgroundColor: colors.surface,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover':
+							currentPage === 1 ? {} : { backgroundColor: colors.background },
+						[mq.mobile]: {
+							flex: 1,
+						},
+					}}
+					on={{ click: () => onPageChange(currentPage - 1) }}
+				>
+					← Previous
+				</button>
+
+				<div
+					css={{
+						display: 'flex',
+						gap: spacing.xs,
+						[mq.mobile]: {
+							display: 'none',
+						},
+					}}
+				>
+					{pageNumbers.map((page, index) =>
+						page === 'ellipsis' ? (
+							<span
+								key={`ellipsis-${index}`}
+								css={{
+									padding: `${spacing.sm} ${spacing.sm}`,
+									color: colors.textMuted,
+								}}
+							>
+								…
+							</span>
+						) : (
+							<button
+								key={page}
+								type="button"
+								css={{
+									minWidth: '40px',
+									padding: spacing.sm,
+									fontSize: typography.fontSize.sm,
+									fontWeight:
+										page === currentPage
+											? typography.fontWeight.semibold
+											: typography.fontWeight.medium,
+									color: page === currentPage ? colors.background : colors.text,
+									backgroundColor:
+										page === currentPage ? colors.primary : colors.surface,
+									border: `1px solid ${page === currentPage ? colors.primary : colors.border}`,
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover':
+										page === currentPage
+											? {}
+											: { backgroundColor: colors.background },
+								}}
+								on={{ click: () => onPageChange(page) }}
+							>
+								{page}
+							</button>
+						),
+					)}
+				</div>
+
+				{/* Mobile page indicator */}
+				<span
+					css={{
 						display: 'none',
-					},
-				}}
-			>
-				{pageNumbers.map((page, index) =>
-					page === 'ellipsis' ? (
-						<span
-							key={`ellipsis-${index}`}
-							css={{
-								padding: `${spacing.sm} ${spacing.sm}`,
-								color: colors.textMuted,
-							}}
-						>
-							…
-						</span>
-					) : (
-						<button
-							key={page}
-							type="button"
-							css={{
-								minWidth: '40px',
-								padding: spacing.sm,
-								fontSize: typography.fontSize.sm,
-								fontWeight:
-									page === currentPage
-										? typography.fontWeight.semibold
-										: typography.fontWeight.medium,
-								color: page === currentPage ? colors.background : colors.text,
-								backgroundColor:
-									page === currentPage ? colors.primary : colors.surface,
-								border: `1px solid ${page === currentPage ? colors.primary : colors.border}`,
-								borderRadius: radius.md,
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover':
-									page === currentPage
-										? {}
-										: { backgroundColor: colors.background },
-							}}
-							on={{ click: () => onPageChange(page) }}
-						>
-							{page}
-						</button>
-					),
-				)}
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+						[mq.mobile]: {
+							display: 'block',
+						},
+					}}
+				>
+					{currentPage} / {totalPages}
+				</span>
+
+				<button
+					type="button"
+					disabled={currentPage === totalPages}
+					css={{
+						padding: `${spacing.sm} ${spacing.md}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: currentPage === totalPages ? colors.textMuted : colors.text,
+						backgroundColor: colors.surface,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover':
+							currentPage === totalPages
+								? {}
+								: { backgroundColor: colors.background },
+						[mq.mobile]: {
+							flex: 1,
+						},
+					}}
+					on={{ click: () => onPageChange(currentPage + 1) }}
+				>
+					Next →
+				</button>
 			</div>
-
-			{/* Mobile page indicator */}
-			<span
-				css={{
-					display: 'none',
-					fontSize: typography.fontSize.sm,
-					color: colors.textMuted,
-					[mq.mobile]: {
-						display: 'block',
-					},
-				}}
-			>
-				{currentPage} / {totalPages}
-			</span>
-
-			<button
-				type="button"
-				disabled={currentPage === totalPages}
-				css={{
-					padding: `${spacing.sm} ${spacing.md}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: currentPage === totalPages ? colors.textMuted : colors.text,
-					backgroundColor: colors.surface,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-					transition: `all ${transitions.fast}`,
-					'&:hover':
-						currentPage === totalPages
-							? {}
-							: { backgroundColor: colors.background },
-					[mq.mobile]: {
-						flex: 1,
-					},
-				}}
-				on={{ click: () => onPageChange(currentPage + 1) }}
-			>
-				Next →
-			</button>
-		</div>
-	)
+		)
+	}
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -1350,8 +1352,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -1385,18 +1387,18 @@ function ErrorMessage({ message }: { message: string }) {
 	)
 }
 
-function Checkbox({
-	checked,
-	indeterminate,
-	onChange,
-	title,
-}: {
-	checked: boolean
-	indeterminate?: boolean
-	onChange: () => void
-	title?: string
-}) {
-	return (
+function Checkbox() {
+	return ({
+		checked,
+		indeterminate,
+		onChange,
+		title,
+	}: {
+		checked: boolean
+		indeterminate?: boolean
+		onChange: () => void
+		title?: string
+	}) => (
 		<label
 			css={{
 				width: '18px',
@@ -1498,277 +1500,285 @@ function Checkbox({
 	)
 }
 
-function FloatingActionBar({
-	selectedCount,
-	filteredCount,
-	allFilteredSelected,
-	feedsWithSelectedItems,
-	onSelectAllFiltered,
-	onClearSelection,
-	onAssign,
-	onUnassign,
-}: {
-	selectedCount: number
-	filteredCount: number
-	allFilteredSelected: boolean
-	feedsWithSelectedItems: Array<{ feed: CuratedFeed; count: number }>
-	onSelectAllFiltered: () => void
-	onClearSelection: () => void
-	onAssign: () => void
-	onUnassign: () => void
-}) {
-	const hasAssignedItems = feedsWithSelectedItems.length > 0
+function FloatingActionBar() {
+	return ({
+		selectedCount,
+		filteredCount,
+		allFilteredSelected,
+		feedsWithSelectedItems,
+		onSelectAllFiltered,
+		onClearSelection,
+		onAssign,
+		onUnassign,
+	}: {
+		selectedCount: number
+		filteredCount: number
+		allFilteredSelected: boolean
+		feedsWithSelectedItems: Array<{ feed: CuratedFeed; count: number }>
+		onSelectAllFiltered: () => void
+		onClearSelection: () => void
+		onAssign: () => void
+		onUnassign: () => void
+	}) => {
+		const hasAssignedItems = feedsWithSelectedItems.length > 0
 
-	return (
-		<div
-			css={{
-				position: 'fixed',
-				bottom: spacing.xl,
-				left: '50%',
-				transform: 'translateX(-50%)',
-				backgroundColor: colors.surface,
-				border: `1px solid ${colors.border}`,
-				borderRadius: radius.lg,
-				boxShadow: shadows.lg,
-				padding: `${spacing.sm} ${spacing.lg}`,
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				zIndex: 100,
-				[mq.mobile]: {
-					left: spacing.md,
-					right: spacing.md,
-					bottom: spacing.md,
-					transform: 'none',
-					flexDirection: 'column',
-					alignItems: 'stretch',
-					padding: spacing.md,
-					gap: spacing.sm,
-				},
-			}}
-		>
+		return (
 			<div
 				css={{
+					position: 'fixed',
+					bottom: spacing.xl,
+					left: '50%',
+					transform: 'translateX(-50%)',
+					backgroundColor: colors.surface,
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.lg,
+					boxShadow: shadows.lg,
+					padding: `${spacing.sm} ${spacing.lg}`,
 					display: 'flex',
 					alignItems: 'center',
 					gap: spacing.md,
+					zIndex: 100,
 					[mq.mobile]: {
-						justifyContent: 'space-between',
-					},
-				}}
-			>
-				<span
-					css={{
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.text,
-						whiteSpace: 'nowrap',
-					}}
-				>
-					{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-				</span>
-
-				{!allFilteredSelected && filteredCount > selectedCount && (
-					<button
-						type="button"
-						css={{
-							padding: `${spacing.xs} ${spacing.sm}`,
-							fontSize: typography.fontSize.sm,
-							color: colors.primary,
-							backgroundColor: 'transparent',
-							border: 'none',
-							cursor: 'pointer',
-							textDecoration: 'underline',
-							'&:hover': {
-								color: colors.primaryHover,
-							},
-						}}
-						on={{ click: onSelectAllFiltered }}
-					>
-						Select all {filteredCount}
-					</button>
-				)}
-			</div>
-
-			<div
-				css={{
-					width: '1px',
-					height: '24px',
-					backgroundColor: colors.border,
-					[mq.mobile]: {
-						display: 'none',
-					},
-				}}
-			/>
-
-			<div
-				css={{
-					display: 'flex',
-					gap: spacing.sm,
-					[mq.mobile]: {
+						left: spacing.md,
+						right: spacing.md,
+						bottom: spacing.md,
+						transform: 'none',
 						flexDirection: 'column',
+						alignItems: 'stretch',
+						padding: spacing.md,
+						gap: spacing.sm,
 					},
 				}}
 			>
-				<button
-					type="button"
+				<div
 					css={{
-						padding: `${spacing.sm} ${spacing.md}`,
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.background,
-						backgroundColor: colors.primary,
-						border: 'none',
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						transition: `background-color ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.primaryHover,
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.md,
+						[mq.mobile]: {
+							justifyContent: 'space-between',
 						},
 					}}
-					on={{ click: onAssign }}
 				>
-					Assign to Feed
-				</button>
+					<span
+						css={{
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							whiteSpace: 'nowrap',
+						}}
+					>
+						{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+					</span>
 
-				{hasAssignedItems && (
+					{!allFilteredSelected && filteredCount > selectedCount && (
+						<button
+							type="button"
+							css={{
+								padding: `${spacing.xs} ${spacing.sm}`,
+								fontSize: typography.fontSize.sm,
+								color: colors.primary,
+								backgroundColor: 'transparent',
+								border: 'none',
+								cursor: 'pointer',
+								textDecoration: 'underline',
+								'&:hover': {
+									color: colors.primaryHover,
+								},
+							}}
+							on={{ click: onSelectAllFiltered }}
+						>
+							Select all {filteredCount}
+						</button>
+					)}
+				</div>
+
+				<div
+					css={{
+						width: '1px',
+						height: '24px',
+						backgroundColor: colors.border,
+						[mq.mobile]: {
+							display: 'none',
+						},
+					}}
+				/>
+
+				<div
+					css={{
+						display: 'flex',
+						gap: spacing.sm,
+						[mq.mobile]: {
+							flexDirection: 'column',
+						},
+					}}
+				>
 					<button
 						type="button"
 						css={{
 							padding: `${spacing.sm} ${spacing.md}`,
 							fontSize: typography.fontSize.sm,
 							fontWeight: typography.fontWeight.medium,
-							color: colors.error,
+							color: colors.background,
+							backgroundColor: colors.primary,
+							border: 'none',
+							borderRadius: radius.md,
+							cursor: 'pointer',
+							transition: `background-color ${transitions.fast}`,
+							'&:hover': {
+								backgroundColor: colors.primaryHover,
+							},
+						}}
+						on={{ click: onAssign }}
+					>
+						Assign to Feed
+					</button>
+
+					{hasAssignedItems && (
+						<button
+							type="button"
+							css={{
+								padding: `${spacing.sm} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.error,
+								backgroundColor: 'transparent',
+								border: `1px solid ${colors.error}`,
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								},
+							}}
+							on={{ click: onUnassign }}
+						>
+							Remove from Feed
+						</button>
+					)}
+
+					<button
+						type="button"
+						css={{
+							padding: `${spacing.sm} ${spacing.md}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.textMuted,
 							backgroundColor: 'transparent',
-							border: `1px solid ${colors.error}`,
+							border: `1px solid ${colors.border}`,
 							borderRadius: radius.md,
 							cursor: 'pointer',
 							transition: `all ${transitions.fast}`,
 							'&:hover': {
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								color: colors.text,
+								backgroundColor: colors.background,
 							},
 						}}
-						on={{ click: onUnassign }}
+						on={{ click: onClearSelection }}
 					>
-						Remove from Feed
+						Clear
 					</button>
-				)}
-
-				<button
-					type="button"
-					css={{
-						padding: `${spacing.sm} ${spacing.md}`,
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.textMuted,
-						backgroundColor: 'transparent',
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: 'pointer',
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							color: colors.text,
-							backgroundColor: colors.background,
-						},
-					}}
-					on={{ click: onClearSelection }}
-				>
-					Clear
-				</button>
+				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }
 
-function BulkAssignModal({
-	selectedCount,
-	curatedFeeds,
-	selectedFeedIds,
-	saving,
-	onToggleFeed,
-	onSave,
-	onCancel,
-}: {
-	selectedCount: number
-	curatedFeeds: Array<CuratedFeed>
-	selectedFeedIds: Set<string>
-	saving: boolean
-	onToggleFeed: (feedId: string) => void
-	onSave: () => void
-	onCancel: () => void
-}) {
-	const feedCount = selectedFeedIds.size
-	const noFeedsSelected = feedCount === 0
+function BulkAssignModal() {
+	return ({
+		selectedCount,
+		curatedFeeds,
+		selectedFeedIds,
+		saving,
+		onToggleFeed,
+		onSave,
+		onCancel,
+	}: {
+		selectedCount: number
+		curatedFeeds: Array<CuratedFeed>
+		selectedFeedIds: Set<string>
+		saving: boolean
+		onToggleFeed: (feedId: string) => void
+		onSave: () => void
+		onCancel: () => void
+	}) => {
+		const feedCount = selectedFeedIds.size
+		const noFeedsSelected = feedCount === 0
 
-	return (
-		<Modal
-			title="Assign to Feeds"
-			subtitle={`Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to curated feeds`}
-			size="sm"
-			onClose={onCancel}
-			footer={
-				<ModalFooter>
-					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
-						Cancel
-					</ModalButton>
-					<ModalButton
-						variant="primary"
-						disabled={saving || noFeedsSelected}
-						onClick={onSave}
+		return (
+			<Modal
+				title="Assign to Feeds"
+				subtitle={`Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to curated feeds`}
+				size="sm"
+				onClose={onCancel}
+				footer={
+					<ModalFooter>
+						<ModalButton
+							variant="secondary"
+							disabled={saving}
+							onClick={onCancel}
+						>
+							Cancel
+						</ModalButton>
+						<ModalButton
+							variant="primary"
+							disabled={saving || noFeedsSelected}
+							onClick={onSave}
+						>
+							{saving
+								? 'Assigning...'
+								: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
+						</ModalButton>
+					</ModalFooter>
+				}
+			>
+				{curatedFeeds.length > 0 ? (
+					<ModalList>
+						{curatedFeeds.map((feed) => (
+							<FeedCheckboxRow
+								key={feed.id}
+								feedId={feed.id}
+								name={feed.name}
+								updatedAt={feed.updatedAt}
+								isSelected={selectedFeedIds.has(feed.id)}
+								onToggle={() => onToggleFeed(feed.id)}
+							/>
+						))}
+					</ModalList>
+				) : (
+					<p
+						css={{
+							textAlign: 'center',
+							color: colors.textMuted,
+							fontSize: typography.fontSize.sm,
+						}}
 					>
-						{saving
-							? 'Assigning...'
-							: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
-					</ModalButton>
-				</ModalFooter>
-			}
-		>
-			{curatedFeeds.length > 0 ? (
-				<ModalList>
-					{curatedFeeds.map((feed) => (
-						<FeedCheckboxRow
-							key={feed.id}
-							feedId={feed.id}
-							name={feed.name}
-							updatedAt={feed.updatedAt}
-							isSelected={selectedFeedIds.has(feed.id)}
-							onToggle={() => onToggleFeed(feed.id)}
-						/>
-					))}
-				</ModalList>
-			) : (
-				<p
-					css={{
-						textAlign: 'center',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.sm,
-					}}
-				>
-					No curated feeds available. Create a feed first.
-				</p>
-			)}
-		</Modal>
-	)
+						No curated feeds available. Create a feed first.
+					</p>
+				)}
+			</Modal>
+		)
+	}
 }
 
-function BulkUnassignModal({
-	selectedCount,
-	feedsWithItems,
-	selectedFeedId,
-	saving,
-	onSelectFeed,
-	onSave,
-	onCancel,
-}: {
-	selectedCount: number
-	feedsWithItems: Array<{ feed: CuratedFeed; count: number }>
-	selectedFeedId: string | null
-	saving: boolean
-	onSelectFeed: (feedId: string) => void
-	onSave: () => void
-	onCancel: () => void
-}) {
-	return (
+function BulkUnassignModal() {
+	return ({
+		selectedCount,
+		feedsWithItems,
+		selectedFeedId,
+		saving,
+		onSelectFeed,
+		onSave,
+		onCancel,
+	}: {
+		selectedCount: number
+		feedsWithItems: Array<{ feed: CuratedFeed; count: number }>
+		selectedFeedId: string | null
+		saving: boolean
+		onSelectFeed: (feedId: string) => void
+		onSave: () => void
+		onCancel: () => void
+	}) => (
 		<Modal
 			title="Remove from Feed"
 			subtitle="Remove selected items from a curated feed"
@@ -1819,24 +1829,24 @@ function BulkUnassignModal({
 	)
 }
 
-function FeedRadioRowWithCount({
-	feedId,
-	name,
-	updatedAt,
-	itemCount,
-	totalSelected,
-	isSelected,
-	onSelect,
-}: {
-	feedId: string
-	name: string
-	updatedAt: number
-	itemCount: number
-	totalSelected: number
-	isSelected: boolean
-	onSelect: () => void
-}) {
-	return (
+function FeedRadioRowWithCount() {
+	return ({
+		feedId,
+		name,
+		updatedAt,
+		itemCount,
+		totalSelected,
+		isSelected,
+		onSelect,
+	}: {
+		feedId: string
+		name: string
+		updatedAt: number
+		itemCount: number
+		totalSelected: number
+		isSelected: boolean
+		onSelect: () => void
+	}) => (
 		<button
 			type="button"
 			css={{
@@ -1923,20 +1933,20 @@ function FeedRadioRowWithCount({
 	)
 }
 
-function FeedCheckboxRow({
-	feedId,
-	name,
-	updatedAt,
-	isSelected,
-	onToggle,
-}: {
-	feedId: string
-	name: string
-	updatedAt: number
-	isSelected: boolean
-	onToggle: () => void
-}) {
-	return (
+function FeedCheckboxRow() {
+	return ({
+		feedId,
+		name,
+		updatedAt,
+		isSelected,
+		onToggle,
+	}: {
+		feedId: string
+		name: string
+		updatedAt: number
+		isSelected: boolean
+		onToggle: () => void
+	}) => (
 		<button
 			type="button"
 			css={{
@@ -2019,452 +2029,455 @@ function FeedCheckboxRow({
 	)
 }
 
-function UploadModal({
-	mediaRoots,
-	selectedRoot,
-	subdirectory,
-	selectedFiles,
-	uploadState,
-	onRootChange,
-	onSubdirectoryChange,
-	onFileSelect,
-	onUpload,
-	onClose,
-	onReset,
-}: {
-	mediaRoots: Array<MediaRoot>
-	selectedRoot: string
-	subdirectory: string
-	selectedFiles: FileList | null
-	uploadState: UploadState
-	onRootChange: (root: string) => void
-	onSubdirectoryChange: (dir: string) => void
-	onFileSelect: (files: FileList | null) => void
-	onUpload: () => void
-	onClose: () => void
-	onReset: () => void
-}) {
-	const isUploading = uploadState.status === 'uploading'
-	const isSuccess = uploadState.status === 'success'
-	const isError = uploadState.status === 'error'
-	const hasFile = selectedFiles && selectedFiles.length > 0
+function UploadModal() {
+	return ({
+		mediaRoots,
+		selectedRoot,
+		subdirectory,
+		selectedFiles,
+		uploadState,
+		onRootChange,
+		onSubdirectoryChange,
+		onFileSelect,
+		onUpload,
+		onClose,
+		onReset,
+	}: {
+		mediaRoots: Array<MediaRoot>
+		selectedRoot: string
+		subdirectory: string
+		selectedFiles: FileList | null
+		uploadState: UploadState
+		onRootChange: (root: string) => void
+		onSubdirectoryChange: (dir: string) => void
+		onFileSelect: (files: FileList | null) => void
+		onUpload: () => void
+		onClose: () => void
+		onReset: () => void
+	}) => {
+		const isUploading = uploadState.status === 'uploading'
+		const isSuccess = uploadState.status === 'success'
+		const isError = uploadState.status === 'error'
+		const hasFile = selectedFiles && selectedFiles.length > 0
 
-	return (
-		<Modal
-			title="Upload Media"
-			subtitle="Upload audio or video files to your media library"
-			size="md"
-			onClose={onClose}
-			footer={
-				<ModalFooter>
-					<ModalButton
-						variant="secondary"
-						disabled={isUploading}
-						onClick={onClose}
-					>
-						{isSuccess ? 'Close' : 'Cancel'}
-					</ModalButton>
-					{!isSuccess && (
+		return (
+			<Modal
+				title="Upload Media"
+				subtitle="Upload audio or video files to your media library"
+				size="md"
+				onClose={onClose}
+				footer={
+					<ModalFooter>
 						<ModalButton
-							variant="primary"
-							disabled={isUploading || !hasFile || !selectedRoot}
-							onClick={onUpload}
-						>
-							{isUploading ? 'Uploading...' : 'Upload'}
-						</ModalButton>
-					)}
-					{isSuccess && (
-						<ModalButton variant="primary" onClick={onReset}>
-							Upload Another
-						</ModalButton>
-					)}
-				</ModalFooter>
-			}
-		>
-			{/* Success message */}
-			{isSuccess && (
-				<div
-					css={{
-						padding: spacing.lg,
-						backgroundColor: 'rgba(34, 197, 94, 0.1)',
-						borderRadius: radius.md,
-						border: '1px solid rgba(34, 197, 94, 0.3)',
-						marginBottom: spacing.lg,
-					}}
-				>
-					<div
-						css={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: spacing.sm,
-							marginBottom: spacing.sm,
-						}}
-					>
-						<svg
-							width="20"
-							height="20"
-							viewBox="0 0 20 20"
-							fill="none"
-							aria-hidden="true"
-						>
-							<circle cx="10" cy="10" r="10" fill="rgba(34, 197, 94, 0.2)" />
-							<path
-								d="M6 10l3 3 5-6"
-								stroke="#22c55e"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
-						<span
-							css={{
-								color: '#22c55e',
-								fontWeight: typography.fontWeight.medium,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							Upload successful!
-						</span>
-					</div>
-					<p
-						css={{
-							margin: 0,
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-						}}
-					>
-						<strong>{uploadState.filename}</strong> has been uploaded to{' '}
-						<code
-							css={{
-								padding: `${spacing.xs} ${spacing.sm}`,
-								backgroundColor: colors.background,
-								borderRadius: radius.sm,
-								fontSize: typography.fontSize.xs,
-							}}
-						>
-							{uploadState.mediaPath}
-						</code>
-					</p>
-				</div>
-			)}
-
-			{/* Error message */}
-			{isError && (
-				<div
-					css={{
-						padding: spacing.lg,
-						backgroundColor: 'rgba(239, 68, 68, 0.1)',
-						borderRadius: radius.md,
-						border: '1px solid rgba(239, 68, 68, 0.3)',
-						marginBottom: spacing.lg,
-					}}
-				>
-					<p
-						css={{
-							margin: 0,
-							color: '#ef4444',
-							fontSize: typography.fontSize.sm,
-						}}
-					>
-						{uploadState.message}
-					</p>
-				</div>
-			)}
-
-			{/* File input */}
-			{!isSuccess && (
-				<ModalSection title="Select File">
-					<div
-						css={{
-							border: `2px dashed ${colors.border}`,
-							borderRadius: radius.md,
-							padding: spacing.xl,
-							textAlign: 'center',
-							backgroundColor: colors.background,
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								borderColor: colors.primary,
-								backgroundColor: colors.primarySoftSubtle,
-							},
-						}}
-					>
-						<input
-							type="file"
-							accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
-							id="upload-file-input"
-							css={{
-								position: 'absolute',
-								width: '1px',
-								height: '1px',
-								padding: 0,
-								margin: '-1px',
-								overflow: 'hidden',
-								clip: 'rect(0, 0, 0, 0)',
-								whiteSpace: 'nowrap',
-								border: 0,
-							}}
-							on={{
-								click: (e: Event) => {
-									// Clear value before opening file dialog to allow re-selecting same file
-									const input = e.target as HTMLInputElement
-									input.value = ''
-								},
-								change: (e: Event) => {
-									const input = e.target as HTMLInputElement
-									onFileSelect(input.files)
-								},
-							}}
+							variant="secondary"
 							disabled={isUploading}
-						/>
-						<label
-							for="upload-file-input"
+							onClick={onClose}
+						>
+							{isSuccess ? 'Close' : 'Cancel'}
+						</ModalButton>
+						{!isSuccess && (
+							<ModalButton
+								variant="primary"
+								disabled={isUploading || !hasFile || !selectedRoot}
+								onClick={onUpload}
+							>
+								{isUploading ? 'Uploading...' : 'Upload'}
+							</ModalButton>
+						)}
+						{isSuccess && (
+							<ModalButton variant="primary" onClick={onReset}>
+								Upload Another
+							</ModalButton>
+						)}
+					</ModalFooter>
+				}
+			>
+				{/* Success message */}
+				{isSuccess && (
+					<div
+						css={{
+							padding: spacing.lg,
+							backgroundColor: 'rgba(34, 197, 94, 0.1)',
+							borderRadius: radius.md,
+							border: '1px solid rgba(34, 197, 94, 0.3)',
+							marginBottom: spacing.lg,
+						}}
+					>
+						<div
 							css={{
-								display: 'block',
-								cursor: isUploading ? 'not-allowed' : 'pointer',
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.sm,
+								marginBottom: spacing.sm,
 							}}
 						>
 							<svg
-								width="48"
-								height="48"
-								viewBox="0 0 48 48"
+								width="20"
+								height="20"
+								viewBox="0 0 20 20"
 								fill="none"
-								css={{ margin: '0 auto', marginBottom: spacing.md }}
 								aria-hidden="true"
 							>
-								<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
+								<circle cx="10" cy="10" r="10" fill="rgba(34, 197, 94, 0.2)" />
 								<path
-									d="M24 14v14M18 20l6-6 6 6M16 32h16"
-									stroke={colors.primary}
+									d="M6 10l3 3 5-6"
+									stroke="#22c55e"
 									stroke-width="2"
 									stroke-linecap="round"
 									stroke-linejoin="round"
 								/>
 							</svg>
-							{hasFile ? (
-								<div>
-									<p
-										css={{
-											margin: 0,
-											fontSize: typography.fontSize.sm,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.text,
-										}}
-									>
-										{selectedFiles[0]!.name}
-									</p>
-									<p
-										css={{
-											margin: `${spacing.xs} 0 0 0`,
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-										}}
-									>
-										{formatFileSize(selectedFiles[0]!.size)} · Click to change
-									</p>
-								</div>
-							) : (
-								<div>
-									<p
-										css={{
-											margin: 0,
-											fontSize: typography.fontSize.sm,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.text,
-										}}
-									>
-										Click to select a file
-									</p>
-									<p
-										css={{
-											margin: `${spacing.xs} 0 0 0`,
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-										}}
-									>
-										Audio or video files up to 10GB
-									</p>
-								</div>
-							)}
-						</label>
-					</div>
-				</ModalSection>
-			)}
-
-			{/* Destination */}
-			{!isSuccess && (
-				<ModalSection title="Destination">
-					{mediaRoots.length === 0 ? (
+							<span
+								css={{
+									color: '#22c55e',
+									fontWeight: typography.fontWeight.medium,
+									fontSize: typography.fontSize.sm,
+								}}
+							>
+								Upload successful!
+							</span>
+						</div>
 						<p
 							css={{
-								fontSize: typography.fontSize.sm,
-								color: colors.textMuted,
 								margin: 0,
-							}}
-						>
-							No media roots configured. Add a MEDIA_PATHS environment variable.
-						</p>
-					) : (
-						<div
-							css={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: spacing.md,
-							}}
-						>
-							<div>
-								<label
-									for="upload-media-root"
-									css={{
-										display: 'block',
-										fontSize: typography.fontSize.xs,
-										fontWeight: typography.fontWeight.medium,
-										color: colors.textMuted,
-										marginBottom: spacing.xs,
-										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
-									}}
-								>
-									Media Root
-								</label>
-								<select
-									id="upload-media-root"
-									value={selectedRoot}
-									disabled={isUploading}
-									css={{
-										width: '100%',
-										padding: spacing.sm,
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
-										backgroundColor: colors.background,
-										border: `1px solid ${colors.border}`,
-										borderRadius: radius.md,
-										cursor: isUploading ? 'not-allowed' : 'pointer',
-										'&:focus': {
-											outline: 'none',
-											borderColor: colors.primary,
-											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-										},
-									}}
-									on={{
-										change: (e: Event) => {
-											const select = e.target as HTMLSelectElement
-											onRootChange(select.value)
-										},
-									}}
-								>
-									{mediaRoots.map((root) => (
-										<option key={root.name} value={root.name}>
-											{root.name} ({root.path})
-										</option>
-									))}
-								</select>
-							</div>
-							<div>
-								<label
-									for="upload-subdirectory"
-									css={{
-										display: 'block',
-										fontSize: typography.fontSize.xs,
-										fontWeight: typography.fontWeight.medium,
-										color: colors.textMuted,
-										marginBottom: spacing.xs,
-										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
-									}}
-								>
-									Subdirectory (optional)
-								</label>
-								<input
-									id="upload-subdirectory"
-									type="text"
-									value={subdirectory}
-									placeholder="e.g., audiobooks/fiction"
-									disabled={isUploading}
-									css={{
-										width: '100%',
-										padding: spacing.sm,
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
-										backgroundColor: colors.background,
-										border: `1px solid ${colors.border}`,
-										borderRadius: radius.md,
-										'&:focus': {
-											outline: 'none',
-											borderColor: colors.primary,
-											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-										},
-										'&:disabled': {
-											cursor: 'not-allowed',
-											opacity: 0.6,
-										},
-										'&::placeholder': {
-											color: colors.textMuted,
-										},
-									}}
-									on={{
-										input: (e: Event) => {
-											const input = e.target as HTMLInputElement
-											onSubdirectoryChange(input.value)
-										},
-									}}
-								/>
-								<p
-									css={{
-										margin: `${spacing.xs} 0 0 0`,
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-									}}
-								>
-									Folders will be created if they don't exist
-								</p>
-							</div>
-						</div>
-					)}
-				</ModalSection>
-			)}
-
-			{/* Upload progress */}
-			{isUploading && (
-				<div
-					css={{
-						marginTop: spacing.lg,
-						padding: spacing.md,
-						backgroundColor: colors.background,
-						borderRadius: radius.md,
-					}}
-				>
-					<div
-						css={{
-							display: 'flex',
-							alignItems: 'center',
-							gap: spacing.sm,
-							marginBottom: spacing.sm,
-						}}
-					>
-						<div
-							css={{
-								width: '16px',
-								height: '16px',
-								border: `2px solid ${colors.border}`,
-								borderTopColor: colors.primary,
-								borderRadius: '50%',
-								animation: 'spin 1s linear infinite',
-								'@keyframes spin': {
-									to: { transform: 'rotate(360deg)' },
-								},
-							}}
-						/>
-						<span
-							css={{
 								fontSize: typography.fontSize.sm,
 								color: colors.text,
 							}}
 						>
-							Uploading {uploadState.filename}...
-						</span>
+							<strong>{uploadState.filename}</strong> has been uploaded to{' '}
+							<code
+								css={{
+									padding: `${spacing.xs} ${spacing.sm}`,
+									backgroundColor: colors.background,
+									borderRadius: radius.sm,
+									fontSize: typography.fontSize.xs,
+								}}
+							>
+								{uploadState.mediaPath}
+							</code>
+						</p>
 					</div>
-				</div>
-			)}
-		</Modal>
-	)
+				)}
+
+				{/* Error message */}
+				{isError && (
+					<div
+						css={{
+							padding: spacing.lg,
+							backgroundColor: 'rgba(239, 68, 68, 0.1)',
+							borderRadius: radius.md,
+							border: '1px solid rgba(239, 68, 68, 0.3)',
+							marginBottom: spacing.lg,
+						}}
+					>
+						<p
+							css={{
+								margin: 0,
+								color: '#ef4444',
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							{uploadState.message}
+						</p>
+					</div>
+				)}
+
+				{/* File input */}
+				{!isSuccess && (
+					<ModalSection title="Select File">
+						<div
+							css={{
+								border: `2px dashed ${colors.border}`,
+								borderRadius: radius.md,
+								padding: spacing.xl,
+								textAlign: 'center',
+								backgroundColor: colors.background,
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									borderColor: colors.primary,
+									backgroundColor: colors.primarySoftSubtle,
+								},
+							}}
+						>
+							<input
+								type="file"
+								accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
+								id="upload-file-input"
+								css={{
+									position: 'absolute',
+									width: '1px',
+									height: '1px',
+									padding: 0,
+									margin: '-1px',
+									overflow: 'hidden',
+									clip: 'rect(0, 0, 0, 0)',
+									whiteSpace: 'nowrap',
+									border: 0,
+								}}
+								on={{
+									click: (e: Event) => {
+										// Clear value before opening file dialog to allow re-selecting same file
+										const input = e.target as HTMLInputElement
+										input.value = ''
+									},
+									change: (e: Event) => {
+										const input = e.target as HTMLInputElement
+										onFileSelect(input.files)
+									},
+								}}
+								disabled={isUploading}
+							/>
+							<label
+								for="upload-file-input"
+								css={{
+									display: 'block',
+									cursor: isUploading ? 'not-allowed' : 'pointer',
+								}}
+							>
+								<svg
+									width="48"
+									height="48"
+									viewBox="0 0 48 48"
+									fill="none"
+									css={{ margin: '0 auto', marginBottom: spacing.md }}
+									aria-hidden="true"
+								>
+									<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
+									<path
+										d="M24 14v14M18 20l6-6 6 6M16 32h16"
+										stroke={colors.primary}
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								{hasFile ? (
+									<div>
+										<p
+											css={{
+												margin: 0,
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.text,
+											}}
+										>
+											{selectedFiles[0]!.name}
+										</p>
+										<p
+											css={{
+												margin: `${spacing.xs} 0 0 0`,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+											}}
+										>
+											{formatFileSize(selectedFiles[0]!.size)} · Click to change
+										</p>
+									</div>
+								) : (
+									<div>
+										<p
+											css={{
+												margin: 0,
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.text,
+											}}
+										>
+											Click to select a file
+										</p>
+										<p
+											css={{
+												margin: `${spacing.xs} 0 0 0`,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+											}}
+										>
+											Audio or video files up to 10GB
+										</p>
+									</div>
+								)}
+							</label>
+						</div>
+					</ModalSection>
+				)}
+
+				{/* Destination */}
+				{!isSuccess && (
+					<ModalSection title="Destination">
+						{mediaRoots.length === 0 ? (
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: 0,
+								}}
+							>
+								No media roots configured. Add a MEDIA_PATHS environment
+								variable.
+							</p>
+						) : (
+							<div
+								css={{
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.md,
+								}}
+							>
+								<div>
+									<label
+										for="upload-media-root"
+										css={{
+											display: 'block',
+											fontSize: typography.fontSize.xs,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.textMuted,
+											marginBottom: spacing.xs,
+											textTransform: 'uppercase',
+											letterSpacing: '0.05em',
+										}}
+									>
+										Media Root
+									</label>
+									<select
+										id="upload-media-root"
+										value={selectedRoot}
+										disabled={isUploading}
+										css={{
+											width: '100%',
+											padding: spacing.sm,
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+											backgroundColor: colors.background,
+											border: `1px solid ${colors.border}`,
+											borderRadius: radius.md,
+											cursor: isUploading ? 'not-allowed' : 'pointer',
+											'&:focus': {
+												outline: 'none',
+												borderColor: colors.primary,
+												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+											},
+										}}
+										on={{
+											change: (e: Event) => {
+												const select = e.target as HTMLSelectElement
+												onRootChange(select.value)
+											},
+										}}
+									>
+										{mediaRoots.map((root) => (
+											<option key={root.name} value={root.name}>
+												{root.name} ({root.path})
+											</option>
+										))}
+									</select>
+								</div>
+								<div>
+									<label
+										for="upload-subdirectory"
+										css={{
+											display: 'block',
+											fontSize: typography.fontSize.xs,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.textMuted,
+											marginBottom: spacing.xs,
+											textTransform: 'uppercase',
+											letterSpacing: '0.05em',
+										}}
+									>
+										Subdirectory (optional)
+									</label>
+									<input
+										id="upload-subdirectory"
+										type="text"
+										value={subdirectory}
+										placeholder="e.g., audiobooks/fiction"
+										disabled={isUploading}
+										css={{
+											width: '100%',
+											padding: spacing.sm,
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+											backgroundColor: colors.background,
+											border: `1px solid ${colors.border}`,
+											borderRadius: radius.md,
+											'&:focus': {
+												outline: 'none',
+												borderColor: colors.primary,
+												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+											},
+											'&:disabled': {
+												cursor: 'not-allowed',
+												opacity: 0.6,
+											},
+											'&::placeholder': {
+												color: colors.textMuted,
+											},
+										}}
+										on={{
+											input: (e: Event) => {
+												const input = e.target as HTMLInputElement
+												onSubdirectoryChange(input.value)
+											},
+										}}
+									/>
+									<p
+										css={{
+											margin: `${spacing.xs} 0 0 0`,
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+										}}
+									>
+										Folders will be created if they don't exist
+									</p>
+								</div>
+							</div>
+						)}
+					</ModalSection>
+				)}
+
+				{/* Upload progress */}
+				{isUploading && (
+					<div
+						css={{
+							marginTop: spacing.lg,
+							padding: spacing.md,
+							backgroundColor: colors.background,
+							borderRadius: radius.md,
+						}}
+					>
+						<div
+							css={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.sm,
+								marginBottom: spacing.sm,
+							}}
+						>
+							<div
+								css={{
+									width: '16px',
+									height: '16px',
+									border: `2px solid ${colors.border}`,
+									borderTopColor: colors.primary,
+									borderRadius: '50%',
+									animation: 'spin 1s linear infinite',
+									'@keyframes spin': {
+										to: { transform: 'rotate(360deg)' },
+									},
+								}}
+							/>
+							<span
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+								}}
+							>
+								Uploading {uploadState.filename}...
+							</span>
+						</div>
+					</div>
+				)}
+			</Modal>
+		)
+	}
 }

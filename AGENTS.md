@@ -18,11 +18,11 @@ Remix components work differently from React. Here's how:
 
 #### Stateless Components
 
-For simple components with no state, just return JSX directly:
+For simple components with no state, return a render function:
 
 ```tsx
-function Greeting({ name }: { name: string }) {
-	return <div>Hello, {name}!</div>
+function Greeting() {
+	return ({ name }: { name: string }) => <div>Hello, {name}!</div>
 }
 ```
 

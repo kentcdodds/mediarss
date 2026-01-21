@@ -106,7 +106,7 @@ const sizeMap: Record<ModalSize, string> = {
  * )}
  * ```
  */
-export function Modal(this: Handle, _setupProps: ModalProps) {
+export function Modal(_handle: Handle) {
 	// Store reference to the modal container for focus management
 	let modalRef: HTMLElement | null = null
 	let previouslyFocusedElement: Element | null = null

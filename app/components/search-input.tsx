@@ -18,13 +18,8 @@ type SearchInputProps = {
  * A simple search input with a clear button.
  * Handles only the UI - filtering logic stays in the parent component.
  */
-export function SearchInput({
-	placeholder,
-	value,
-	onInput,
-	onClear,
-}: SearchInputProps) {
-	return (
+export function SearchInput() {
+	return ({ placeholder, value, onInput, onClear }: SearchInputProps) => (
 		<div
 			css={{
 				position: 'relative',

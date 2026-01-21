@@ -10,7 +10,7 @@ import {
 
 type CounterSetup = { initial?: number }
 
-export function Counter(this: Handle, setup: CounterSetup = {}) {
+export function Counter(handle: Handle, setup: CounterSetup = {}) {
 	let count = setup.initial ?? 0
 	return () => (
 		<button
@@ -36,7 +36,7 @@ export function Counter(this: Handle, setup: CounterSetup = {}) {
 			on={{
 				[press]: () => {
 					count++
-					this.update()
+					handle.update()
 				},
 			}}
 		>

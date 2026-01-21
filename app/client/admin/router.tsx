@@ -1,4 +1,4 @@
-import type { Component, Handle } from 'remix/component'
+import type { Handle } from 'remix/component'
 import { TypedEventTarget } from 'remix/interaction'
 
 type RouteMatch = {
@@ -6,11 +6,10 @@ type RouteMatch = {
 	params: Record<string, string>
 }
 
-type RouteComponent = Component<
-	Record<string, never>,
-	undefined,
-	{ params: Record<string, string> }
->
+type RouteComponent = (
+	handle: Handle,
+	setup?: unknown,
+) => (props: { params: Record<string, string> }) => JSX.Element
 
 type Route = {
 	pattern: RegExp

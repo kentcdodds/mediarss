@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { invariant } from '@epic-web/invariant'
-import type { RequestContext } from '@remix-run/fetch-router'
+import type { RequestContext } from 'remix/fetch-router'
 import { consoleWarn } from '#test/setup.ts'
 
 // Configure rate limits for testing BEFORE importing any source code

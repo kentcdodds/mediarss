@@ -1,4 +1,4 @@
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'

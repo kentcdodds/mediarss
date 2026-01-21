@@ -1,4 +1,4 @@
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { revokeCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { revokeDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'

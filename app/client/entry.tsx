@@ -1,4 +1,4 @@
-import { createRoot } from '@remix-run/component'
+import { createRoot } from 'remix/component'
 import { colors, spacing, typography } from '#app/styles/tokens.ts'
 import { Counter } from './counter.tsx'
 

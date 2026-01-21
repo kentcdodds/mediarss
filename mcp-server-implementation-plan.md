@@ -447,7 +447,7 @@ export async function initializePrompts(server: McpServer) {
 **File:** `app/routes/mcp/index.ts`
 
 ```typescript
-import type { Action, RequestContext } from '@remix-run/fetch-router'
+import type { Action, RequestContext } from 'remix/fetch-router'
 import { resolveAuthInfo, handleUnauthorized } from '#app/mcp/auth.ts'
 import { createMcpServer } from '#app/mcp/server.ts'
 import { BunStreamableHTTPServerTransport } from '#app/mcp/transport.ts'

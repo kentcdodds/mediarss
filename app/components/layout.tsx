@@ -1,4 +1,4 @@
-import { html, type SafeHtml } from '@remix-run/html-template'
+import { html, type SafeHtml } from 'remix/html-template'
 import { baseImportMap } from '#app/config/import-map.ts'
 import {
 	versionedImportMap,

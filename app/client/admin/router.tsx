@@ -1,5 +1,5 @@
-import type { Handle } from '@remix-run/component'
-import { TypedEventTarget } from '@remix-run/interaction'
+import type { Handle } from 'remix/component'
+import { TypedEventTarget } from 'remix/interaction'
 
 type RouteMatch = {
 	path: string

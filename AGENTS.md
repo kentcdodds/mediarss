@@ -10,7 +10,7 @@ Always run `bun run format` before you're done working to fix any formatting iss
 
 ## No React
 
-This application does NOT use React. We use `@remix-run/component` for UI components. Do not introduce React, Preact, or any other UI framework.
+This application does NOT use React. We use `remix/component` for UI components. Do not introduce React, Preact, or any other UI framework.
 
 ### Remix Components vs React Components
 
@@ -31,7 +31,7 @@ function Greeting({ name }: { name: string }) {
 For components that need state, use `this: Handle` and **return a function** that returns JSX. The closure above the return acts as your state container:
 
 ```tsx
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 
 function Counter(this: Handle) {
 	// State lives in the closure
@@ -60,7 +60,7 @@ When a component has both props and state, use **setupProps** for initial setup 
 > **⚠️ Important:** Always use `renderProps` inside the render function to get the latest prop values. The `setupProps` are captured once at setup time and may be stale.
 
 ```tsx
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 
 function UserCard(
 	this: Handle,
@@ -226,7 +226,7 @@ The context system allows indirect ancestor/descendant communication without pas
 A parent component provides context using `this.context.set()`. The context type is declared as a generic parameter on `Handle`:
 
 ```tsx
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 
 function ThemeProvider(this: Handle<{ theme: 'light' | 'dark' }>) {
 	// Set context value for all descendants
@@ -246,7 +246,7 @@ function ThemeProvider(this: Handle<{ theme: 'light' | 'dark' }>) {
 Descendant components retrieve context using `this.context.get()`, passing the provider component as the key:
 
 ```tsx
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 
 function ThemedButton(this: Handle) {
 	// Get context from nearest ancestor ThemeProvider
@@ -273,7 +273,7 @@ function ThemedButton(this: Handle) {
 **Full Example with Multiple Consumers:**
 
 ```tsx
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 
 // Provider component with typed context
 function UserProvider(this: Handle<{ user: { name: string; role: string } }>) {

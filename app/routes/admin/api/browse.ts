@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import nodePath from 'node:path'
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import { fileTypeFromFile } from 'file-type'
 import { getMediaRootByName } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'

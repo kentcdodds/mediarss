@@ -9,7 +9,7 @@
  */
 
 import { createUIResource, type UIResource } from '@mcp-ui/server'
-import { html } from '@remix-run/html-template'
+import { html } from 'remix/html-template'
 import { baseImportMap } from '#app/config/import-map.ts'
 import {
 	getBundleVersion,

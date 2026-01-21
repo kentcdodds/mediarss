@@ -8,7 +8,7 @@
  * Data is received via the MCP-UI initial-render-data protocol,
  * not embedded inline in the HTML.
  */
-import { createRoot, type Handle } from '@remix-run/component'
+import { createRoot, type Handle } from 'remix/component'
 import { z } from 'zod'
 import { waitForRenderData } from './mcp-ui.ts'
 

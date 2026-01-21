@@ -1,4 +1,4 @@
-import type { Handle } from '@remix-run/component'
+import type { Handle } from 'remix/component'
 import { matchSorter, rankings } from 'match-sorter'
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatRelativeTime } from '#app/helpers/format.ts'

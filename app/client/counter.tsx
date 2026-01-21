@@ -1,5 +1,5 @@
-import type { Handle } from '@remix-run/component'
-import { press } from '@remix-run/interaction/press'
+import type { Handle } from 'remix/component'
+import { press } from 'remix/interaction/press'
 import {
 	colors,
 	radius,

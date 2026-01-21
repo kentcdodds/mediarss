@@ -30,18 +30,18 @@ type VersionResponse = {
 /**
  * Footer component that displays the app version.
  */
-function AppFooter(this: Handle) {
+function AppFooter(handle: Handle) {
 	let displayVersion: string | null = null
 
 	// Fetch version info on mount
-	fetch('/admin/api/version', { signal: this.signal })
+	fetch('/admin/api/version', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<VersionResponse>
 		})
 		.then((data) => {
 			displayVersion = data.version || data.commit?.shortHash || null
-			this.update()
+			handle.update()
 		})
 		.catch(() => {
 			// Silently fail - version display is not critical

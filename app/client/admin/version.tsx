@@ -30,23 +30,23 @@ type LoadingState =
 /**
  * Version page component - displays detailed version information.
  */
-export function VersionPage(this: Handle) {
+export function VersionPage(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 
 	// Fetch version info on mount
-	fetch('/admin/api/version', { signal: this.signal })
+	fetch('/admin/api/version', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<VersionResponse>
 		})
 		.then((data) => {
 			state = { status: 'success', data }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			state = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	return () => {

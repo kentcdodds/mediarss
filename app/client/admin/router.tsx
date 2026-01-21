@@ -110,9 +110,9 @@ export function Link() {
  * Router outlet component.
  * Renders the matched route's component.
  */
-export function RouterOutlet(this: Handle) {
+export function RouterOutlet(handle: Handle) {
 	// Subscribe to navigation events
-	this.on(router, { navigate: () => this.update() })
+	handle.on(router, { navigate: () => handle.update() })
 
 	return () => {
 		const result = router.match()

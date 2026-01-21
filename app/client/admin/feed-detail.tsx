@@ -192,7 +192,7 @@ type BrowseState =
 /**
  * FeedDetail component - displays feed information and manages tokens.
  */
-export function FeedDetail(this: Handle) {
+export function FeedDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let copiedToken: string | null = null
 	let showCreateForm = false
@@ -244,40 +244,40 @@ export function FeedDetail(this: Handle) {
 	let artworkImageKey = 0 // Used to force image refresh after upload
 
 	// Fetch media roots for file picker
-	fetch('/admin/api/directories', { signal: this.signal })
+	fetch('/admin/api/directories', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<{ roots: Array<MediaRoot> }>
 		})
 		.then((data) => {
 			rootsState = { status: 'success', roots: data.roots }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			rootsState = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	// Browse a directory for the file picker
 	const browse = (rootName: string, path: string) => {
 		browseState = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		const params = new URLSearchParams({ root: rootName, path })
-		fetch(`/admin/api/browse?${params}`, { signal: this.signal })
+		fetch(`/admin/api/browse?${params}`, { signal: handle.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<{ entries: Array<DirectoryEntry> }>
 			})
 			.then((data) => {
 				browseState = { status: 'success', entries: data.entries }
-				this.update()
+				handle.update()
 			})
 			.catch((err) => {
-				if (this.signal.aborted) return
+				if (handle.signal.aborted) return
 				browseState = { status: 'error', message: err.message }
-				this.update()
+				handle.update()
 			})
 	}
 
@@ -325,7 +325,7 @@ export function FeedDetail(this: Handle) {
 				selectedFilePaths.push(mediaPath)
 			}
 		}
-		this.update()
+		handle.update()
 	}
 
 	const isFileSelected = (filename: string): boolean => {
@@ -348,7 +348,7 @@ export function FeedDetail(this: Handle) {
 		selectedFilePaths = []
 		pickerPath = ''
 		browseState = { status: 'idle' }
-		this.update()
+		handle.update()
 
 		// Auto-select first root and browse it
 		if (rootsState.status === 'success' && rootsState.roots.length > 0) {
@@ -365,7 +365,7 @@ export function FeedDetail(this: Handle) {
 	const closeAddFilesModal = () => {
 		showAddFilesModal = false
 		selectedFilePaths = []
-		this.update()
+		handle.update()
 	}
 
 	const confirmAddFiles = async () => {
@@ -377,9 +377,9 @@ export function FeedDetail(this: Handle) {
 	const fetchFeed = (id: string) => {
 		feedId = id
 		state = { status: 'loading' }
-		this.update()
+		handle.update()
 
-		fetch(`/admin/api/feeds/${id}`, { signal: this.signal })
+		fetch(`/admin/api/feeds/${id}`, { signal: handle.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<FeedResponse>
@@ -391,12 +391,12 @@ export function FeedDetail(this: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
-				this.update()
+				handle.update()
 			})
 			.catch((err) => {
-				if (this.signal.aborted) return
+				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
-				this.update()
+				handle.update()
 			})
 	}
 
@@ -405,10 +405,10 @@ export function FeedDetail(this: Handle) {
 		try {
 			await navigator.clipboard.writeText(url)
 			copiedToken = token
-			this.update()
+			handle.update()
 			setTimeout(() => {
 				copiedToken = null
-				this.update()
+				handle.update()
 			}, 2000)
 		} catch {
 			console.error('Failed to copy to clipboard text:', url)
@@ -417,7 +417,7 @@ export function FeedDetail(this: Handle) {
 
 	const createToken = async () => {
 		createLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/tokens`, {
@@ -435,7 +435,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to create token:', err)
 		} finally {
 			createLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -475,31 +475,31 @@ export function FeedDetail(this: Handle) {
 		}
 		editError = null
 		isEditing = true
-		this.update()
+		handle.update()
 	}
 
 	const cancelEditing = () => {
 		isEditing = false
 		editError = null
-		this.update()
+		handle.update()
 	}
 
 	const saveEdit = async (isDirectory: boolean) => {
 		if (!editForm.name.trim()) {
 			editError = 'Name is required'
-			this.update()
+			handle.update()
 			return
 		}
 
 		if (isDirectory && editForm.directoryPaths.length === 0) {
 			editError = 'At least one directory is required'
-			this.update()
+			handle.update()
 			return
 		}
 
 		editLoading = true
 		editError = null
-		this.update()
+		handle.update()
 
 		try {
 			const body: Record<string, unknown> = {
@@ -533,16 +533,16 @@ export function FeedDetail(this: Handle) {
 			fetchFeed(feedId)
 		} catch (err) {
 			editError = err instanceof Error ? err.message : 'Failed to update feed'
-			this.update()
+			handle.update()
 		} finally {
 			editLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const deleteFeed = async () => {
 		deleteLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}`, {
@@ -560,7 +560,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to delete feed:', err)
 			deleteLoading = false
 			showDeleteConfirm = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -568,7 +568,7 @@ export function FeedDetail(this: Handle) {
 	const uploadArtwork = async (file: File) => {
 		artworkUploadLoading = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const formData = new FormData()
@@ -590,17 +590,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to upload artwork'
-			this.update()
+			handle.update()
 		} finally {
 			artworkUploadLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const deleteArtwork = async () => {
 		artworkDeleteLoading = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/artwork`, {
@@ -618,17 +618,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to delete artwork'
-			this.update()
+			handle.update()
 		} finally {
 			artworkDeleteLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	const saveImageUrl = async () => {
 		imageUrlSaving = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const newImageUrl = imageUrlInput.trim() || null
@@ -649,10 +649,10 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to save image URL'
-			this.update()
+			handle.update()
 		} finally {
 			imageUrlSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -660,7 +660,7 @@ export function FeedDetail(this: Handle) {
 		imageUrlInput = ''
 		imageUrlSaving = true
 		artworkError = null
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}`, {
@@ -680,17 +680,17 @@ export function FeedDetail(this: Handle) {
 		} catch (err) {
 			artworkError =
 				err instanceof Error ? err.message : 'Failed to clear image URL'
-			this.update()
+			handle.update()
 		} finally {
 			imageUrlSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	// Item management functions (curated feeds only)
 	const removeItem = async (item: MediaItem) => {
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/items`, {
@@ -704,7 +704,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to remove item:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -716,7 +716,7 @@ export function FeedDetail(this: Handle) {
 		if (toIndex < 0 || toIndex >= items.length) return
 
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		// Create new order with swapped positions
 		const newOrder = items.map((item) => toMediaPath(item))
@@ -735,14 +735,14 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to reorder items:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
 	// Drag-and-drop handlers
 	const handleDragStart = (index: number) => {
 		draggingIndex = index
-		this.update()
+		handle.update()
 	}
 
 	const handleDragOver = (e: DragEvent, index: number) => {
@@ -750,27 +750,27 @@ export function FeedDetail(this: Handle) {
 		if (draggingIndex === null || draggingIndex === index) return
 		if (dragOverIndex !== index) {
 			dragOverIndex = index
-			this.update()
+			handle.update()
 		}
 	}
 
 	const handleDragLeave = () => {
 		dragOverIndex = null
-		this.update()
+		handle.update()
 	}
 
 	const handleDrop = async (items: Array<MediaItem>, targetIndex: number) => {
 		if (draggingIndex === null || draggingIndex === targetIndex) {
 			draggingIndex = null
 			dragOverIndex = null
-			this.update()
+			handle.update()
 			return
 		}
 
 		const fromIndex = draggingIndex
 		draggingIndex = null
 		dragOverIndex = null
-		this.update()
+		handle.update()
 
 		await moveItem(items, fromIndex, targetIndex)
 	}
@@ -778,14 +778,14 @@ export function FeedDetail(this: Handle) {
 	const handleDragEnd = () => {
 		draggingIndex = null
 		dragOverIndex = null
-		this.update()
+		handle.update()
 	}
 
 	const addItems = async (paths: Array<string>) => {
 		if (paths.length === 0) return
 
 		itemActionLoading = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(`/admin/api/feeds/${feedId}/items`, {
@@ -800,7 +800,7 @@ export function FeedDetail(this: Handle) {
 			console.error('Failed to add items:', err)
 		} finally {
 			itemActionLoading = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -840,7 +840,7 @@ export function FeedDetail(this: Handle) {
 						onConfirm={deleteFeed}
 						onCancel={() => {
 							showDeleteConfirm = false
-							this.update()
+							handle.update()
 						}}
 					/>
 				)}
@@ -997,7 +997,7 @@ export function FeedDetail(this: Handle) {
 								on={{
 									click: () => {
 										showDeleteConfirm = true
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -1046,42 +1046,42 @@ export function FeedDetail(this: Handle) {
 							error={editError}
 							onNameChange={(value) => {
 								editForm.name = value
-								this.update()
+								handle.update()
 							}}
 							onDescriptionChange={(value) => {
 								editForm.description = value
-								this.update()
+								handle.update()
 							}}
 							onSubtitleChange={(value) => {
 								editForm.subtitle = value
-								this.update()
+								handle.update()
 							}}
 							onSortFieldsChange={(value) => {
 								editForm.sortFields = value
-								this.update()
+								handle.update()
 							}}
 							onSortOrderChange={(value) => {
 								editForm.sortOrder = value
-								this.update()
+								handle.update()
 							}}
 							onFeedTypeChange={(value) => {
 								editForm.feedType = value
-								this.update()
+								handle.update()
 							}}
 							onLinkChange={(value) => {
 								editForm.link = value
-								this.update()
+								handle.update()
 							}}
 							onCopyrightChange={(value) => {
 								editForm.copyright = value
-								this.update()
+								handle.update()
 							}}
 							onSave={() => saveEdit(isDirectory)}
 							onDirectoryPathsChange={
 								isDirectory
 									? (paths) => {
 											editForm.directoryPaths = paths
-											this.update()
+											handle.update()
 										}
 									: undefined
 							}
@@ -1326,13 +1326,13 @@ export function FeedDetail(this: Handle) {
 										on={{
 											input: (e) => {
 												imageUrlInput = (e.target as HTMLInputElement).value
-												this.update()
+												handle.update()
 											},
 											focus: () => {
 												// Initialize with current value on focus if empty
 												if (!imageUrlInput && feed.imageUrl) {
 													imageUrlInput = feed.imageUrl
-													this.update()
+													handle.update()
 												}
 											},
 										}}
@@ -1992,7 +1992,7 @@ export function FeedDetail(this: Handle) {
 								on={{
 									click: () => {
 										showCreateForm = true
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -2044,7 +2044,7 @@ export function FeedDetail(this: Handle) {
 									on={{
 										input: (e) => {
 											newTokenLabel = (e.target as HTMLInputElement).value
-											this.update()
+											handle.update()
 										},
 									}}
 								/>
@@ -2090,7 +2090,7 @@ export function FeedDetail(this: Handle) {
 										click: () => {
 											showCreateForm = false
 											newTokenLabel = ''
-											this.update()
+											handle.update()
 										},
 									}}
 								>
@@ -2858,7 +2858,7 @@ function EditForm() {
 	)
 }
 
-function DirectoryPathsEditor(this: Handle) {
+function DirectoryPathsEditor(handle: Handle) {
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''
@@ -2866,7 +2866,7 @@ function DirectoryPathsEditor(this: Handle) {
 
 	const fetchDirectory = async (root: string, path: string) => {
 		browseState = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch(
@@ -2884,7 +2884,7 @@ function DirectoryPathsEditor(this: Handle) {
 				message: err instanceof Error ? err.message : 'Failed to browse',
 			}
 		}
-		this.update()
+		handle.update()
 	}
 
 	const selectRoot = (rootName: string) => {
@@ -2926,7 +2926,7 @@ function DirectoryPathsEditor(this: Handle) {
 			selectedRoot = null
 			currentPath = ''
 			browseState = { status: 'idle' }
-			this.update()
+			handle.update()
 		}
 
 		const removePath = (index: number) => {

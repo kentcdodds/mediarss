@@ -56,13 +56,13 @@ type LoadingState =
 /**
  * FeedList component - displays all feeds in a card grid.
  */
-export function FeedList(this: Handle) {
+export function FeedList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let filterType: FilterType = 'all'
 
 	// Fetch feeds on mount
-	fetch('/admin/api/feeds', { signal: this.signal })
+	fetch('/admin/api/feeds', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<FeedsResponse>
@@ -75,12 +75,12 @@ export function FeedList(this: Handle) {
 			].sort((a, b) => b.createdAt - a.createdAt)
 
 			state = { status: 'success', feeds: allFeeds }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			state = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	return () => {
@@ -188,7 +188,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'all'}
 								onClick={() => {
 									filterType = 'all'
-									this.update()
+									handle.update()
 								}}
 							>
 								All
@@ -197,7 +197,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'directory'}
 								onClick={() => {
 									filterType = 'directory'
-									this.update()
+									handle.update()
 								}}
 								color="#3b82f6"
 							>
@@ -207,7 +207,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'curated'}
 								onClick={() => {
 									filterType = 'curated'
-									this.update()
+									handle.update()
 								}}
 								color="#8b5cf6"
 							>
@@ -283,11 +283,11 @@ export function FeedList(this: Handle) {
 							value={searchQuery}
 							onInput={(value) => {
 								searchQuery = value
-								this.update()
+								handle.update()
 							}}
 							onClear={() => {
 								searchQuery = ''
-								this.update()
+								handle.update()
 							}}
 						/>
 					</div>

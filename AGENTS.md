@@ -28,19 +28,19 @@ function Greeting() {
 
 #### Stateful Components
 
-For components that need state, use `this: Handle` and **return a function** that returns JSX. The closure above the return acts as your state container:
+For components that need state, use `handle: Handle` and **return a function** that returns JSX. The closure above the return acts as your state container:
 
 ```tsx
 import type { Handle } from 'remix/component'
 
-function Counter(this: Handle) {
+function Counter(handle: Handle) {
 	// State lives in the closure
 	let count = 0
 
-	// Call this.update() to re-render when state changes
+	// Call handle.update() to re-render when state changes
 	const increment = () => {
 		count++
-		this.update()
+		handle.update()
 	}
 
 	// Return a render function
@@ -63,7 +63,7 @@ When a component has both props and state, use **setupProps** for initial setup 
 import type { Handle } from 'remix/component'
 
 function UserCard(
-	this: Handle,
+	handle: Handle,
 	setupProps: { userId: string } // Captured once at setup
 ) {
 	let user: User | null = null
@@ -75,7 +75,7 @@ function UserCard(
 		.then(data => {
 			user = data
 			loading = false
-			this.update()
+			handle.update()
 		})
 
 	// renderProps always has the latest values
@@ -117,11 +117,11 @@ Use the `css` prop for inline styles with pseudo-selector support:
 
 #### Subscribing to Events
 
-Use `this.on()` to subscribe to custom events or other event targets:
+Use `handle.on()` to subscribe to custom events or other event targets:
 
 ```tsx
-function RouterAware(this: Handle) {
-	this.on(router, { navigate: () => this.update() })
+function RouterAware(handle: Handle) {
+	handle.on(router, { navigate: () => handle.update() })
 	
 	return () => <div>Current path: {location.pathname}</div>
 }
@@ -129,20 +129,20 @@ function RouterAware(this: Handle) {
 
 #### Abort Signal
 
-Use `this.signal` for cancellable async operations:
+Use `handle.signal` for cancellable async operations:
 
 ```tsx
-function DataLoader(this: Handle) {
+function DataLoader(handle: Handle) {
 	let data = null
 
-	fetch('/api/data', { signal: this.signal })
+	fetch('/api/data', { signal: handle.signal })
 		.then(res => res.json())
 		.then(d => {
 			data = d
-			this.update()
+			handle.update()
 		})
 		.catch(err => {
-			if (this.signal.aborted) return // Component unmounted
+			if (handle.signal.aborted) return // Component unmounted
 			console.error(err)
 		})
 
@@ -181,7 +181,7 @@ function MyComponent() {
 **Example with DOM manipulation:**
 
 ```tsx
-function AutoFocusInput(this: Handle) {
+function AutoFocusInput(handle: Handle) {
 	return () => (
 		<input
 			type="text"
@@ -196,14 +196,14 @@ function AutoFocusInput(this: Handle) {
 **Example with cleanup:**
 
 ```tsx
-function ResizeAware(this: Handle) {
+function ResizeAware(handle: Handle) {
 	let width = 0
 
 	return () => (
 		<div connect={(node: HTMLDivElement, signal) => {
 			const observer = new ResizeObserver((entries) => {
 				width = entries[0].contentRect.width
-				this.update()
+				handle.update()
 			})
 			observer.observe(node)
 			
@@ -219,18 +219,18 @@ function ResizeAware(this: Handle) {
 
 #### Context System
 
-The context system allows indirect ancestor/descendant communication without passing props through every level. It's accessed via `this.context` on the `Handle` interface.
+The context system allows indirect ancestor/descendant communication without passing props through every level. It's accessed via `handle.context` on the `Handle` interface.
 
 **Setting Context (Provider):**
 
-A parent component provides context using `this.context.set()`. The context type is declared as a generic parameter on `Handle`:
+A parent component provides context using `handle.context.set()`. The context type is declared as a generic parameter on `Handle`:
 
 ```tsx
 import type { Handle } from 'remix/component'
 
-function ThemeProvider(this: Handle<{ theme: 'light' | 'dark' }>) {
+function ThemeProvider(handle: Handle<{ theme: 'light' | 'dark' }>) {
 	// Set context value for all descendants
-	this.context.set({ theme: 'dark' })
+	handle.context.set({ theme: 'dark' })
 	
 	return () => (
 		<div>
@@ -243,14 +243,14 @@ function ThemeProvider(this: Handle<{ theme: 'light' | 'dark' }>) {
 
 **Getting Context (Consumer):**
 
-Descendant components retrieve context using `this.context.get()`, passing the provider component as the key:
+Descendant components retrieve context using `handle.context.get()`, passing the provider component as the key:
 
 ```tsx
 import type { Handle } from 'remix/component'
 
-function ThemedButton(this: Handle) {
+function ThemedButton(handle: Handle) {
 	// Get context from nearest ancestor ThemeProvider
-	const theme = this.context.get(ThemeProvider)
+	const theme = handle.context.get(ThemeProvider)
 	
 	return () => (
 		<button css={{ 
@@ -276,8 +276,8 @@ function ThemedButton(this: Handle) {
 import type { Handle } from 'remix/component'
 
 // Provider component with typed context
-function UserProvider(this: Handle<{ user: { name: string; role: string } }>) {
-	this.context.set({ user: { name: 'Alice', role: 'admin' } })
+function UserProvider(handle: Handle<{ user: { name: string; role: string } }>) {
+	handle.context.set({ user: { name: 'Alice', role: 'admin' } })
 	
 	return () => (
 		<div>
@@ -288,15 +288,15 @@ function UserProvider(this: Handle<{ user: { name: string; role: string } }>) {
 }
 
 // Consumer component 1
-function UserGreeting(this: Handle) {
-	const ctx = this.context.get(UserProvider)
+function UserGreeting(handle: Handle) {
+	const ctx = handle.context.get(UserProvider)
 	
 	return () => <h1>Welcome, {ctx?.user.name}!</h1>
 }
 
 // Consumer component 2
-function UserBadge(this: Handle) {
-	const ctx = this.context.get(UserProvider)
+function UserBadge(handle: Handle) {
+	const ctx = handle.context.get(UserProvider)
 	
 	return () => (
 		<span css={{

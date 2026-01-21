@@ -165,7 +165,7 @@ type UploadState =
 /**
  * MediaList component - displays all media files with search/filter and assignment management
  */
-export function MediaList(this: Handle) {
+export function MediaList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let currentPage = 1
@@ -198,13 +198,13 @@ export function MediaList(this: Handle) {
 		} else {
 			selectedItems.add(key)
 		}
-		this.update()
+		handle.update()
 	}
 
 	// Clear all selections
 	const clearSelection = () => {
 		selectedItems = new Set()
-		this.update()
+		handle.update()
 	}
 
 	// Select all filtered items (across all pages)
@@ -212,7 +212,7 @@ export function MediaList(this: Handle) {
 		for (const item of filteredMedia) {
 			selectedItems.add(getItemKey(item))
 		}
-		this.update()
+		handle.update()
 	}
 
 	// Check if all filtered items are selected
@@ -235,35 +235,35 @@ export function MediaList(this: Handle) {
 		for (const item of filteredMedia) {
 			selectedItems.delete(getItemKey(item))
 		}
-		this.update()
+		handle.update()
 	}
 
 	// Open bulk assign modal
 	const openBulkAssignModal = () => {
 		showBulkAssignModal = true
 		bulkSelectedFeedIds = new Set()
-		this.update()
+		handle.update()
 	}
 
 	// Close bulk assign modal
 	const closeBulkAssignModal = () => {
 		showBulkAssignModal = false
 		bulkSelectedFeedIds = new Set()
-		this.update()
+		handle.update()
 	}
 
 	// Open bulk unassign modal
 	const openBulkUnassignModal = () => {
 		showBulkUnassignModal = true
 		bulkUnassignFeedId = null
-		this.update()
+		handle.update()
 	}
 
 	// Close bulk unassign modal
 	const closeBulkUnassignModal = () => {
 		showBulkUnassignModal = false
 		bulkUnassignFeedId = null
-		this.update()
+		handle.update()
 	}
 
 	// Get feeds that have at least one of the selected items assigned
@@ -301,7 +301,7 @@ export function MediaList(this: Handle) {
 		if (bulkSelectedFeedIds.size === 0 || state.status !== 'success') return
 
 		bulkSaving = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch('/admin/api/media/assignments', {
@@ -337,7 +337,7 @@ export function MediaList(this: Handle) {
 			console.error('Failed to save bulk assignments:', err)
 		} finally {
 			bulkSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -346,7 +346,7 @@ export function MediaList(this: Handle) {
 		if (!bulkUnassignFeedId || state.status !== 'success') return
 
 		bulkSaving = true
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch('/admin/api/media/assignments', {
@@ -378,7 +378,7 @@ export function MediaList(this: Handle) {
 			console.error('Failed to save bulk unassignments:', err)
 		} finally {
 			bulkSaving = false
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -388,11 +388,13 @@ export function MediaList(this: Handle) {
 		uploadState = { status: 'idle' }
 		selectedFiles = null
 		subdirectory = ''
-		this.update()
+		handle.update()
 
 		// Fetch available media roots
 		try {
-			const res = await fetch('/admin/api/directories', { signal: this.signal })
+			const res = await fetch('/admin/api/directories', {
+				signal: handle.signal,
+			})
 			if (res.ok) {
 				const data = (await res.json()) as { roots: Array<MediaRoot> }
 				mediaRoots = data.roots
@@ -401,7 +403,7 @@ export function MediaList(this: Handle) {
 				if (mediaRoots.length > 0 && (!selectedRoot || !rootExists)) {
 					selectedRoot = mediaRoots[0]!.name
 				}
-				this.update()
+				handle.update()
 			}
 		} catch {
 			// Ignore fetch errors for roots
@@ -412,13 +414,13 @@ export function MediaList(this: Handle) {
 		showUploadModal = false
 		uploadState = { status: 'idle' }
 		selectedFiles = null
-		this.update()
+		handle.update()
 	}
 
 	const handleFileSelect = (files: FileList | null) => {
 		selectedFiles = files
 		uploadState = { status: 'idle' }
-		this.update()
+		handle.update()
 	}
 
 	const uploadFiles = async () => {
@@ -428,7 +430,7 @@ export function MediaList(this: Handle) {
 		if (!file) return
 
 		uploadState = { status: 'uploading', progress: 0, filename: file.name }
-		this.update()
+		handle.update()
 
 		try {
 			const formData = new FormData()
@@ -441,7 +443,7 @@ export function MediaList(this: Handle) {
 			const res = await fetch('/admin/api/media/upload', {
 				method: 'POST',
 				body: formData,
-				signal: this.signal,
+				signal: handle.signal,
 			})
 
 			if (!res.ok) {
@@ -456,7 +458,7 @@ export function MediaList(this: Handle) {
 					status: 'error',
 					message: errorMessage,
 				}
-				this.update()
+				handle.update()
 				return
 			}
 
@@ -468,7 +470,7 @@ export function MediaList(this: Handle) {
 				mediaPath: data.file.mediaPath,
 			}
 			selectedFiles = null
-			this.update()
+			handle.update()
 
 			// Refresh the media list after successful upload
 			fetchData()
@@ -481,7 +483,7 @@ export function MediaList(this: Handle) {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Upload failed',
 			}
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -489,8 +491,8 @@ export function MediaList(this: Handle) {
 	const fetchData = async () => {
 		try {
 			const [mediaRes, assignmentsRes] = await Promise.all([
-				fetch('/admin/api/media', { signal: this.signal }),
-				fetch('/admin/api/media/assignments', { signal: this.signal }),
+				fetch('/admin/api/media', { signal: handle.signal }),
+				fetch('/admin/api/media/assignments', { signal: handle.signal }),
 			])
 
 			if (!mediaRes.ok) throw new Error(`Media: HTTP ${mediaRes.status}`)
@@ -508,14 +510,14 @@ export function MediaList(this: Handle) {
 				curatedFeeds: assignmentsData.curatedFeeds,
 				directoryFeeds: assignmentsData.directoryFeeds,
 			}
-			this.update()
+			handle.update()
 		} catch (err) {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			state = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -714,12 +716,12 @@ export function MediaList(this: Handle) {
 						onInput={(value) => {
 							searchQuery = value
 							currentPage = 1 // Reset to first page on search
-							this.update()
+							handle.update()
 						}}
 						onClear={() => {
 							searchQuery = ''
 							currentPage = 1
-							this.update()
+							handle.update()
 						}}
 					/>
 				</div>
@@ -1061,7 +1063,7 @@ export function MediaList(this: Handle) {
 						totalPages={totalPages}
 						onPageChange={(page) => {
 							currentPage = page
-							this.update()
+							handle.update()
 						}}
 					/>
 				)}
@@ -1095,7 +1097,7 @@ export function MediaList(this: Handle) {
 							} else {
 								bulkSelectedFeedIds.add(feedId)
 							}
-							this.update()
+							handle.update()
 						}}
 						onSave={saveBulkAssignments}
 						onCancel={closeBulkAssignModal}
@@ -1111,7 +1113,7 @@ export function MediaList(this: Handle) {
 						saving={bulkSaving}
 						onSelectFeed={(feedId) => {
 							bulkUnassignFeedId = feedId
-							this.update()
+							handle.update()
 						}}
 						onSave={saveBulkUnassignments}
 						onCancel={closeBulkUnassignModal}
@@ -1128,11 +1130,11 @@ export function MediaList(this: Handle) {
 						uploadState={uploadState}
 						onRootChange={(root) => {
 							selectedRoot = root
-							this.update()
+							handle.update()
 						}}
 						onSubdirectoryChange={(dir) => {
 							subdirectory = dir
-							this.update()
+							handle.update()
 						}}
 						onFileSelect={handleFileSelect}
 						onUpload={uploadFiles}
@@ -1140,7 +1142,7 @@ export function MediaList(this: Handle) {
 						onReset={() => {
 							uploadState = { status: 'idle' }
 							selectedFiles = null
-							this.update()
+							handle.update()
 						}}
 					/>
 				)}

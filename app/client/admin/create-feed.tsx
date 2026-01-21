@@ -85,7 +85,7 @@ type SubmitState =
 /**
  * CreateFeed component - form for creating a new feed (directory or curated).
  */
-export function CreateFeed(this: Handle) {
+export function CreateFeed(handle: Handle) {
 	// Feed type selection
 	let feedType: FeedType = 'directory'
 
@@ -128,28 +128,28 @@ export function CreateFeed(this: Handle) {
 	let submitState: SubmitState = { status: 'idle' }
 
 	// Fetch media roots on mount
-	fetch('/admin/api/directories', { signal: this.signal })
+	fetch('/admin/api/directories', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<{ roots: Array<MediaRoot> }>
 		})
 		.then((data) => {
 			rootsState = { status: 'success', roots: data.roots }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			rootsState = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	// Browse a directory
 	const browse = (rootName: string, path: string) => {
 		browseState = { status: 'loading' }
-		this.update()
+		handle.update()
 
 		const params = new URLSearchParams({ root: rootName, path })
-		fetch(`/admin/api/browse?${params}`, { signal: this.signal })
+		fetch(`/admin/api/browse?${params}`, { signal: handle.signal })
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<{
@@ -163,12 +163,12 @@ export function CreateFeed(this: Handle) {
 					entries: data.entries,
 					stats: data.stats,
 				}
-				this.update()
+				handle.update()
 			})
 			.catch((err) => {
-				if (this.signal.aborted) return
+				if (handle.signal.aborted) return
 				browseState = { status: 'error', message: err.message }
-				this.update()
+				handle.update()
 			})
 	}
 
@@ -218,12 +218,12 @@ export function CreateFeed(this: Handle) {
 			relativePath,
 			displayPath,
 		})
-		this.update()
+		handle.update()
 	}
 
 	const removeDirectory = (index: number) => {
 		directoryForm.selectedDirectories.splice(index, 1)
-		this.update()
+		handle.update()
 	}
 
 	const isCurrentDirectorySelected = (): boolean => {
@@ -243,7 +243,7 @@ export function CreateFeed(this: Handle) {
 			return
 
 		submitState = { status: 'submitting' }
-		this.update()
+		handle.update()
 
 		try {
 			// Convert to "mediaRoot:relativePath" format
@@ -278,7 +278,7 @@ export function CreateFeed(this: Handle) {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -333,7 +333,7 @@ export function CreateFeed(this: Handle) {
 				filename,
 			})
 		}
-		this.update()
+		handle.update()
 	}
 
 	const isFileSelected = (filename: string): boolean => {
@@ -353,7 +353,7 @@ export function CreateFeed(this: Handle) {
 		)
 		if (index >= 0) {
 			curatedForm.selectedFiles.splice(index, 1)
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -361,7 +361,7 @@ export function CreateFeed(this: Handle) {
 		if (!curatedForm.name.trim()) return
 
 		submitState = { status: 'submitting' }
-		this.update()
+		handle.update()
 
 		try {
 			const res = await fetch('/admin/api/feeds/curated', {
@@ -391,7 +391,7 @@ export function CreateFeed(this: Handle) {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			this.update()
+			handle.update()
 		}
 	}
 
@@ -479,7 +479,7 @@ export function CreateFeed(this: Handle) {
 							onClick={() => {
 								feedType = 'directory'
 								browseState = { status: 'idle' }
-								this.update()
+								handle.update()
 							}}
 							title="Directory Feed"
 							description="Automatically includes all media files from one or more folders"
@@ -491,7 +491,7 @@ export function CreateFeed(this: Handle) {
 								browseState = { status: 'idle' }
 								pickerRoot = null
 								pickerPath = ''
-								this.update()
+								handle.update()
 							}}
 							title="Curated Feed"
 							description="Manually select specific files to include"
@@ -520,7 +520,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										directoryForm.name = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -542,7 +542,7 @@ export function CreateFeed(this: Handle) {
 										directoryForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -565,7 +565,7 @@ export function CreateFeed(this: Handle) {
 										directoryForm.subtitle = (
 											e.target as HTMLInputElement
 										).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -584,7 +584,7 @@ export function CreateFeed(this: Handle) {
 									change: (e) => {
 										directoryForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -607,7 +607,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										directoryForm.link = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -629,7 +629,7 @@ export function CreateFeed(this: Handle) {
 										directoryForm.copyright = (
 											e.target as HTMLInputElement
 										).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -732,7 +732,7 @@ export function CreateFeed(this: Handle) {
 											directoryForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
-											this.update()
+											handle.update()
 										},
 									}}
 								>
@@ -756,7 +756,7 @@ export function CreateFeed(this: Handle) {
 										change: (e) => {
 											directoryForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
-											this.update()
+											handle.update()
 										},
 									}}
 								>
@@ -799,7 +799,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										curatedForm.name = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -821,7 +821,7 @@ export function CreateFeed(this: Handle) {
 										curatedForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -842,7 +842,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										curatedForm.subtitle = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -861,7 +861,7 @@ export function CreateFeed(this: Handle) {
 									change: (e) => {
 										curatedForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
-										this.update()
+										handle.update()
 									},
 								}}
 							>
@@ -884,7 +884,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										curatedForm.link = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -904,7 +904,7 @@ export function CreateFeed(this: Handle) {
 								on={{
 									input: (e) => {
 										curatedForm.copyright = (e.target as HTMLInputElement).value
-										this.update()
+										handle.update()
 									},
 								}}
 							/>
@@ -930,7 +930,7 @@ export function CreateFeed(this: Handle) {
 									searchFilter={pickerSearch}
 									onSearchChange={(value) => {
 										pickerSearch = value
-										this.update()
+										handle.update()
 									}}
 									onSelectRoot={selectPickerRoot}
 									onNavigateToDir={navigatePickerToDir}
@@ -972,7 +972,7 @@ export function CreateFeed(this: Handle) {
 											curatedForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
-											this.update()
+											handle.update()
 										},
 									}}
 								>
@@ -997,7 +997,7 @@ export function CreateFeed(this: Handle) {
 										change: (e) => {
 											curatedForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
-											this.update()
+											handle.update()
 										},
 									}}
 								>

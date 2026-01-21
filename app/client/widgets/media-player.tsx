@@ -485,7 +485,7 @@ function MediaPlayerContent() {
  * 1. Wait for render data via waitForRenderData (also signals readiness)
  * 2. Display loading, error, or content based on state
  */
-function MediaPlayerApp(this: Handle) {
+function MediaPlayerApp(handle: Handle) {
 	let state: 'loading' | 'ready' | 'error' = 'loading'
 	let media: MediaData | null = null
 	let errorMessage = ''
@@ -500,13 +500,13 @@ function MediaPlayerApp(this: Handle) {
 			if (!mediaData) {
 				state = 'error'
 				errorMessage = 'No media data received'
-				this.update()
+				handle.update()
 				return
 			}
 
 			media = mediaData
 			state = 'ready'
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
 			console.error('[MediaPlayer] Error receiving render data:', err)
@@ -521,7 +521,7 @@ function MediaPlayerApp(this: Handle) {
 			} else {
 				errorMessage = 'Unknown error'
 			}
-			this.update()
+			handle.update()
 		})
 
 	return () => {

@@ -892,6 +892,10 @@ export function MediaList(handle: Handle) {
 														? colors.primarySoftSubtle
 														: 'transparent',
 													position: 'relative',
+													// Safari fix: transform creates a proper stacking context
+													// without this, position:relative on <tr> doesn't work
+													// and ::after pseudo-elements escape to fill viewport
+													transform: 'translateZ(0)',
 													'&:hover, &:focus-within': {
 														backgroundColor: isSelected
 															? colors.primarySoft

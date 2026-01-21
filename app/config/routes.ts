@@ -1,4 +1,4 @@
-import { route } from '@remix-run/fetch-router'
+import { route } from 'remix/fetch-router'
 
 export default route({
 	feed: '/feed/:token',

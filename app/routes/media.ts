@@ -1,5 +1,5 @@
 import nodePath from 'node:path'
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'

@@ -4,7 +4,7 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { Action, RequestContext } from '@remix-run/fetch-router'
+import type { Action, RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import {

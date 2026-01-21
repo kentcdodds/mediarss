@@ -1,4 +1,4 @@
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'

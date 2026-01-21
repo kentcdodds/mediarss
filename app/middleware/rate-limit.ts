@@ -1,5 +1,5 @@
 import { invariant } from '@epic-web/invariant'
-import type { Middleware } from '@remix-run/fetch-router'
+import type { Middleware } from 'remix/fetch-router'
 import {
 	getAdminReadLimiter,
 	getAdminWriteLimiter,

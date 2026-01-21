@@ -1,4 +1,4 @@
-import type { Action, RequestContext } from '@remix-run/fetch-router'
+import type { Action, RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { getPublicKeyJwk } from '#app/oauth/index.ts'

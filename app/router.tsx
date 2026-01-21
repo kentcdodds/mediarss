@@ -1,6 +1,6 @@
 import path from 'node:path'
-import { createRouter, type Middleware } from '@remix-run/fetch-router'
-import { html } from '@remix-run/html-template'
+import { createRouter, type Middleware } from 'remix/fetch-router'
+import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'

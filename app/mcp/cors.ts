@@ -3,7 +3,7 @@
  * MCP requires CORS support for browser-based clients.
  */
 
-import type { RequestContext } from '@remix-run/fetch-router'
+import type { RequestContext } from 'remix/fetch-router'
 
 /**
  * Handler function type for Bun/Remix routes.

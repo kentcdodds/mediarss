@@ -2,7 +2,7 @@
 import '#app/config/init-env.ts'
 
 import { afterAll, expect, test } from 'bun:test'
-import type { RequestContext } from '@remix-run/fetch-router'
+import type { RequestContext } from 'remix/fetch-router'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'

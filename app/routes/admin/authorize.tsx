@@ -1,5 +1,5 @@
-import type { Action, RequestContext } from '@remix-run/fetch-router'
-import { html } from '@remix-run/html-template'
+import type { Action, RequestContext } from 'remix/fetch-router'
+import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'

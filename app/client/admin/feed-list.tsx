@@ -1,5 +1,5 @@
-import type { Handle } from '@remix-run/component'
 import { matchSorter, rankings } from 'match-sorter'
+import type { Handle } from 'remix/component'
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
@@ -56,13 +56,13 @@ type LoadingState =
 /**
  * FeedList component - displays all feeds in a card grid.
  */
-export function FeedList(this: Handle) {
+export function FeedList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let filterType: FilterType = 'all'
 
 	// Fetch feeds on mount
-	fetch('/admin/api/feeds', { signal: this.signal })
+	fetch('/admin/api/feeds', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
 			return res.json() as Promise<FeedsResponse>
@@ -75,12 +75,12 @@ export function FeedList(this: Handle) {
 			].sort((a, b) => b.createdAt - a.createdAt)
 
 			state = { status: 'success', feeds: allFeeds }
-			this.update()
+			handle.update()
 		})
 		.catch((err) => {
-			if (this.signal.aborted) return
+			if (handle.signal.aborted) return
 			state = { status: 'error', message: err.message }
-			this.update()
+			handle.update()
 		})
 
 	return () => {
@@ -188,7 +188,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'all'}
 								onClick={() => {
 									filterType = 'all'
-									this.update()
+									handle.update()
 								}}
 							>
 								All
@@ -197,7 +197,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'directory'}
 								onClick={() => {
 									filterType = 'directory'
-									this.update()
+									handle.update()
 								}}
 								color="#3b82f6"
 							>
@@ -207,7 +207,7 @@ export function FeedList(this: Handle) {
 								active={filterType === 'curated'}
 								onClick={() => {
 									filterType = 'curated'
-									this.update()
+									handle.update()
 								}}
 								color="#8b5cf6"
 							>
@@ -283,11 +283,11 @@ export function FeedList(this: Handle) {
 							value={searchQuery}
 							onInput={(value) => {
 								searchQuery = value
-								this.update()
+								handle.update()
 							}}
 							onClear={() => {
 								searchQuery = ''
-								this.update()
+								handle.update()
 							}}
 						/>
 					</div>
@@ -319,7 +319,7 @@ export function FeedList(this: Handle) {
 }
 
 function LoadingSpinner() {
-	return (
+	return () => (
 		<div
 			css={{
 				display: 'flex',
@@ -345,8 +345,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage({ message }: { message: string }) {
-	return (
+function ErrorMessage() {
+	return ({ message }: { message: string }) => (
 		<div
 			css={{
 				padding: spacing.xl,
@@ -369,7 +369,7 @@ function ErrorMessage({ message }: { message: string }) {
 }
 
 function EmptyState() {
-	return (
+	return () => (
 		<div
 			css={{
 				textAlign: 'center',
@@ -402,53 +402,55 @@ function EmptyState() {
 	)
 }
 
-function NoResults({
-	searchQuery,
-	filterType,
-}: {
-	searchQuery: string
-	filterType: FilterType
-}) {
-	const filterLabel = filterType !== 'all' ? ` ${filterType}` : ''
-	const hasSearch = searchQuery.trim().length > 0
+function NoResults() {
+	return ({
+		searchQuery,
+		filterType,
+	}: {
+		searchQuery: string
+		filterType: FilterType
+	}) => {
+		const filterLabel = filterType !== 'all' ? ` ${filterType}` : ''
+		const hasSearch = searchQuery.trim().length > 0
 
-	return (
-		<div
-			css={{
-				textAlign: 'center',
-				padding: spacing['2xl'],
-				backgroundColor: colors.surface,
-				borderRadius: radius.lg,
-				border: `1px solid ${colors.border}`,
-			}}
-		>
-			<p
+		return (
+			<div
 				css={{
-					color: colors.textMuted,
-					fontSize: typography.fontSize.lg,
-					margin: 0,
-					marginBottom: spacing.md,
+					textAlign: 'center',
+					padding: spacing['2xl'],
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
 				}}
 			>
-				{hasSearch
-					? `No${filterLabel} feeds match "${searchQuery}"`
-					: `No${filterLabel} feeds found`}
-			</p>
-			<p
-				css={{
-					color: colors.textMuted,
-					fontSize: typography.fontSize.sm,
-					margin: 0,
-				}}
-			>
-				{hasSearch
-					? 'Try a different search term'
-					: filterType !== 'all'
-						? 'Try selecting a different filter'
-						: 'Create your first feed to get started'}
-			</p>
-		</div>
-	)
+				<p
+					css={{
+						color: colors.textMuted,
+						fontSize: typography.fontSize.lg,
+						margin: 0,
+						marginBottom: spacing.md,
+					}}
+				>
+					{hasSearch
+						? `No${filterLabel} feeds match "${searchQuery}"`
+						: `No${filterLabel} feeds found`}
+				</p>
+				<p
+					css={{
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+						margin: 0,
+					}}
+				>
+					{hasSearch
+						? 'Try a different search term'
+						: filterType !== 'all'
+							? 'Try selecting a different filter'
+							: 'Create your first feed to get started'}
+				</p>
+			</div>
+		)
+	}
 }
 
 /**
@@ -462,238 +464,242 @@ function parseDirectoryPaths(pathsJson: string): Array<string> {
 	}
 }
 
-function FilterButton({
-	active,
-	onClick,
-	color,
-	children,
-}: {
-	active: boolean
-	onClick: () => void
-	color?: string
-	children: string
-}) {
-	const activeColor = color ?? colors.primary
-	return (
-		<button
-			type="button"
-			aria-pressed={active}
-			css={{
-				padding: `${spacing.xs} ${spacing.sm}`,
-				fontSize: typography.fontSize.xs,
-				fontWeight: typography.fontWeight.medium,
-				color: active ? colors.background : colors.textMuted,
-				backgroundColor: active ? activeColor : 'transparent',
-				border: `1px solid ${active ? activeColor : colors.border}`,
-				borderRadius: radius.sm,
-				cursor: 'pointer',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					borderColor: activeColor,
-					color: active ? colors.background : colors.text,
-				},
-			}}
-			on={{ click: onClick }}
-		>
-			{children}
-		</button>
-	)
+function FilterButton() {
+	return ({
+		active,
+		onClick,
+		color,
+		children,
+	}: {
+		active: boolean
+		onClick: () => void
+		color?: string
+		children: string
+	}) => {
+		const activeColor = color ?? colors.primary
+		return (
+			<button
+				type="button"
+				aria-pressed={active}
+				css={{
+					padding: `${spacing.xs} ${spacing.sm}`,
+					fontSize: typography.fontSize.xs,
+					fontWeight: typography.fontWeight.medium,
+					color: active ? colors.background : colors.textMuted,
+					backgroundColor: active ? activeColor : 'transparent',
+					border: `1px solid ${active ? activeColor : colors.border}`,
+					borderRadius: radius.sm,
+					cursor: 'pointer',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						borderColor: activeColor,
+						color: active ? colors.background : colors.text,
+					},
+				}}
+				on={{ click: onClick }}
+			>
+				{children}
+			</button>
+		)
+	}
 }
 
-function FeedCard({ feed }: { feed: Feed }) {
-	const isDirectory = feed.type === 'directory'
-	const directoryPaths = isDirectory
-		? parseDirectoryPaths((feed as DirectoryFeed).directoryPaths)
-		: []
+function FeedCard() {
+	return ({ feed }: { feed: Feed }) => {
+		const isDirectory = feed.type === 'directory'
+		const directoryPaths = isDirectory
+			? parseDirectoryPaths((feed as DirectoryFeed).directoryPaths)
+			: []
 
-	return (
-		<div
-			css={{
-				backgroundColor: colors.surface,
-				borderRadius: radius.lg,
-				border: `1px solid ${colors.border}`,
-				padding: spacing.lg,
-				display: 'flex',
-				flexDirection: 'column',
-				gap: spacing.md,
-				transition: `all ${transitions.fast}`,
-				boxShadow: shadows.sm,
-				'&:hover': {
-					boxShadow: shadows.md,
-					borderColor: colors.primary,
-				},
-			}}
-		>
-			{/* Artwork and Header Row */}
+		return (
 			<div
 				css={{
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					padding: spacing.lg,
 					display: 'flex',
+					flexDirection: 'column',
 					gap: spacing.md,
-					alignItems: 'flex-start',
+					transition: `all ${transitions.fast}`,
+					boxShadow: shadows.sm,
+					'&:hover': {
+						boxShadow: shadows.md,
+						borderColor: colors.primary,
+					},
 				}}
 			>
-				{/* Artwork */}
-				<img
-					src={`/admin/api/feeds/${feed.id}/artwork`}
-					alt=""
-					css={{
-						width: '64px',
-						height: '64px',
-						borderRadius: radius.md,
-						objectFit: 'cover',
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						flexShrink: 0,
-					}}
-					on={{
-						error: (e: Event) => {
-							// Fallback to placeholder if no artwork
-							const img = e.target as HTMLImageElement
-							// Guard against repeated error events
-							if (img.dataset.fallback) return
-							img.dataset.fallback = 'true'
-							// Escape XML special characters for the SVG
-							const char = feed.name.trim()[0]?.toUpperCase() ?? '?'
-							const escapedChar = char
-								.replace(/&/g, '&amp;')
-								.replace(/</g, '&lt;')
-								.replace(/>/g, '&gt;')
-							img.src = `data:image/svg+xml,${encodeURIComponent(
-								`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1a1a2e"/><text x="32" y="40" font-family="system-ui" font-size="24" font-weight="bold" fill="#e94560" text-anchor="middle">${escapedChar}</text></svg>`,
-							)}`
-						},
-					}}
-				/>
-
-				{/* Name and Badge */}
-				<div css={{ flex: 1, minWidth: 0 }}>
-					<div
-						css={{
-							display: 'flex',
-							alignItems: 'flex-start',
-							justifyContent: 'space-between',
-							gap: spacing.sm,
-							marginBottom: spacing.xs,
-						}}
-					>
-						<Link
-							href={`/admin/feeds/${feed.id}`}
-							css={{
-								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								textDecoration: 'none',
-								overflow: 'hidden',
-								textOverflow: 'ellipsis',
-								whiteSpace: 'nowrap',
-								'&:hover': {
-									color: colors.primary,
-								},
-							}}
-						>
-							{feed.name}
-						</Link>
-						<span
-							css={{
-								fontSize: typography.fontSize.xs,
-								fontWeight: typography.fontWeight.medium,
-								color: isDirectory ? '#3b82f6' : '#8b5cf6',
-								backgroundColor: isDirectory
-									? 'rgba(59, 130, 246, 0.1)'
-									: 'rgba(139, 92, 246, 0.1)',
-								padding: `${spacing.xs} ${spacing.sm}`,
-								borderRadius: radius.sm,
-								textTransform: 'uppercase',
-								letterSpacing: '0.05em',
-								flexShrink: 0,
-							}}
-						>
-							{feed.type}
-						</span>
-					</div>
-					{feed.description && (
-						<p
-							css={{
-								fontSize: typography.fontSize.xs,
-								color: colors.textMuted,
-								margin: 0,
-								display: '-webkit-box',
-								WebkitLineClamp: 2,
-								WebkitBoxOrient: 'vertical',
-								overflow: 'hidden',
-							}}
-						>
-							{feed.description}
-						</p>
-					)}
-				</div>
-			</div>
-
-			{isDirectory && directoryPaths.length > 0 && (
+				{/* Artwork and Header Row */}
 				<div
 					css={{
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-						fontFamily: 'monospace',
 						display: 'flex',
-						flexDirection: 'column',
-						gap: spacing.xs,
+						gap: spacing.md,
+						alignItems: 'flex-start',
 					}}
 				>
-					{directoryPaths.map((path) => (
-						<span
-							key={path}
+					{/* Artwork */}
+					<img
+						src={`/admin/api/feeds/${feed.id}/artwork`}
+						alt=""
+						css={{
+							width: '64px',
+							height: '64px',
+							borderRadius: radius.md,
+							objectFit: 'cover',
+							backgroundColor: colors.background,
+							border: `1px solid ${colors.border}`,
+							flexShrink: 0,
+						}}
+						on={{
+							error: (e: Event) => {
+								// Fallback to placeholder if no artwork
+								const img = e.target as HTMLImageElement
+								// Guard against repeated error events
+								if (img.dataset.fallback) return
+								img.dataset.fallback = 'true'
+								// Escape XML special characters for the SVG
+								const char = feed.name.trim()[0]?.toUpperCase() ?? '?'
+								const escapedChar = char
+									.replace(/&/g, '&amp;')
+									.replace(/</g, '&lt;')
+									.replace(/>/g, '&gt;')
+								img.src = `data:image/svg+xml,${encodeURIComponent(
+									`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1a1a2e"/><text x="32" y="40" font-family="system-ui" font-size="24" font-weight="bold" fill="#e94560" text-anchor="middle">${escapedChar}</text></svg>`,
+								)}`
+							},
+						}}
+					/>
+
+					{/* Name and Badge */}
+					<div css={{ flex: 1, minWidth: 0 }}>
+						<div
 							css={{
-								overflow: 'hidden',
-								textOverflow: 'ellipsis',
-								whiteSpace: 'nowrap',
+								display: 'flex',
+								alignItems: 'flex-start',
+								justifyContent: 'space-between',
+								gap: spacing.sm,
+								marginBottom: spacing.xs,
 							}}
 						>
-							{path}
-						</span>
-					))}
+							<Link
+								href={`/admin/feeds/${feed.id}`}
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									textDecoration: 'none',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									'&:hover': {
+										color: colors.primary,
+									},
+								}}
+							>
+								{feed.name}
+							</Link>
+							<span
+								css={{
+									fontSize: typography.fontSize.xs,
+									fontWeight: typography.fontWeight.medium,
+									color: isDirectory ? '#3b82f6' : '#8b5cf6',
+									backgroundColor: isDirectory
+										? 'rgba(59, 130, 246, 0.1)'
+										: 'rgba(139, 92, 246, 0.1)',
+									padding: `${spacing.xs} ${spacing.sm}`,
+									borderRadius: radius.sm,
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em',
+									flexShrink: 0,
+								}}
+							>
+								{feed.type}
+							</span>
+						</div>
+						{feed.description && (
+							<p
+								css={{
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									margin: 0,
+									display: '-webkit-box',
+									WebkitLineClamp: 2,
+									WebkitBoxOrient: 'vertical',
+									overflow: 'hidden',
+								}}
+							>
+								{feed.description}
+							</p>
+						)}
+					</div>
 				</div>
-			)}
 
-			<div
-				css={{
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					marginTop: 'auto',
-					paddingTop: spacing.sm,
-					borderTop: `1px solid ${colors.border}`,
-					gap: spacing.md,
-					flexWrap: 'wrap',
-				}}
-			>
-				<span
+				{isDirectory && directoryPaths.length > 0 && (
+					<div
+						css={{
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							fontFamily: 'monospace',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: spacing.xs,
+						}}
+					>
+						{directoryPaths.map((path) => (
+							<span
+								key={path}
+								css={{
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								}}
+							>
+								{path}
+							</span>
+						))}
+					</div>
+				)}
+
+				<div
 					css={{
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						marginTop: 'auto',
+						paddingTop: spacing.sm,
+						borderTop: `1px solid ${colors.border}`,
+						gap: spacing.md,
+						flexWrap: 'wrap',
 					}}
 				>
-					{feed.itemCount === 0 ? (
-						<span css={{ color: '#f59e0b' }}>No files</span>
-					) : (
-						<>
-							{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
-						</>
-					)}
-				</span>
-				<span
-					css={{
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-					}}
-				>
-					{feed.lastAccessedAt ? (
-						<>Accessed {formatRelativeTime(feed.lastAccessedAt)}</>
-					) : (
-						<span css={{ fontStyle: 'italic' }}>Never accessed</span>
-					)}
-				</span>
+					<span
+						css={{
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+						}}
+					>
+						{feed.itemCount === 0 ? (
+							<span css={{ color: '#f59e0b' }}>No files</span>
+						) : (
+							<>
+								{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
+							</>
+						)}
+					</span>
+					<span
+						css={{
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+						}}
+					>
+						{feed.lastAccessedAt ? (
+							<>Accessed {formatRelativeTime(feed.lastAccessedAt)}</>
+						) : (
+							<span css={{ fontStyle: 'italic' }}>Never accessed</span>
+						)}
+					</span>
+				</div>
 			</div>
-		</div>
-	)
+		)
+	}
 }

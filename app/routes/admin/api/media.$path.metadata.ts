@@ -1,4 +1,4 @@
-import type { Action } from '@remix-run/fetch-router'
+import type { Action } from 'remix/fetch-router'
 import { z } from 'zod'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'

@@ -1,5 +1,5 @@
-import type { Handle } from 'remix/component'
 import { matchSorter, rankings } from 'match-sorter'
+import type { Handle } from 'remix/component'
 import {
 	Modal,
 	ModalButton,

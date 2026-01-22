@@ -36,6 +36,9 @@ type DirectoryFeed = {
 	link: string | null
 	copyright: string | null
 	imageUrl: string | null
+	author: string | null
+	ownerName: string | null
+	ownerEmail: string | null
 	type: 'directory'
 	createdAt: number
 	updatedAt: number
@@ -53,6 +56,9 @@ type CuratedFeed = {
 	link: string | null
 	copyright: string | null
 	imageUrl: string | null
+	author: string | null
+	ownerName: string | null
+	ownerEmail: string | null
 	type: 'curated'
 	createdAt: number
 	updatedAt: number
@@ -160,6 +166,9 @@ type EditFormState = {
 	name: string
 	description: string
 	subtitle: string
+	author: string
+	ownerName: string
+	ownerEmail: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
 	feedType: 'episodic' | 'serial'
@@ -206,6 +215,9 @@ export function FeedDetail(handle: Handle) {
 		name: '',
 		description: '',
 		subtitle: '',
+		author: '',
+		ownerName: '',
+		ownerEmail: '',
 		sortFields: '',
 		sortOrder: 'asc',
 		feedType: 'episodic',
@@ -466,6 +478,9 @@ export function FeedDetail(handle: Handle) {
 			name: feed.name,
 			description: feed.description,
 			subtitle: feed.subtitle ?? '',
+			author: feed.author ?? '',
+			ownerName: feed.ownerName ?? '',
+			ownerEmail: feed.ownerEmail ?? '',
 			sortFields: feed.sortFields,
 			sortOrder: feed.sortOrder,
 			feedType: feed.feedType ?? 'episodic',
@@ -506,6 +521,9 @@ export function FeedDetail(handle: Handle) {
 				name: editForm.name.trim(),
 				description: editForm.description.trim(),
 				subtitle: editForm.subtitle.trim() || null,
+				author: editForm.author.trim() || null,
+				ownerName: editForm.ownerName.trim() || null,
+				ownerEmail: editForm.ownerEmail.trim() || null,
 				sortFields: editForm.sortFields,
 				sortOrder: editForm.sortOrder,
 				feedType: editForm.feedType,
@@ -1054,6 +1072,10 @@ export function FeedDetail(handle: Handle) {
 							}}
 							onSubtitleChange={(value) => {
 								editForm.subtitle = value
+								handle.update()
+							}}
+							onMetadataChange={(field, value) => {
+								editForm[field] = value
 								handle.update()
 							}}
 							onSortFieldsChange={(value) => {
@@ -2445,6 +2467,8 @@ const inputStyles = {
 	},
 }
 
+type MetadataField = 'author' | 'ownerName' | 'ownerEmail'
+
 function EditForm() {
 	return ({
 		form,
@@ -2454,6 +2478,7 @@ function EditForm() {
 		onNameChange,
 		onDescriptionChange,
 		onSubtitleChange,
+		onMetadataChange,
 		onSortFieldsChange,
 		onSortOrderChange,
 		onFeedTypeChange,
@@ -2471,6 +2496,7 @@ function EditForm() {
 		onNameChange: (value: string) => void
 		onDescriptionChange: (value: string) => void
 		onSubtitleChange: (value: string) => void
+		onMetadataChange: (field: MetadataField, value: string) => void
 		onSortFieldsChange: (value: string) => void
 		onSortOrderChange: (value: 'asc' | 'desc') => void
 		onFeedTypeChange: (value: 'episodic' | 'serial') => void
@@ -2575,6 +2601,121 @@ function EditForm() {
 					on={{
 						input: (e) =>
 							onSubtitleChange((e.target as HTMLInputElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-author"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Author
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					Shown under the podcast title in most apps. Falls back to owner name
+					if not provided.
+				</p>
+				<input
+					id="edit-feed-author"
+					type="text"
+					value={form.author}
+					placeholder="Author or publisher name"
+					css={inputStyles}
+					on={{
+						input: (e) =>
+							onMetadataChange('author', (e.target as HTMLInputElement).value),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-owner-name"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Owner Name
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					iTunes owner metadata for contact name.
+				</p>
+				<input
+					id="edit-feed-owner-name"
+					type="text"
+					value={form.ownerName}
+					placeholder="Owner or publisher name"
+					css={inputStyles}
+					on={{
+						input: (e) =>
+							onMetadataChange(
+								'ownerName',
+								(e.target as HTMLInputElement).value,
+							),
+					}}
+				/>
+			</div>
+
+			<div css={{ marginBottom: spacing.md }}>
+				<label
+					for="edit-feed-owner-email"
+					css={{
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}}
+				>
+					Owner Email
+				</label>
+				<p
+					css={{
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						margin: `0 0 ${spacing.sm} 0`,
+						lineHeight: 1.5,
+					}}
+				>
+					iTunes owner contact email (not shown in podcast apps).
+				</p>
+				<input
+					id="edit-feed-owner-email"
+					type="email"
+					value={form.ownerEmail}
+					placeholder="owner@example.com"
+					css={inputStyles}
+					on={{
+						input: (e) =>
+							onMetadataChange(
+								'ownerEmail',
+								(e.target as HTMLInputElement).value,
+							),
 					}}
 				/>
 			</div>

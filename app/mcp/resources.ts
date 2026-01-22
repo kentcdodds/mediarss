@@ -13,6 +13,7 @@ import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,
 	listDirectoryFeeds,
+	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
@@ -110,7 +111,7 @@ export async function initializeResources(
 										sortOrder: feed.sortOrder,
 										...(feed.type === 'directory'
 											? {
-													directoryPaths: feed.directoryPaths,
+													directoryPaths: parseDirectoryPaths(feed),
 													filterIn: feed.filterIn,
 													filterOut: feed.filterOut,
 												}
@@ -197,7 +198,7 @@ export async function initializeResources(
 										sortOrder: feed.sortOrder,
 										...(feed.type === 'directory'
 											? {
-													directoryPaths: feed.directoryPaths,
+													directoryPaths: parseDirectoryPaths(feed),
 													filterIn: feed.filterIn,
 													filterOut: feed.filterOut,
 												}

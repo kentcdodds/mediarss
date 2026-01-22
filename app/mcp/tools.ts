@@ -29,6 +29,7 @@ import {
 	deleteDirectoryFeed,
 	getDirectoryFeedById,
 	listDirectoryFeeds,
+	parseDirectoryPaths,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import {
@@ -475,7 +476,7 @@ export async function initializeTools(
 							sortOrder: feed.sortOrder,
 							...(feed.type === 'directory'
 								? {
-										directoryPaths: feed.directoryPaths,
+										directoryPaths: parseDirectoryPaths(feed),
 										filterIn: feed.filterIn,
 										filterOut: feed.filterOut,
 									}
@@ -585,7 +586,7 @@ export async function initializeTools(
 							sortOrder: feed.sortOrder,
 							...(feed.type === 'directory'
 								? {
-										directoryPaths: feed.directoryPaths,
+										directoryPaths: parseDirectoryPaths(feed),
 										filterIn: feed.filterIn,
 										filterOut: feed.filterOut,
 									}
@@ -1605,7 +1606,7 @@ export async function initializeTools(
 								feedType: feed.feedType,
 								sortFields: feed.sortFields,
 								sortOrder: feed.sortOrder,
-								directoryPaths: feed.directoryPaths,
+								directoryPaths: parseDirectoryPaths(feed),
 								filterIn: feed.filterIn,
 								filterOut: feed.filterOut,
 								overrides: feed.overrides,
@@ -2134,7 +2135,7 @@ export async function initializeTools(
 								sortOrder: updatedFeed.sortOrder,
 								...(updatedFeed.type === 'directory'
 									? {
-											directoryPaths: updatedFeed.directoryPaths,
+											directoryPaths: parseDirectoryPaths(updatedFeed),
 											filterIn: updatedFeed.filterIn,
 											filterOut: updatedFeed.filterOut,
 										}

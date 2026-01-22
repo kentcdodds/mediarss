@@ -1074,16 +1074,8 @@ export function FeedDetail(handle: Handle) {
 								editForm.subtitle = value
 								handle.update()
 							}}
-							onAuthorChange={(value) => {
-								editForm.author = value
-								handle.update()
-							}}
-							onOwnerNameChange={(value) => {
-								editForm.ownerName = value
-								handle.update()
-							}}
-							onOwnerEmailChange={(value) => {
-								editForm.ownerEmail = value
+							onMetadataChange={(field, value) => {
+								editForm[field] = value
 								handle.update()
 							}}
 							onSortFieldsChange={(value) => {
@@ -2475,6 +2467,8 @@ const inputStyles = {
 	},
 }
 
+type MetadataField = 'author' | 'ownerName' | 'ownerEmail'
+
 function EditForm() {
 	return ({
 		form,
@@ -2484,9 +2478,7 @@ function EditForm() {
 		onNameChange,
 		onDescriptionChange,
 		onSubtitleChange,
-		onAuthorChange,
-		onOwnerNameChange,
-		onOwnerEmailChange,
+		onMetadataChange,
 		onSortFieldsChange,
 		onSortOrderChange,
 		onFeedTypeChange,
@@ -2504,9 +2496,7 @@ function EditForm() {
 		onNameChange: (value: string) => void
 		onDescriptionChange: (value: string) => void
 		onSubtitleChange: (value: string) => void
-		onAuthorChange: (value: string) => void
-		onOwnerNameChange: (value: string) => void
-		onOwnerEmailChange: (value: string) => void
+		onMetadataChange: (field: MetadataField, value: string) => void
 		onSortFieldsChange: (value: string) => void
 		onSortOrderChange: (value: 'asc' | 'desc') => void
 		onFeedTypeChange: (value: 'episodic' | 'serial') => void
@@ -2646,7 +2636,8 @@ function EditForm() {
 					placeholder="Author or publisher name"
 					css={inputStyles}
 					on={{
-						input: (e) => onAuthorChange((e.target as HTMLInputElement).value),
+						input: (e) =>
+							onMetadataChange('author', (e.target as HTMLInputElement).value),
 					}}
 				/>
 			</div>
@@ -2682,7 +2673,10 @@ function EditForm() {
 					css={inputStyles}
 					on={{
 						input: (e) =>
-							onOwnerNameChange((e.target as HTMLInputElement).value),
+							onMetadataChange(
+								'ownerName',
+								(e.target as HTMLInputElement).value,
+							),
 					}}
 				/>
 			</div>
@@ -2718,7 +2712,10 @@ function EditForm() {
 					css={inputStyles}
 					on={{
 						input: (e) =>
-							onOwnerEmailChange((e.target as HTMLInputElement).value),
+							onMetadataChange(
+								'ownerEmail',
+								(e.target as HTMLInputElement).value,
+							),
 					}}
 				/>
 			</div>

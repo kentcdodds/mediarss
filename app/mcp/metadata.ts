@@ -240,7 +240,7 @@ Inputs:
 - name: string (optional) — New name
 - description: string (optional) — New description
 - subtitle: string|null (optional) — New subtitle/tagline (null clears it)
-- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- imageUrl, author, ownerName, ownerEmail, owner, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
 - sortFields, sortOrder, overrides: (optional) — Feed configuration
 - directoryPaths, filterIn, filterOut: (optional) — Directory-feed-only settings
 
@@ -252,6 +252,7 @@ Examples:
 - Rename: { id: "abc123", name: "New Name" }
 - Update description: { id: "abc123", description: "Updated description" }
 - Both: { id: "abc123", name: "New Name", description: "New description" }
+- Update author/owner: { id: "abc123", author: "Jane Doe", owner: { name: "Acme Media", email: "ops@acme.com" } }
 
 Next: Use \`get_feed\` to verify changes.`,
 	},

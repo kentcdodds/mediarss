@@ -1915,6 +1915,19 @@ export async function initializeTools(
 						.nullable()
 						.optional()
 						.describe('New iTunes owner email (or null to clear)'),
+					owner: z
+						.union([
+							z.string(),
+							z.object({
+								name: z.string().nullable().optional(),
+								email: z.string().email().nullable().optional(),
+							}),
+							z.null(),
+						])
+						.optional()
+						.describe(
+							'Owner info (optional). Use a string for ownerName, { name, email }, or null to clear both.',
+						),
 					language: z
 						.string()
 						.optional()
@@ -1988,6 +2001,7 @@ export async function initializeTools(
 				author,
 				ownerName,
 				ownerEmail,
+				owner,
 				language,
 				explicit,
 				category,
@@ -2016,6 +2030,24 @@ export async function initializeTools(
 				}
 
 				try {
+					const ownerIsNull = owner === null
+					const resolvedOwnerName =
+						ownerName !== undefined
+							? ownerName
+							: ownerIsNull
+								? null
+								: typeof owner === 'string'
+									? owner
+									: owner?.name
+					const resolvedOwnerEmail =
+						ownerEmail !== undefined
+							? ownerEmail
+							: ownerIsNull
+								? null
+								: typeof owner === 'string'
+									? undefined
+									: owner?.email
+
 					if (feed.type === 'curated') {
 						const hasDirectoryOnlyUpdates =
 							directoryPaths !== undefined ||
@@ -2061,8 +2093,8 @@ export async function initializeTools(
 							sortOrder,
 							imageUrl,
 							author,
-							ownerName,
-							ownerEmail,
+						ownerName: resolvedOwnerName,
+						ownerEmail: resolvedOwnerEmail,
 							language,
 							explicit,
 							category,
@@ -2082,8 +2114,8 @@ export async function initializeTools(
 							sortOrder,
 							imageUrl,
 							author,
-							ownerName,
-							ownerEmail,
+							ownerName: resolvedOwnerName,
+							ownerEmail: resolvedOwnerEmail,
 							language,
 							explicit,
 							category,

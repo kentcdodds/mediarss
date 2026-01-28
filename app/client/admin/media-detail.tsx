@@ -525,7 +525,6 @@ export function MediaDetail(handle: Handle) {
 								alt={media.title}
 								css={{
 									width: '100%',
-									aspectRatio: '1',
 									...artworkLayout.centeredContain,
 									display: 'block',
 								}}

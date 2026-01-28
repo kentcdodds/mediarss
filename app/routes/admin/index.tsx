@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
@@ -20,12 +20,12 @@ const adminShellHandler = {
 	},
 }
 
-export const adminHandler = adminShellHandler satisfies Action<
+export const adminHandler = adminShellHandler satisfies BuildAction<
 	typeof routes.admin.method,
-	typeof routes.admin.pattern.source
+	typeof routes.admin.pattern
 >
 
-export const adminCatchAllHandler = adminShellHandler satisfies Action<
+export const adminCatchAllHandler = adminShellHandler satisfies BuildAction<
 	typeof routes.adminCatchAll.method,
-	typeof routes.adminCatchAll.pattern.source
+	typeof routes.adminCatchAll.pattern
 >

@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
@@ -53,9 +53,9 @@ export default {
 
 		return Response.json({ error: 'Method not allowed' }, { status: 405 })
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiFeedArtwork.method,
-	typeof routes.adminApiFeedArtwork.pattern.source
+	typeof routes.adminApiFeedArtwork.pattern
 >
 
 /**

@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { resolveMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { type MediaFile, scanAllMediaRoots } from '#app/helpers/media.ts'
@@ -66,7 +66,7 @@ export default {
 
 		return Response.json({ items })
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiMedia.method,
-	typeof routes.adminApiMedia.pattern.source
+	typeof routes.adminApiMedia.pattern
 >

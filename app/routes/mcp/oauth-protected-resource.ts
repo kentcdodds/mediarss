@@ -6,7 +6,7 @@
  * telling them where to authenticate.
  */
 
-import type { Action, RequestContext } from 'remix/fetch-router'
+import type { BuildAction, RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
@@ -55,7 +55,7 @@ export default {
 			return handleGet(context)
 		},
 	}),
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.mcpProtectedResource.method,
-	typeof routes.mcpProtectedResource.pattern.source
+	typeof routes.mcpProtectedResource.pattern
 >

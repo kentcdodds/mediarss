@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { z } from 'zod'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'
@@ -376,7 +376,7 @@ export default {
 
 		return Response.json(response)
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiMediaMetadata.method,
-	typeof routes.adminApiMediaMetadata.pattern.source
+	typeof routes.adminApiMediaMetadata.pattern
 >

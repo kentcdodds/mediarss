@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
@@ -226,7 +226,7 @@ export default {
 
 		return Response.json(response)
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiMediaDetail.method,
-	typeof routes.adminApiMediaDetail.pattern.source
+	typeof routes.adminApiMediaDetail.pattern
 >

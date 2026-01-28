@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { getMediaRootByName, parseMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
@@ -72,9 +72,9 @@ export default {
 
 		return Response.json({ error: 'Method not allowed' }, { status: 405 })
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiMediaAssignments.method,
-	typeof routes.adminApiMediaAssignments.pattern.source
+	typeof routes.adminApiMediaAssignments.pattern
 >
 
 function handleGet(): Response {

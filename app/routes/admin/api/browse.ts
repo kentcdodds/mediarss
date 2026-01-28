@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import nodePath from 'node:path'
 import { fileTypeFromFile } from 'file-type'
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { getMediaRootByName } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 
@@ -236,7 +236,7 @@ export default {
 			stats,
 		})
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiBrowse.method,
-	typeof routes.adminApiBrowse.pattern.source
+	typeof routes.adminApiBrowse.pattern
 >

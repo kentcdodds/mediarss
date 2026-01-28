@@ -1,5 +1,5 @@
 import nodePath from 'node:path'
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
@@ -97,7 +97,4 @@ export default {
 			'public, max-age=31536000',
 		)
 	},
-} satisfies Action<
-	typeof routes.media.method,
-	typeof routes.media.pattern.source
->
+} satisfies BuildAction<typeof routes.media.method, typeof routes.media.pattern>

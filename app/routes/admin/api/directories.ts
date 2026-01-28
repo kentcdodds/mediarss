@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 
@@ -15,7 +15,7 @@ export default {
 			roots,
 		})
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiDirectories.method,
-	typeof routes.adminApiDirectories.pattern.source
+	typeof routes.adminApiDirectories.pattern
 >

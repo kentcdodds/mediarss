@@ -68,6 +68,13 @@ export const transitions = {
 	normal: 'var(--transition-normal)',
 } as const
 
+export const artworkLayout = {
+	centeredContain: {
+		objectFit: 'contain',
+		objectPosition: 'center',
+	},
+} as const
+
 // Responsive tokens - these change based on screen size
 export const responsive = {
 	spacingPage: 'var(--spacing-page)',

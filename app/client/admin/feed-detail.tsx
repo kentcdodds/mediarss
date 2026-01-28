@@ -12,6 +12,7 @@ import {
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
+	artworkLayout,
 	colors,
 	mq,
 	radius,
@@ -1197,8 +1198,7 @@ export function FeedDetail(handle: Handle) {
 									width: '120px',
 									height: '120px',
 									borderRadius: radius.md,
-									objectFit: 'contain',
-									objectPosition: 'center',
+									...artworkLayout.centeredContain,
 									backgroundColor: colors.background,
 									border: `1px solid ${colors.border}`,
 								}}
@@ -1741,8 +1741,7 @@ export function FeedDetail(handle: Handle) {
 														width: '32px',
 														height: '32px',
 														borderRadius: radius.sm,
-														objectFit: 'contain',
-														objectPosition: 'center',
+														...artworkLayout.centeredContain,
 														backgroundColor: colors.background,
 													}}
 												/>

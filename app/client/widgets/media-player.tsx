@@ -10,6 +10,7 @@
  */
 import { createRoot, type Handle } from 'remix/component'
 import { z } from 'zod'
+import { artworkLayout } from '#app/styles/tokens.ts'
 import { waitForRenderData } from './mcp-ui.ts'
 
 /**
@@ -299,8 +300,7 @@ function MediaPlayerContent() {
 								css={{
 									width: '100%',
 									height: '100%',
-									objectFit: 'contain',
-									objectPosition: 'center',
+									...artworkLayout.centeredContain,
 								}}
 							/>
 						</div>

@@ -191,6 +191,26 @@ export function MediaList(handle: Handle) {
 	const getItemKey = (item: MediaItem) =>
 		`${item.rootName}:${item.relativePath}`
 
+	const getMediaDetailHref = (item: MediaItem) =>
+		`/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(
+			item.relativePath,
+		)}`
+
+	const shouldIgnoreRowClick = (event: MouseEvent) => {
+		if (event.defaultPrevented) return true
+		if (event.button !== 0) return true
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+			return true
+		}
+		const target = event.target as HTMLElement | null
+		if (!target) return false
+		return Boolean(
+			target.closest(
+				'a, button, input, label, textarea, select, [data-no-row-nav]',
+			),
+		)
+	}
+
 	// Toggle selection for a single item
 	const toggleSelection = (item: MediaItem) => {
 		const key = getItemKey(item)
@@ -881,6 +901,7 @@ export function MediaList(handle: Handle) {
 										)
 										const feedCount = feeds.length
 										const isSelected = selectedItems.has(getItemKey(item))
+										const detailHref = getMediaDetailHref(item)
 
 										return (
 											<tr
@@ -894,13 +915,19 @@ export function MediaList(handle: Handle) {
 														: 'transparent',
 													position: 'relative',
 													// Safari fix: transform creates a proper stacking context
-													// without this, position:relative on <tr> doesn't work
-													// and ::after pseudo-elements escape to fill viewport
+													// so row hover/focus styles stay contained
 													transform: 'translateZ(0)',
+													cursor: 'pointer',
 													'&:hover, &:focus-within': {
 														backgroundColor: isSelected
 															? colors.primarySoft
 															: colors.background,
+													},
+												}}
+												on={{
+													click: (event: MouseEvent) => {
+														if (shouldIgnoreRowClick(event)) return
+														window.location.href = detailHref
 													},
 												}}
 											>
@@ -956,16 +983,10 @@ export function MediaList(handle: Handle) {
 													title={item.title}
 												>
 													<Link
-														href={`/admin/media/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`}
+														href={detailHref}
 														css={{
 															color: 'inherit',
 															textDecoration: 'none',
-															'&::after': {
-																content: '""',
-																position: 'absolute',
-																inset: 0,
-																cursor: 'pointer',
-															},
 															'&:focus': {
 																outline: 'none',
 															},

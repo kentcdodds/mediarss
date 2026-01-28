@@ -41,9 +41,7 @@ function isAdminAssetRead(pathname: string, method: string): boolean {
 		return true
 	}
 
-	return (
-		pathname.startsWith('/admin/api/feeds/') && pathname.endsWith('/artwork')
-	)
+	return /^\/admin\/api\/feeds\/[^/]+\/artwork$/.test(pathname)
 }
 
 /**

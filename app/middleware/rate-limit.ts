@@ -16,12 +16,32 @@ const SKIP_PATHS = new Set(['/admin/health'])
 /** Path prefixes that should skip rate limiting */
 const SKIP_PREFIXES = ['/assets/']
 
+/** Admin asset endpoints that should not consume admin read limits */
+const ADMIN_ASSET_PREFIXES = ['/admin/api/artwork', '/admin/api/media-stream']
+
 /**
  * Check if a path should skip rate limiting.
  */
 function shouldSkipRateLimit(pathname: string): boolean {
 	if (SKIP_PATHS.has(pathname)) return true
 	return SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
+/**
+ * Check if an admin asset request should use a separate limiter.
+ */
+function isAdminAssetRead(pathname: string, method: string): boolean {
+	if (!READ_METHODS.has(method)) return false
+
+	if (
+		ADMIN_ASSET_PREFIXES.some(
+			(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+		)
+	) {
+		return true
+	}
+
+	return /^\/admin\/api\/feeds\/[^/]+\/artwork$/.test(pathname)
 }
 
 /**
@@ -48,6 +68,11 @@ function getClientIp(request: Request): string {
  * Determine which rate limiter to use based on the URL path and HTTP method.
  */
 function getLimiter(pathname: string, method: string): RateLimiter {
+	// Admin asset reads (artwork/media streams) use the media limiter
+	if (isAdminAssetRead(pathname, method)) {
+		return getMediaLimiter()
+	}
+
 	// Admin routes
 	if (pathname.startsWith('/admin')) {
 		if (READ_METHODS.has(method)) {

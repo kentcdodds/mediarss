@@ -72,6 +72,7 @@ export const artworkLayout = {
 	centeredContain: {
 		objectFit: 'contain',
 		objectPosition: 'center',
+		aspectRatio: '1',
 	},
 } as const
 

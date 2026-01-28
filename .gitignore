@@ -15,5 +15,9 @@ package-lock.json
 
 /issues
 
+# Playwright
+/playwright-report
+/test-results
+
 # Epicshop workshops
 workshops/

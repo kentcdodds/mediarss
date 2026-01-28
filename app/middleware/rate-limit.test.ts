@@ -114,6 +114,31 @@ test('rate limiter uses correct limits for different route types and HTTP method
 		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_READ,
 	)
 
+	// Admin asset reads should use the media limiter
+	const adminFeedArtworkResponse = await callRateLimiter(
+		'/admin/api/feeds/123/artwork',
+	)
+	invariant(adminFeedArtworkResponse, 'Expected response')
+	expect(adminFeedArtworkResponse.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_MEDIA,
+	)
+
+	const adminArtworkResponse = await callRateLimiter(
+		'/admin/api/artwork/audio/sample.mp3',
+	)
+	invariant(adminArtworkResponse, 'Expected response')
+	expect(adminArtworkResponse.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_MEDIA,
+	)
+
+	const adminMediaStreamResponse = await callRateLimiter(
+		'/admin/api/media-stream/audio/sample.mp3',
+	)
+	invariant(adminMediaStreamResponse, 'Expected response')
+	expect(adminMediaStreamResponse.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_MEDIA,
+	)
+
 	const adminHeadResponse = await callRateLimiter('/admin', { method: 'HEAD' })
 	invariant(adminHeadResponse, 'Expected response')
 	expect(adminHeadResponse.headers.get('X-RateLimit-Limit')).toBe(
@@ -134,6 +159,15 @@ test('rate limiter uses correct limits for different route types and HTTP method
 	})
 	invariant(adminPostResponse, 'Expected response')
 	expect(adminPostResponse.headers.get('X-RateLimit-Limit')).toBe(
+		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE,
+	)
+
+	const adminArtworkPostResponse = await callRateLimiter(
+		'/admin/api/feeds/123/artwork',
+		{ method: 'POST' },
+	)
+	invariant(adminArtworkPostResponse, 'Expected response')
+	expect(adminArtworkPostResponse.headers.get('X-RateLimit-Limit')).toBe(
 		TEST_RATE_LIMITS.RATE_LIMIT_ADMIN_WRITE,
 	)
 

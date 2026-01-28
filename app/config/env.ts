@@ -76,7 +76,7 @@ const EnvSchema = z.object({
 
 	// Rate limiting (requests per minute per IP)
 	RATE_LIMIT_ADMIN_READ: optionalInt(5000),
-	RATE_LIMIT_ADMIN_WRITE: optionalInt(300),
+	RATE_LIMIT_ADMIN_WRITE: optionalInt(30),
 	RATE_LIMIT_MEDIA: optionalInt(300),
 	RATE_LIMIT_DEFAULT: optionalInt(1000),
 

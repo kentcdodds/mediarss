@@ -10,6 +10,7 @@ import {
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
 import {
+	artworkLayout,
 	colors,
 	mq,
 	radius,
@@ -938,7 +939,7 @@ export function MediaList(handle: Handle) {
 																width: '40px',
 																height: '40px',
 																display: 'block',
-																objectFit: 'cover',
+																...artworkLayout.centeredContain,
 															}}
 														/>
 													</div>
@@ -1908,7 +1909,7 @@ function FeedRadioRowWithCount() {
 					width: '32px',
 					height: '32px',
 					borderRadius: radius.sm,
-					objectFit: 'cover',
+					...artworkLayout.centeredContain,
 					flexShrink: 0,
 				}}
 			/>
@@ -2015,7 +2016,7 @@ function FeedCheckboxRow() {
 					width: '32px',
 					height: '32px',
 					borderRadius: radius.sm,
-					objectFit: 'cover',
+					...artworkLayout.centeredContain,
 					flexShrink: 0,
 				}}
 			/>

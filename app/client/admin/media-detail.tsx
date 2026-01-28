@@ -5,6 +5,7 @@ import {
 	formatFileSize,
 } from '#app/helpers/format.ts'
 import {
+	artworkLayout,
 	breakpoints,
 	colors,
 	mq,
@@ -525,7 +526,7 @@ export function MediaDetail(handle: Handle) {
 								css={{
 									width: '100%',
 									aspectRatio: '1',
-									objectFit: 'cover',
+									...artworkLayout.centeredContain,
 									display: 'block',
 								}}
 							/>
@@ -1274,7 +1275,7 @@ export function MediaDetail(handle: Handle) {
 															width: '32px',
 															height: '32px',
 															borderRadius: radius.sm,
-															objectFit: 'cover',
+															...artworkLayout.centeredContain,
 														}}
 													/>
 													<span
@@ -1377,7 +1378,7 @@ export function MediaDetail(handle: Handle) {
 															width: '32px',
 															height: '32px',
 															borderRadius: radius.sm,
-															objectFit: 'cover',
+															...artworkLayout.centeredContain,
 														}}
 													/>
 													<span

@@ -3,6 +3,7 @@ import type { Handle } from 'remix/component'
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
+	artworkLayout,
 	colors,
 	mq,
 	radius,
@@ -545,7 +546,7 @@ function FeedCard() {
 							width: '64px',
 							height: '64px',
 							borderRadius: radius.md,
-							objectFit: 'cover',
+							...artworkLayout.centeredContain,
 							backgroundColor: colors.background,
 							border: `1px solid ${colors.border}`,
 							flexShrink: 0,

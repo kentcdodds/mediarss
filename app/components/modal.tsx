@@ -1,5 +1,6 @@
 import type { Handle, RemixNode } from 'remix/component'
 import {
+	artworkLayout,
 	colors,
 	mq,
 	radius,
@@ -325,7 +326,7 @@ export function Modal(_handle: Handle) {
 									width: '48px',
 									height: '48px',
 									borderRadius: radius.md,
-									objectFit: 'cover',
+									...artworkLayout.centeredContain,
 									backgroundColor: colors.background,
 									flexShrink: 0,
 								}}

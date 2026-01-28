@@ -1,4 +1,4 @@
-import type { Action, RequestContext } from 'remix/fetch-router'
+import type { BuildAction, RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { getPublicKeyJwk } from '#app/oauth/index.ts'
@@ -38,7 +38,7 @@ export default {
 			return handleGet()
 		},
 	}),
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.oauthJwks.method,
-	typeof routes.oauthJwks.pattern.source
+	typeof routes.oauthJwks.pattern
 >

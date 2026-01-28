@@ -11,7 +11,7 @@
  * Uses token-based authentication to ensure only authorized users can access media.
  */
 
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
@@ -93,7 +93,7 @@ export default {
 			},
 		})
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.mcpWidget.method,
-	typeof routes.mcpWidget.pattern.source
+	typeof routes.mcpWidget.pattern
 >

@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import {
 	getMediaRootByName,
 	parseMediaPath,
@@ -156,7 +156,7 @@ export default {
 
 		return Response.json(feed, { status: 201 })
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiCreateDirectoryFeed.method,
-	typeof routes.adminApiCreateDirectoryFeed.pattern.source
+	typeof routes.adminApiCreateDirectoryFeed.pattern
 >

@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
@@ -41,7 +41,7 @@ export default {
 
 		return serveFileWithRanges(file, context.request, 'private, max-age=3600')
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiMediaStream.method,
-	typeof routes.adminApiMediaStream.pattern.source
+	typeof routes.adminApiMediaStream.pattern
 >

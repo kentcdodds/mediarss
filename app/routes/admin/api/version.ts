@@ -1,4 +1,4 @@
-import type { Action } from 'remix/fetch-router'
+import type { BuildAction } from 'remix/fetch-router'
 import { getGitHubRepo } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
@@ -18,9 +18,9 @@ const adminApiVersionHandlers = {
 			githubRepo,
 		})
 	},
-} satisfies Action<
+} satisfies BuildAction<
 	typeof routes.adminApiVersion.method,
-	typeof routes.adminApiVersion.pattern.source
+	typeof routes.adminApiVersion.pattern
 >
 
 export default adminApiVersionHandlers

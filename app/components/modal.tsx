@@ -325,7 +325,8 @@ export function Modal(_handle: Handle) {
 									width: '48px',
 									height: '48px',
 									borderRadius: radius.md,
-									objectFit: 'cover',
+									objectFit: 'contain',
+									objectPosition: 'center',
 									backgroundColor: colors.background,
 									flexShrink: 0,
 								}}

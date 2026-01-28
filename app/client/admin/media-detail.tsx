@@ -525,7 +525,8 @@ export function MediaDetail(handle: Handle) {
 								css={{
 									width: '100%',
 									aspectRatio: '1',
-									objectFit: 'cover',
+									objectFit: 'contain',
+									objectPosition: 'center',
 									display: 'block',
 								}}
 							/>
@@ -1274,7 +1275,8 @@ export function MediaDetail(handle: Handle) {
 															width: '32px',
 															height: '32px',
 															borderRadius: radius.sm,
-															objectFit: 'cover',
+															objectFit: 'contain',
+															objectPosition: 'center',
 														}}
 													/>
 													<span
@@ -1377,7 +1379,8 @@ export function MediaDetail(handle: Handle) {
 															width: '32px',
 															height: '32px',
 															borderRadius: radius.sm,
-															objectFit: 'cover',
+															objectFit: 'contain',
+															objectPosition: 'center',
 														}}
 													/>
 													<span

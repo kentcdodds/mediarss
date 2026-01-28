@@ -938,7 +938,8 @@ export function MediaList(handle: Handle) {
 																width: '40px',
 																height: '40px',
 																display: 'block',
-																objectFit: 'cover',
+																objectFit: 'contain',
+																objectPosition: 'center',
 															}}
 														/>
 													</div>
@@ -1908,7 +1909,8 @@ function FeedRadioRowWithCount() {
 					width: '32px',
 					height: '32px',
 					borderRadius: radius.sm,
-					objectFit: 'cover',
+					objectFit: 'contain',
+					objectPosition: 'center',
 					flexShrink: 0,
 				}}
 			/>
@@ -2015,7 +2017,8 @@ function FeedCheckboxRow() {
 					width: '32px',
 					height: '32px',
 					borderRadius: radius.sm,
-					objectFit: 'cover',
+					objectFit: 'contain',
+					objectPosition: 'center',
 					flexShrink: 0,
 				}}
 			/>

@@ -1,15 +1,11 @@
 /**
- * Minimal reproduction attempt for Remix VDOM bug.
+ * Minimal reproduction of Remix VDOM bug.
  *
- * This page attempts to reproduce a bug where handle.update() doesn't update
- * the DOM when called from a component created during a parent's re-render.
+ * BUG: When a route component is created during RouterOutlet's re-render,
+ * handle.update() calls from that component don't update the DOM.
  *
- * However, this simplified reproduction DOES NOT trigger the bug.
- * The bug appears to be specific to more complex scenarios.
- *
- * In the actual router implementation, a workaround was needed:
- * - Route components call router.requestRouteUpdate() instead of handle.update()
- * - RouterOutlet listens for 'routeUpdate' events and calls its own handle.update()
+ * The bug ONLY manifests when using handle.update() directly.
+ * The workaround is to use router.requestRouteUpdate() instead.
  *
  * See: https://github.com/remix-run/remix/issues/11012
  */
@@ -17,272 +13,327 @@
 import { createRoot, type Handle } from 'remix/component'
 import { TypedEventTarget } from 'remix/interaction'
 
-// Component type matching the router's RouteComponent pattern
+// =============================================================================
+// Router Implementation (mirrors app/client/admin/router.tsx)
+// =============================================================================
+
 type RouteComponent = (
 	handle: Handle,
-	setup?: unknown,
 ) => (props: { params: Record<string, string> }) => JSX.Element
 
-/**
- * Mimics the router's state management
- */
-class RouterLike extends TypedEventTarget<{
+type Route = {
+	pattern: RegExp
+	component: RouteComponent
+}
+
+class RouterState extends TypedEventTarget<{
 	navigate: Event
 	routeUpdate: Event
 }> {
-	#currentRoute: 'static' | 'async' = 'static'
-	#routes: Map<string, RouteComponent> = new Map()
+	#routes: Route[] = []
+	#currentPath: string = '/page-a'
 
-	get currentRoute() {
-		return this.#currentRoute
+	get currentPath() {
+		return this.#currentPath
 	}
 
-	register(name: string, component: RouteComponent) {
-		this.#routes.set(name, component)
+	register(pattern: string, component: RouteComponent) {
+		this.#routes.push({
+			pattern: new RegExp(`^${pattern}$`),
+			component,
+		})
 	}
 
-	navigate(route: 'static' | 'async') {
-		if (route === this.#currentRoute) return
-		this.#currentRoute = route
-		console.log('[RouterLike] navigate to:', route)
+	navigate(path: string) {
+		if (path === this.#currentPath) return
+		this.#currentPath = path
+		console.log('[Router] navigate to:', path)
 		this.dispatchEvent(new Event('navigate'))
 	}
 
-	match(): {
-		component: RouteComponent
-		params: Record<string, string>
-	} | null {
-		const component = this.#routes.get(this.#currentRoute)
-		if (!component) return null
-		return { component, params: {} }
+	match(): { component: RouteComponent } | null {
+		for (const route of this.#routes) {
+			if (route.pattern.test(this.#currentPath)) {
+				return { component: route.component }
+			}
+		}
+		return null
 	}
 
-	/**
-	 * Workaround: Route components call this instead of handle.update()
-	 * to ensure the DOM updates correctly.
-	 */
 	requestRouteUpdate() {
 		this.dispatchEvent(new Event('routeUpdate'))
 	}
 }
 
-const routerLike = new RouterLike()
+const router = new RouterState()
 
-/**
- * Async child component that uses handle.update() directly.
- * In the actual router, this approach caused the DOM to not update.
- */
-function AsyncChildDirect(handle: Handle) {
-	let state: 'loading' | 'loaded' = 'loading'
+// =============================================================================
+// Link Component (mirrors app/client/admin/router.tsx Link)
+// =============================================================================
 
-	console.log('[AsyncChildDirect] setup called')
-
-	setTimeout(() => {
-		if (handle.signal.aborted) return
-		state = 'loaded'
-		console.log('[AsyncChildDirect] calling handle.update(), state:', state)
-		handle.update() // Direct handle.update() - may not work in some scenarios
-		console.log('[AsyncChildDirect] handle.update() returned')
-	}, 500)
-
-	return (props: { params: Record<string, string> }) => {
-		console.log(
-			'[AsyncChildDirect] render called, state:',
-			state,
-			'props:',
-			props,
-		)
+function Link() {
+	return (props: { href: string; children?: JSX.Element | string }) => {
+		const { href, children } = props
 		return (
-			<div
+			<a
+				href={href}
 				css={{
-					padding: '20px',
-					border: '2px solid #3b82f6',
-					borderRadius: '8px',
-					backgroundColor: state === 'loading' ? '#fef3c7' : '#d1fae5',
+					color: '#3b82f6',
+					textDecoration: 'none',
+					'&:hover': { textDecoration: 'underline' },
+				}}
+				on={{
+					click: (e: MouseEvent) => {
+						e.preventDefault()
+						router.navigate(href)
+					},
 				}}
 			>
-				<strong>AsyncChildDirect (uses handle.update()):</strong>{' '}
-				{state === 'loading' ? '⏳ Loading...' : '✅ Loaded!'}
+				{children}
+			</a>
+		)
+	}
+}
+
+// =============================================================================
+// RouterOutlet Component (mirrors app/client/admin/router.tsx RouterOutlet)
+// =============================================================================
+
+function RouterOutlet(handle: Handle) {
+	console.log('[RouterOutlet] setup')
+
+	handle.on(router, {
+		navigate: () => {
+			console.log('[RouterOutlet] navigate event, calling handle.update()')
+			handle.update()
+		},
+		routeUpdate: () => {
+			console.log('[RouterOutlet] routeUpdate event, calling handle.update()')
+			handle.update()
+		},
+	})
+
+	return () => {
+		console.log('[RouterOutlet] render, path:', router.currentPath)
+		const result = router.match()
+		if (!result) return <div>404</div>
+		const Component = result.component
+		return <Component params={{}} />
+	}
+}
+
+// =============================================================================
+// LoadingSpinner Component (separate component, not inline)
+// =============================================================================
+
+function LoadingSpinner() {
+	return () => (
+		<div
+			css={{
+				display: 'flex',
+				justifyContent: 'center',
+				padding: '40px',
+			}}
+		>
+			<div
+				css={{
+					width: '40px',
+					height: '40px',
+					border: '3px solid #e5e7eb',
+					borderTopColor: '#3b82f6',
+					borderRadius: '50%',
+					animation: 'spin 1s linear infinite',
+					'@keyframes spin': { to: { transform: 'rotate(360deg)' } },
+				}}
+			/>
+		</div>
+	)
+}
+
+// =============================================================================
+// PageA - Simple static page (like FeedList)
+// =============================================================================
+
+function PageA() {
+	console.log('[PageA] setup')
+	return () => {
+		console.log('[PageA] render')
+		return (
+			<div>
+				<h2 css={{ margin: '0 0 16px 0' }}>Page A</h2>
+				<p>This is a simple static page.</p>
+				<p css={{ marginTop: '16px' }}>
+					<Link href="/page-b">Go to Page B →</Link>
+				</p>
 			</div>
 		)
 	}
 }
 
-/**
- * Static child component - the initial route
- */
-function StaticChild() {
-	console.log('[StaticChild] setup called')
-	return (props: { params: Record<string, string> }) => {
-		console.log('[StaticChild] render called, props:', props)
+// =============================================================================
+// PageB - Async page that fetches data (like MediaList)
+// THIS IS WHERE THE BUG MANIFESTS
+// =============================================================================
+
+function PageB(handle: Handle) {
+	console.log('[PageB] setup')
+
+	let state: { status: 'loading' } | { status: 'loaded'; data: string } = {
+		status: 'loading',
+	}
+
+	// Simulate fetch (use actual fetch to match real-world scenario)
+	fetch('/admin/api/version', { signal: handle.signal })
+		.then((res) => res.json())
+		.then((data) => {
+			state = { status: 'loaded', data: JSON.stringify(data) }
+			console.log('[PageB] fetch complete, state:', state.status)
+
+			// ⚠️ BUG: This handle.update() call does NOT update the DOM
+			// when PageB is created during RouterOutlet's re-render
+			console.log('[PageB] calling handle.update()')
+			handle.update()
+			console.log('[PageB] handle.update() returned')
+
+			// ✅ WORKAROUND: Use this instead:
+			// router.requestRouteUpdate()
+		})
+		.catch((err) => {
+			if (handle.signal.aborted) return
+			console.error('[PageB] fetch error:', err)
+		})
+
+	return () => {
+		console.log('[PageB] render, state:', state.status)
+
+		if (state.status === 'loading') {
+			return <LoadingSpinner />
+		}
+
 		return (
-			<div
-				css={{
-					padding: '20px',
-					border: '2px solid #6b7280',
-					borderRadius: '8px',
-					backgroundColor: '#f3f4f6',
-				}}
-			>
-				<strong>StaticChild:</strong> I have no async operations
+			<div>
+				<h2 css={{ margin: '0 0 16px 0' }}>Page B</h2>
+				<p
+					css={{
+						padding: '16px',
+						backgroundColor: '#d1fae5',
+						borderRadius: '8px',
+						border: '1px solid #6ee7b7',
+					}}
+				>
+					✅ Data loaded: {state.data}
+				</p>
+				<p css={{ marginTop: '16px' }}>
+					<Link href="/page-a">← Back to Page A</Link>
+				</p>
 			</div>
 		)
 	}
 }
 
 // Register routes
-routerLike.register('static', StaticChild)
-routerLike.register('async', AsyncChildDirect)
+router.register('/page-a', PageA)
+router.register('/page-b', PageB)
 
-/**
- * RouterOutlet-like component that renders the matched route
- */
-function Outlet(handle: Handle) {
-	console.log('[Outlet] setup called')
+// =============================================================================
+// App Component (mirrors app/client/admin/entry.tsx AdminApp)
+// =============================================================================
 
-	// Subscribe to navigation and routeUpdate events
-	handle.on(routerLike, {
-		navigate: () => {
-			console.log('[Outlet] navigate event received, calling handle.update()')
-			handle.update()
-		},
-		routeUpdate: () => {
-			console.log(
-				'[Outlet] routeUpdate event received, calling handle.update()',
-			)
-			handle.update()
-		},
-	})
-
-	return () => {
-		console.log(
-			'[Outlet] render called, currentRoute:',
-			routerLike.currentRoute,
-		)
-		const result = routerLike.match()
-		if (!result) {
-			return <div>404 - Not Found</div>
-		}
-		const { component: Component, params } = result
-		return <Component params={params} />
-	}
-}
-
-/**
- * App wrapper
- */
 function App() {
 	return () => (
 		<div
 			css={{
 				fontFamily: 'system-ui, sans-serif',
-				maxWidth: '700px',
-				margin: '40px auto',
-				padding: '20px',
+				minHeight: '100vh',
+				display: 'flex',
+				flexDirection: 'column',
 			}}
 		>
-			<h1 css={{ marginBottom: '10px' }}>
-				Remix VDOM Bug - Reproduction Attempt
-			</h1>
-
-			<div
+			{/* Header */}
+			<header
 				css={{
-					padding: '15px',
-					marginBottom: '20px',
-					backgroundColor: '#dbeafe',
-					borderRadius: '8px',
-					border: '1px solid #93c5fd',
+					borderBottom: '1px solid #e5e7eb',
+					padding: '16px 24px',
+					display: 'flex',
+					alignItems: 'center',
+					gap: '16px',
 				}}
 			>
-				<strong>Note:</strong> This simplified reproduction does NOT trigger the
-				bug. The bug appears in the actual router implementation where a
-				workaround was needed. See{' '}
+				<h1 css={{ margin: 0, fontSize: '18px' }}>VDOM Bug Reproduction</h1>
+				<nav css={{ display: 'flex', gap: '16px' }}>
+					<Link href="/page-a">Page A</Link>
+					<Link href="/page-b">Page B</Link>
+				</nav>
+			</header>
+
+			{/* Main Content */}
+			<main
+				css={{
+					flex: 1,
+					maxWidth: '800px',
+					width: '100%',
+					margin: '0 auto',
+					padding: '24px',
+				}}
+			>
+				<RouterOutlet />
+			</main>
+
+			{/* Instructions */}
+			<div
+				css={{
+					maxWidth: '800px',
+					width: '100%',
+					margin: '0 auto',
+					padding: '0 24px 24px',
+				}}
+			>
+				<div
+					css={{
+						padding: '16px',
+						backgroundColor: '#fef2f2',
+						borderRadius: '8px',
+						border: '1px solid #fecaca',
+						fontSize: '14px',
+					}}
+				>
+					<strong>How to reproduce the bug:</strong>
+					<ol css={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+						<li>Open the browser console (F12)</li>
+						<li>Click "Page B" in the navigation</li>
+						<li>
+							Observe: Page B stays stuck on loading spinner even though console
+							shows <code>handle.update()</code> was called
+						</li>
+					</ol>
+					<p css={{ margin: '12px 0 0 0', color: '#dc2626' }}>
+						<strong>Expected:</strong> Page should show "Data loaded" after
+						fetch completes
+						<br />
+						<strong>Actual:</strong> Page stays on loading spinner
+					</p>
+				</div>
+			</div>
+
+			{/* Footer */}
+			<footer
+				css={{
+					borderTop: '1px solid #e5e7eb',
+					padding: '16px 24px',
+					textAlign: 'center',
+					color: '#6b7280',
+					fontSize: '14px',
+				}}
+			>
+				See{' '}
 				<a
 					href="https://github.com/remix-run/remix/issues/11012"
 					target="_blank"
 					rel="noopener noreferrer"
 				>
 					GitHub Issue #11012
-				</a>{' '}
-				for details.
-			</div>
-
-			<div css={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-				<button
-					type="button"
-					on={{ click: () => routerLike.navigate('static') }}
-					css={{
-						padding: '12px 24px',
-						fontSize: '16px',
-						fontWeight: 'bold',
-						backgroundColor:
-							routerLike.currentRoute === 'static' ? '#2563eb' : '#3b82f6',
-						color: 'white',
-						border: 'none',
-						borderRadius: '8px',
-						cursor: 'pointer',
-						'&:hover': { backgroundColor: '#2563eb' },
-					}}
-				>
-					Go to StaticChild
-				</button>
-				<button
-					type="button"
-					on={{ click: () => routerLike.navigate('async') }}
-					css={{
-						padding: '12px 24px',
-						fontSize: '16px',
-						fontWeight: 'bold',
-						backgroundColor:
-							routerLike.currentRoute === 'async' ? '#2563eb' : '#3b82f6',
-						color: 'white',
-						border: 'none',
-						borderRadius: '8px',
-						cursor: 'pointer',
-						'&:hover': { backgroundColor: '#2563eb' },
-					}}
-				>
-					Go to AsyncChild
-				</button>
-			</div>
-
-			<div css={{ marginBottom: '20px' }}>
-				<Outlet />
-			</div>
-
-			<div
-				css={{
-					padding: '15px',
-					backgroundColor: '#f3f4f6',
-					borderRadius: '8px',
-					border: '1px solid #d1d5db',
-				}}
-			>
-				<strong>Workaround in actual router:</strong>
-				<pre
-					css={{
-						margin: '10px 0 0 0',
-						padding: '10px',
-						backgroundColor: '#1f2937',
-						color: '#f9fafb',
-						borderRadius: '4px',
-						fontSize: '13px',
-						overflow: 'auto',
-					}}
-				>
-					{`// Instead of:
-handle.update()
-
-// Route components use:
-router.requestRouteUpdate()
-
-// And RouterOutlet listens for it:
-handle.on(router, {
-  navigate: () => handle.update(),
-  routeUpdate: () => handle.update(),
-})`}
-				</pre>
-			</div>
+				</a>
+			</footer>
 		</div>
 	)
 }

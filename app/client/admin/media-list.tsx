@@ -550,7 +550,54 @@ export function MediaList(handle: Handle) {
 
 	return () => {
 		if (state.status === 'loading') {
-			return <LoadingSpinner />
+			return (
+				<div>
+					{/* Header */}
+					<div
+						css={{
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							marginBottom: spacing.xl,
+							flexWrap: 'wrap',
+							gap: spacing.md,
+							[mq.mobile]: {
+								flexDirection: 'column',
+								alignItems: 'stretch',
+							},
+						}}
+					>
+						<div>
+							<h2
+								css={{
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: 0,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.lg,
+									},
+								}}
+							>
+								Media Library
+							</h2>
+							<p
+								css={{
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: `${spacing.xs} 0 0 0`,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.xs,
+									},
+								}}
+							>
+								Loading…
+							</p>
+						</div>
+					</div>
+					<LoadingSpinner />
+				</div>
+			)
 		}
 
 		if (state.status === 'error') {

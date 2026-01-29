@@ -4,8 +4,6 @@ export default route({
 	feed: '/feed/:token',
 	media: '/media/:token/*path',
 	art: '/art/:token/*path',
-	// Bug reproduction page
-	vdomBugRepro: '/vdom-bug-repro',
 	// OAuth routes (public)
 	oauthToken: '/oauth/token',
 	oauthJwks: '/oauth/jwks',

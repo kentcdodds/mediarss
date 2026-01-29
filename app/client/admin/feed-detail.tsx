@@ -22,7 +22,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -574,7 +574,7 @@ export function FeedDetail(handle: Handle) {
 			}
 
 			// Navigate back to the feed list
-			window.location.href = '/admin'
+			router.navigate('/admin')
 		} catch (err) {
 			console.error('Failed to delete feed:', err)
 			deleteLoading = false

@@ -19,7 +19,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type MediaRoot = {
 	name: string
@@ -927,7 +927,7 @@ export function MediaList(handle: Handle) {
 												on={{
 													click: (event: MouseEvent) => {
 														if (shouldIgnoreRowClick(event)) return
-														window.location.href = detailHref
+														router.navigate(detailHref)
 													},
 												}}
 											>

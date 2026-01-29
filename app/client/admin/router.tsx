@@ -52,13 +52,19 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	/**
 	 * Navigate to a new path using the History API.
 	 */
-	navigate(path: string) {
-		if (path === this.#currentPath) return
-		history.pushState(null, '', path)
-		this.#currentPath = path
+	navigate(href: string) {
+		const url = new URL(href, window.location.origin)
+		if (url.origin !== window.location.origin) return
+
+		if (url.pathname === this.#currentPath) {
+			// Still update the URL (search/hash) without re-rendering.
+			history.pushState(null, '', `${url.pathname}${url.search}${url.hash}`)
+			return
+		}
+
+		history.pushState(null, '', `${url.pathname}${url.search}${url.hash}`)
+		this.#currentPath = url.pathname
 		this.dispatchEvent(new Event('navigate'))
-		// TODO: force refresh because there's a bug in Remix
-		window.location.reload()
 	}
 
 	/**
@@ -99,11 +105,28 @@ window.addEventListener('popstate', router.handlePopState)
 
 /**
  * Link component for navigation.
- * Currently uses full page refreshes to work around a Remix DOM bug.
- * TODO: Re-enable client-side navigation once the bug is fixed.
  */
 export function Link() {
-	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
+	return (props: { href: string } & Record<string, unknown>) => {
+		const onClick = (event: MouseEvent) => {
+			if (event.defaultPrevented) return
+			if (event.button !== 0) return
+			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+			const anchor = event.currentTarget as HTMLAnchorElement | null
+			if (!anchor) return
+			if (anchor.target && anchor.target !== '_self') return
+			if (anchor.hasAttribute('download')) return
+
+			const url = new URL(anchor.href, window.location.origin)
+			if (url.origin !== window.location.origin) return
+
+			event.preventDefault()
+			router.navigate(`${url.pathname}${url.search}${url.hash}`)
+		}
+
+		return <a {...props} on={{ click: onClick }} />
+	}
 }
 
 /**

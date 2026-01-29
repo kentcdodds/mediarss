@@ -391,7 +391,7 @@ export function FeedDetail(handle: Handle) {
 	const fetchFeed = (id: string) => {
 		feedId = id
 		state = { status: 'loading' }
-		handle.update()
+		router.requestRouteUpdate()
 
 		fetch(`/admin/api/feeds/${id}`, { signal: handle.signal })
 			.then((res) => {
@@ -405,12 +405,12 @@ export function FeedDetail(handle: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
-				handle.update()
+				router.requestRouteUpdate()
 			})
 			.catch((err) => {
 				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
-				handle.update()
+				router.requestRouteUpdate()
 			})
 	}
 

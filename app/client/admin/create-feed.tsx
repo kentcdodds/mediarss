@@ -128,6 +128,7 @@ export function CreateFeed(handle: Handle) {
 	let submitState: SubmitState = { status: 'idle' }
 
 	// Fetch media roots on mount
+	// Uses router.requestRouteUpdate() to work around a Remix vdom issue.
 	fetch('/admin/api/directories', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -135,12 +136,12 @@ export function CreateFeed(handle: Handle) {
 		})
 		.then((data) => {
 			rootsState = { status: 'success', roots: data.roots }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 		.catch((err) => {
 			if (handle.signal.aborted) return
 			rootsState = { status: 'error', message: err.message }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 
 	// Browse a directory

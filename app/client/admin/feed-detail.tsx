@@ -22,7 +22,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -257,6 +257,7 @@ export function FeedDetail(handle: Handle) {
 	let artworkImageKey = 0 // Used to force image refresh after upload
 
 	// Fetch media roots for file picker
+	// Uses router.requestRouteUpdate() to work around a Remix vdom issue.
 	fetch('/admin/api/directories', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -264,12 +265,12 @@ export function FeedDetail(handle: Handle) {
 		})
 		.then((data) => {
 			rootsState = { status: 'success', roots: data.roots }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 		.catch((err) => {
 			if (handle.signal.aborted) return
 			rootsState = { status: 'error', message: err.message }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 
 	// Browse a directory for the file picker
@@ -390,7 +391,7 @@ export function FeedDetail(handle: Handle) {
 	const fetchFeed = (id: string) => {
 		feedId = id
 		state = { status: 'loading' }
-		handle.update()
+		router.requestRouteUpdate()
 
 		fetch(`/admin/api/feeds/${id}`, { signal: handle.signal })
 			.then((res) => {
@@ -404,12 +405,12 @@ export function FeedDetail(handle: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
-				handle.update()
+				router.requestRouteUpdate()
 			})
 			.catch((err) => {
 				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
-				handle.update()
+				router.requestRouteUpdate()
 			})
 	}
 

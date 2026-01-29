@@ -12,7 +12,7 @@
     "dev": "NODE_ENV=development bun run --watch index.ts",
     "dev:test": "DATABASE_PATH=./data/test.db CACHE_DATABASE_PATH=./data/test-cache.db MEDIA_PATHS=audio:./local-test/1/audio NODE_ENV=development bun run --watch index.ts",
     "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development bun run --watch index.ts",
-    "test": "bun test \"**/*.test.ts\"",
+    "test": "bun test ./app",
     "test:playwright": "playwright test -c playwright-config.ts",
     "start": "NODE_ENV=production bun run index.ts",
     "typecheck": "tsc --noEmit",

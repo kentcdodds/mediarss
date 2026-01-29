@@ -129,7 +129,10 @@ export function Link() {
 							e.shiftKey ||
 							e.altKey ||
 							e.button !== 0 ||
-							!href.startsWith('/')
+							!href.startsWith('/') ||
+							href.startsWith('//') ||
+							'target' in props ||
+							'download' in props
 						) {
 							return
 						}

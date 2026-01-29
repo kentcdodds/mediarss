@@ -6,7 +6,31 @@
  * This means `request.url` will show `http://` even when the client connected via HTTPS.
  *
  * This utility checks standard reverse proxy headers to determine the original protocol.
+ *
+ * SECURITY NOTE: In production, configure ALLOWED_HOSTS environment variable to
+ * prevent host header injection attacks.
  */
+
+/**
+ * Check if a host is allowed.
+ * Uses ALLOWED_HOSTS environment variable if configured.
+ */
+export function isAllowedHost(host: string): boolean {
+	const allowedHosts = Bun.env.ALLOWED_HOSTS?.split(',').map((h) => h.trim())
+
+	// If ALLOWED_HOSTS is not configured, allow all (development mode)
+	if (!allowedHosts || allowedHosts.length === 0) {
+		// Warn in production
+		if (Bun.env.NODE_ENV === 'production') {
+			console.warn(
+				'[security] ALLOWED_HOSTS not configured. Consider setting it for production.',
+			)
+		}
+		return true
+	}
+
+	return allowedHosts.includes(host)
+}
 
 /**
  * Get the origin URL (protocol + host) from a request, respecting reverse proxy headers.

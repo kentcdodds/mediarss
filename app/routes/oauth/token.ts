@@ -179,14 +179,9 @@ async function handlePost(context: RequestContext): Promise<Response> {
 	}
 
 	// Validate Host header to prevent issuer injection attacks
-	// Only validates if ALLOWED_HOSTS is configured
-	const allowedHosts = Bun.env.ALLOWED_HOSTS?.split(',').map((h) => h.trim())
-	const requestHost = context.url.host
-
-	if (allowedHosts && allowedHosts.length > 0) {
-		if (!allowedHosts.includes(requestHost)) {
-			return errorResponse('invalid_request', 'Invalid host header.', 400)
-		}
+	const { isAllowedHost } = await import('#app/helpers/origin.ts')
+	if (!isAllowedHost(context.url.host)) {
+		return errorResponse('invalid_request', 'Invalid host header.', 400)
 	}
 
 	// Generate access token

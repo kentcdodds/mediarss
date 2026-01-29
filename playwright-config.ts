@@ -5,6 +5,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
 
 export default defineConfig({
 	testDir: './playwright',
+	testMatch: '**/*.pw.ts',
 	timeout: 30_000,
 	expect: {
 		timeout: 10_000,

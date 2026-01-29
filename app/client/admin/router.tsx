@@ -20,8 +20,12 @@ type Route = {
 /**
  * Simple client-side router using the History API.
  * Emits 'navigate' events when the route changes.
+ * Also emits 'routeUpdate' events when route components request a refresh.
  */
-class RouterState extends TypedEventTarget<{ navigate: Event }> {
+class RouterState extends TypedEventTarget<{
+	navigate: Event
+	routeUpdate: Event
+}> {
 	#routes: Array<Route> = []
 	#currentPath: string = window.location.pathname
 
@@ -57,8 +61,6 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		history.pushState(null, '', path)
 		this.#currentPath = path
 		this.dispatchEvent(new Event('navigate'))
-		// TODO: force refresh because there's a bug in Remix
-		window.location.reload()
 	}
 
 	/**
@@ -89,6 +91,16 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		this.#currentPath = window.location.pathname
 		this.dispatchEvent(new Event('navigate'))
 	}
+
+	/**
+	 * Request the router outlet to refresh the current route.
+	 * Used by route components to signal that their content has changed.
+	 * This works around a Remix vdom issue where nested component updates
+	 * don't properly update the DOM when triggered during parent re-renders.
+	 */
+	requestRouteUpdate() {
+		this.dispatchEvent(new Event('routeUpdate'))
+	}
 }
 
 // Singleton router instance
@@ -98,21 +110,56 @@ export const router = new RouterState()
 window.addEventListener('popstate', router.handlePopState)
 
 /**
- * Link component for navigation.
- * Currently uses full page refreshes to work around a Remix DOM bug.
- * TODO: Re-enable client-side navigation once the bug is fixed.
+ * Link component for client-side navigation.
+ * Intercepts clicks on internal links and uses the router's navigate method.
  */
 export function Link() {
-	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
+	return (props: { href: string } & Record<string, unknown>) => {
+		const { href, ...rest } = props
+		return (
+			<a
+				href={href}
+				{...rest}
+				on={{
+					click: (e: MouseEvent) => {
+						// Allow default behavior for external links, modified clicks, or non-left clicks
+						if (
+							e.ctrlKey ||
+							e.metaKey ||
+							e.shiftKey ||
+							e.altKey ||
+							e.button !== 0 ||
+							!href.startsWith('/')
+						) {
+							return
+						}
+						e.preventDefault()
+						router.navigate(href)
+					},
+				}}
+			/>
+		)
+	}
 }
 
 /**
  * Router outlet component.
  * Renders the matched route's component.
+ *
+ * Each route renders directly without a wrapper. Route components are
+ * treated as different types (FeedList vs MediaList), so Remix's vdom
+ * replaces them correctly when the route changes.
+ *
+ * Also listens for 'routeUpdate' events from route components that need
+ * to signal their content has changed. This works around a Remix vdom
+ * issue where nested component updates don't properly update the DOM.
  */
 export function RouterOutlet(handle: Handle) {
-	// Subscribe to navigation events
-	handle.on(router, { navigate: () => handle.update() })
+	// Subscribe to navigation and routeUpdate events
+	handle.on(router, {
+		navigate: () => handle.update(),
+		routeUpdate: () => handle.update(),
+	})
 
 	return () => {
 		const result = router.match()

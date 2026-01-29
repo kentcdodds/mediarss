@@ -19,7 +19,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type MediaRoot = {
 	name: string
@@ -531,14 +531,16 @@ export function MediaList(handle: Handle) {
 				curatedFeeds: assignmentsData.curatedFeeds,
 				directoryFeeds: assignmentsData.directoryFeeds,
 			}
-			handle.update()
+			// Use router.requestRouteUpdate() instead of handle.update() to work around
+			// a Remix vdom issue where nested component updates don't properly update the DOM.
+			router.requestRouteUpdate()
 		} catch (err) {
 			if (handle.signal.aborted) return
 			state = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			handle.update()
+			router.requestRouteUpdate()
 		}
 	}
 

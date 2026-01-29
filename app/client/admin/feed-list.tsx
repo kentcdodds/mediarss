@@ -13,7 +13,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -63,6 +63,8 @@ export function FeedList(handle: Handle) {
 	let filterType: FilterType = 'all'
 
 	// Fetch feeds on mount
+	// Uses router.requestRouteUpdate() to work around a Remix vdom issue where
+	// updates to nested components during parent render don't update the DOM.
 	fetch('/admin/api/feeds', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -76,12 +78,12 @@ export function FeedList(handle: Handle) {
 			].sort((a, b) => b.createdAt - a.createdAt)
 
 			state = { status: 'success', feeds: allFeeds }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 		.catch((err) => {
 			if (handle.signal.aborted) return
 			state = { status: 'error', message: err.message }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 
 	return () => {

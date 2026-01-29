@@ -16,7 +16,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type MediaInfo = {
 	path: string
@@ -151,7 +151,8 @@ export function MediaDetail(handle: Handle) {
 	const fetchMedia = async (encodedPath: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
-		handle.update()
+		// Uses router.requestRouteUpdate() to work around a Remix vdom issue.
+		router.requestRouteUpdate()
 
 		try {
 			const res = await fetch(`/admin/api/media/${encodedPath}`, {
@@ -173,14 +174,14 @@ export function MediaDetail(handle: Handle) {
 					.map((a) => a.feedId),
 			)
 
-			handle.update()
+			router.requestRouteUpdate()
 		} catch (err) {
 			if (handle.signal.aborted) return
 			state = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			handle.update()
+			router.requestRouteUpdate()
 		}
 	}
 

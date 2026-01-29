@@ -5,7 +5,7 @@ import {
 	formatUptime,
 } from '#app/helpers/format.ts'
 import { colors, mq, radius, spacing, typography } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, router } from './router.tsx'
 
 type CommitInfo = {
 	hash: string
@@ -34,6 +34,7 @@ export function VersionPage(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 
 	// Fetch version info on mount
+	// Uses router.requestRouteUpdate() to work around a Remix vdom issue.
 	fetch('/admin/api/version', { signal: handle.signal })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -41,12 +42,12 @@ export function VersionPage(handle: Handle) {
 		})
 		.then((data) => {
 			state = { status: 'success', data }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 		.catch((err) => {
 			if (handle.signal.aborted) return
 			state = { status: 'error', message: err.message }
-			handle.update()
+			router.requestRouteUpdate()
 		})
 
 	return () => {

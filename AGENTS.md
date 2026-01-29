@@ -59,6 +59,8 @@ When a component has both props and state, use **setupProps** for initial setup 
 
 > **⚠️ Important:** Always use `renderProps` inside the render function to get the latest prop values. The `setupProps` are captured once at setup time and may be stale.
 
+> **⚠️ Route Components:** If this component is rendered by `RouterOutlet` (a route component), use `router.requestRouteUpdate()` instead of `handle.update()` for initial data fetches. See "Known Bug: handle.update() Doesn't Update DOM in Route Components" below.
+
 ```tsx
 import type { Handle } from 'remix/component'
 
@@ -130,6 +132,8 @@ function RouterAware(handle: Handle) {
 #### Abort Signal
 
 Use `handle.signal` for cancellable async operations:
+
+> **⚠️ Route Components:** If this component is rendered by `RouterOutlet`, use `router.requestRouteUpdate()` instead of `handle.update()` for the initial fetch. See "Known Bug: handle.update() Doesn't Update DOM in Route Components" below.
 
 ```tsx
 function DataLoader(handle: Handle) {
@@ -320,6 +324,52 @@ Uncaught NotFoundError: Failed to execute 'insertBefore' on 'Node': The node bef
 ```
 
 **Workaround:** If you see this error while testing, simply refresh the page. This is a framework-level issue that doesn't indicate a problem with your code.
+
+#### Known Bug: handle.update() Doesn't Update DOM in Route Components
+
+There's a known bug in Remix's VDOM reconciliation where `handle.update()` calls from a component created during a parent's re-render (e.g., route components rendered by `RouterOutlet` during navigation) will not update the DOM, even though the render function is called correctly.
+
+**Symptoms:**
+- Component fetches data on mount
+- `handle.update()` is called after fetch completes
+- The render function runs and returns correct JSX
+- **The DOM does not update** (e.g., stays stuck on loading spinner)
+
+**Workaround:** For route components that perform initial data fetches, use `router.requestRouteUpdate()` instead of `handle.update()`:
+
+```tsx
+import type { Handle } from 'remix/component'
+import { router } from './router.tsx'
+
+export function MediaList(handle: Handle) {
+	let state: { status: 'loading' } | { status: 'success'; data: unknown[] } = { status: 'loading' }
+
+	fetch('/api/media', { signal: handle.signal })
+		.then(res => res.json())
+		.then(data => {
+			state = { status: 'success', data }
+			// Use router.requestRouteUpdate() instead of handle.update()
+			// to work around Remix VDOM bug for route components
+			router.requestRouteUpdate()
+		})
+		.catch(err => {
+			if (handle.signal.aborted) return
+			console.error(err)
+		})
+
+	return () => {
+		if (state.status === 'loading') return <div>Loading...</div>
+		return <div>{state.data.length} items</div>
+	}
+}
+```
+
+**When to use this workaround:**
+- In route components (components rendered by `RouterOutlet`)
+- For initial data fetches that run during component setup
+- Only for the initial async operations; subsequent `handle.update()` calls (e.g., from user interactions) work normally
+
+**Note:** This workaround propagates the update to the `RouterOutlet` level, which correctly triggers DOM reconciliation. See [GitHub Issue #11012](https://github.com/remix-run/remix/issues/11012) for details.
 
 ## Bun
 

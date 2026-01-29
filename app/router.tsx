@@ -29,6 +29,7 @@ import adminAuthorizeHandlers from '#app/routes/admin/authorize.tsx'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
+import vdomBugReproHandlers from '#app/routes/vdom-bug-repro.ts'
 import mcpHandlers from '#app/routes/mcp/index.ts'
 import mcpProtectedResourceHandlers from '#app/routes/mcp/oauth-protected-resource.ts'
 import mcpWidgetHandlers from '#app/routes/mcp/widget.ts'
@@ -136,6 +137,7 @@ const router = createRouter({
 router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)
+router.map(routes.vdomBugRepro, vdomBugReproHandlers)
 
 // OAuth routes (public, before admin routes)
 router.map(routes.oauthToken, oauthTokenHandlers)

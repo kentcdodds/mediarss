@@ -21,9 +21,13 @@ type Route = {
  * Simple client-side router using the History API.
  * Emits 'navigate' events when the route changes.
  */
-class RouterState extends TypedEventTarget<{ navigate: Event }> {
+class RouterState extends TypedEventTarget<{
+	navigate: Event
+	routeUpdate: Event
+}> {
 	#routes: Array<Route> = []
 	#currentPath: string = window.location.pathname
+	#patchedHandles = new WeakSet<Handle>()
 
 	get currentPath() {
 		return this.#currentPath
@@ -42,23 +46,48 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			})
 			.replace(/\*/g, '.*')
 
+		const wrappedComponent: RouteComponent = (handle, setup) => {
+			this.enableRouteUpdates(handle)
+			return component(handle, setup)
+		}
+
 		this.#routes.push({
 			pattern: new RegExp(`^${regexPattern}$`),
 			paramNames,
-			component,
+			component: wrappedComponent,
 		})
+	}
+
+	enableRouteUpdates(handle: Handle) {
+		if (this.#patchedHandles.has(handle)) return
+		this.#patchedHandles.add(handle)
+		const originalUpdate = handle.update.bind(handle)
+		handle.update = () => {
+			if (handle.signal.aborted) return
+			originalUpdate()
+			this.requestRouteUpdate()
+		}
 	}
 
 	/**
 	 * Navigate to a new path using the History API.
 	 */
 	navigate(path: string) {
-		if (path === this.#currentPath) return
-		history.pushState(null, '', path)
-		this.#currentPath = path
+		const url = new URL(path, window.location.href)
+		const nextPath = url.pathname
+		const nextUrl = `${url.pathname}${url.search}${url.hash}`
+		const currentUrl = `${this.#currentPath}${window.location.search}${window.location.hash}`
+		if (nextPath === this.#currentPath && nextUrl === currentUrl) return
+		history.pushState(null, '', nextUrl)
+		this.#currentPath = nextPath
 		this.dispatchEvent(new Event('navigate'))
-		// TODO: force refresh because there's a bug in Remix
-		window.location.reload()
+	}
+
+	/**
+	 * Request a RouterOutlet refresh for child updates.
+	 */
+	requestRouteUpdate() {
+		this.dispatchEvent(new Event('routeUpdate'))
 	}
 
 	/**
@@ -97,13 +126,41 @@ export const router = new RouterState()
 // Listen for browser navigation
 window.addEventListener('popstate', router.handlePopState)
 
+export function enableRouteUpdates(handle: Handle) {
+	router.enableRouteUpdates(handle)
+}
+
 /**
  * Link component for navigation.
- * Currently uses full page refreshes to work around a Remix DOM bug.
- * TODO: Re-enable client-side navigation once the bug is fixed.
+ * Uses client-side navigation to avoid full page refreshes.
  */
 export function Link() {
-	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
+	return (
+		props: {
+			href: string
+			on?: Record<string, (event: MouseEvent) => void>
+		} & Record<string, unknown>,
+	) => {
+		const { href, on, ...rest } = props
+		const handleClick = (event: MouseEvent) => {
+			on?.click?.(event)
+			if (event.defaultPrevented) return
+			if (event.button !== 0) return
+			if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+				return
+			}
+			const anchor = event.currentTarget
+			if (!(anchor instanceof HTMLAnchorElement)) return
+			if (anchor.target && anchor.target !== '_self') return
+			if (anchor.hasAttribute('download')) return
+			const url = new URL(href, window.location.href)
+			if (url.origin !== window.location.origin) return
+			event.preventDefault()
+			router.navigate(`${url.pathname}${url.search}${url.hash}`)
+		}
+
+		return <a href={href} on={{ ...on, click: handleClick }} {...rest} />
+	}
 }
 
 /**
@@ -112,7 +169,10 @@ export function Link() {
  */
 export function RouterOutlet(handle: Handle) {
 	// Subscribe to navigation events
-	handle.on(router, { navigate: () => handle.update() })
+	handle.on(router, {
+		navigate: () => handle.update(),
+		routeUpdate: () => handle.update(),
+	})
 
 	return () => {
 		const result = router.match()

@@ -22,7 +22,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
+import { Link, enableRouteUpdates } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -3001,6 +3001,7 @@ function EditForm() {
 }
 
 function DirectoryPathsEditor(handle: Handle) {
+	enableRouteUpdates(handle)
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''

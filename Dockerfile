@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies (includes dev deps for patch-package)
 FROM base AS install
-COPY package.json bun.lock patches/ ./
+COPY package.json bun.lock ./
+COPY patches/ ./patches/
 RUN bun install --frozen-lockfile
 
 # Production-only dependencies

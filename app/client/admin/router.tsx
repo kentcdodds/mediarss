@@ -56,6 +56,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		if (path === this.#currentPath) return
 		history.pushState(null, '', path)
 		this.#currentPath = path
+		window.scrollTo(0, 0)
 		this.dispatchEvent(new Event('navigate'))
 	}
 

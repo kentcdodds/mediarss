@@ -1,7 +1,11 @@
 diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@remix-run/component/src/lib/vdom.ts
+index a7d24e1..e8c4467 100644
 --- a/node_modules/@remix-run/component/src/lib/vdom.ts
 +++ b/node_modules/@remix-run/component/src/lib/vdom.ts
-@@
+@@ -142,16 +142,17 @@ export type Scheduler = ReturnType<typeof createScheduler>
+ 
+ export function createScheduler(doc: Document, rootTarget: EventTarget) {
+   let documentState = createDocumentState(doc)
 -  let scheduled = new Map<CommittedComponentNode, [ParentNode, Node | undefined]>()
 +  let scheduled = new Map<CommittedComponentNode, ParentNode>()
    let tasks: EmptyFn[] = []
@@ -17,18 +21,20 @@ diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@r
 +    console.error(error)
      rootTarget.dispatchEvent(new ErrorEvent('error', { error }))
    }
-@@
--    if (batch.size > 0) {
+ 
+@@ -167,7 +168,7 @@ export function createScheduler(doc: Document, rootTarget: EventTarget) {
+     // Mark layout elements within updating components as pending BEFORE capture
+     // This ensures we only capture/apply for elements whose components are updating
+     if (batch.size > 0) {
 -      for (let [, [domParent]] of batch) {
--        markLayoutSubtreePending(domParent)
--      }
--    }
-+    if (batch.size > 0) {
 +      for (let [, domParent] of batch) {
-+        markLayoutSubtreePending(domParent)
-+      }
-+    }
-@@
+         markLayoutSubtreePending(domParent)
+       }
+     }
+@@ -181,11 +182,16 @@ export function createScheduler(doc: Document, rootTarget: EventTarget) {
+       let vnodes = Array.from(batch)
+       let noScheduledAncestor = new Set<VNode>()
+ 
 -      for (let [vnode, [domParent, anchor]] of vnodes) {
 +      for (let [vnode, domParent] of vnodes) {
          if (ancestorIsScheduled(vnode, batch, noScheduledAncestor)) continue
@@ -43,30 +49,39 @@ diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@r
          try {
            renderComponent(
              handle,
-@@
+@@ -230,7 +236,7 @@ export function createScheduler(doc: Document, rootTarget: EventTarget) {
+ 
+   function ancestorIsScheduled(
+     vnode: VNode,
 -    batch: Map<CommittedComponentNode, [ParentNode, Node | undefined]>,
 +    batch: Map<CommittedComponentNode, ParentNode>,
      safe: Set<VNode>,
    ): boolean {
-@@
--  scheduler = {
+     let path: VNode[] = []
+@@ -258,8 +264,8 @@ export function createScheduler(doc: Document, rootTarget: EventTarget) {
+   }
+ 
+   scheduler = {
 -    enqueue(vnode: CommittedComponentNode, domParent: ParentNode, anchor?: Node): void {
 -      scheduled.set(vnode, [domParent, anchor])
--      scheduleFlush()
--    },
-+  scheduler = {
 +    enqueue(vnode: CommittedComponentNode, domParent: ParentNode): void {
 +      scheduled.set(vnode, domParent)
-+      scheduleFlush()
-+    },
-@@
--  if (isCommittedHostNode(curr) && isHostNode(next)) {
+       scheduleFlush()
+     },
+ 
+@@ -459,7 +465,7 @@ export function diffVNodes(
+   }
+ 
+   if (isCommittedHostNode(curr) && isHostNode(next)) {
 -    diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget)
-+  if (isCommittedHostNode(curr) && isHostNode(next)) {
 +    diffHost(curr, next, frame, scheduler, vParent, rootTarget)
      return
    }
-@@
+ 
+@@ -500,8 +506,8 @@ function replace(
+   rootTarget: EventTarget,
+   anchor?: Node,
+ ) {
 -  anchor =
 -    anchor || findFirstDomAnchor(curr) || findNextSiblingDomAnchor(curr, curr._parent) || undefined
 +  // Use curr's DOM position (most accurate), fall back to anchor if curr has no DOM
@@ -74,7 +89,7 @@ diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@r
    insert(next, domParent, frame, scheduler, vParent, rootTarget, anchor)
    remove(curr, domParent, scheduler)
  }
- 
+@@ -509,7 +515,6 @@ function replace(
  function diffHost(
    curr: CommittedHostNode,
    next: HostNode,
@@ -82,36 +97,40 @@ diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@r
    frame: FrameHandle,
    scheduler: Scheduler,
    vParent: VNode,
-@@
--  handle.setScheduleUpdate(() => {
+@@ -1004,7 +1009,7 @@ function renderComponent(
+   let committed = next as CommittedComponentNode
+ 
+   handle.setScheduleUpdate(() => {
 -    scheduler.enqueue(committed, domParent, anchor)
--  })
-+  handle.setScheduleUpdate(() => {
 +    scheduler.enqueue(committed, domParent)
-+  })
+   })
+ 
+   scheduler.enqueueTasks(tasks)
 diff --git a/node_modules/@remix-run/component/dist/lib/vdom.js b/node_modules/@remix-run/component/dist/lib/vdom.js
+index 34615e0..f29a0b2 100644
 --- a/node_modules/@remix-run/component/dist/lib/vdom.js
 +++ b/node_modules/@remix-run/component/dist/lib/vdom.js
-@@
-     let tasks = [];
+@@ -26,6 +26,7 @@ export function createScheduler(doc, rootTarget) {
      let flushScheduled = false;
      let scheduler;
      function dispatchError(error) {
 +        console.error(error);
          rootTarget.dispatchEvent(new ErrorEvent('error', { error }));
      }
-@@
--        if (batch.size > 0) {
+     function flush() {
+@@ -38,7 +39,7 @@ export function createScheduler(doc, rootTarget) {
+         // Mark layout elements within updating components as pending BEFORE capture
+         // This ensures we only capture/apply for elements whose components are updating
+         if (batch.size > 0) {
 -            for (let [, [domParent]] of batch) {
--                markLayoutSubtreePending(domParent);
--            }
--        }
-+        if (batch.size > 0) {
 +            for (let [, domParent] of batch) {
-+                markLayoutSubtreePending(domParent);
-+            }
-+        }
-@@
+                 markLayoutSubtreePending(domParent);
+             }
+         }
+@@ -48,12 +49,17 @@ export function createScheduler(doc, rootTarget) {
+         if (batch.size > 0) {
+             let vnodes = Array.from(batch);
+             let noScheduledAncestor = new Set();
 -            for (let [vnode, [domParent, anchor]] of vnodes) {
 +            for (let [vnode, domParent] of vnodes) {
                  if (ancestorIsScheduled(vnode, batch, noScheduledAncestor))
@@ -127,21 +146,30 @@ diff --git a/node_modules/@remix-run/component/dist/lib/vdom.js b/node_modules/@
                  try {
                      renderComponent(handle, curr, vnode, domParent, handle.frame, scheduler, rootTarget, vParent, anchor);
                  }
-@@
+@@ -106,8 +112,8 @@ export function createScheduler(doc, rootTarget) {
+         return false;
+     }
+     scheduler = {
 -        enqueue(vnode, domParent, anchor) {
 -            scheduled.set(vnode, [domParent, anchor]);
 +        enqueue(vnode, domParent) {
 +            scheduled.set(vnode, domParent);
              scheduleFlush();
          },
-@@
--    if (isCommittedHostNode(curr) && isHostNode(next)) {
+         enqueueTasks(newTasks) {
+@@ -242,7 +248,7 @@ export function diffVNodes(curr, next, domParent, frame, scheduler, vParent, roo
+         return;
+     }
+     if (isCommittedHostNode(curr) && isHostNode(next)) {
 -        diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget);
-+    if (isCommittedHostNode(curr) && isHostNode(next)) {
 +        diffHost(curr, next, frame, scheduler, vParent, rootTarget);
          return;
      }
-@@
+     if (isCommittedComponentNode(curr) && isComponentNode(next)) {
+@@ -259,12 +265,12 @@ export function diffVNodes(curr, next, domParent, frame, scheduler, vParent, roo
+     invariant(false, 'Unexpected diff case');
+ }
+ function replace(curr, next, domParent, frame, scheduler, vParent, rootTarget, anchor) {
 -    anchor =
 -        anchor || findFirstDomAnchor(curr) || findNextSiblingDomAnchor(curr, curr._parent) || undefined;
 +    // Use curr's DOM position (most accurate), fall back to anchor if curr has no DOM
@@ -151,7 +179,11 @@ diff --git a/node_modules/@remix-run/component/dist/lib/vdom.js b/node_modules/@
  }
 -function diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget) {
 +function diffHost(curr, next, frame, scheduler, vParent, rootTarget) {
-@@
+     // Handle innerHTML prop BEFORE diffChildren to avoid clearing children
+     if (next.props.innerHTML != null) {
+         // innerHTML is set, update it if changed
+@@ -687,7 +693,7 @@ function renderComponent(handle, currContent, next, domParent, frame, scheduler,
+     next._parent = vParent;
      let committed = next;
      handle.setScheduleUpdate(() => {
 -        scheduler.enqueue(committed, domParent, anchor);
@@ -160,9 +192,13 @@ diff --git a/node_modules/@remix-run/component/dist/lib/vdom.js b/node_modules/@
      scheduler.enqueueTasks(tasks);
  }
 diff --git a/node_modules/@remix-run/component/dist/lib/vdom.d.ts b/node_modules/@remix-run/component/dist/lib/vdom.d.ts
+index 3f8f603..a80ab78 100644
 --- a/node_modules/@remix-run/component/dist/lib/vdom.d.ts
 +++ b/node_modules/@remix-run/component/dist/lib/vdom.d.ts
-@@
+@@ -46,7 +46,7 @@ type CommittedComponentNode = VNode & {
+ type EmptyFn = () => void;
+ export type Scheduler = ReturnType<typeof createScheduler>;
+ export declare function createScheduler(doc: Document, rootTarget: EventTarget): {
 -    enqueue(vnode: CommittedComponentNode, domParent: ParentNode, anchor?: Node): void;
 +    enqueue(vnode: CommittedComponentNode, domParent: ParentNode): void;
      enqueueTasks(newTasks: EmptyFn[]): void;

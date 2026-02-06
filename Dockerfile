@@ -6,14 +6,20 @@ WORKDIR /app
 # Install FFmpeg for metadata editing
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies (includes dev deps for patch-package)
 FROM base AS install
+COPY package.json bun.lock patches/ ./
+RUN bun install --frozen-lockfile
+
+# Production-only dependencies
+FROM base AS prod-deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # Final image
 FROM base AS release
-COPY --from=install /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=install /app/node_modules/@remix-run/component ./node_modules/@remix-run/component
 COPY . .
 
 # Create data directory for SQLite databases

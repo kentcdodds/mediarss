@@ -1,0 +1,170 @@
+diff --git a/node_modules/@remix-run/component/src/lib/vdom.ts b/node_modules/@remix-run/component/src/lib/vdom.ts
+--- a/node_modules/@remix-run/component/src/lib/vdom.ts
++++ b/node_modules/@remix-run/component/src/lib/vdom.ts
+@@
+-  let scheduled = new Map<CommittedComponentNode, [ParentNode, Node | undefined]>()
++  let scheduled = new Map<CommittedComponentNode, ParentNode>()
+   let tasks: EmptyFn[] = []
+   let flushScheduled = false
+   let scheduler: {
+-    enqueue(vnode: CommittedComponentNode, domParent: ParentNode, anchor?: Node): void
++    enqueue(vnode: CommittedComponentNode, domParent: ParentNode): void
+     enqueueTasks(newTasks: EmptyFn[]): void
+     dequeue(): void
+   }
+ 
+   function dispatchError(error: unknown) {
++    console.error(error)
+     rootTarget.dispatchEvent(new ErrorEvent('error', { error }))
+   }
+@@
+-    if (batch.size > 0) {
+-      for (let [, [domParent]] of batch) {
+-        markLayoutSubtreePending(domParent)
+-      }
+-    }
++    if (batch.size > 0) {
++      for (let [, domParent] of batch) {
++        markLayoutSubtreePending(domParent)
++      }
++    }
+@@
+-      for (let [vnode, [domParent, anchor]] of vnodes) {
++      for (let [vnode, domParent] of vnodes) {
+         if (ancestorIsScheduled(vnode, batch, noScheduledAncestor)) continue
+         let handle = vnode._handle
+         let curr = vnode._content
+         let vParent = vnode._parent!
++        // Calculate anchor at render time from current vdom position (never stale).
++        // Needed for fragment self-updates that add children - without this, new children
++        // would be appended after siblings. The keyed diff has placement logic, but unkeyed
++        // diff relies on anchor for correct positioning.
++        let anchor = findNextSiblingDomAnchor(vnode, vParent) || undefined
+         try {
+           renderComponent(
+             handle,
+@@
+-    batch: Map<CommittedComponentNode, [ParentNode, Node | undefined]>,
++    batch: Map<CommittedComponentNode, ParentNode>,
+     safe: Set<VNode>,
+   ): boolean {
+@@
+-  scheduler = {
+-    enqueue(vnode: CommittedComponentNode, domParent: ParentNode, anchor?: Node): void {
+-      scheduled.set(vnode, [domParent, anchor])
+-      scheduleFlush()
+-    },
++  scheduler = {
++    enqueue(vnode: CommittedComponentNode, domParent: ParentNode): void {
++      scheduled.set(vnode, domParent)
++      scheduleFlush()
++    },
+@@
+-  if (isCommittedHostNode(curr) && isHostNode(next)) {
+-    diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget)
++  if (isCommittedHostNode(curr) && isHostNode(next)) {
++    diffHost(curr, next, frame, scheduler, vParent, rootTarget)
+     return
+   }
+@@
+-  anchor =
+-    anchor || findFirstDomAnchor(curr) || findNextSiblingDomAnchor(curr, curr._parent) || undefined
++  // Use curr's DOM position (most accurate), fall back to anchor if curr has no DOM
++  anchor = findFirstDomAnchor(curr) || anchor
+   insert(next, domParent, frame, scheduler, vParent, rootTarget, anchor)
+   remove(curr, domParent, scheduler)
+ }
+ 
+ function diffHost(
+   curr: CommittedHostNode,
+   next: HostNode,
+-  domParent: ParentNode,
+   frame: FrameHandle,
+   scheduler: Scheduler,
+   vParent: VNode,
+@@
+-  handle.setScheduleUpdate(() => {
+-    scheduler.enqueue(committed, domParent, anchor)
+-  })
++  handle.setScheduleUpdate(() => {
++    scheduler.enqueue(committed, domParent)
++  })
+diff --git a/node_modules/@remix-run/component/dist/lib/vdom.js b/node_modules/@remix-run/component/dist/lib/vdom.js
+--- a/node_modules/@remix-run/component/dist/lib/vdom.js
++++ b/node_modules/@remix-run/component/dist/lib/vdom.js
+@@
+     let tasks = [];
+     let flushScheduled = false;
+     let scheduler;
+     function dispatchError(error) {
++        console.error(error);
+         rootTarget.dispatchEvent(new ErrorEvent('error', { error }));
+     }
+@@
+-        if (batch.size > 0) {
+-            for (let [, [domParent]] of batch) {
+-                markLayoutSubtreePending(domParent);
+-            }
+-        }
++        if (batch.size > 0) {
++            for (let [, domParent] of batch) {
++                markLayoutSubtreePending(domParent);
++            }
++        }
+@@
+-            for (let [vnode, [domParent, anchor]] of vnodes) {
++            for (let [vnode, domParent] of vnodes) {
+                 if (ancestorIsScheduled(vnode, batch, noScheduledAncestor))
+                     continue;
+                 let handle = vnode._handle;
+                 let curr = vnode._content;
+                 let vParent = vnode._parent;
++                // Calculate anchor at render time from current vdom position (never stale).
++                // Needed for fragment self-updates that add children - without this, new children
++                // would be appended after siblings. The keyed diff has placement logic, but unkeyed
++                // diff relies on anchor for correct positioning.
++                let anchor = findNextSiblingDomAnchor(vnode, vParent) || undefined;
+                 try {
+                     renderComponent(handle, curr, vnode, domParent, handle.frame, scheduler, rootTarget, vParent, anchor);
+                 }
+@@
+-        enqueue(vnode, domParent, anchor) {
+-            scheduled.set(vnode, [domParent, anchor]);
++        enqueue(vnode, domParent) {
++            scheduled.set(vnode, domParent);
+             scheduleFlush();
+         },
+@@
+-    if (isCommittedHostNode(curr) && isHostNode(next)) {
+-        diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget);
++    if (isCommittedHostNode(curr) && isHostNode(next)) {
++        diffHost(curr, next, frame, scheduler, vParent, rootTarget);
+         return;
+     }
+@@
+-    anchor =
+-        anchor || findFirstDomAnchor(curr) || findNextSiblingDomAnchor(curr, curr._parent) || undefined;
++    // Use curr's DOM position (most accurate), fall back to anchor if curr has no DOM
++    anchor = findFirstDomAnchor(curr) || anchor;
+     insert(next, domParent, frame, scheduler, vParent, rootTarget, anchor);
+     remove(curr, domParent, scheduler);
+ }
+-function diffHost(curr, next, domParent, frame, scheduler, vParent, rootTarget) {
++function diffHost(curr, next, frame, scheduler, vParent, rootTarget) {
+@@
+     let committed = next;
+     handle.setScheduleUpdate(() => {
+-        scheduler.enqueue(committed, domParent, anchor);
++        scheduler.enqueue(committed, domParent);
+     });
+     scheduler.enqueueTasks(tasks);
+ }
+diff --git a/node_modules/@remix-run/component/dist/lib/vdom.d.ts b/node_modules/@remix-run/component/dist/lib/vdom.d.ts
+--- a/node_modules/@remix-run/component/dist/lib/vdom.d.ts
++++ b/node_modules/@remix-run/component/dist/lib/vdom.d.ts
+@@
+-    enqueue(vnode: CommittedComponentNode, domParent: ParentNode, anchor?: Node): void;
++    enqueue(vnode: CommittedComponentNode, domParent: ParentNode): void;
+     enqueueTasks(newTasks: EmptyFn[]): void;
+     dequeue(): void;
+ };

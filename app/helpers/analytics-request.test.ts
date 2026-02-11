@@ -305,6 +305,57 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('preserves first valid X-Real-IP candidate across segment combination matrix', () => {
+		const realIpSegments = [
+			'198.51.100.251',
+			'"198.51.100.252"',
+			'[2001:db8::99]:443',
+			'"[2001:db8::9a]:443"',
+			'unknown',
+			'"unknown"',
+			'_hidden',
+			'nonsense',
+			'"\\"unknown\\", 198.51.100.254"',
+			'198.51.100.255:8080',
+		]
+
+		const segmentCombinations: string[][] = []
+		for (const first of realIpSegments) {
+			segmentCombinations.push([first])
+			for (const second of realIpSegments) {
+				segmentCombinations.push([first, second])
+				for (const third of realIpSegments) {
+					segmentCombinations.push([first, second, third])
+				}
+			}
+		}
+
+		for (const segmentCombination of segmentCombinations) {
+			const realIpHeader = segmentCombination.join(',')
+			const request = new Request('https://example.com/media', {
+				headers: {
+					'X-Real-IP': realIpHeader,
+				},
+			})
+
+			let expectedIp: string | null = null
+			for (const segment of segmentCombination) {
+				const isolatedSegmentRequest = new Request('https://example.com/media', {
+					headers: {
+						'X-Real-IP': segment,
+					},
+				})
+				const isolatedIp = getClientIp(isolatedSegmentRequest)
+				if (isolatedIp) {
+					expectedIp = isolatedIp
+					break
+				}
+			}
+
+			expect(getClientIp(request)).toBe(expectedIp)
+		}
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

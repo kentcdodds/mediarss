@@ -571,6 +571,66 @@ test('media route uses first valid value from comma-separated X-Real-IP header',
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route preserves first valid X-Real-IP candidate across trailing segment noise matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const trailingSegments = [
+		'nonsense',
+		'unknown',
+		'_hidden',
+		'"unknown"',
+		'"\\"unknown\\", 198.51.100.228"',
+		'198.51.100.229:8080',
+		'[2001:db8::9b]:443',
+	]
+
+	const realIpHeaders = trailingSegments.map(
+		(trailingSegment) =>
+			`198.51.100.226,${trailingSegment},198.51.100.227`,
+	)
+
+	for (const realIp of realIpHeaders) {
+		const response = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Forwarded-For': 'unknown',
+				'X-Real-IP': realIp,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentRealIp = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': 'unknown',
+			'X-Real-IP': '198.51.100.226',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(realIpHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('media route parses quoted whole-chain X-Real-IP values', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

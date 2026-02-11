@@ -312,6 +312,53 @@ test('media route logs analytics for curated feed items', async () => {
 	})
 })
 
+test('media route logs ranged request semantics for curated feed items', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const nonStartRangeResponse = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Range: 'bytes=10-',
+		}),
+	)
+	expect(nonStartRangeResponse.status).toBe(206)
+
+	const startRangeResponse = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Range: 'bytes=0-',
+		}),
+	)
+	expect(startRangeResponse.status).toBe(206)
+
+	const events = db
+		.query<
+			{
+				status_code: number
+				is_download_start: number
+			},
+			[string]
+		>(
+			sql`
+				SELECT status_code, is_download_start
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at ASC, id ASC;
+			`,
+		)
+		.all(ctx.feed.id)
+	expect(events).toHaveLength(2)
+
+	const hasNonStartRangeEvent = events.some(
+		(event) => event.status_code === 206 && event.is_download_start === 0,
+	)
+	expect(hasNonStartRangeEvent).toBe(true)
+
+	const hasStartRangeEvent = events.some(
+		(event) => event.status_code === 206 && event.is_download_start === 1,
+	)
+	expect(hasStartRangeEvent).toBe(true)
+})
+
 test('media route does not log analytics for curated media outside item list', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.otherRelativePath}`

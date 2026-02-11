@@ -492,6 +492,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.10')
 	})
 
+	test('normalizes hexadecimal IPv4-mapped Forwarded values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[::ffff:cb00:710e]:443";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.14')
+	})
+
 	test('normalizes IPv4-mapped IPv6 values for stable fingerprints', () => {
 		const mappedRequest = new Request('https://example.com/media', {
 			headers: {

@@ -3957,6 +3957,102 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('preserves cross-header precedence across segment combination matrix without user-agent', () => {
+		const xForwardedForValues = crossHeaderXForwardedForValues
+		const forwardedValues = crossHeaderForwardedValues
+		const xRealIpValues = crossHeaderXRealIpValues
+
+		const xForwardedForResults = new Map<string | null, string | null>()
+		const forwardedResults = new Map<string | null, string | null>()
+		const xRealIpResults = new Map<string | null, string | null>()
+
+		for (const headerValue of xForwardedForValues) {
+			if (headerValue === null) {
+				xForwardedForResults.set(headerValue, null)
+				continue
+			}
+			xForwardedForResults.set(
+				headerValue,
+				getClientIp(
+					new Request('https://example.com/media', {
+						headers: {
+							'X-Forwarded-For': headerValue,
+						},
+					}),
+				),
+			)
+		}
+		for (const headerValue of forwardedValues) {
+			if (headerValue === null) {
+				forwardedResults.set(headerValue, null)
+				continue
+			}
+			forwardedResults.set(
+				headerValue,
+				getClientIp(
+					new Request('https://example.com/media', {
+						headers: {
+							Forwarded: headerValue,
+						},
+					}),
+				),
+			)
+		}
+		for (const headerValue of xRealIpValues) {
+			if (headerValue === null) {
+				xRealIpResults.set(headerValue, null)
+				continue
+			}
+			xRealIpResults.set(
+				headerValue,
+				getClientIp(
+					new Request('https://example.com/media', {
+						headers: {
+							'X-Real-IP': headerValue,
+						},
+					}),
+				),
+			)
+		}
+
+		for (const xForwardedForValue of xForwardedForValues) {
+			for (const forwardedValue of forwardedValues) {
+				for (const xRealIpValue of xRealIpValues) {
+					const headers: Record<string, string> = {}
+					if (xForwardedForValue !== null) {
+						headers['X-Forwarded-For'] = xForwardedForValue
+					}
+					if (forwardedValue !== null) {
+						headers.Forwarded = forwardedValue
+					}
+					if (xRealIpValue !== null) {
+						headers['X-Real-IP'] = xRealIpValue
+					}
+
+					const request = new Request('https://example.com/media', { headers })
+					const expectedIp =
+						xForwardedForResults.get(xForwardedForValue) ??
+						forwardedResults.get(forwardedValue) ??
+						xRealIpResults.get(xRealIpValue) ??
+						null
+
+					expect(getClientIp(request)).toBe(expectedIp)
+					const canonicalRequestHeaders: Record<string, string> = {}
+					if (expectedIp !== null) {
+						canonicalRequestHeaders['X-Forwarded-For'] = expectedIp
+					}
+					const canonicalRequest = new Request('https://example.com/media', {
+						headers: canonicalRequestHeaders,
+					})
+					expect(getClientName(request)).toBeNull()
+					expect(getClientFingerprint(request)).toBe(
+						getClientFingerprint(canonicalRequest),
+					)
+				}
+			}
+		}
+	})
+
 	test('extracts known podcast client names from user agent', () => {
 		const request = new Request('https://example.com/feed', {
 			headers: {

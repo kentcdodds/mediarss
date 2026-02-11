@@ -5421,6 +5421,72 @@ test('feed route preserves cross-header precedence across segment combination ma
 	}
 })
 
+test('feed route preserves cross-header precedence across segment combination matrix without user-agent', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const xForwardedForValues = crossHeaderXForwardedForValues
+	const forwardedValues = crossHeaderForwardedValues
+	const xRealIpValues = crossHeaderXRealIpValues
+
+	const readLatestClientEvent = () =>
+		db
+			.query<
+				{
+					client_fingerprint: string | null
+					client_name: string | null
+				},
+				[string]
+			>(
+				sql`
+						SELECT client_fingerprint, client_name
+						FROM feed_analytics_events
+						WHERE feed_id = ? AND event_type = 'rss_fetch'
+						ORDER BY rowid DESC
+						LIMIT 1;
+					`,
+			)
+			.get(ctx.feed.id) ?? { client_fingerprint: null, client_name: null }
+
+	for (const xForwardedForValue of xForwardedForValues) {
+		for (const forwardedValue of forwardedValues) {
+			for (const xRealIpValue of xRealIpValues) {
+				const headers: Record<string, string> = {}
+				if (xForwardedForValue !== null) {
+					headers['X-Forwarded-For'] = xForwardedForValue
+				}
+				if (forwardedValue !== null) {
+					headers.Forwarded = forwardedValue
+				}
+				if (xRealIpValue !== null) {
+					headers['X-Real-IP'] = xRealIpValue
+				}
+
+				const response = await feedHandler.action(
+					createFeedActionContext(ctx.token, headers),
+				)
+				expect(response.status).toBe(200)
+
+				const expectedIp = getClientIp(
+					new Request('https://example.com/feed', { headers }),
+				)
+				const canonicalRequest = new Request('https://example.com/feed', {
+					headers:
+						expectedIp === null
+							? {}
+							: {
+									'X-Forwarded-For': expectedIp,
+								},
+				})
+				const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+				const latestEvent = readLatestClientEvent()
+				expect(latestEvent.client_name).toBeNull()
+				expect(latestEvent.client_fingerprint).toBe(expectedFingerprint)
+			}
+		}
+	}
+})
+
 test('feed route uses Forwarded header when X-Forwarded-For candidates are unknown', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

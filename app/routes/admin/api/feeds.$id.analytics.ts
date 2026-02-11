@@ -114,66 +114,42 @@ export default {
 		const since = now - windowDays * 24 * 60 * 60
 
 		const directoryFeed = getDirectoryFeedById(id)
-		if (directoryFeed) {
-			const summary = getFeedAnalyticsSummary(id, since)
-			const tokenMetrics = getFeedAnalyticsByToken(id, since)
-			const topMediaItems = getFeedTopMediaItemAnalytics(
-				id,
-				since,
-				TOP_ITEMS_LIMIT,
-			)
-			const topClients = getFeedTopClientAnalytics(id, since)
-			const daily = getFeedDailyAnalytics(id, since)
-			const tokens = listDirectoryFeedTokens(id)
-			const byToken = buildTokenAnalytics(tokens, tokenMetrics)
-
-			return Response.json({
-				feed: {
-					id: directoryFeed.id,
-					name: directoryFeed.name,
-					type: 'directory' as const,
-				},
-				windowDays,
-				since,
-				summary,
-				byToken,
-				topMediaItems,
-				topClients,
-				daily,
-			})
+		const curatedFeed = directoryFeed ? null : getCuratedFeedById(id)
+		if (!directoryFeed && !curatedFeed) {
+			return Response.json({ error: 'Feed not found' }, { status: 404 })
 		}
 
-		const curatedFeed = getCuratedFeedById(id)
-		if (curatedFeed) {
-			const summary = getFeedAnalyticsSummary(id, since)
-			const tokenMetrics = getFeedAnalyticsByToken(id, since)
-			const topMediaItems = getFeedTopMediaItemAnalytics(
-				id,
-				since,
-				TOP_ITEMS_LIMIT,
-			)
-			const topClients = getFeedTopClientAnalytics(id, since)
-			const daily = getFeedDailyAnalytics(id, since)
-			const tokens = listCuratedFeedTokens(id)
-			const byToken = buildTokenAnalytics(tokens, tokenMetrics)
+		const feed = directoryFeed ?? curatedFeed
+		const feedType = directoryFeed ? 'directory' : 'curated'
+		const tokens = directoryFeed
+			? listDirectoryFeedTokens(id)
+			: listCuratedFeedTokens(id)
 
-			return Response.json({
-				feed: {
-					id: curatedFeed.id,
-					name: curatedFeed.name,
-					type: 'curated' as const,
-				},
-				windowDays,
-				since,
-				summary,
-				byToken,
-				topMediaItems,
-				topClients,
-				daily,
-			})
-		}
+		const summary = getFeedAnalyticsSummary(id, since)
+		const tokenMetrics = getFeedAnalyticsByToken(id, since)
+		const topMediaItems = getFeedTopMediaItemAnalytics(
+			id,
+			since,
+			TOP_ITEMS_LIMIT,
+		)
+		const topClients = getFeedTopClientAnalytics(id, since)
+		const daily = getFeedDailyAnalytics(id, since)
+		const byToken = buildTokenAnalytics(tokens, tokenMetrics)
 
-		return Response.json({ error: 'Feed not found' }, { status: 404 })
+		return Response.json({
+			feed: {
+				id: feed.id,
+				name: feed.name,
+				type: feedType,
+			},
+			windowDays,
+			since,
+			summary,
+			byToken,
+			topMediaItems,
+			topClients,
+			daily,
+		})
 	},
 } satisfies BuildAction<
 	typeof routes.adminApiFeedAnalytics.method,

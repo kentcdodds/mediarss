@@ -158,6 +158,58 @@ type FeedResponse = {
 	hasUploadedArtwork: boolean
 }
 
+type FeedAnalyticsSummary = {
+	rssFetches: number
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+}
+
+type FeedTokenAnalytics = FeedAnalyticsSummary & {
+	token: string
+	label: string
+	createdAt: number
+	lastUsedAt: number | null
+	revokedAt: number | null
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+}
+
+type FeedTopMediaAnalytics = {
+	mediaRoot: string
+	relativePath: string
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+	lastSeenAt: number | null
+}
+
+type FeedDailyAnalytics = FeedAnalyticsSummary & {
+	day: string
+	dayStart: number
+}
+
+type FeedAnalyticsResponse = {
+	feed: {
+		id: string
+		name: string
+		type: 'directory' | 'curated'
+	}
+	windowDays: number
+	since: number
+	summary: FeedAnalyticsSummary
+	byToken: Array<FeedTokenAnalytics>
+	topMediaItems: Array<FeedTopMediaAnalytics>
+	daily: Array<FeedDailyAnalytics>
+}
+
+type AnalyticsLoadingState =
+	| { status: 'loading' }
+	| { status: 'error'; message: string }
+	| { status: 'success'; data: FeedAnalyticsResponse }
+
 type LoadingState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
@@ -204,11 +256,32 @@ type BrowseState =
  */
 export function FeedDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
+	let analyticsState: AnalyticsLoadingState = { status: 'loading' }
 	let copiedToken: string | null = null
 	let showCreateForm = false
 	let newTokenLabel = ''
 	let createLoading = false
 	let feedId = ''
+
+	const fetchAnalytics = (id: string) => {
+		analyticsState = { status: 'loading' }
+		handle.update()
+
+		fetch(`/admin/api/feeds/${id}/analytics?days=30`, { signal: handle.signal })
+			.then((res) => {
+				if (!res.ok) throw new Error(`HTTP ${res.status}`)
+				return res.json() as Promise<FeedAnalyticsResponse>
+			})
+			.then((data) => {
+				analyticsState = { status: 'success', data }
+				handle.update()
+			})
+			.catch((err) => {
+				if (handle.signal.aborted) return
+				analyticsState = { status: 'error', message: err.message }
+				handle.update()
+			})
+	}
 
 	// Edit mode state
 	let isEditing = false
@@ -390,6 +463,7 @@ export function FeedDetail(handle: Handle) {
 	const fetchFeed = (id: string) => {
 		feedId = id
 		state = { status: 'loading' }
+		analyticsState = { status: 'loading' }
 		handle.update()
 
 		fetch(`/admin/api/feeds/${id}`, { signal: handle.signal })
@@ -404,11 +478,13 @@ export function FeedDetail(handle: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
+				fetchAnalytics(id)
 				handle.update()
 			})
 			.catch((err) => {
 				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
+				analyticsState = { status: 'error', message: err.message }
 				handle.update()
 			})
 	}
@@ -1967,6 +2043,31 @@ export function FeedDetail(handle: Handle) {
 							</table>
 						</div>
 					)}
+				</div>
+
+				{/* Analytics Section */}
+				<div
+					css={{
+						backgroundColor: colors.surface,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						padding: responsive.spacingSection,
+						marginBottom: spacing.xl,
+						boxShadow: shadows.sm,
+					}}
+				>
+					<h3
+						css={{
+							fontSize: typography.fontSize.base,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: `0 0 ${spacing.md} 0`,
+						}}
+					>
+						Analytics (last 30 days)
+					</h3>
+
+					<FeedAnalyticsSection analyticsState={analyticsState} />
 				</div>
 
 				{/* Tokens Section */}
@@ -3882,4 +3983,378 @@ const fileItemStyles = {
 	'&:last-child': {
 		borderBottom: 'none',
 	},
+}
+
+function FeedAnalyticsSection() {
+	return ({ analyticsState }: { analyticsState: AnalyticsLoadingState }) => {
+		if (analyticsState.status === 'loading') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+					}}
+				>
+					Loading analytics...
+				</p>
+			)
+		}
+
+		if (analyticsState.status === 'error') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: '#ef4444',
+					}}
+				>
+					Unable to load analytics: {analyticsState.message}
+				</p>
+			)
+		}
+
+		const { summary, byToken, topMediaItems, daily } = analyticsState.data
+		const maxDailyRequests = Math.max(
+			1,
+			...daily.map((point) => point.mediaRequests),
+		)
+
+		return (
+			<div
+				css={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap: spacing.lg,
+				}}
+			>
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+						gap: spacing.sm,
+					}}
+				>
+					<AnalyticsMetricCard
+						label="RSS Fetches"
+						value={summary.rssFetches.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Media Requests"
+						value={summary.mediaRequests.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Download Starts"
+						value={summary.downloadStarts.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Unique Clients"
+						value={summary.uniqueClients.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Bytes Served"
+						value={formatFileSize(summary.bytesServed)}
+					/>
+				</div>
+
+				<div>
+					<h4
+						css={{
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.semibold,
+							margin: `0 0 ${spacing.sm} 0`,
+							color: colors.text,
+						}}
+					>
+						By Token
+					</h4>
+					{byToken.length === 0 ? (
+						<p
+							css={{
+								margin: 0,
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}}
+						>
+							No token analytics yet.
+						</p>
+					) : (
+						<div css={{ overflowX: 'auto' }}>
+							<table
+								css={{
+									width: '100%',
+									borderCollapse: 'collapse',
+									fontSize: typography.fontSize.xs,
+								}}
+							>
+								<thead>
+									<tr css={{ borderBottom: `1px solid ${colors.border}` }}>
+										<th css={analyticsCellHeaderStyle}>Token</th>
+										<th css={analyticsCellHeaderStyle}>RSS</th>
+										<th css={analyticsCellHeaderStyle}>Requests</th>
+										<th css={analyticsCellHeaderStyle}>Starts</th>
+										<th css={analyticsCellHeaderStyle}>Clients</th>
+										<th css={analyticsCellHeaderStyle}>Bytes</th>
+										<th css={analyticsCellHeaderStyle}>Last Seen</th>
+									</tr>
+								</thead>
+								<tbody>
+									{byToken.map((token) => (
+										<tr
+											key={token.token}
+											css={{ borderBottom: `1px solid ${colors.border}` }}
+										>
+											<td css={analyticsCellStyle}>
+												<div>
+													<div>{token.label || 'Unlabeled token'}</div>
+													<div
+														css={{
+															color: colors.textMuted,
+															fontFamily: 'monospace',
+															fontSize: typography.fontSize.xs,
+														}}
+													>
+														{token.token.slice(0, 10)}...
+													</div>
+												</div>
+											</td>
+											<td css={analyticsCellStyle}>
+												{token.rssFetches.toLocaleString()}
+											</td>
+											<td css={analyticsCellStyle}>
+												{token.mediaRequests.toLocaleString()}
+											</td>
+											<td css={analyticsCellStyle}>
+												{token.downloadStarts.toLocaleString()}
+											</td>
+											<td css={analyticsCellStyle}>
+												{token.uniqueClients.toLocaleString()}
+											</td>
+											<td css={analyticsCellStyle}>
+												{formatFileSize(token.bytesServed)}
+											</td>
+											<td css={analyticsCellStyle}>
+												{formatRelativeTime(token.lastSeenAt)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+						gap: spacing.lg,
+					}}
+				>
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							Top Media Items
+						</h4>
+						{topMediaItems.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No media request analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{topMediaItems.slice(0, 8).map((item) => (
+									<li
+										key={`${item.mediaRoot}:${item.relativePath}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<Link
+											href={`/admin/media/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
+											css={{
+												color: colors.primary,
+												textDecoration: 'none',
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+											}}
+										>
+											{item.relativePath.split('/').at(-1) ?? item.relativePath}
+										</Link>
+										<div
+											css={{
+												marginTop: spacing.xs,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{item.downloadStarts} starts</span>
+											<span>{item.mediaRequests} requests</span>
+											<span>{formatFileSize(item.bytesServed)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							Daily Activity
+						</h4>
+						{daily.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No daily activity yet.
+							</p>
+						) : (
+							<div
+								css={{
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.xs,
+								}}
+							>
+								{daily.slice(-14).map((point) => (
+									<div
+										key={point.day}
+										css={{
+											display: 'grid',
+											gridTemplateColumns: '68px 1fr 52px',
+											alignItems: 'center',
+											gap: spacing.sm,
+										}}
+									>
+										<span
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												fontFamily: 'monospace',
+											}}
+										>
+											{point.day.slice(5)}
+										</span>
+										<div
+											css={{
+												height: '8px',
+												borderRadius: radius.sm,
+												backgroundColor: colors.background,
+												overflow: 'hidden',
+											}}
+										>
+											<div
+												css={{
+													height: '100%',
+													width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
+													backgroundColor: colors.primary,
+												}}
+											/>
+										</div>
+										<span
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												textAlign: 'right',
+											}}
+										>
+											{point.mediaRequests}
+										</span>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
+		)
+	}
+}
+
+function AnalyticsMetricCard() {
+	return ({ label, value }: { label: string; value: string }) => (
+		<div
+			css={{
+				padding: spacing.sm,
+				borderRadius: radius.md,
+				border: `1px solid ${colors.border}`,
+				backgroundColor: colors.background,
+			}}
+		>
+			<div
+				css={{
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
+				}}
+			>
+				{label}
+			</div>
+			<div
+				css={{
+					fontSize: typography.fontSize.base,
+					fontWeight: typography.fontWeight.semibold,
+					color: colors.text,
+				}}
+			>
+				{value}
+			</div>
+		</div>
+	)
+}
+
+const analyticsCellHeaderStyle = {
+	textAlign: 'left' as const,
+	padding: `${spacing.xs} ${spacing.sm}`,
+	color: colors.textMuted,
+	fontWeight: typography.fontWeight.medium,
+	fontSize: typography.fontSize.xs,
+	textTransform: 'uppercase' as const,
+	letterSpacing: '0.05em',
+}
+
+const analyticsCellStyle = {
+	padding: `${spacing.xs} ${spacing.sm}`,
+	fontSize: typography.fontSize.xs,
+	color: colors.text,
 }

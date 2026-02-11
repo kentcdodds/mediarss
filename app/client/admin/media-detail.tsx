@@ -3,6 +3,7 @@ import {
 	formatDate,
 	formatDuration,
 	formatFileSize,
+	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
 	artworkLayout,
@@ -78,6 +79,58 @@ type MediaDetailResponse = {
 	directoryFeeds: DirectoryFeed[]
 }
 
+type MediaAnalyticsSummary = {
+	rssFetches: number
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+}
+
+type MediaAnalyticsByToken = MediaAnalyticsSummary & {
+	token: string
+	feedId: string
+	feedType: 'directory' | 'curated'
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+	feedName: string
+	label: string
+	createdAt: number | null
+	lastUsedAt: number | null
+	revokedAt: number | null
+}
+
+type MediaAnalyticsByFeed = MediaAnalyticsSummary & {
+	feedId: string
+	feedType: 'directory' | 'curated'
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+	feedName: string
+}
+
+type MediaAnalyticsDaily = MediaAnalyticsSummary & {
+	day: string
+	dayStart: number
+}
+
+type MediaAnalyticsResponse = {
+	media: {
+		rootName: string
+		relativePath: string
+	}
+	windowDays: number
+	since: number
+	summary: MediaAnalyticsSummary
+	byToken: Array<MediaAnalyticsByToken>
+	byFeed: Array<MediaAnalyticsByFeed>
+	daily: Array<MediaAnalyticsDaily>
+}
+
+type MediaAnalyticsLoadingState =
+	| { status: 'loading' }
+	| { status: 'error'; message: string }
+	| { status: 'success'; data: MediaAnalyticsResponse }
+
 type LoadingState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
@@ -117,6 +170,7 @@ function isVideo(mimeType: string): boolean {
  */
 export function MediaDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
+	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
 	let currentPath = ''
 	let selectedFeedIds: Set<string> = new Set()
 	let saving = false
@@ -148,9 +202,38 @@ export function MediaDetail(handle: Handle) {
 		subtitle: '',
 	}
 
+	const fetchAnalytics = async (rootName: string, relativePath: string) => {
+		analyticsState = { status: 'loading' }
+		handle.update()
+
+		try {
+			const res = await fetch(
+				`/admin/api/media-analytics/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}?days=30`,
+				{ signal: handle.signal },
+			)
+
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}))
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			const data = (await res.json()) as MediaAnalyticsResponse
+			analyticsState = { status: 'success', data }
+			handle.update()
+		} catch (err) {
+			if (handle.signal.aborted) return
+			analyticsState = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Unknown error',
+			}
+			handle.update()
+		}
+	}
+
 	const fetchMedia = async (encodedPath: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
+		analyticsState = { status: 'loading' }
 		handle.update()
 
 		try {
@@ -173,10 +256,16 @@ export function MediaDetail(handle: Handle) {
 					.map((a) => a.feedId),
 			)
 
+			fetchAnalytics(data.media.rootName, data.media.relativePath)
+
 			handle.update()
 		} catch (err) {
 			if (handle.signal.aborted) return
 			state = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Unknown error',
+			}
+			analyticsState = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
@@ -1418,6 +1507,30 @@ export function MediaDetail(handle: Handle) {
 									</p>
 								)}
 						</div>
+
+						{/* Media Analytics Card */}
+						<div
+							css={{
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: responsive.spacingSection,
+								marginTop: spacing.xl,
+								boxShadow: shadows.sm,
+							}}
+						>
+							<h3
+								css={{
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: `0 0 ${spacing.md} 0`,
+								}}
+							>
+								Analytics (last 30 days)
+							</h3>
+							<MediaAnalyticsSection analyticsState={analyticsState} />
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1510,6 +1623,349 @@ function MetadataItem() {
 			>
 				{value}
 			</dd>
+		</div>
+	)
+}
+
+function MediaAnalyticsSection() {
+	return ({
+		analyticsState,
+	}: {
+		analyticsState: MediaAnalyticsLoadingState
+	}) => {
+		if (analyticsState.status === 'loading') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+					}}
+				>
+					Loading analytics...
+				</p>
+			)
+		}
+
+		if (analyticsState.status === 'error') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: '#ef4444',
+					}}
+				>
+					Unable to load analytics: {analyticsState.message}
+				</p>
+			)
+		}
+
+		const { summary, byFeed, byToken, daily } = analyticsState.data
+		const maxDailyRequests = Math.max(
+			1,
+			...daily.map((point) => point.mediaRequests),
+		)
+
+		return (
+			<div
+				css={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap: spacing.lg,
+				}}
+			>
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+						gap: spacing.sm,
+					}}
+				>
+					<AnalyticsMetricCard
+						label="Requests"
+						value={summary.mediaRequests.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Download Starts"
+						value={summary.downloadStarts.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Unique Clients"
+						value={summary.uniqueClients.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Bytes Served"
+						value={formatFileSize(summary.bytesServed)}
+					/>
+				</div>
+
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+						gap: spacing.lg,
+					}}
+				>
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							By Feed
+						</h4>
+						{byFeed.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No feed-level analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{byFeed.map((feed) => (
+									<li
+										key={`${feed.feedType}-${feed.feedId}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<Link
+											href={`/admin/feeds/${feed.feedId}`}
+											css={{
+												color: colors.primary,
+												textDecoration: 'none',
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+											}}
+										>
+											{feed.feedName}
+										</Link>
+										<div
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												display: 'flex',
+												gap: spacing.sm,
+												marginTop: spacing.xs,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{feed.downloadStarts} starts</span>
+											<span>{feed.mediaRequests} requests</span>
+											<span>{formatFileSize(feed.bytesServed)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							Top Tokens
+						</h4>
+						{byToken.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No token-level analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{byToken.slice(0, 8).map((token) => (
+									<li
+										key={`${token.feedType}-${token.feedId}-${token.token}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<div
+											css={{
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												fontWeight: typography.fontWeight.medium,
+											}}
+										>
+											{token.label || 'Unlabeled token'}
+										</div>
+										<div
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												marginTop: spacing.xs,
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{token.downloadStarts} starts</span>
+											<span>{token.mediaRequests} requests</span>
+											<span>{token.uniqueClients} clients</span>
+											<span>{formatRelativeTime(token.lastSeenAt)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				</div>
+
+				<div>
+					<h4
+						css={{
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.semibold,
+							margin: `0 0 ${spacing.sm} 0`,
+							color: colors.text,
+						}}
+					>
+						Daily Activity
+					</h4>
+					{daily.length === 0 ? (
+						<p
+							css={{
+								margin: 0,
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}}
+						>
+							No daily activity yet.
+						</p>
+					) : (
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+							}}
+						>
+							{daily.slice(-14).map((point) => (
+								<div
+									key={point.day}
+									css={{
+										display: 'grid',
+										gridTemplateColumns: '68px 1fr 52px',
+										alignItems: 'center',
+										gap: spacing.sm,
+									}}
+								>
+									<span
+										css={{
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											fontFamily: 'monospace',
+										}}
+									>
+										{point.day.slice(5)}
+									</span>
+									<div
+										css={{
+											height: '8px',
+											borderRadius: radius.sm,
+											backgroundColor: colors.background,
+											overflow: 'hidden',
+										}}
+									>
+										<div
+											css={{
+												height: '100%',
+												width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
+												backgroundColor: colors.primary,
+											}}
+										/>
+									</div>
+									<span
+										css={{
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											textAlign: 'right',
+										}}
+									>
+										{point.mediaRequests}
+									</span>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</div>
+		)
+	}
+}
+
+function AnalyticsMetricCard() {
+	return ({ label, value }: { label: string; value: string }) => (
+		<div
+			css={{
+				padding: spacing.sm,
+				borderRadius: radius.md,
+				border: `1px solid ${colors.border}`,
+				backgroundColor: colors.background,
+			}}
+		>
+			<div
+				css={{
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
+				}}
+			>
+				{label}
+			</div>
+			<div
+				css={{
+					fontSize: typography.fontSize.base,
+					fontWeight: typography.fontWeight.semibold,
+					color: colors.text,
+				}}
+			>
+				{value}
+			</div>
 		</div>
 	)
 }

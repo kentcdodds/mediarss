@@ -240,10 +240,26 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 		})
 		const hasForwardedParameter = rawSegment.includes('=')
 		const previousSegment = forwardedSegments.at(-1)
+		const previousSegmentHasQuotedForParameter = previousSegment
+			? splitSemicolonSeparatedHeaderValues(previousSegment).some(
+					(parameter) => {
+						const equalsIndex = parameter.indexOf('=')
+						if (equalsIndex === -1) return false
+
+						const key = parameter.slice(0, equalsIndex).trim().toLowerCase()
+						if (key !== 'for') return false
+
+						const value = parameter.slice(equalsIndex + 1).trim()
+						return value.includes('"')
+					},
+				)
+			: false
 		const shouldMergeWithPreviousSegment =
 			previousSegment &&
 			(!hasForwardedParameter ||
-				(!segmentHasForParameter && hasUnclosedQuotes(previousSegment)))
+				(!segmentHasForParameter &&
+					(hasUnclosedQuotes(previousSegment) ||
+						previousSegmentHasQuotedForParameter)))
 		if (shouldMergeWithPreviousSegment) {
 			const previousSegmentIndex = forwardedSegments.length - 1
 			forwardedSegments[previousSegmentIndex] =

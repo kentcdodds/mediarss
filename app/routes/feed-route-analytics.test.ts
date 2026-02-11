@@ -3342,6 +3342,55 @@ test('feed route stores null client metadata across repeated Forwarded invalid-v
 	}
 })
 
+test('feed route falls back to X-Real-IP across repeated Forwarded invalid-value matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const expectedIp = '198.51.100.252'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'X-Real-IP': expectedIp,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				const repeatedHeader = buildHeader(firstValue, secondValue)
+				const response = await feedHandler.action(
+					createFeedActionContext(ctx.token, {
+						Forwarded: repeatedHeader,
+						'X-Real-IP': `${expectedIp}:443`,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_fingerprint: string | null
+							client_name: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_fingerprint, client_name
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'rss_fetch'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+				expect(events[0]?.client_name).toBeNull()
+			}
+		}
+	}
+})
+
 test('feed route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -3492,6 +3541,61 @@ test('feed route stores null client metadata across triple repeated Forwarded in
 
 					expect(events).toHaveLength(1)
 					expect(events[0]?.client_fingerprint).toBeNull()
+					expect(events[0]?.client_name).toBeNull()
+				}
+			}
+		}
+	}
+})
+
+test('feed route falls back to X-Real-IP across triple repeated Forwarded invalid-value matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const expectedIp = '198.51.100.253'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'X-Real-IP': expectedIp,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				for (const thirdValue of repeatedForwardedInvalidValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const response = await feedHandler.action(
+						createFeedActionContext(ctx.token, {
+							Forwarded: repeatedHeader,
+							'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+						}),
+					)
+					expect(response.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+								client_name: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint, client_name
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'rss_fetch'
+								ORDER BY rowid DESC
+								LIMIT 1;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 					expect(events[0]?.client_name).toBeNull()
 				}
 			}

@@ -3462,6 +3462,55 @@ test('media route stores null client metadata across repeated Forwarded invalid-
 	}
 })
 
+test('media route falls back to X-Real-IP across repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.254'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				const repeatedHeader = buildHeader(firstValue, secondValue)
+				const response = await mediaHandler.action(
+					createMediaActionContext(ctx.token, pathParam, {
+						Forwarded: repeatedHeader,
+						'X-Real-IP': `${expectedIp}:443`,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_fingerprint: string | null
+							client_name: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_fingerprint, client_name
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'media_request'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+				expect(events[0]?.client_name).toBeNull()
+			}
+		}
+	}
+})
+
 test('media route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
@@ -3613,6 +3662,61 @@ test('media route stores null client metadata across triple repeated Forwarded i
 
 					expect(events).toHaveLength(1)
 					expect(events[0]?.client_fingerprint).toBeNull()
+					expect(events[0]?.client_name).toBeNull()
+				}
+			}
+		}
+	}
+})
+
+test('media route falls back to X-Real-IP across triple repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.255'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				for (const thirdValue of repeatedForwardedInvalidValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const response = await mediaHandler.action(
+						createMediaActionContext(ctx.token, pathParam, {
+							Forwarded: repeatedHeader,
+							'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+						}),
+					)
+					expect(response.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+								client_name: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint, client_name
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'media_request'
+								ORDER BY rowid DESC
+								LIMIT 1;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 					expect(events[0]?.client_name).toBeNull()
 				}
 			}

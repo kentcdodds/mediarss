@@ -19,6 +19,10 @@ test('parseAnalyticsWindowDays accepts positive integer values', () => {
 test('parseAnalyticsWindowDays clamps values to max', () => {
 	const days = parseAnalyticsWindowDays(createRequest('?days=9999'))
 	expect(days).toBe(365)
+	const hugeDays = parseAnalyticsWindowDays(
+		createRequest('?days=999999999999999999999999999'),
+	)
+	expect(hugeDays).toBe(365)
 })
 
 test('parseAnalyticsWindowDays rejects invalid numeric formats', () => {

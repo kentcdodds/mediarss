@@ -32,10 +32,21 @@ export function parseAnalyticsWindowDays(
 		return defaultDays
 	}
 
-	const parsed = Number(rawValue)
-	if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+	let parsedBigInt: bigint
+	try {
+		parsedBigInt = BigInt(rawValue)
+	} catch {
 		return defaultDays
 	}
 
-	return Math.min(parsed, maxDays)
+	if (parsedBigInt <= 0n) {
+		return defaultDays
+	}
+
+	const maxDaysBigInt = BigInt(maxDays)
+	if (parsedBigInt > maxDaysBigInt) {
+		return maxDays
+	}
+
+	return Number(parsedBigInt)
 }

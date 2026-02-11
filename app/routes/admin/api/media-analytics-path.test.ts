@@ -300,6 +300,19 @@ test('media analytics endpoint clamps analytics window days to max', async () =>
 	expect(data.windowDays).toBe(365)
 })
 
+test('media analytics endpoint clamps huge integer window values', async () => {
+	await using ctx = await createMediaApiTestContext()
+
+	const response = await analyticsHandler.action(
+		createActionContext(
+			`${ctx.rootName}/${ctx.relativePath}`,
+			'999999999999999999999999999',
+		),
+	)
+	expect(response.status).toBe(200)
+	expect((await response.json()).windowDays).toBe(365)
+})
+
 test('media analytics endpoint defaults analytics window for invalid values', async () => {
 	await using ctx = await createMediaApiTestContext()
 

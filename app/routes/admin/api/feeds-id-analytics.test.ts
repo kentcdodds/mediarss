@@ -193,6 +193,15 @@ test('feed analytics endpoint clamps analytics window days to max', () => {
 	})
 })
 
+test('feed analytics endpoint clamps huge integer window values', async () => {
+	using ctx = createTestFeedContext()
+	const response = await analyticsHandler.action(
+		createActionContext(ctx.feed.id, '999999999999999999999999999'),
+	)
+	expect(response.status).toBe(200)
+	expect((await response.json()).windowDays).toBe(365)
+})
+
 test('feed analytics endpoint defaults analytics window for invalid values', () => {
 	using ctx = createTestFeedContext()
 

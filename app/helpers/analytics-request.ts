@@ -66,10 +66,24 @@ function stripDanglingBoundaryQuotes(value: string): string {
 	let normalizedValue = value.trim()
 
 	while (normalizedValue) {
+		const hasDanglingEscapedLeadingQuote =
+			normalizedValue.startsWith('\\"') && !normalizedValue.endsWith('"')
+		if (hasDanglingEscapedLeadingQuote) {
+			normalizedValue = normalizedValue.slice(2).trim()
+			continue
+		}
+
 		const hasDanglingLeadingQuote =
 			normalizedValue.startsWith('"') && !normalizedValue.endsWith('"')
 		if (hasDanglingLeadingQuote) {
 			normalizedValue = normalizedValue.slice(1).trim()
+			continue
+		}
+
+		const hasDanglingEscapedTrailingQuote =
+			normalizedValue.endsWith('\\"') && !normalizedValue.startsWith('"')
+		if (hasDanglingEscapedTrailingQuote) {
+			normalizedValue = normalizedValue.slice(0, -2).trim()
 			continue
 		}
 

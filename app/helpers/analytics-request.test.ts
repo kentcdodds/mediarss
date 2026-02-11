@@ -194,6 +194,29 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.225')
 	})
 
+	test('recovers escaped-quote chains with repeated trailing quotes in X-Real-IP values', () => {
+		const repeatedTrailingQuoteEscapedChainRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '"\\"unknown\\", 198.51.100.255\\"\\"',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.255',
+			},
+		})
+
+		expect(getClientIp(repeatedTrailingQuoteEscapedChainRequest)).toBe(
+			'198.51.100.255',
+		)
+		expect(getClientFingerprint(repeatedTrailingQuoteEscapedChainRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers dangling trailing quotes in X-Real-IP values', () => {
 		const danglingTrailingQuoteRequest = new Request(
 			'https://example.com/media',
@@ -337,6 +360,29 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('203.0.113.234')
+	})
+
+	test('recovers escaped-quote chains with repeated trailing quotes in X-Forwarded-For values', () => {
+		const repeatedTrailingQuoteEscapedChainRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': '"\\"unknown\\", 203.0.113.255\\"\\"',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.255',
+			},
+		})
+
+		expect(getClientIp(repeatedTrailingQuoteEscapedChainRequest)).toBe(
+			'203.0.113.255',
+		)
+		expect(getClientFingerprint(repeatedTrailingQuoteEscapedChainRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
 	})
 
 	test('recovers dangling trailing quotes in X-Forwarded-For chains', () => {

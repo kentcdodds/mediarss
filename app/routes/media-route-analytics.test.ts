@@ -813,6 +813,46 @@ test('media route normalizes Forwarded IPv6 values with ports', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route normalizes IPv4-mapped IPv6 Forwarded values with ports', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const responseWithMappedIpv6 = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: 'for="[::ffff:203.0.113.92]:443";proto=https',
+		}),
+	)
+	expect(responseWithMappedIpv6.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '::ffff:203.0.113.92',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('media route uses first forwarded IP for analytics fingerprinting', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

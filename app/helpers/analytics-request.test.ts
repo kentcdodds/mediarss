@@ -280,6 +280,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('2001:db8:cafe::17')
 	})
 
+	test('normalizes IPv4-mapped IPv6 Forwarded values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[::ffff:203.0.113.90]:443";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('::ffff:203.0.113.90')
+	})
+
 	test('skips malformed bracketed Forwarded IPv6 values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

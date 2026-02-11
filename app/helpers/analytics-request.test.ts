@@ -113,6 +113,27 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(invalidPortRequest)).toBeNull()
 	})
 
+	test('normalizes quoted X-Real-IP values with ports', () => {
+		const quotedIpv4WithPortRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '"198.51.100.48:8443"',
+			},
+		})
+		const quotedBracketedIpv6WithPortRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '"[2001:DB8:CAFE::63]:443"',
+				},
+			},
+		)
+
+		expect(getClientIp(quotedIpv4WithPortRequest)).toBe('198.51.100.48')
+		expect(getClientIp(quotedBracketedIpv6WithPortRequest)).toBe(
+			'2001:db8:cafe::63',
+		)
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

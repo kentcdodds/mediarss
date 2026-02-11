@@ -1453,6 +1453,46 @@ test('media route parses quoted whole-chain X-Forwarded-For values', async () =>
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route parses escaped-quote whole-chain X-Forwarded-For values', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const responseWithEscapedQuotedForwardedForChain = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '"\\"unknown\\", 203.0.113.233"',
+		}),
+	)
+	expect(responseWithEscapedQuotedForwardedForChain.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '203.0.113.233',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('media route recovers from malformed quoted whole-chain X-Forwarded-For values', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

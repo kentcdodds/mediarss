@@ -651,7 +651,8 @@ describe('analytics-request helpers', () => {
 	test('keeps earliest valid Forwarded candidate when bare malformed segment follows', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
-				Forwarded: 'for=198.51.100.201, nonsense,for=198.51.100.202;proto=https',
+				Forwarded:
+					'for=198.51.100.201, nonsense,for=198.51.100.202;proto=https',
 			},
 		})
 		const canonicalRequest = new Request('https://example.com/media', {
@@ -661,6 +662,25 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('198.51.100.201')
+		expect(getClientFingerprint(request)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('keeps earliest valid quoted Forwarded candidate when bare malformed segment follows', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded:
+					'for="198.51.100.211", nonsense,for=198.51.100.212;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.211',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.211')
 		expect(getClientFingerprint(request)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)

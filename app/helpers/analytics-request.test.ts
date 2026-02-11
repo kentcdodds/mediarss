@@ -68,6 +68,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientName(request)).toBe('AppleCoreMedia')
 	})
 
+	test('falls back to first user-agent token for unknown clients', () => {
+		const request = new Request('https://example.com/feed', {
+			headers: {
+				'User-Agent': 'CustomPodApp/2.4 (Linux)',
+			},
+		})
+
+		expect(getClientName(request)).toBe('CustomPodApp/2.4')
+	})
+
 	test('detects download-start requests from range headers', () => {
 		const fullRequest = new Request('https://example.com/media')
 		const zeroRangeRequest = new Request('https://example.com/media', {

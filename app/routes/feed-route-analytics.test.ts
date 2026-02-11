@@ -1421,6 +1421,84 @@ test('feed route recovers nested forwarded for tokens inside quoted for chains',
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route recovers nested uppercase forwarded for tokens inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithNestedUppercaseForwardedForToken = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="unknown, FOR = 198.51.100.232";proto=https',
+		}),
+	)
+	expect(responseWithNestedUppercaseForwardedForToken.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.232',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers nested forwarded ipv6 tokens inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithNestedIpv6ForwardedForToken = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="unknown, for=[2001:DB8::a]:443";proto=https',
+		}),
+	)
+	expect(responseWithNestedIpv6ForwardedForToken.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:db8::a',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route recovers malformed Forwarded proto tail segments', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

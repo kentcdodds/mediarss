@@ -337,6 +337,33 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('2001:db8:cafe::31')
 	})
 
+	test('normalizes quoted X-Forwarded-For values with ports', () => {
+		const quotedIpv4WithPortRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"198.51.100.49:8443"',
+			},
+		})
+		const quotedBracketedIpv6WithPortRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': '"[2001:DB8:CAFE::64]:443"',
+				},
+			},
+		)
+		const invalidQuotedPortRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"198.51.100.49:abc"',
+			},
+		})
+
+		expect(getClientIp(quotedIpv4WithPortRequest)).toBe('198.51.100.49')
+		expect(getClientIp(quotedBracketedIpv6WithPortRequest)).toBe(
+			'2001:db8:cafe::64',
+		)
+		expect(getClientIp(invalidQuotedPortRequest)).toBeNull()
+	})
+
 	test('normalizes uppercase IPv6 values to lowercase', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

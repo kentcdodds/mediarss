@@ -473,6 +473,60 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('preserves first valid X-Forwarded-For candidate across segment combination matrix', () => {
+		const forwardedSegments = [
+			'198.51.100.241',
+			'"198.51.100.242"',
+			'[2001:db8::88]:443',
+			'"[2001:db8::89]:443"',
+			'unknown',
+			'"unknown"',
+			'_hidden',
+			'nonsense',
+			'"\\"unknown\\", 198.51.100.244"',
+			'198.51.100.245:8080',
+		]
+
+		const segmentCombinations: string[][] = []
+		for (const first of forwardedSegments) {
+			segmentCombinations.push([first])
+			for (const second of forwardedSegments) {
+				segmentCombinations.push([first, second])
+				for (const third of forwardedSegments) {
+					segmentCombinations.push([first, second, third])
+				}
+			}
+		}
+
+		for (const segmentCombination of segmentCombinations) {
+			const forwardedHeader = segmentCombination.join(',')
+			const request = new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': forwardedHeader,
+				},
+			})
+
+			let expectedIp: string | null = null
+			for (const segment of segmentCombination) {
+				const isolatedSegmentRequest = new Request(
+					'https://example.com/media',
+					{
+						headers: {
+							'X-Forwarded-For': segment,
+						},
+					},
+				)
+				const isolatedIp = getClientIp(isolatedSegmentRequest)
+				if (isolatedIp) {
+					expectedIp = isolatedIp
+					break
+				}
+			}
+
+			expect(getClientIp(request)).toBe(expectedIp)
+		}
+	})
+
 	test('skips blank forwarded entries before falling back to real values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
@@ -721,11 +775,14 @@ describe('analytics-request helpers', () => {
 
 			let expectedIp: string | null = null
 			for (const segment of segmentCombination) {
-				const isolatedSegmentRequest = new Request('https://example.com/media', {
-					headers: {
-						Forwarded: segment,
+				const isolatedSegmentRequest = new Request(
+					'https://example.com/media',
+					{
+						headers: {
+							Forwarded: segment,
+						},
 					},
-				})
+				)
 				const isolatedIp = getClientIp(isolatedSegmentRequest)
 				if (isolatedIp) {
 					expectedIp = isolatedIp
@@ -776,11 +833,14 @@ describe('analytics-request helpers', () => {
 
 			let expectedIp: string | null = null
 			for (const segment of segmentCombination) {
-				const isolatedSegmentRequest = new Request('https://example.com/media', {
-					headers: {
-						Forwarded: segment,
+				const isolatedSegmentRequest = new Request(
+					'https://example.com/media',
+					{
+						headers: {
+							Forwarded: segment,
+						},
 					},
-				})
+				)
 				const isolatedIp = getClientIp(isolatedSegmentRequest)
 				if (isolatedIp) {
 					expectedIp = isolatedIp

@@ -4252,6 +4252,62 @@ test('feed route uses first forwarded IP for analytics fingerprinting', async ()
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route preserves first valid X-Forwarded-For candidate across trailing segment noise matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const trailingSegments = [
+		'nonsense',
+		'unknown',
+		'_hidden',
+		'"unknown"',
+		'"\\"unknown\\", 198.51.100.248"',
+		'198.51.100.249:8080',
+		'[2001:db8::90]:443',
+	]
+
+	const forwardedHeaders = trailingSegments.map(
+		(trailingSegment) => `198.51.100.246,${trailingSegment},198.51.100.247`,
+	)
+
+	for (const forwardedFor of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': forwardedFor,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.246',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route does not log analytics for revoked directory tokens', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)

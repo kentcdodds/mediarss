@@ -115,3 +115,32 @@ test('feed route does not log analytics for missing tokens', async () => {
 
 	expect(events?.count ?? 0).toBe(0)
 })
+
+test('feed route touches token last_used_at on successful fetch', async () => {
+	using ctx = createFeedRouteTestContext()
+
+	const before = db
+		.query<{ last_used_at: number | null }, [string]>(
+			sql`
+				SELECT last_used_at
+				FROM curated_feed_tokens
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
+	expect(before?.last_used_at ?? null).toBeNull()
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(200)
+
+	const after = db
+		.query<{ last_used_at: number | null }, [string]>(
+			sql`
+				SELECT last_used_at
+				FROM curated_feed_tokens
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
+	expect((after?.last_used_at ?? 0) > 0).toBe(true)
+})

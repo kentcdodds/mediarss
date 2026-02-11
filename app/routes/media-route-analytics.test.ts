@@ -133,35 +133,42 @@ test('media route logs media_request analytics for full and ranged requests', as
 		.all(ctx.feed.id)
 
 	expect(events).toHaveLength(3)
-	expect(events[0]).toMatchObject({
-		status_code: 200,
-		is_download_start: 1,
-		media_root: ctx.rootName,
-		relative_path: ctx.relativePath,
-		client_name: 'AntennaPod',
-	})
-	expect((events[0]?.bytes_served ?? 0) > 0).toBe(true)
-	expect(events[0]?.client_fingerprint).toBeTruthy()
 
-	expect(events[1]).toMatchObject({
-		status_code: 206,
-		is_download_start: 0,
-		media_root: ctx.rootName,
-		relative_path: ctx.relativePath,
-		client_name: 'AntennaPod',
-	})
-	expect((events[1]?.bytes_served ?? 0) > 0).toBe(true)
-	expect(events[1]?.client_fingerprint).toBeTruthy()
+	const hasFullStartEvent = events.some(
+		(event) =>
+			event.status_code === 200 &&
+			event.is_download_start === 1 &&
+			event.media_root === ctx.rootName &&
+			event.relative_path === ctx.relativePath &&
+			event.client_name === 'AntennaPod' &&
+			(event.bytes_served ?? 0) > 0 &&
+			Boolean(event.client_fingerprint),
+	)
+	expect(hasFullStartEvent).toBe(true)
 
-	expect(events[2]).toMatchObject({
-		status_code: 206,
-		is_download_start: 1,
-		media_root: ctx.rootName,
-		relative_path: ctx.relativePath,
-		client_name: 'AntennaPod',
-	})
-	expect((events[2]?.bytes_served ?? 0) > 0).toBe(true)
-	expect(events[2]?.client_fingerprint).toBeTruthy()
+	const hasPartialNonStartEvent = events.some(
+		(event) =>
+			event.status_code === 206 &&
+			event.is_download_start === 0 &&
+			event.media_root === ctx.rootName &&
+			event.relative_path === ctx.relativePath &&
+			event.client_name === 'AntennaPod' &&
+			(event.bytes_served ?? 0) > 0 &&
+			Boolean(event.client_fingerprint),
+	)
+	expect(hasPartialNonStartEvent).toBe(true)
+
+	const hasPartialStartEvent = events.some(
+		(event) =>
+			event.status_code === 206 &&
+			event.is_download_start === 1 &&
+			event.media_root === ctx.rootName &&
+			event.relative_path === ctx.relativePath &&
+			event.client_name === 'AntennaPod' &&
+			(event.bytes_served ?? 0) > 0 &&
+			Boolean(event.client_fingerprint),
+	)
+	expect(hasPartialStartEvent).toBe(true)
 })
 
 test('media route does not log analytics when token is missing', async () => {

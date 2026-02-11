@@ -13,6 +13,7 @@ import {
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
 import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
+import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 
 function getTokenMetadata(
@@ -89,10 +90,8 @@ export default {
 			return Response.json({ error: 'Path required' }, { status: 400 })
 		}
 
-		let decodedPath: string
-		try {
-			decodedPath = decodeURIComponent(splatParam)
-		} catch {
+		const decodedPath = decodePathParam(splatParam)
+		if (decodedPath === null) {
 			return Response.json({ error: 'Invalid path encoding' }, { status: 400 })
 		}
 		const parsed = parseMediaPathStrict(decodedPath)

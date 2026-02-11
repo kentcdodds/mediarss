@@ -298,6 +298,38 @@ test('feed route stores null client metadata for directory requests without trai
 	})
 })
 
+test('feed route records fallback client name for unknown user-agents', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': 'CustomPodClient/1.2 (Linux)',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event?.client_name).toBe('CustomPodClient/1.2')
+	expect(event?.client_fingerprint).toBeTruthy()
+})
+
 test('feed route fingerprints requests with X-Real-IP and no user-agent', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

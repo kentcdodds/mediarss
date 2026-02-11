@@ -345,6 +345,39 @@ test('media route stores null client metadata for curated requests without trait
 	})
 })
 
+test('media route records fallback client name for unknown user-agents', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'User-Agent': 'CustomPlayer/9.1 (Android)',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event?.client_name).toBe('CustomPlayer/9.1')
+	expect(event?.client_fingerprint).toBeTruthy()
+})
+
 test('media route fingerprints requests with X-Real-IP and no user-agent', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

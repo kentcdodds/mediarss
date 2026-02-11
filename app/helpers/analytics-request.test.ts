@@ -1136,6 +1136,82 @@ describe('analytics-request helpers', () => {
 		).toBe(getClientFingerprint(canonicalRequest))
 	})
 
+	test('recovers quintuply-prefixed mixed-case nested forwarded tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedQuintupleMixedCasePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR = for = FOR = for = FOR = 198.51.100.245;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.245',
+			},
+		})
+
+		expect(
+			getClientIp(
+				malformedNestedQuintupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe('198.51.100.245')
+		expect(
+			getClientFingerprint(
+				malformedNestedQuintupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
+	test('recovers quintuply-prefixed mixed-case nested forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedIpv6QuintupleMixedCasePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR = for = FOR = for = FOR = [2001:db8::28]:443;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8::28',
+			},
+		})
+
+		expect(
+			getClientIp(
+				malformedNestedIpv6QuintupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe('2001:db8::28')
+		expect(
+			getClientFingerprint(
+				malformedNestedIpv6QuintupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
+	test('falls through deeply nested invalid forwarded for token to later valid candidate', () => {
+		const malformedNestedInvalidThenValidRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded:
+						'for="unknown, for=for=for=unknown";proto=https,for=198.51.100.246;proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.246',
+			},
+		})
+
+		expect(getClientIp(malformedNestedInvalidThenValidRequest)).toBe(
+			'198.51.100.246',
+		)
+		expect(getClientFingerprint(malformedNestedInvalidThenValidRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

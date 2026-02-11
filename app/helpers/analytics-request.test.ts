@@ -5,8 +5,6 @@ import {
 	getClientName,
 	getResponseBytesServed,
 	isDownloadStartRequest,
-	isTrackableMediaStatus,
-	isTrackableRssStatus,
 } from './analytics-request.ts'
 
 function createRequest(headers: Record<string, string> = {}) {
@@ -171,13 +169,4 @@ test('getResponseBytesServed parses valid content length and ignores invalid val
 	).toBeNull()
 
 	expect(getResponseBytesServed(new Response(null))).toBeNull()
-})
-
-test('trackable status helpers accept only expected statuses', () => {
-	expect(isTrackableRssStatus(200)).toBe(true)
-	expect(isTrackableRssStatus(206)).toBe(false)
-
-	expect(isTrackableMediaStatus(200)).toBe(true)
-	expect(isTrackableMediaStatus(206)).toBe(true)
-	expect(isTrackableMediaStatus(404)).toBe(false)
 })

@@ -5269,6 +5269,79 @@ test('media route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence 
 	}
 })
 
+test('media route applies precedence matrix with unknown user-agent tokenization', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const userAgent = 'CustomPodClient/1.2 (Linux)'
+	const expectedClientName = 'CustomPodClient/1.2'
+	const cases = [
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, 203.0.113.121',
+				Forwarded: 'for=198.51.100.131;proto=https',
+				'X-Real-IP': '198.51.100.141',
+			},
+			canonicalIp: '203.0.113.121',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=198.51.100.132;proto=https',
+				'X-Real-IP': '198.51.100.142',
+			},
+			canonicalIp: '198.51.100.132',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=unknown;proto=https',
+				'X-Real-IP': '"198.51.100.143:8443"',
+			},
+			canonicalIp: '198.51.100.143',
+		},
+	] as const
+
+	for (const testCase of cases) {
+		const response = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				...testCase.headers,
+				'User-Agent': userAgent,
+			}),
+		)
+		expect(response.status).toBe(200)
+
+		const expectedFingerprint = getClientFingerprint(
+			new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+					'User-Agent': userAgent,
+				},
+			}),
+		)
+
+		const latestEvent = db
+			.query<
+				{
+					client_fingerprint: string | null
+					client_name: string | null
+				},
+				[string]
+			>(
+				sql`
+					SELECT client_fingerprint, client_name
+					FROM feed_analytics_events
+					WHERE feed_id = ? AND event_type = 'media_request'
+					ORDER BY rowid DESC
+					LIMIT 1;
+				`,
+			)
+			.get(ctx.feed.id)
+
+		expect(latestEvent?.client_fingerprint).toBe(expectedFingerprint)
+		expect(latestEvent?.client_name).toBe(expectedClientName)
+	}
+})
+
 test('media route preserves cross-header precedence across segment combination matrix', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

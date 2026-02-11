@@ -3643,6 +3643,58 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('applies X-Forwarded-For, Forwarded, then X-Real-IP precedence matrix with unknown user-agent tokenization', () => {
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const cases = [
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, 203.0.113.121',
+					Forwarded: 'for=198.51.100.131;proto=https',
+					'X-Real-IP': '198.51.100.141',
+				},
+				canonicalIp: '203.0.113.121',
+			},
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, nonsense',
+					Forwarded: 'for=198.51.100.132;proto=https',
+					'X-Real-IP': '198.51.100.142',
+				},
+				canonicalIp: '198.51.100.132',
+			},
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, nonsense',
+					Forwarded: 'for=unknown;proto=https',
+					'X-Real-IP': '"198.51.100.143:8443"',
+				},
+				canonicalIp: '198.51.100.143',
+			},
+		]
+
+		for (const testCase of cases) {
+			const request = new Request('https://example.com/media', {
+				headers: {
+					...testCase.headers,
+					'User-Agent': userAgent,
+				},
+			})
+			const canonicalRequest = new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+					'User-Agent': userAgent,
+				},
+			})
+
+			expect(getClientIp(request)).toBe(testCase.canonicalIp)
+			expect(getClientName(request)).toBe(expectedClientName)
+			expect(getClientFingerprint(request)).toBe(
+				getClientFingerprint(canonicalRequest),
+			)
+		}
+	})
+
 	test('preserves cross-header precedence across segment combination matrix', () => {
 		const xForwardedForValues = crossHeaderXForwardedForValues
 		const forwardedValues = crossHeaderForwardedValues

@@ -127,6 +127,36 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 	expect(event?.client_fingerprint).toBeTruthy()
 })
 
+test('feed route stores null client metadata when request lacks client traits', async () => {
+	using ctx = createCuratedFeedRouteTestContext()
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		client_name: null,
+		client_fingerprint: null,
+	})
+})
+
 test('feed route does not log analytics for missing tokens', async () => {
 	const missingToken = `missing-token-${Date.now()}`
 	const response = await feedHandler.action(

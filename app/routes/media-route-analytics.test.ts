@@ -18,6 +18,10 @@ import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import {
+	getClientFingerprint,
+	getClientIp,
+} from '#app/helpers/analytics-request.ts'
+import {
 	crossHeaderForwardedValues,
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
@@ -3446,68 +3450,26 @@ test('media route preserves cross-header precedence across segment combination m
 	const xForwardedForValues = crossHeaderXForwardedForValues
 	const forwardedValues = crossHeaderForwardedValues
 	const xRealIpValues = crossHeaderXRealIpValues
+	const userAgent = 'Pocket Casts/7.0'
 
-	const readLatestFingerprint = () =>
+	const readLatestClientEvent = () =>
 		db
 			.query<
 				{
 					client_fingerprint: string | null
+					client_name: string | null
 				},
 				[string]
 			>(
 				sql`
-						SELECT client_fingerprint
+						SELECT client_fingerprint, client_name
 						FROM feed_analytics_events
 						WHERE feed_id = ? AND event_type = 'media_request'
 						ORDER BY rowid DESC
 						LIMIT 1;
 					`,
 			)
-			.get(ctx.feed.id)?.client_fingerprint ?? null
-
-	const xForwardedForFingerprints = new Map<string | null, string | null>()
-	const forwardedFingerprints = new Map<string | null, string | null>()
-	const xRealIpFingerprints = new Map<string | null, string | null>()
-
-	for (const headerValue of xForwardedForValues) {
-		if (headerValue === null) {
-			xForwardedForFingerprints.set(headerValue, null)
-			continue
-		}
-		const response = await mediaHandler.action(
-			createMediaActionContext(ctx.token, pathParam, {
-				'X-Forwarded-For': headerValue,
-			}),
-		)
-		expect(response.status).toBe(200)
-		xForwardedForFingerprints.set(headerValue, readLatestFingerprint())
-	}
-	for (const headerValue of forwardedValues) {
-		if (headerValue === null) {
-			forwardedFingerprints.set(headerValue, null)
-			continue
-		}
-		const response = await mediaHandler.action(
-			createMediaActionContext(ctx.token, pathParam, {
-				Forwarded: headerValue,
-			}),
-		)
-		expect(response.status).toBe(200)
-		forwardedFingerprints.set(headerValue, readLatestFingerprint())
-	}
-	for (const headerValue of xRealIpValues) {
-		if (headerValue === null) {
-			xRealIpFingerprints.set(headerValue, null)
-			continue
-		}
-		const response = await mediaHandler.action(
-			createMediaActionContext(ctx.token, pathParam, {
-				'X-Real-IP': headerValue,
-			}),
-		)
-		expect(response.status).toBe(200)
-		xRealIpFingerprints.set(headerValue, readLatestFingerprint())
-	}
+			.get(ctx.feed.id) ?? { client_fingerprint: null, client_name: null }
 
 	for (const xForwardedForValue of xForwardedForValues) {
 		for (const forwardedValue of forwardedValues) {
@@ -3522,19 +3484,30 @@ test('media route preserves cross-header precedence across segment combination m
 				if (xRealIpValue !== null) {
 					headers['X-Real-IP'] = xRealIpValue
 				}
+				headers['User-Agent'] = userAgent
 
 				const response = await mediaHandler.action(
 					createMediaActionContext(ctx.token, pathParam, headers),
 				)
 				expect(response.status).toBe(200)
 
-				const expectedFingerprint =
-					xForwardedForFingerprints.get(xForwardedForValue) ??
-					forwardedFingerprints.get(forwardedValue) ??
-					xRealIpFingerprints.get(xRealIpValue) ??
-					null
+				const expectedIp = getClientIp(
+					new Request('https://example.com/media', { headers }),
+				)
+				const canonicalRequest = new Request('https://example.com/media', {
+					headers:
+						expectedIp === null
+							? { 'User-Agent': userAgent }
+							: {
+									'X-Forwarded-For': expectedIp,
+									'User-Agent': userAgent,
+								},
+				})
+				const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
-				expect(readLatestFingerprint()).toBe(expectedFingerprint)
+				const latestEvent = readLatestClientEvent()
+				expect(latestEvent.client_name).toBe('Pocket Casts')
+				expect(latestEvent.client_fingerprint).toBe(expectedFingerprint)
 			}
 		}
 	}

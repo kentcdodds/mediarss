@@ -2459,6 +2459,7 @@ describe('analytics-request helpers', () => {
 		const xForwardedForValues = crossHeaderXForwardedForValues
 		const forwardedValues = crossHeaderForwardedValues
 		const xRealIpValues = crossHeaderXRealIpValues
+		const userAgent = 'Pocket Casts/7.0'
 
 		const xForwardedForResults = new Map<string | null, string | null>()
 		const forwardedResults = new Map<string | null, string | null>()
@@ -2528,7 +2529,10 @@ describe('analytics-request helpers', () => {
 					}
 
 					const request = new Request('https://example.com/media', {
-						headers,
+						headers: {
+							...headers,
+							'User-Agent': userAgent,
+						},
 					})
 					const expectedIp =
 						xForwardedForResults.get(xForwardedForValue) ??
@@ -2537,16 +2541,14 @@ describe('analytics-request helpers', () => {
 						null
 
 					expect(getClientIp(request)).toBe(expectedIp)
-
-					if (expectedIp === null) {
-						expect(getClientFingerprint(request)).toBeNull()
-						continue
+					const canonicalRequestHeaders: Record<string, string> = {
+						'User-Agent': userAgent,
 					}
-
+					if (expectedIp !== null) {
+						canonicalRequestHeaders['X-Forwarded-For'] = expectedIp
+					}
 					const canonicalRequest = new Request('https://example.com/media', {
-						headers: {
-							'X-Forwarded-For': expectedIp,
-						},
+						headers: canonicalRequestHeaders,
 					})
 					expect(getClientFingerprint(request)).toBe(
 						getClientFingerprint(canonicalRequest),

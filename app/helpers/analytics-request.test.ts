@@ -90,10 +90,22 @@ describe('analytics-request helpers', () => {
 				Range: 'bytes=1024-',
 			},
 		})
+		const malformedRangeRequest = new Request('https://example.com/media', {
+			headers: {
+				Range: 'bytes=-500',
+			},
+		})
+		const invalidUnitRangeRequest = new Request('https://example.com/media', {
+			headers: {
+				Range: 'items=0-100',
+			},
+		})
 
 		expect(isDownloadStartRequest(fullRequest)).toBe(true)
 		expect(isDownloadStartRequest(zeroRangeRequest)).toBe(true)
 		expect(isDownloadStartRequest(offsetRangeRequest)).toBe(false)
+		expect(isDownloadStartRequest(malformedRangeRequest)).toBe(false)
+		expect(isDownloadStartRequest(invalidUnitRangeRequest)).toBe(false)
 	})
 
 	test('reads bytes served from content-length header', () => {

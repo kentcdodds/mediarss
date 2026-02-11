@@ -441,6 +441,45 @@ test('feed route falls back to X-Real-IP when Forwarded values are unknown', asy
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route skips malformed Forwarded quoted comma candidates', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithMalformedForwardedCandidate = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="unknown,proxy", for=203.0.113.63',
+		}),
+	)
+	expect(responseWithMalformedForwardedCandidate.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.63',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route falls back to X-Real-IP when X-Forwarded-For unknown values include ports', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

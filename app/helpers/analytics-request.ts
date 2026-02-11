@@ -37,6 +37,7 @@ function normalizeClientIpToken(value: string): string | null {
 	) {
 		return null
 	}
+	if (/["\s,;]/.test(normalizedValue)) return null
 	if (normalizedValue.startsWith('_')) return null
 
 	return normalizedValue

@@ -273,6 +273,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.80')
 	})
 
+	test('skips malformed quoted Forwarded values containing commas', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown,proxy", for=198.51.100.83',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.83')
+	})
+
 	test('ignores empty quoted X-Real-IP values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

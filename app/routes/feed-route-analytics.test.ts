@@ -1993,6 +1993,89 @@ test('feed route recovers triply-prefixed nested uppercase forwarded ipv6 tokens
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route recovers quadruply-prefixed nested forwarded for tokens inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithNestedQuadruplePrefixForwardedForToken =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: 'for="unknown, for=for=for=for=198.51.100.242";proto=https',
+			}),
+		)
+	expect(responseWithNestedQuadruplePrefixForwardedForToken.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.242',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers quadruply-prefixed mixed-case nested forwarded ipv6 tokens with parameter suffixes inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithNestedIpv6QuadrupleMixedCasePrefixParameterizedForwardedForToken =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded:
+					'for="unknown, FOR = for = FOR = for = [2001:db8::26]:443;proto=https";proto=https',
+			}),
+		)
+	expect(
+		responseWithNestedIpv6QuadrupleMixedCasePrefixParameterizedForwardedForToken.status,
+	).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:db8::26',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route recovers doubly-prefixed nested uppercase forwarded for tokens inside quoted chains', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

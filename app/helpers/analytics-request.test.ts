@@ -1086,6 +1086,56 @@ describe('analytics-request helpers', () => {
 		).toBe(getClientFingerprint(canonicalRequest))
 	})
 
+	test('recovers quadruply-prefixed nested forwarded for tokens in quoted chains', () => {
+		const malformedNestedQuadruplePrefixForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded:
+						'for="unknown, for=for=for=for=198.51.100.241";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.241',
+			},
+		})
+
+		expect(getClientIp(malformedNestedQuadruplePrefixForRequest)).toBe(
+			'198.51.100.241',
+		)
+		expect(getClientFingerprint(malformedNestedQuadruplePrefixForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers quadruply-prefixed mixed-case nested forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedIpv6QuadrupleMixedCasePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR = for = FOR = for = [2001:db8::25]:443;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8::25',
+			},
+		})
+
+		expect(
+			getClientIp(
+				malformedNestedIpv6QuadrupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe('2001:db8::25')
+		expect(
+			getClientFingerprint(
+				malformedNestedIpv6QuadrupleMixedCasePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

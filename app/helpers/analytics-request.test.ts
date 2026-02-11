@@ -392,6 +392,58 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.242')
 	})
 
+	test('uses stable fingerprints for malformed escaped-quote X-Forwarded-For chains', () => {
+		const malformedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"\\"unknown\\", 203.0.113.234',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.234',
+			},
+		})
+
+		expect(getClientFingerprint(malformedRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('uses stable fingerprints for malformed escaped-quote X-Real-IP chains', () => {
+		const malformedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'unknown',
+				'X-Real-IP': '"\\"unknown\\", 198.51.100.225:8443',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.225',
+			},
+		})
+
+		expect(getClientFingerprint(malformedRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('uses stable fingerprints for malformed Forwarded proto-tail chains', () => {
+		const malformedRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown, 198.51.100.249;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.249',
+			},
+		})
+
+		expect(getClientFingerprint(malformedRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('uses Forwarded header when X-Forwarded-For values are all unknown', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

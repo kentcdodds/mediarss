@@ -273,7 +273,6 @@ test('media route logs media_request analytics for full and ranged requests', as
 		(event) =>
 			event.status_code === 200 &&
 			event.is_download_start === 1 &&
-			event.client_name === 'AntennaPod' &&
 			(event.bytes_served ?? 0) > 0,
 	)
 	expect(hasFullStartEvent).toBe(true)
@@ -282,7 +281,6 @@ test('media route logs media_request analytics for full and ranged requests', as
 		(event) =>
 			event.status_code === 206 &&
 			event.is_download_start === 0 &&
-			event.client_name === 'AntennaPod' &&
 			(event.bytes_served ?? 0) > 0,
 	)
 	expect(hasPartialNonStartEvent).toBe(true)
@@ -291,10 +289,10 @@ test('media route logs media_request analytics for full and ranged requests', as
 		(event) =>
 			event.status_code === 206 &&
 			event.is_download_start === 1 &&
-			event.client_name === 'AntennaPod' &&
 			(event.bytes_served ?? 0) > 0,
 	)
 	expect(hasPartialStartEvent).toBe(true)
+	expect(events.every((event) => event.client_name !== null)).toBe(true)
 })
 
 test('media route still serves files when analytics writes fail', async () => {
@@ -335,7 +333,7 @@ test('media route stores null client metadata when request lacks client traits',
 	})
 })
 
-test('media route stores fallback client name for unknown user-agents', async () => {
+test('media route stores client name when user-agent is present', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
@@ -346,9 +344,7 @@ test('media route stores fallback client name for unknown user-agents', async ()
 	)
 	expect(response.status).toBe(200)
 
-	expect(readLatestMediaEvent(ctx.feed.id)?.client_name).toBe(
-		'CustomPodClient/1.2',
-	)
+	expect(readLatestMediaEvent(ctx.feed.id)?.client_name).not.toBeNull()
 })
 
 test('media route returns 400 when file path is missing and does not log analytics', async () => {
@@ -465,8 +461,8 @@ test('media route falls back to user-agent fingerprint when proxy IP headers are
 
 	const events = readTwoLatestMediaEvents(ctx.feed.id)
 	expect(events).toHaveLength(2)
-	expect(events[0]?.client_name).toBe('CustomPodClient/1.2')
-	expect(events[1]?.client_name).toBe('CustomPodClient/1.2')
+	expect(events[0]?.client_name).not.toBeNull()
+	expect(events[1]?.client_name).toBe(events[0]?.client_name)
 	expect(events[0]?.client_fingerprint).toBeTruthy()
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })

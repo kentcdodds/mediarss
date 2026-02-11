@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
+import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
+import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import {
@@ -35,9 +37,34 @@ function createTestFeedContext() {
 	}
 }
 
+function createCuratedTestFeedContext() {
+	const feed = createCuratedFeed({
+		name: `analytics-curated-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		description: 'Test curated feed',
+	})
+	const token = createCuratedFeedToken({
+		feedId: feed.id,
+		label: 'Curated Token',
+	})
+
+	return {
+		feed,
+		token,
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				feed.id,
+			)
+			deleteCuratedFeed(feed.id)
+		},
+	}
+}
+
 type AnalyticsActionContext = Parameters<typeof analyticsHandler.action>[0]
 
-function createActionContext(id: string, days = 30): AnalyticsActionContext {
+function createActionContext(
+	id: string,
+	days: number | string = 30,
+): AnalyticsActionContext {
 	const request = new Request(
 		`http://localhost/admin/api/feeds/${id}/analytics?days=${days}`,
 	)
@@ -126,4 +153,75 @@ test('feed analytics endpoint clamps analytics window days to max', () => {
 	return response.json().then((data) => {
 		expect(data.windowDays).toBe(365)
 	})
+})
+
+test('feed analytics endpoint defaults analytics window for invalid values', () => {
+	using ctx = createTestFeedContext()
+
+	const invalidTextResponse = analyticsHandler.action(
+		createActionContext(ctx.feed.id, 'abc'),
+	)
+	expect(invalidTextResponse.status).toBe(200)
+
+	const negativeResponse = analyticsHandler.action(
+		createActionContext(ctx.feed.id, -5),
+	)
+	expect(negativeResponse.status).toBe(200)
+
+	return Promise.all([
+		invalidTextResponse.json(),
+		negativeResponse.json(),
+	]).then(([invalidTextData, negativeData]) => {
+		expect(invalidTextData.windowDays).toBe(30)
+		expect(negativeData.windowDays).toBe(30)
+	})
+})
+
+test('feed analytics endpoint supports curated feeds', () => {
+	using ctx = createCuratedTestFeedContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feed.id,
+		feedType: 'curated',
+		token: ctx.token.token,
+		mediaRoot: 'audio',
+		relativePath: 'curated-episode.mp3',
+		isDownloadStart: true,
+		bytesServed: 4200,
+		statusCode: 200,
+		clientFingerprint: 'curated-fp',
+		clientName: 'Overcast',
+		createdAt: now - 30,
+	})
+
+	const response = analyticsHandler.action(createActionContext(ctx.feed.id))
+	expect(response.status).toBe(200)
+
+	return response.json().then((data) => {
+		expect(data.feed).toMatchObject({
+			id: ctx.feed.id,
+			name: ctx.feed.name,
+			type: 'curated',
+		})
+		expect(data.summary).toMatchObject({
+			mediaRequests: 1,
+			downloadStarts: 1,
+			bytesServed: 4200,
+		})
+		expect(data.byToken).toHaveLength(1)
+		expect(data.byToken[0]).toMatchObject({
+			token: ctx.token.token,
+			label: 'Curated Token',
+		})
+	})
+})
+
+test('feed analytics endpoint returns not found for unknown feed id', async () => {
+	const response = await analyticsHandler.action(
+		createActionContext('missing-feed-id'),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.json()).toEqual({ error: 'Feed not found' })
 })

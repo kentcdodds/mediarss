@@ -77,7 +77,7 @@ async function createMediaApiTestContext() {
 
 function createActionContext(
 	pathParam: string | undefined,
-	days = 30,
+	days: number | string = 30,
 ): AnalyticsActionContext {
 	const request = new Request(
 		`http://localhost/admin/api/media-analytics/${encodeURIComponent(pathParam ?? '')}?days=${days}`,
@@ -262,4 +262,23 @@ test('media analytics endpoint clamps analytics window days to max', async () =>
 
 	const data = await response.json()
 	expect(data.windowDays).toBe(365)
+})
+
+test('media analytics endpoint defaults analytics window for invalid values', async () => {
+	await using ctx = await createMediaApiTestContext()
+
+	const invalidTextResponse = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, 'abc'),
+	)
+	expect(invalidTextResponse.status).toBe(200)
+
+	const negativeResponse = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, -10),
+	)
+	expect(negativeResponse.status).toBe(200)
+
+	const invalidTextData = await invalidTextResponse.json()
+	const negativeData = await negativeResponse.json()
+	expect(invalidTextData.windowDays).toBe(30)
+	expect(negativeData.windowDays).toBe(30)
 })

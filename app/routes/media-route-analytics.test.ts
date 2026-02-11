@@ -187,3 +187,27 @@ test('media route does not log analytics when token is missing', async () => {
 
 	expect(events?.count ?? 0).toBe(0)
 })
+
+test('media route does not log analytics for missing files', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	const missingRelativePath = 'missing-file.mp3'
+	const pathParam = `${ctx.rootName}/${missingRelativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('File not found')
+
+	const events = db
+		.query<{ count: number }, [string, string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND relative_path = ?;
+			`,
+		)
+		.get(ctx.feed.id, missingRelativePath)
+
+	expect(events?.count ?? 0).toBe(0)
+})

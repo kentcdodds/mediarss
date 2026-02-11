@@ -833,6 +833,45 @@ test('feed route normalizes X-Forwarded-For bracketed IPv6 values with ports', a
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route skips malformed bracketed X-Forwarded-For IPv6 candidates', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithMalformedFirstCandidate = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '[2001:db8:cafe::33, 198.51.100.86',
+		}),
+	)
+	expect(responseWithMalformedFirstCandidate.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.86',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route normalizes IPv4-mapped IPv6 Forwarded values with ports', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

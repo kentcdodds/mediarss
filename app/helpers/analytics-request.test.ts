@@ -612,6 +612,24 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers malformed Forwarded quoted for chains split without whitespace before proto segment', () => {
+		const malformedRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="""unknown",198.51.100.239;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.239',
+			},
+		})
+
+		expect(getClientIp(malformedRequest)).toBe('198.51.100.239')
+		expect(getClientFingerprint(malformedRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

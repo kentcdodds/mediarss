@@ -9,6 +9,25 @@ function normalizeClientIpToken(value: string): string | null {
 	return unquotedValue
 }
 
+function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
+	const candidates: string[] = []
+
+	for (const segment of forwardedHeader.split(',')) {
+		for (const parameter of segment.split(';')) {
+			const equalsIndex = parameter.indexOf('=')
+			if (equalsIndex === -1) continue
+
+			const key = parameter.slice(0, equalsIndex).trim().toLowerCase()
+			if (key !== 'for') continue
+
+			const value = parameter.slice(equalsIndex + 1).trim()
+			if (value) candidates.push(value)
+		}
+	}
+
+	return candidates
+}
+
 /**
  * Parse the best-effort client IP from request headers.
  */
@@ -16,6 +35,14 @@ export function getClientIp(request: Request): string | null {
 	const forwardedFor = request.headers.get('X-Forwarded-For')
 	if (forwardedFor) {
 		for (const candidate of forwardedFor.split(',')) {
+			const normalizedCandidate = normalizeClientIpToken(candidate)
+			if (normalizedCandidate) return normalizedCandidate
+		}
+	}
+
+	const forwarded = request.headers.get('Forwarded')
+	if (forwarded) {
+		for (const candidate of getForwardedHeaderCandidates(forwarded)) {
 			const normalizedCandidate = normalizeClientIpToken(candidate)
 			if (normalizedCandidate) return normalizedCandidate
 		}

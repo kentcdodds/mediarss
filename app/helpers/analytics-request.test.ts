@@ -328,7 +328,26 @@ describe('analytics-request helpers', () => {
 			},
 		})
 
-		expect(getClientIp(request)).toBe('::ffff:203.0.113.90')
+		expect(getClientIp(request)).toBe('203.0.113.90')
+	})
+
+	test('normalizes IPv4-mapped IPv6 values for stable fingerprints', () => {
+		const mappedRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[::ffff:203.0.113.91]:443";proto=https',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const plainIpv4Request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.91',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(mappedRequest)).toBe(
+			getClientFingerprint(plainIpv4Request),
+		)
 	})
 
 	test('skips malformed bracketed Forwarded IPv6 values', () => {

@@ -865,6 +865,56 @@ describe('analytics-request helpers', () => {
 		).toBe(getClientFingerprint(canonicalRequest))
 	})
 
+	test('recovers doubly-prefixed nested uppercase forwarded for tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedUppercaseDoublePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR=FOR=198.51.100.252;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.252',
+			},
+		})
+
+		expect(
+			getClientIp(malformedNestedUppercaseDoublePrefixParameterizedForRequest),
+		).toBe('198.51.100.252')
+		expect(
+			getClientFingerprint(
+				malformedNestedUppercaseDoublePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
+	test('recovers doubly-prefixed nested uppercase forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedUppercaseIpv6DoublePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR=FOR=[2001:db8::14]:443;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8::14',
+			},
+		})
+
+		expect(
+			getClientIp(
+				malformedNestedUppercaseIpv6DoublePrefixParameterizedForRequest,
+			),
+		).toBe('2001:db8::14')
+		expect(
+			getClientFingerprint(
+				malformedNestedUppercaseIpv6DoublePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
 	test('recovers doubly-prefixed nested forwarded ipv6 tokens in quoted chains', () => {
 		const malformedNestedIpv6DoublePrefixForRequest = new Request(
 			'https://example.com/media',

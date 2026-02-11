@@ -384,3 +384,72 @@ test('media analytics endpoint resolves curated token metadata', async () => {
 		feedName: curatedFeed.name,
 	})
 })
+
+test('media analytics endpoint labels missing feed metadata as deleted feed', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	const deletedFeed = createDirectoryFeed({
+		name: `deleted media analytics feed ${Date.now()}`,
+		directoryPaths: [`${ctx.rootName}:${ctx.rootPath}`],
+	})
+	const deletedFeedToken = createDirectoryFeedToken({
+		feedId: deletedFeed.id,
+		label: 'Soon deleted token',
+	})
+
+	using _cleanupDeletedFeedEvents = {
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				deletedFeed.id,
+			)
+		},
+	}
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: deletedFeed.id,
+		feedType: 'directory',
+		token: deletedFeedToken.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 750,
+		statusCode: 200,
+		clientFingerprint: 'deleted-feed-fingerprint',
+		clientName: 'Podcast Addict',
+		createdAt: now - 30,
+	})
+
+	deleteDirectoryFeed(deletedFeed.id)
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.summary).toMatchObject({
+		mediaRequests: 1,
+		downloadStarts: 1,
+		bytesServed: 750,
+	})
+
+	expect(data.byFeed).toHaveLength(1)
+	expect(data.byFeed[0]).toMatchObject({
+		feedId: deletedFeed.id,
+		feedName: 'Deleted feed',
+		feedType: 'directory',
+		mediaRequests: 1,
+	})
+
+	expect(data.byToken).toHaveLength(1)
+	expect(data.byToken[0]).toMatchObject({
+		token: deletedFeedToken.token,
+		feedId: deletedFeed.id,
+		feedName: 'Deleted feed',
+		label: 'Soon deleted token',
+		mediaRequests: 1,
+	})
+	expect(data.byToken[0]?.createdAt).not.toBeNull()
+})

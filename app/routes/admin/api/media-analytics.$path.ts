@@ -160,14 +160,14 @@ export default {
 
 		const byFeedWithNames = byFeed.map((row) => ({
 			...row,
-			feedName: feedNameById.get(row.feedId) ?? 'Unknown feed',
+			feedName: feedNameById.get(row.feedId) ?? 'Deleted feed',
 		}))
 
 		const byTokenWithMetadata = byToken.map((row) => {
 			const tokenMeta = getTokenMetadata(row.token, row.feedType)
 			return {
 				...row,
-				feedName: feedNameById.get(row.feedId) ?? 'Unknown feed',
+				feedName: feedNameById.get(row.feedId) ?? 'Deleted feed',
 				label: tokenMeta?.label ?? 'Deleted token',
 				createdAt: tokenMeta?.createdAt ?? null,
 				lastUsedAt: tokenMeta?.lastUsedAt ?? null,

@@ -51,6 +51,8 @@ export const repeatedForwardedForValues = [
 	'[::ffff:198.51.100.183]:443',
 	'"unknown, 198.51.100.214"',
 	'"\\"unknown\\", 198.51.100.215"',
+	'for=198.51.100.217',
+	'FOR = [::ffff:198.51.100.218]:443',
 ] as const satisfies ReadonlyArray<string>
 
 export const repeatedForwardedForHeaderBuilders = [
@@ -72,6 +74,8 @@ export const repeatedForwardedTripleForValues = [
 	'[::ffff:198.51.100.213]:443',
 	'"unknown, 198.51.100.214"',
 	'"\\"unknown\\", 198.51.100.215"',
+	'for=198.51.100.217',
+	'FOR = [::ffff:198.51.100.218]:443',
 ] as const satisfies ReadonlyArray<string>
 
 export const repeatedForwardedTripleForHeaderBuilders = [

@@ -42,3 +42,28 @@ test('parseAnalyticsWindowDays supports custom option values', () => {
 	})
 	expect(days).toBe(14)
 })
+
+test('parseAnalyticsWindowDays normalizes invalid option values safely', () => {
+	const request = createRequest('?days=20')
+
+	expect(
+		parseAnalyticsWindowDays(request, {
+			defaultDays: 0,
+			maxDays: 0,
+		}),
+	).toBe(20)
+
+	expect(
+		parseAnalyticsWindowDays(createRequest(), {
+			defaultDays: Number.NaN,
+			maxDays: Number.NaN,
+		}),
+	).toBe(30)
+
+	expect(
+		parseAnalyticsWindowDays(createRequest(), {
+			defaultDays: 90,
+			maxDays: 30,
+		}),
+	).toBe(30)
+})

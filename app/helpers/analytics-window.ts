@@ -7,6 +7,10 @@ type ParseAnalyticsWindowDaysOptions = {
 	queryParam?: string
 }
 
+function normalizePositiveSafeInt(value: number, fallback: number): number {
+	return Number.isSafeInteger(value) && value > 0 ? value : fallback
+}
+
 /**
  * Parse analytics window days from query params.
  * Accepts only positive integer values; invalid values fall back to default.
@@ -15,11 +19,18 @@ export function parseAnalyticsWindowDays(
 	request: Request,
 	options: ParseAnalyticsWindowDaysOptions = {},
 ): number {
-	const {
-		defaultDays = DEFAULT_WINDOW_DAYS,
-		maxDays = MAX_WINDOW_DAYS,
-		queryParam = 'days',
-	} = options
+	const queryParam = options.queryParam ?? 'days'
+	const maxDays = normalizePositiveSafeInt(
+		options.maxDays ?? MAX_WINDOW_DAYS,
+		MAX_WINDOW_DAYS,
+	)
+	const defaultDays = Math.min(
+		normalizePositiveSafeInt(
+			options.defaultDays ?? DEFAULT_WINDOW_DAYS,
+			DEFAULT_WINDOW_DAYS,
+		),
+		maxDays,
+	)
 
 	const { searchParams } = new URL(request.url)
 	const rawValue = searchParams.get(queryParam)

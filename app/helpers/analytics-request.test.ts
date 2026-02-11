@@ -371,6 +371,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.79')
 	})
 
+	test('parses Forwarded for keys when parameter order varies', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'proto=https;by=198.51.100.1;for=198.51.100.86',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.86')
+	})
+
 	test('skips empty quoted Forwarded values and uses next candidate', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

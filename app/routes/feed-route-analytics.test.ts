@@ -21,6 +21,7 @@ import {
 	getClientIp,
 } from '#app/helpers/analytics-request.ts'
 import {
+	compactCrossHeaderPrecedenceCases,
 	crossHeaderInvalidForwardedValues,
 	crossHeaderInvalidXForwardedForValues,
 	crossHeaderInvalidXRealIpValues,
@@ -5072,32 +5073,7 @@ test('feed route prefers Forwarded over X-Real-IP when X-Forwarded-For is missin
 test('feed route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
-	const cases = [
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, 203.0.113.121',
-				Forwarded: 'for=198.51.100.131;proto=https',
-				'X-Real-IP': '198.51.100.141',
-			},
-			canonicalIp: '203.0.113.121',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=198.51.100.132;proto=https',
-				'X-Real-IP': '198.51.100.142',
-			},
-			canonicalIp: '198.51.100.132',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=unknown;proto=https',
-				'X-Real-IP': '"198.51.100.143:8443"',
-			},
-			canonicalIp: '198.51.100.143',
-		},
-	] as const
+	const cases = compactCrossHeaderPrecedenceCases
 
 	for (const testCase of cases) {
 		const responseWithHeaderMatrix = await feedHandler.action(
@@ -5142,32 +5118,7 @@ test('feed route applies precedence matrix with known user-agent classification'
 	using ctx = createDirectoryFeedRouteTestContext()
 	const userAgent = 'Pocket Casts/7.58'
 	const expectedClientName = 'Pocket Casts'
-	const cases = [
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, 203.0.113.121',
-				Forwarded: 'for=198.51.100.131;proto=https',
-				'X-Real-IP': '198.51.100.141',
-			},
-			canonicalIp: '203.0.113.121',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=198.51.100.132;proto=https',
-				'X-Real-IP': '198.51.100.142',
-			},
-			canonicalIp: '198.51.100.132',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=unknown;proto=https',
-				'X-Real-IP': '"198.51.100.143:8443"',
-			},
-			canonicalIp: '198.51.100.143',
-		},
-	] as const
+	const cases = compactCrossHeaderPrecedenceCases
 
 	for (const testCase of cases) {
 		const response = await feedHandler.action(
@@ -5214,32 +5165,7 @@ test('feed route applies precedence matrix with unknown user-agent tokenization'
 	using ctx = createDirectoryFeedRouteTestContext()
 	const userAgent = 'CustomPodClient/1.2 (Linux)'
 	const expectedClientName = 'CustomPodClient/1.2'
-	const cases = [
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, 203.0.113.121',
-				Forwarded: 'for=198.51.100.131;proto=https',
-				'X-Real-IP': '198.51.100.141',
-			},
-			canonicalIp: '203.0.113.121',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=198.51.100.132;proto=https',
-				'X-Real-IP': '198.51.100.142',
-			},
-			canonicalIp: '198.51.100.132',
-		},
-		{
-			headers: {
-				'X-Forwarded-For': 'unknown, nonsense',
-				Forwarded: 'for=unknown;proto=https',
-				'X-Real-IP': '"198.51.100.143:8443"',
-			},
-			canonicalIp: '198.51.100.143',
-		},
-	] as const
+	const cases = compactCrossHeaderPrecedenceCases
 
 	for (const testCase of cases) {
 		const response = await feedHandler.action(

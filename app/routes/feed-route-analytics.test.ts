@@ -911,6 +911,45 @@ test('feed route normalizes X-Forwarded-For bracketed IPv6 values with ports', a
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route normalizes uppercase IPv6 header forms', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithUppercaseIpv6 = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:DB8:CAFE::44',
+		}),
+	)
+	expect(responseWithUppercaseIpv6.status).toBe(200)
+
+	const responseWithLowercaseIpv6 = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:db8:cafe::44',
+		}),
+	)
+	expect(responseWithLowercaseIpv6.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route skips malformed bracketed X-Forwarded-For IPv6 candidates', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

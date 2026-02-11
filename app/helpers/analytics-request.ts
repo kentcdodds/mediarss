@@ -41,13 +41,18 @@ function normalizeClientIpToken(value: string): string | null {
 	}
 	if (/["\s,;]/.test(normalizedValue)) return null
 	if (normalizedValue.startsWith('_')) return null
-	if (isIP(normalizedValue) === 0) return null
+	const ipVersion = isIP(normalizedValue)
+	if (ipVersion === 0) return null
 
 	const ipv4MappedMatch = normalizedValue.match(
 		/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i,
 	)
 	if (ipv4MappedMatch?.[1]) {
 		return ipv4MappedMatch[1]
+	}
+
+	if (ipVersion === 6) {
+		return normalizedValue.toLowerCase()
 	}
 
 	return normalizedValue

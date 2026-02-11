@@ -316,6 +316,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('2001:db8:cafe::31')
 	})
 
+	test('normalizes uppercase IPv6 values to lowercase', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:DB8:CAFE::3A',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('2001:db8:cafe::3a')
+	})
+
 	test('skips malformed bracketed X-Forwarded-For IPv6 values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
@@ -344,6 +354,25 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('2001:db8:cafe::17')
+	})
+
+	test('normalizes uppercase and lowercase IPv6 values to stable fingerprints', () => {
+		const uppercaseRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:DB8:CAFE::3B',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const lowercaseRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8:cafe::3b',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(uppercaseRequest)).toBe(
+			getClientFingerprint(lowercaseRequest),
+		)
 	})
 
 	test('normalizes IPv4-mapped IPv6 Forwarded values with ports', () => {

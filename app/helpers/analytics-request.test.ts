@@ -170,6 +170,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.77')
 	})
 
+	test('normalizes X-Forwarded-For IPv4 values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.78:8080',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.78')
+	})
+
 	test('normalizes quoted forwarded IPv6 values with ports', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
@@ -188,6 +198,16 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('198.51.100.77')
+	})
+
+	test('parses Forwarded for keys case-insensitively', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'FoR=198.51.100.79;PrOtO=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.79')
 	})
 
 	test('prefers X-Forwarded-For over Forwarded header values', () => {

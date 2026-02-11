@@ -440,6 +440,45 @@ test('feed route normalizes Forwarded IPv4 values with ports', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route normalizes Forwarded IPv6 values with ports', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithForwardedIpv6 = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="[2001:db8:cafe::23]:4711";proto=https',
+		}),
+	)
+	expect(responseWithForwardedIpv6.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:db8:cafe::23',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route uses first forwarded IP for analytics fingerprinting', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

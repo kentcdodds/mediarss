@@ -1207,6 +1207,80 @@ describe('analytics-request helpers', () => {
 		).toBe(getClientFingerprint(canonicalRequest))
 	})
 
+	test('recovers doubly-prefixed nested ipv4-mapped forwarded ipv6 tokens in quoted chains', () => {
+		const malformedNestedMappedIpv6DoublePrefixForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded:
+						'for="unknown, for=for=[::FFFF:C633:64A0]:443";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.160',
+			},
+		})
+
+		expect(getClientIp(malformedNestedMappedIpv6DoublePrefixForRequest)).toBe(
+			'198.51.100.160',
+		)
+		expect(
+			getClientFingerprint(malformedNestedMappedIpv6DoublePrefixForRequest),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
+	test('recovers doubly-prefixed mixed-case nested ipv4-mapped forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedMappedIpv6MixedCaseDoublePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, FOR = FOR = [::ffff:c633:64a1]:443;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.161',
+			},
+		})
+
+		expect(
+			getClientIp(
+				malformedNestedMappedIpv6MixedCaseDoublePrefixParameterizedForRequest,
+			),
+		).toBe('198.51.100.161')
+		expect(
+			getClientFingerprint(
+				malformedNestedMappedIpv6MixedCaseDoublePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
+	test('recovers triply-prefixed nested ipv4-mapped forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedMappedIpv6TriplePrefixParameterizedForRequest =
+			new Request('https://example.com/media', {
+				headers: {
+					Forwarded:
+						'for="unknown, for=for=for=[::FFFF:C633:64A2]:443;proto=https";proto=https',
+				},
+			})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.162',
+			},
+		})
+
+		expect(
+			getClientIp(malformedNestedMappedIpv6TriplePrefixParameterizedForRequest),
+		).toBe('198.51.100.162')
+		expect(
+			getClientFingerprint(
+				malformedNestedMappedIpv6TriplePrefixParameterizedForRequest,
+			),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
 	test('falls through deeply nested invalid forwarded for token to later valid candidate', () => {
 		const malformedNestedInvalidThenValidRequest = new Request(
 			'https://example.com/media',

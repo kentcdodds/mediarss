@@ -3057,6 +3057,61 @@ test('feed route uses user-agent fallback across repeated Forwarded invalid-valu
 	}
 })
 
+test('feed route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const userAgent = 'Pocket Casts/7.58'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				for (const thirdValue of repeatedForwardedInvalidValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const response = await feedHandler.action(
+						createFeedActionContext(ctx.token, {
+							Forwarded: repeatedHeader,
+							'User-Agent': userAgent,
+						}),
+					)
+					expect(response.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+								client_name: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint, client_name
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'rss_fetch'
+								ORDER BY rowid DESC
+								LIMIT 1;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+					expect(events[0]?.client_name).toBe('Pocket Casts')
+				}
+			}
+		}
+	}
+})
+
 test('feed route preserves repeated Forwarded for parameter precedence matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

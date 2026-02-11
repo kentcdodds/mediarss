@@ -1818,6 +1818,40 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('uses user-agent fallback across triple repeated Forwarded invalid-value matrix', () => {
+		const userAgent = 'Pocket Casts/7.58'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						const repeatedHeader = buildHeader(
+							firstValue,
+							secondValue,
+							thirdValue,
+						)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+								'User-Agent': userAgent,
+							},
+						})
+
+						expect(getClientIp(request)).toBeNull()
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
+				}
+			}
+		}
+	})
+
 	test('preserves repeated Forwarded for parameter precedence matrix', () => {
 		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
 			for (const firstValue of repeatedForwardedForValues) {

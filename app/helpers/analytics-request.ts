@@ -94,25 +94,6 @@ function normalizeClientIpToken(value: string): string | null {
 	return normalizedValue
 }
 
-function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
-	const candidates: string[] = []
-
-	for (const segment of forwardedHeader.split(',')) {
-		for (const parameter of segment.split(';')) {
-			const equalsIndex = parameter.indexOf('=')
-			if (equalsIndex === -1) continue
-
-			const key = parameter.slice(0, equalsIndex).trim().toLowerCase()
-			if (key !== 'for') continue
-
-			const value = parameter.slice(equalsIndex + 1).trim()
-			if (value) candidates.push(value)
-		}
-	}
-
-	return candidates
-}
-
 function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
 	const tokens: string[] = []
 	let currentToken = ''
@@ -126,6 +107,32 @@ function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
 			continue
 		}
 		if (character === ',' && !inQuotes) {
+			const trimmedToken = currentToken.trim()
+			if (trimmedToken) tokens.push(trimmedToken)
+			currentToken = ''
+			continue
+		}
+		currentToken += character
+	}
+
+	const trimmedToken = currentToken.trim()
+	if (trimmedToken) tokens.push(trimmedToken)
+	return tokens
+}
+
+function splitSemicolonSeparatedHeaderValues(headerValue: string): string[] {
+	const tokens: string[] = []
+	let currentToken = ''
+	let inQuotes = false
+
+	for (let i = 0; i < headerValue.length; i++) {
+		const character = headerValue[i]
+		if (character === '"') {
+			inQuotes = !inQuotes
+			currentToken += character
+			continue
+		}
+		if (character === ';' && !inQuotes) {
 			const trimmedToken = currentToken.trim()
 			if (trimmedToken) tokens.push(trimmedToken)
 			currentToken = ''
@@ -156,6 +163,39 @@ function getIpHeaderCandidates(headerValue: string): string[] {
 		}
 
 		candidates.push(rawCandidate)
+	}
+
+	return candidates
+}
+
+function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
+	const candidates: string[] = []
+
+	for (const segment of splitCommaSeparatedHeaderValues(forwardedHeader)) {
+		for (const parameter of splitSemicolonSeparatedHeaderValues(segment)) {
+			const equalsIndex = parameter.indexOf('=')
+			if (equalsIndex === -1) continue
+
+			const key = parameter.slice(0, equalsIndex).trim().toLowerCase()
+			if (key !== 'for') continue
+
+			const value = parameter.slice(equalsIndex + 1).trim()
+			if (!value) continue
+
+			const quotedMatch = value.match(/^"(.*)"$/)
+			const quotedValue = quotedMatch?.[1]?.trim()
+			if (quotedValue?.includes(',')) {
+				for (const nestedCandidate of splitCommaSeparatedHeaderValues(
+					quotedValue,
+				)) {
+					const trimmedNestedCandidate = nestedCandidate.trim()
+					if (trimmedNestedCandidate) candidates.push(trimmedNestedCandidate)
+				}
+				continue
+			}
+
+			candidates.push(value)
+		}
 	}
 
 	return candidates

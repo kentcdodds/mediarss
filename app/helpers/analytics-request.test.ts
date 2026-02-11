@@ -271,6 +271,26 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.60')
 	})
 
+	test('parses quoted whole-chain Forwarded for values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown, 203.0.113.206";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.206')
+	})
+
+	test('parses quoted whole-chain Forwarded for values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown, 198.51.100.206:8443";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.206')
+	})
+
 	test('uses Forwarded header when X-Forwarded-For values are all unknown', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

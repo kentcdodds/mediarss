@@ -65,20 +65,22 @@ function hasUnclosedQuotes(value: string): boolean {
 function stripDanglingBoundaryQuotes(value: string): string {
 	let normalizedValue = value.trim()
 
-	const hasSingleLeadingQuote =
-		normalizedValue.startsWith('"') &&
-		!normalizedValue.endsWith('"') &&
-		normalizedValue.indexOf('"', 1) === -1
-	if (hasSingleLeadingQuote) {
-		normalizedValue = normalizedValue.slice(1).trim()
-	}
+	while (normalizedValue) {
+		const hasDanglingLeadingQuote =
+			normalizedValue.startsWith('"') && !normalizedValue.endsWith('"')
+		if (hasDanglingLeadingQuote) {
+			normalizedValue = normalizedValue.slice(1).trim()
+			continue
+		}
 
-	const hasSingleTrailingQuote =
-		normalizedValue.endsWith('"') &&
-		!normalizedValue.startsWith('"') &&
-		normalizedValue.lastIndexOf('"') === normalizedValue.length - 1
-	if (hasSingleTrailingQuote) {
-		normalizedValue = normalizedValue.slice(0, -1).trim()
+		const hasDanglingTrailingQuote =
+			normalizedValue.endsWith('"') && !normalizedValue.startsWith('"')
+		if (hasDanglingTrailingQuote) {
+			normalizedValue = normalizedValue.slice(0, -1).trim()
+			continue
+		}
+
+		break
 	}
 
 	return normalizedValue

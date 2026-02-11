@@ -215,6 +215,29 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers repeated dangling trailing quotes in X-Real-IP values', () => {
+		const repeatedDanglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '198.51.100.253""',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.253',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingTrailingQuoteRequest)).toBe(
+			'198.51.100.253',
+		)
+		expect(getClientFingerprint(repeatedDanglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers dangling leading quotes in X-Real-IP values', () => {
 		const danglingLeadingQuoteRequest = new Request(
 			'https://example.com/media',
@@ -310,6 +333,29 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('203.0.113.250')
 		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers repeated dangling trailing quotes in X-Forwarded-For chains', () => {
+		const repeatedDanglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, 203.0.113.253""',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.253',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingTrailingQuoteRequest)).toBe(
+			'203.0.113.253',
+		)
+		expect(getClientFingerprint(repeatedDanglingTrailingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})
@@ -493,6 +539,29 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('198.51.100.250')
 		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers repeated dangling trailing quotes in Forwarded for values', () => {
+		const repeatedDanglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for=198.51.100.253"";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.253',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingTrailingQuoteRequest)).toBe(
+			'198.51.100.253',
+		)
+		expect(getClientFingerprint(repeatedDanglingTrailingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})

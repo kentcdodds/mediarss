@@ -190,6 +190,26 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('2001:db8:cafe::17')
 	})
 
+	test('skips malformed bracketed Forwarded IPv6 values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[2001:db8:cafe::17", for=198.51.100.81',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.81')
+	})
+
+	test('skips bracketed Forwarded IPv6 values with invalid suffixes', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[2001:db8:cafe::17]oops", for=198.51.100.82',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.82')
+	})
+
 	test('skips obfuscated Forwarded for values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

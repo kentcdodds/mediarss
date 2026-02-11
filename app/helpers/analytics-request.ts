@@ -9,9 +9,13 @@ function normalizeClientIpToken(value: string): string | null {
 
 	if (normalizedValue.startsWith('[')) {
 		const closingBracketIndex = normalizedValue.indexOf(']')
-		if (closingBracketIndex > 1) {
-			normalizedValue = normalizedValue.slice(1, closingBracketIndex).trim()
-		}
+		if (closingBracketIndex <= 1) return null
+
+		const suffix = normalizedValue.slice(closingBracketIndex + 1).trim()
+		if (suffix && !/^:\d+$/.test(suffix)) return null
+
+		normalizedValue = normalizedValue.slice(1, closingBracketIndex).trim()
+		if (!normalizedValue) return null
 	} else {
 		const lastColonIndex = normalizedValue.lastIndexOf(':')
 		const hasSingleColon =

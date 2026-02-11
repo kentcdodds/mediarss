@@ -94,6 +94,7 @@ function createActionContext(
 test('media analytics endpoint returns aggregate data across feeds and tokens', async () => {
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
+	const deletedToken = `deleted-token-${Date.now()}`
 
 	createFeedAnalyticsEvent({
 		eventType: 'media_request',
@@ -151,6 +152,20 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		clientName: 'Pocket Casts',
 		createdAt: now - 400 * 24 * 60 * 60,
 	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: deletedToken,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 500,
+		statusCode: 200,
+		clientFingerprint: 'fp-c',
+		clientName: 'AntennaPod',
+		createdAt: now - 45,
+	})
 
 	const response = await analyticsHandler.action(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
@@ -164,10 +179,10 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 	})
 	expect(data.summary).toMatchObject({
 		rssFetches: 0,
-		mediaRequests: 3,
-		downloadStarts: 2,
-		bytesServed: 2000,
-		uniqueClients: 2,
+		mediaRequests: 4,
+		downloadStarts: 3,
+		bytesServed: 2500,
+		uniqueClients: 3,
 	})
 
 	expect(data.byFeed).toHaveLength(2)
@@ -176,9 +191,9 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 	)
 	expect(byFeedMap.get(ctx.feedOne.id)).toMatchObject({
 		feedName: ctx.feedOne.name,
-		mediaRequests: 1,
-		downloadStarts: 1,
-		bytesServed: 1000,
+		mediaRequests: 2,
+		downloadStarts: 2,
+		bytesServed: 1500,
 	})
 	expect(byFeedMap.get(ctx.feedTwo.id)).toMatchObject({
 		feedName: ctx.feedTwo.name,
@@ -187,7 +202,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		bytesServed: 1000,
 	})
 
-	expect(data.byToken).toHaveLength(2)
+	expect(data.byToken).toHaveLength(3)
 	const byTokenMap = new Map<string, (typeof data.byToken)[number]>(
 		data.byToken.map((row: (typeof data.byToken)[number]) => [row.token, row]),
 	)
@@ -205,16 +220,35 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		downloadStarts: 1,
 		bytesServed: 1000,
 	})
-
-	expect(data.topClients).toHaveLength(2)
-	expect(data.topClients[0]).toMatchObject({
-		clientName: 'Apple Podcasts',
-		mediaRequests: 2,
-	})
-	expect(data.topClients[1]).toMatchObject({
-		clientName: 'Pocket Casts',
+	expect(byTokenMap.get(deletedToken)).toMatchObject({
+		token: deletedToken,
+		label: 'Deleted token',
+		feedName: ctx.feedOne.name,
+		createdAt: null,
 		mediaRequests: 1,
+		downloadStarts: 1,
+		bytesServed: 500,
 	})
+
+	expect(data.topClients).toHaveLength(3)
+	expect(
+		data.topClients.some(
+			(client: { clientName: string; mediaRequests: number }) =>
+				client.clientName === 'Apple Podcasts' && client.mediaRequests === 2,
+		),
+	).toBe(true)
+	expect(
+		data.topClients.some(
+			(client: { clientName: string; mediaRequests: number }) =>
+				client.clientName === 'Pocket Casts' && client.mediaRequests === 1,
+		),
+	).toBe(true)
+	expect(
+		data.topClients.some(
+			(client: { clientName: string; mediaRequests: number }) =>
+				client.clientName === 'AntennaPod' && client.mediaRequests === 1,
+		),
+	).toBe(true)
 
 	expect(data.daily.length).toBeGreaterThanOrEqual(1)
 	expect(data.windowDays).toBe(30)

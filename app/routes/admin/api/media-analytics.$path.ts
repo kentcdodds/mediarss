@@ -168,7 +168,7 @@ export default {
 			return {
 				...row,
 				feedName: feedNameById.get(row.feedId) ?? 'Unknown feed',
-				label: tokenMeta?.label ?? '',
+				label: tokenMeta?.label ?? 'Deleted token',
 				createdAt: tokenMeta?.createdAt ?? null,
 				lastUsedAt: tokenMeta?.lastUsedAt ?? null,
 				revokedAt: tokenMeta?.revokedAt ?? null,

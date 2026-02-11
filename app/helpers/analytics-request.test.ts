@@ -1789,6 +1789,35 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('uses user-agent fallback across repeated Forwarded invalid-value matrix', () => {
+		const invalidValues = ['unknown', '_hidden', 'nonsense'] as const
+		const userAgent = 'Pocket Casts/7.58'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of invalidValues) {
+				for (const secondValue of invalidValues) {
+					const repeatedHeader = buildHeader(firstValue, secondValue)
+					const request = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: repeatedHeader,
+							'User-Agent': userAgent,
+						},
+					})
+
+					expect(getClientIp(request)).toBeNull()
+					expect(getClientFingerprint(request)).toBe(
+						getClientFingerprint(canonicalRequest),
+					)
+				}
+			}
+		}
+	})
+
 	test('preserves repeated Forwarded for parameter precedence matrix', () => {
 		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
 			for (const firstValue of repeatedForwardedForValues) {

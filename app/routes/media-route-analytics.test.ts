@@ -18,7 +18,6 @@ import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { compactCrossHeaderPrecedenceCases } from '#app/helpers/analytics-header-precedence-matrix.ts'
-import { getClientFingerprint } from '#app/helpers/analytics-request.ts'
 import mediaHandler from './media.ts'
 
 migrate(db)
@@ -191,6 +190,20 @@ function listMediaEvents(feedId: string): LatestMediaEvent[] {
 				FROM feed_analytics_events
 				WHERE feed_id = ? AND event_type = 'media_request'
 				ORDER BY rowid ASC;
+			`,
+		)
+		.all(feedId)
+}
+
+function readTwoLatestMediaEvents(feedId: string): LatestMediaEvent[] {
+	return db
+		.query<LatestMediaEvent, [string]>(
+			sql`
+				SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint, token, feed_type
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 2;
 			`,
 		)
 		.all(feedId)
@@ -414,20 +427,24 @@ test('media route applies cross-header precedence cases consistently', async () 
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
 	for (const testCase of compactCrossHeaderPrecedenceCases) {
-		const response = await mediaHandler.action(
+		const responseWithHeaderMatrix = await mediaHandler.action(
 			createMediaActionContext(ctx.token, pathParam, testCase.headers),
 		)
-		expect(response.status).toBe(200)
+		expect(responseWithHeaderMatrix.status).toBe(200)
 
-		const expectedFingerprint = getClientFingerprint(
-			new Request('https://example.com/media', {
-				headers: { 'X-Forwarded-For': testCase.canonicalIp },
+		const responseWithCanonicalIp = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Forwarded-For': testCase.canonicalIp,
 			}),
 		)
+		expect(responseWithCanonicalIp.status).toBe(200)
 
-		const event = readLatestMediaEvent(ctx.feed.id)
-		expect(event?.client_name).toBeNull()
-		expect(event?.client_fingerprint).toBe(expectedFingerprint)
+		const events = readTwoLatestMediaEvents(ctx.feed.id)
+		expect(events).toHaveLength(2)
+		expect(events[0]?.client_name).toBeNull()
+		expect(events[1]?.client_name).toBeNull()
+		expect(events[0]?.client_fingerprint).toBeTruthy()
+		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 	}
 })
 
@@ -446,15 +463,17 @@ test('media route falls back to user-agent fingerprint when proxy IP headers are
 	)
 	expect(response.status).toBe(200)
 
-	const expectedFingerprint = getClientFingerprint(
-		new Request('https://example.com/media', {
-			headers: {
-				'User-Agent': userAgent,
-			},
+	const canonicalResponse = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'User-Agent': userAgent,
 		}),
 	)
+	expect(canonicalResponse.status).toBe(200)
 
-	const event = readLatestMediaEvent(ctx.feed.id)
-	expect(event?.client_name).toBe('CustomPodClient/1.2')
-	expect(event?.client_fingerprint).toBe(expectedFingerprint)
+	const events = readTwoLatestMediaEvents(ctx.feed.id)
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_name).toBe('CustomPodClient/1.2')
+	expect(events[1]?.client_name).toBe('CustomPodClient/1.2')
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })

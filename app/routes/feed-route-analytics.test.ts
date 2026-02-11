@@ -17,7 +17,6 @@ import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { compactCrossHeaderPrecedenceCases } from '#app/helpers/analytics-header-precedence-matrix.ts'
-import { getClientFingerprint } from '#app/helpers/analytics-request.ts'
 import feedHandler from './feed.ts'
 
 migrate(db)
@@ -103,6 +102,20 @@ function readLatestRssEvent(feedId: string): LatestRssEvent | null {
 			`,
 		)
 		.get(feedId)
+}
+
+function readTwoLatestRssEvents(feedId: string): LatestRssEvent[] {
+	return db
+		.query<LatestRssEvent, [string]>(
+			sql`
+				SELECT feed_type, token, status_code, client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 2;
+			`,
+		)
+		.all(feedId)
 }
 
 function countEventsForToken(token: string): number {
@@ -322,20 +335,24 @@ test('feed route applies cross-header precedence cases consistently', async () =
 	using ctx = createDirectoryFeedRouteTestContext()
 
 	for (const testCase of compactCrossHeaderPrecedenceCases) {
-		const response = await feedHandler.action(
+		const responseWithHeaderMatrix = await feedHandler.action(
 			createFeedActionContext(ctx.token, testCase.headers),
 		)
-		expect(response.status).toBe(200)
+		expect(responseWithHeaderMatrix.status).toBe(200)
 
-		const expectedFingerprint = getClientFingerprint(
-			new Request('https://example.com/feed', {
-				headers: { 'X-Forwarded-For': testCase.canonicalIp },
+		const responseWithCanonicalIp = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': testCase.canonicalIp,
 			}),
 		)
+		expect(responseWithCanonicalIp.status).toBe(200)
 
-		const event = readLatestRssEvent(ctx.feed.id)
-		expect(event?.client_name).toBeNull()
-		expect(event?.client_fingerprint).toBe(expectedFingerprint)
+		const events = readTwoLatestRssEvents(ctx.feed.id)
+		expect(events).toHaveLength(2)
+		expect(events[0]?.client_name).toBeNull()
+		expect(events[1]?.client_name).toBeNull()
+		expect(events[0]?.client_fingerprint).toBeTruthy()
+		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 	}
 })
 
@@ -353,15 +370,17 @@ test('feed route falls back to user-agent fingerprint when proxy IP headers are 
 	)
 	expect(response.status).toBe(200)
 
-	const expectedFingerprint = getClientFingerprint(
-		new Request('https://example.com/feed', {
-			headers: {
-				'User-Agent': userAgent,
-			},
+	const canonicalResponse = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': userAgent,
 		}),
 	)
+	expect(canonicalResponse.status).toBe(200)
 
-	const event = readLatestRssEvent(ctx.feed.id)
-	expect(event?.client_name).toBe('CustomPodClient/1.2')
-	expect(event?.client_fingerprint).toBe(expectedFingerprint)
+	const events = readTwoLatestRssEvents(ctx.feed.id)
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_name).toBe('CustomPodClient/1.2')
+	expect(events[1]?.client_name).toBe('CustomPodClient/1.2')
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })

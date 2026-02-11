@@ -75,6 +75,33 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
 	})
 
+	test('prefers X-Forwarded-For over X-Real-IP for fingerprinting', () => {
+		const requestA = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.5',
+				'X-Real-IP': '198.51.100.11',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const requestB = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.5',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const requestC = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.11',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
+		expect(getClientFingerprint(requestA)).not.toBe(
+			getClientFingerprint(requestC),
+		)
+	})
+
 	test('extracts known podcast client names from user agent', () => {
 		const request = new Request('https://example.com/feed', {
 			headers: {

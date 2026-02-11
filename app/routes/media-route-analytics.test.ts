@@ -17,17 +17,38 @@ migrate(db)
 
 type MediaActionContext = Parameters<typeof mediaHandler.action>[0]
 
-async function createMediaAnalyticsTestContext() {
+async function createMediaAnalyticsTestContext(options?: {
+	includeSecondaryRoot?: boolean
+}) {
 	const previousMediaPaths = Bun.env.MEDIA_PATHS
 	const rootName = `media-route-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
 	const rootPath = path.join('/tmp', rootName)
 	const relativePath = 'episode.mp3'
 	const filePath = path.join(rootPath, relativePath)
+	const secondaryRootName = options?.includeSecondaryRoot
+		? `media-route-secondary-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
+		: null
+	const secondaryRootPath = secondaryRootName
+		? path.join('/tmp', secondaryRootName)
+		: null
+	const secondaryRelativePath = secondaryRootName ? 'other-episode.mp3' : null
+	const secondaryFilePath =
+		secondaryRootPath && secondaryRelativePath
+			? path.join(secondaryRootPath, secondaryRelativePath)
+			: null
 
 	mkdirSync(rootPath, { recursive: true })
 	await Bun.write(filePath, '0123456789abcdefghijklmnopqrstuvwxyz')
+	if (secondaryRootPath && secondaryFilePath) {
+		mkdirSync(secondaryRootPath, { recursive: true })
+		await Bun.write(secondaryFilePath, 'secondary media data')
+	}
 
-	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
+	const mediaPaths = [`${rootName}:${rootPath}`]
+	if (secondaryRootName && secondaryRootPath) {
+		mediaPaths.push(`${secondaryRootName}:${secondaryRootPath}`)
+	}
+	Bun.env.MEDIA_PATHS = mediaPaths.join(',')
 	initEnv()
 
 	const feed = createDirectoryFeed({
@@ -42,6 +63,8 @@ async function createMediaAnalyticsTestContext() {
 	return {
 		rootName,
 		relativePath,
+		secondaryRootName,
+		secondaryRelativePath,
 		feed,
 		token: token.token,
 		[Symbol.asyncDispose]: async () => {
@@ -58,6 +81,9 @@ async function createMediaAnalyticsTestContext() {
 			initEnv()
 
 			rmSync(rootPath, { recursive: true, force: true })
+			if (secondaryRootPath) {
+				rmSync(secondaryRootPath, { recursive: true, force: true })
+			}
 		},
 	}
 }
@@ -215,6 +241,57 @@ test('media route does not log analytics for missing files', async () => {
 			`,
 		)
 		.get(ctx.feed.id, missingRelativePath)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for unknown media roots', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	const unknownRoot = `unknown-media-root-${Date.now()}`
+	const pathParam = `${unknownRoot}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Unknown media root')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for paths outside feed directories', async () => {
+	await using ctx = await createMediaAnalyticsTestContext({
+		includeSecondaryRoot: true,
+	})
+	expect(ctx.secondaryRootName).toBeTruthy()
+	expect(ctx.secondaryRelativePath).toBeTruthy()
+
+	const pathParam = `${ctx.secondaryRootName}/${ctx.secondaryRelativePath}`
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Not found')
+
+	const events = db
+		.query<{ count: number }, [string, string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND media_root = ?;
+			`,
+		)
+		.get(ctx.feed.id, ctx.secondaryRootName!)
 
 	expect(events?.count ?? 0).toBe(0)
 })

@@ -3434,6 +3434,125 @@ test('media route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence 
 	}
 })
 
+test('media route preserves cross-header precedence across segment combination matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const xForwardedForValues: Array<string | null> = [
+		null,
+		'unknown, 203.0.113.121',
+		'unknown, nonsense',
+		'"198.51.100.144"',
+		'[2001:db8::99]:443',
+	]
+	const forwardedValues: Array<string | null> = [
+		null,
+		'for=198.51.100.132;proto=https',
+		'for=unknown;proto=https',
+		'for="\\"unknown\\", 198.51.100.145";proto=https',
+		'for="[2001:DB8::9a]:443";proto=https',
+	]
+	const xRealIpValues: Array<string | null> = [
+		null,
+		'"198.51.100.143:8443"',
+		'unknown, nonsense',
+		'"unknown,198.51.100.146"',
+		'[2001:db8::9b]:443',
+	]
+
+	const readLatestFingerprint = () =>
+		db
+			.query<
+				{
+					client_fingerprint: string | null
+				},
+				[string]
+			>(
+				sql`
+						SELECT client_fingerprint
+						FROM feed_analytics_events
+						WHERE feed_id = ? AND event_type = 'media_request'
+						ORDER BY rowid DESC
+						LIMIT 1;
+					`,
+			)
+			.get(ctx.feed.id)?.client_fingerprint ?? null
+
+	const xForwardedForFingerprints = new Map<string | null, string | null>()
+	const forwardedFingerprints = new Map<string | null, string | null>()
+	const xRealIpFingerprints = new Map<string | null, string | null>()
+
+	for (const headerValue of xForwardedForValues) {
+		if (headerValue === null) {
+			xForwardedForFingerprints.set(headerValue, null)
+			continue
+		}
+		const response = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Forwarded-For': headerValue,
+			}),
+		)
+		expect(response.status).toBe(200)
+		xForwardedForFingerprints.set(headerValue, readLatestFingerprint())
+	}
+	for (const headerValue of forwardedValues) {
+		if (headerValue === null) {
+			forwardedFingerprints.set(headerValue, null)
+			continue
+		}
+		const response = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				Forwarded: headerValue,
+			}),
+		)
+		expect(response.status).toBe(200)
+		forwardedFingerprints.set(headerValue, readLatestFingerprint())
+	}
+	for (const headerValue of xRealIpValues) {
+		if (headerValue === null) {
+			xRealIpFingerprints.set(headerValue, null)
+			continue
+		}
+		const response = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Real-IP': headerValue,
+			}),
+		)
+		expect(response.status).toBe(200)
+		xRealIpFingerprints.set(headerValue, readLatestFingerprint())
+	}
+
+	for (const xForwardedForValue of xForwardedForValues) {
+		for (const forwardedValue of forwardedValues) {
+			for (const xRealIpValue of xRealIpValues) {
+				const headers: Record<string, string> = {}
+				if (xForwardedForValue !== null) {
+					headers['X-Forwarded-For'] = xForwardedForValue
+				}
+				if (forwardedValue !== null) {
+					headers.Forwarded = forwardedValue
+				}
+				if (xRealIpValue !== null) {
+					headers['X-Real-IP'] = xRealIpValue
+				}
+
+				const response = await mediaHandler.action(
+					createMediaActionContext(ctx.token, pathParam, headers),
+				)
+				expect(response.status).toBe(200)
+
+				const expectedFingerprint =
+					xForwardedForFingerprints.get(xForwardedForValue) ??
+					forwardedFingerprints.get(forwardedValue) ??
+					xRealIpFingerprints.get(xRealIpValue) ??
+					null
+
+				expect(readLatestFingerprint()).toBe(expectedFingerprint)
+			}
+		}
+	}
+})
+
 test('media route uses Forwarded header when X-Forwarded-For candidates are unknown', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

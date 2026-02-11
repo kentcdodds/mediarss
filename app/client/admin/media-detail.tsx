@@ -178,6 +178,7 @@ function isVideo(mimeType: string): boolean {
 export function MediaDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
+	let analyticsRequestId = 0
 	let analyticsWindowDays = 30
 	let currentPath = ''
 	let selectedFeedIds: Set<string> = new Set()
@@ -215,6 +216,8 @@ export function MediaDetail(handle: Handle) {
 		relativePath: string,
 		windowDays: number,
 	) => {
+		analyticsRequestId += 1
+		const requestId = analyticsRequestId
 		analyticsState = { status: 'loading' }
 		handle.update()
 
@@ -230,10 +233,12 @@ export function MediaDetail(handle: Handle) {
 			}
 
 			const data = (await res.json()) as MediaAnalyticsResponse
+			if (requestId !== analyticsRequestId) return
 			analyticsState = { status: 'success', data }
 			handle.update()
 		} catch (err) {
 			if (handle.signal.aborted) return
+			if (requestId !== analyticsRequestId) return
 			analyticsState = {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',

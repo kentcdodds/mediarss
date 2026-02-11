@@ -269,6 +269,7 @@ type BrowseState =
 export function FeedDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: AnalyticsLoadingState = { status: 'loading' }
+	let analyticsRequestId = 0
 	let copiedToken: string | null = null
 	let showCreateForm = false
 	let newTokenLabel = ''
@@ -277,6 +278,8 @@ export function FeedDetail(handle: Handle) {
 	let analyticsWindowDays = 30
 
 	const fetchAnalytics = (id: string, windowDays: number) => {
+		analyticsRequestId += 1
+		const requestId = analyticsRequestId
 		analyticsState = { status: 'loading' }
 		handle.update()
 
@@ -288,11 +291,13 @@ export function FeedDetail(handle: Handle) {
 				return res.json() as Promise<FeedAnalyticsResponse>
 			})
 			.then((data) => {
+				if (requestId !== analyticsRequestId) return
 				analyticsState = { status: 'success', data }
 				handle.update()
 			})
 			.catch((err) => {
 				if (handle.signal.aborted) return
+				if (requestId !== analyticsRequestId) return
 				analyticsState = { status: 'error', message: err.message }
 				handle.update()
 			})

@@ -43,6 +43,19 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(request)).toBeNull()
 	})
 
+	test('returns null fingerprint when client IP headers contain only invalid values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'proxy.internal, app.server',
+				Forwarded: 'for=unknown',
+				'X-Real-IP': '_hidden',
+			},
+		})
+
+		expect(getClientIp(request)).toBeNull()
+		expect(getClientFingerprint(request)).toBeNull()
+	})
+
 	test('builds fingerprint from X-Real-IP when forwarded-for is absent', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

@@ -362,6 +362,42 @@ test('feed route fingerprints requests with X-Real-IP and no user-agent', async 
 	expect(event?.client_fingerprint).toBeTruthy()
 })
 
+test('feed route stores null fingerprint when proxy IP headers are invalid', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': 'proxy.internal, app.server',
+			Forwarded: 'for=unknown',
+			'X-Real-IP': '_hidden',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		client_name: null,
+		client_fingerprint: null,
+	})
+})
+
 test('feed route uses Forwarded header when X-Forwarded-For is missing', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

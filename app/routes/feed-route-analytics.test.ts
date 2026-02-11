@@ -3099,7 +3099,7 @@ test('feed route preserves triple repeated Forwarded for parameter precedence ma
 			}
 		}
 	}
-}, 20_000)
+}, 30_000)
 
 test('feed route keeps earliest valid Forwarded candidate when bare malformed segment follows', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()

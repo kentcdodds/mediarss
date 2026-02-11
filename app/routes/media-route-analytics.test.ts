@@ -3217,7 +3217,7 @@ test('media route preserves triple repeated Forwarded for parameter precedence m
 			}
 		}
 	}
-}, 20_000)
+}, 30_000)
 
 test('media route keeps earliest valid Forwarded candidate when bare malformed segment follows', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()

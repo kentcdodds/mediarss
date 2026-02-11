@@ -1581,16 +1581,58 @@ test('feed route recovers nested forwarded ipv6 tokens inside quoted chains', as
 test('feed route recovers nested forwarded for tokens with parameter suffixes inside quoted chains', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
-	const responseWithNestedParameterizedForwardedForToken = await feedHandler.action(
-		createFeedActionContext(ctx.token, {
-			Forwarded: 'for="unknown, for=198.51.100.229;proto=https";proto=https',
-		}),
-	)
+	const responseWithNestedParameterizedForwardedForToken =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: 'for="unknown, for=198.51.100.229;proto=https";proto=https',
+			}),
+		)
 	expect(responseWithNestedParameterizedForwardedForToken.status).toBe(200)
 
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'X-Forwarded-For': '198.51.100.229',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers nested forwarded ipv6 tokens with parameter suffixes inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithNestedIpv6ParameterizedForwardedForToken =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded:
+					'for="unknown, for=[2001:db8::c]:443;proto=https";proto=https',
+			}),
+		)
+	expect(responseWithNestedIpv6ParameterizedForwardedForToken.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '2001:db8::c',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

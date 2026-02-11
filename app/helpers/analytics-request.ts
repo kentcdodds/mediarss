@@ -240,15 +240,19 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 		}
 
 		trimmedCandidate = stripDanglingBoundaryQuotes(trimmedCandidate)
-		const equalsIndex = trimmedCandidate.indexOf('=')
-		if (equalsIndex === -1) return trimmedCandidate
+		let normalizedForValue = trimmedCandidate
+		while (normalizedForValue) {
+			const equalsIndex = normalizedForValue.indexOf('=')
+			if (equalsIndex === -1) break
 
-		const key = trimmedCandidate.slice(0, equalsIndex).trim().toLowerCase()
-		if (key !== 'for') return trimmedCandidate
+			const key = normalizedForValue.slice(0, equalsIndex).trim().toLowerCase()
+			if (key !== 'for') break
 
-		let normalizedForValue = stripDanglingBoundaryQuotes(
-			trimmedCandidate.slice(equalsIndex + 1).trim(),
-		)
+			normalizedForValue = stripDanglingBoundaryQuotes(
+				normalizedForValue.slice(equalsIndex + 1).trim(),
+			)
+		}
+
 		const parameterDelimiterIndex = normalizedForValue.indexOf(';')
 		if (parameterDelimiterIndex !== -1) {
 			normalizedForValue = normalizedForValue

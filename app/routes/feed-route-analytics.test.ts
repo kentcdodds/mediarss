@@ -5116,11 +5116,12 @@ test('feed route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence m
 			.query<
 				{
 					client_fingerprint: string | null
+					client_name: string | null
 				},
 				[string]
 			>(
 				sql`
-					SELECT client_fingerprint
+					SELECT client_fingerprint, client_name
 					FROM feed_analytics_events
 					WHERE feed_id = ? AND event_type = 'rss_fetch'
 					ORDER BY rowid DESC
@@ -5132,6 +5133,80 @@ test('feed route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence m
 		expect(events).toHaveLength(2)
 		expect(events[0]?.client_fingerprint).toBeTruthy()
 		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+		expect(events[0]?.client_name).toBeNull()
+		expect(events[1]?.client_name).toBeNull()
+	}
+})
+
+test('feed route applies precedence matrix with known user-agent classification', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+	const userAgent = 'Pocket Casts/7.58'
+	const expectedClientName = 'Pocket Casts'
+	const cases = [
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, 203.0.113.121',
+				Forwarded: 'for=198.51.100.131;proto=https',
+				'X-Real-IP': '198.51.100.141',
+			},
+			canonicalIp: '203.0.113.121',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=198.51.100.132;proto=https',
+				'X-Real-IP': '198.51.100.142',
+			},
+			canonicalIp: '198.51.100.132',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=unknown;proto=https',
+				'X-Real-IP': '"198.51.100.143:8443"',
+			},
+			canonicalIp: '198.51.100.143',
+		},
+	] as const
+
+	for (const testCase of cases) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				...testCase.headers,
+				'User-Agent': userAgent,
+			}),
+		)
+		expect(response.status).toBe(200)
+
+		const expectedFingerprint = getClientFingerprint(
+			new Request('https://example.com/feed', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+					'User-Agent': userAgent,
+				},
+			}),
+		)
+
+		const latestEvent = db
+			.query<
+				{
+					client_fingerprint: string | null
+					client_name: string | null
+				},
+				[string]
+			>(
+				sql`
+					SELECT client_fingerprint, client_name
+					FROM feed_analytics_events
+					WHERE feed_id = ? AND event_type = 'rss_fetch'
+					ORDER BY rowid DESC
+					LIMIT 1;
+				`,
+			)
+			.get(ctx.feed.id)
+
+		expect(latestEvent?.client_fingerprint).toBe(expectedFingerprint)
+		expect(latestEvent?.client_name).toBe(expectedClientName)
 	}
 })
 

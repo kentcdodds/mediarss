@@ -4,8 +4,10 @@
 export function getClientIp(request: Request): string | null {
 	const forwardedFor = request.headers.get('X-Forwarded-For')
 	if (forwardedFor) {
-		const firstIp = forwardedFor.split(',')[0]?.trim()
-		if (firstIp) return firstIp
+		for (const candidate of forwardedFor.split(',')) {
+			const trimmedCandidate = candidate.trim()
+			if (trimmedCandidate) return trimmedCandidate
+		}
 	}
 
 	const realIp = request.headers.get('X-Real-IP')?.trim()

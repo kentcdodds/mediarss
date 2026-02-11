@@ -92,6 +92,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
 	})
 
+	test('skips blank forwarded entries before falling back to real values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '  , 203.0.113.19, 198.51.100.12',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.19')
+	})
+
 	test('prefers X-Forwarded-For over X-Real-IP for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

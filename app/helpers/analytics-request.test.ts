@@ -630,6 +630,24 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('falls through malformed Forwarded first segment to later valid for candidate', () => {
+		const malformedThenValidRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="""unknown",proto=https,for=198.51.100.240;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.240',
+			},
+		})
+
+		expect(getClientIp(malformedThenValidRequest)).toBe('198.51.100.240')
+		expect(getClientFingerprint(malformedThenValidRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

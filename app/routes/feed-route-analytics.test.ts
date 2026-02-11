@@ -2330,6 +2330,80 @@ test('feed route recovers triply-prefixed nested ipv4-mapped forwarded ipv6 toke
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route normalizes nested dotted mapped forwarded ipv6 prefix matrix inside quoted chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const forms = ['for=', 'for =', 'FOR=', 'FOR =']
+	const wrappers = [
+		(candidate: string) => `for="unknown, ${candidate}";proto=https`,
+		(candidate: string) =>
+			`for="unknown, ${candidate};proto=https";proto=https`,
+	]
+	const mappedIpv6 = '[::ffff:198.51.100.181]:443'
+
+	const buildNestedPrefixes = (
+		depth: number,
+		accumulatedPrefixes: string[] = [],
+	): string[][] => {
+		if (depth === 0) return [accumulatedPrefixes]
+		const combinations: string[][] = []
+		for (const form of forms) {
+			combinations.push(
+				...buildNestedPrefixes(depth - 1, [...accumulatedPrefixes, form]),
+			)
+		}
+		return combinations
+	}
+
+	const forwardedHeaders: string[] = []
+	for (const depth of [1, 2]) {
+		for (const prefixCombination of buildNestedPrefixes(depth)) {
+			const candidate = `${prefixCombination.join('')}${mappedIpv6}`
+			for (const wrapCandidate of wrappers) {
+				forwardedHeaders.push(wrapCandidate(candidate))
+			}
+		}
+	}
+
+	for (const forwarded of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: forwarded,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.181',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route falls through deeply nested invalid forwarded for token to later valid candidate', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

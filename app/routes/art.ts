@@ -7,6 +7,7 @@ import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { Feed } from '#app/db/types.ts'
 import { isDirectoryFeed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
+import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
@@ -76,7 +77,10 @@ export default {
 		}
 
 		// Decode the path parameter
-		const decodedPath = decodeURIComponent(splatParam)
+		const decodedPath = decodePathParam(splatParam)
+		if (decodedPath === null) {
+			return new Response('Invalid path encoding', { status: 400 })
+		}
 
 		// Parse root name and relative path from URL
 		const parsed = parseMediaPathStrict(decodedPath)

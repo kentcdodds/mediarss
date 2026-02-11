@@ -1,6 +1,7 @@
 import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
+import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 
@@ -19,7 +20,10 @@ export default {
 		}
 
 		// Decode the path parameter
-		const decodedPath = decodeURIComponent(splatParam)
+		const decodedPath = decodePathParam(splatParam)
+		if (decodedPath === null) {
+			return new Response('Invalid path encoding', { status: 400 })
+		}
 
 		// Parse root name and relative path from URL
 		const parsed = parseMediaPath(decodedPath)

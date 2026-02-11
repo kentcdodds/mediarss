@@ -164,6 +164,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.60')
 	})
 
+	test('parses escaped-quote whole-chain X-Real-IP values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '"\\"unknown\\", 198.51.100.223:8443"',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.223')
+	})
+
 	test('recovers from malformed quoted X-Real-IP chains', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
@@ -199,6 +209,16 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('203.0.113.201')
+	})
+
+	test('parses escaped-quote whole-chain X-Forwarded-For values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"\\"unknown\\", 203.0.113.223"',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.223')
 	})
 
 	test('recovers from malformed quoted X-Forwarded-For chains', () => {
@@ -309,6 +329,16 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('198.51.100.206')
+	})
+
+	test('parses escaped-quote whole-chain Forwarded for values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="\\"unknown\\", 198.51.100.224:8443";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.224')
 	})
 
 	test('recovers from malformed quoted Forwarded for chains', () => {

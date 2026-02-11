@@ -557,6 +557,46 @@ test('feed route parses quoted whole-chain X-Real-IP values', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route parses escaped-quote whole-chain X-Real-IP values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithEscapedQuotedRealIpChain = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': 'unknown',
+			'X-Real-IP': '"\\"unknown\\", 198.51.100.226:8443"',
+		}),
+	)
+	expect(responseWithEscapedQuotedRealIpChain.status).toBe(200)
+
+	const responseWithEquivalentRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.226',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route recovers from malformed quoted whole-chain X-Real-IP values', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -719,6 +759,45 @@ test('feed route parses quoted whole-chain Forwarded for values', async () => {
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'X-Forwarded-For': '203.0.113.207',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route parses escaped-quote whole-chain Forwarded for values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithEscapedQuotedForwardedForChain = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="\\"unknown\\", 198.51.100.227:8443";proto=https',
+		}),
+	)
+	expect(responseWithEscapedQuotedForwardedForChain.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.227',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

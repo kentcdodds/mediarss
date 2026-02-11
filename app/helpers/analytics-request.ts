@@ -35,14 +35,21 @@ function normalizeIpv4MappedIpv6(value: string): string | null {
 	return `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`
 }
 
+function getQuotedInnerValue(value: string): string | null {
+	const quotedMatch = value.match(/^"(.*)"$/)
+	if (!quotedMatch) return null
+	return quotedMatch[1]?.replace(/\\"/g, '"').trim() ?? null
+}
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
 
-	const unquotedValue = trimmedValue.replace(/^"(.*)"$/, '$1').trim()
-	if (!unquotedValue) return null
+	const unquotedValue = getQuotedInnerValue(trimmedValue) ?? trimmedValue
+	const normalizedUnquotedValue = unquotedValue.trim()
+	if (!normalizedUnquotedValue) return null
 
-	let normalizedValue = unquotedValue
+	let normalizedValue = normalizedUnquotedValue
 
 	if (normalizedValue.startsWith('[')) {
 		const closingBracketIndex = normalizedValue.indexOf(']')
@@ -104,7 +111,9 @@ function splitHeaderValues(
 
 	for (let i = 0; i < headerValue.length; i++) {
 		const character = headerValue[i]
-		if (character === '"') {
+		const isEscapedQuote =
+			character === '"' && i > 0 && headerValue[i - 1] === '\\'
+		if (character === '"' && !isEscapedQuote) {
 			inQuotes = !inQuotes
 			currentToken += character
 			continue
@@ -141,8 +150,7 @@ function getIpHeaderCandidates(headerValue: string): string[] {
 	const candidates: string[] = []
 
 	for (const rawCandidate of splitCommaSeparatedHeaderValues(headerValue)) {
-		const quotedMatch = rawCandidate.match(/^"(.*)"$/)
-		const quotedValue = quotedMatch?.[1]?.trim()
+		const quotedValue = getQuotedInnerValue(rawCandidate)
 		if (quotedValue?.includes(',')) {
 			for (const nestedCandidate of splitCommaSeparatedHeaderValues(
 				quotedValue,
@@ -153,7 +161,7 @@ function getIpHeaderCandidates(headerValue: string): string[] {
 			continue
 		}
 
-		candidates.push(rawCandidate)
+		candidates.push(quotedValue ?? rawCandidate)
 	}
 
 	return candidates
@@ -173,8 +181,7 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 			const value = parameter.slice(equalsIndex + 1).trim()
 			if (!value) continue
 
-			const quotedMatch = value.match(/^"(.*)"$/)
-			const quotedValue = quotedMatch?.[1]?.trim()
+			const quotedValue = getQuotedInnerValue(value)
 			if (quotedValue?.includes(',')) {
 				for (const nestedCandidate of splitCommaSeparatedHeaderValues(
 					quotedValue,
@@ -185,7 +192,7 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 				continue
 			}
 
-			candidates.push(value)
+			candidates.push(quotedValue ?? value)
 		}
 	}
 

@@ -27,6 +27,8 @@ import {
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
 	repeatedForwardedForValues,
+	repeatedForwardedTripleForHeaderBuilders,
+	repeatedForwardedTripleForValues,
 } from '#app/helpers/analytics-header-precedence-matrix.ts'
 import mediaHandler from './media.ts'
 
@@ -3122,6 +3124,86 @@ test('media route preserves repeated Forwarded for parameter precedence matrix',
 				expect(events[0]?.client_fingerprint).toBe(
 					events[1]?.client_fingerprint,
 				)
+			}
+		}
+	}
+})
+
+test('media route preserves triple repeated Forwarded for parameter precedence matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedTripleForValues) {
+			for (const secondValue of repeatedForwardedTripleForValues) {
+				for (const thirdValue of repeatedForwardedTripleForValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const expectedIp =
+						getClientIp(
+							new Request('https://example.com/media', {
+								headers: {
+									Forwarded: `for=${firstValue};proto=https`,
+								},
+							}),
+						) ??
+						getClientIp(
+							new Request('https://example.com/media', {
+								headers: {
+									Forwarded: `for=${secondValue};proto=https`,
+								},
+							}),
+						) ??
+						getClientIp(
+							new Request('https://example.com/media', {
+								headers: {
+									Forwarded: `for=${thirdValue};proto=https`,
+								},
+							}),
+						) ??
+						null
+
+					const responseWithRepeatedForwarded = await mediaHandler.action(
+						createMediaActionContext(ctx.token, pathParam, {
+							Forwarded: repeatedHeader,
+						}),
+					)
+					expect(responseWithRepeatedForwarded.status).toBe(200)
+
+					const canonicalHeaders: Record<string, string> = {}
+					if (expectedIp !== null) {
+						canonicalHeaders['X-Forwarded-For'] = expectedIp
+					}
+					const responseWithCanonicalHeader = await mediaHandler.action(
+						createMediaActionContext(ctx.token, pathParam, canonicalHeaders),
+					)
+					expect(responseWithCanonicalHeader.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'media_request'
+								ORDER BY rowid DESC
+								LIMIT 2;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(2)
+					expect(events[0]?.client_fingerprint).toBe(
+						events[1]?.client_fingerprint,
+					)
+				}
 			}
 		}
 	}

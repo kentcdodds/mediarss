@@ -26,6 +26,8 @@ import {
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
 	repeatedForwardedForValues,
+	repeatedForwardedTripleForHeaderBuilders,
+	repeatedForwardedTripleForValues,
 } from '#app/helpers/analytics-header-precedence-matrix.ts'
 import feedHandler from './feed.ts'
 
@@ -3005,6 +3007,85 @@ test('feed route preserves repeated Forwarded for parameter precedence matrix', 
 				expect(events[0]?.client_fingerprint).toBe(
 					events[1]?.client_fingerprint,
 				)
+			}
+		}
+	}
+})
+
+test('feed route preserves triple repeated Forwarded for parameter precedence matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedTripleForValues) {
+			for (const secondValue of repeatedForwardedTripleForValues) {
+				for (const thirdValue of repeatedForwardedTripleForValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const expectedIp =
+						getClientIp(
+							new Request('https://example.com/feed', {
+								headers: {
+									Forwarded: `for=${firstValue};proto=https`,
+								},
+							}),
+						) ??
+						getClientIp(
+							new Request('https://example.com/feed', {
+								headers: {
+									Forwarded: `for=${secondValue};proto=https`,
+								},
+							}),
+						) ??
+						getClientIp(
+							new Request('https://example.com/feed', {
+								headers: {
+									Forwarded: `for=${thirdValue};proto=https`,
+								},
+							}),
+						) ??
+						null
+
+					const responseWithRepeatedForwarded = await feedHandler.action(
+						createFeedActionContext(ctx.token, {
+							Forwarded: repeatedHeader,
+						}),
+					)
+					expect(responseWithRepeatedForwarded.status).toBe(200)
+
+					const canonicalHeaders: Record<string, string> = {}
+					if (expectedIp !== null) {
+						canonicalHeaders['X-Forwarded-For'] = expectedIp
+					}
+					const responseWithCanonicalHeader = await feedHandler.action(
+						createFeedActionContext(ctx.token, canonicalHeaders),
+					)
+					expect(responseWithCanonicalHeader.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'rss_fetch'
+								ORDER BY rowid DESC
+								LIMIT 2;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(2)
+					expect(events[0]?.client_fingerprint).toBe(
+						events[1]?.client_fingerprint,
+					)
+				}
 			}
 		}
 	}

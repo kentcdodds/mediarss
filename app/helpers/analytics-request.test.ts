@@ -5,6 +5,8 @@ import {
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
 	repeatedForwardedForValues,
+	repeatedForwardedTripleForHeaderBuilders,
+	repeatedForwardedTripleForValues,
 } from './analytics-header-precedence-matrix.ts'
 import {
 	getClientFingerprint,
@@ -1789,6 +1791,65 @@ describe('analytics-request helpers', () => {
 					expect(getClientFingerprint(request)).toBe(
 						getClientFingerprint(canonicalRequest),
 					)
+				}
+			}
+		}
+	})
+
+	test('preserves triple repeated Forwarded for parameter precedence matrix', () => {
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedTripleForValues) {
+				for (const secondValue of repeatedForwardedTripleForValues) {
+					for (const thirdValue of repeatedForwardedTripleForValues) {
+						const repeatedHeader = buildHeader(
+							firstValue,
+							secondValue,
+							thirdValue,
+						)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+							},
+						})
+						const firstOnlyRequest = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: `for=${firstValue};proto=https`,
+							},
+						})
+						const secondOnlyRequest = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: `for=${secondValue};proto=https`,
+							},
+						})
+						const thirdOnlyRequest = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: `for=${thirdValue};proto=https`,
+							},
+						})
+
+						const expectedIp =
+							getClientIp(firstOnlyRequest) ??
+							getClientIp(secondOnlyRequest) ??
+							getClientIp(thirdOnlyRequest) ??
+							null
+
+						expect(getClientIp(request)).toBe(expectedIp)
+
+						if (expectedIp === null) {
+							expect(getClientFingerprint(request)).toBeNull()
+							continue
+						}
+
+						const canonicalRequest = new Request('https://example.com/media', {
+							headers: {
+								'X-Forwarded-For': expectedIp,
+							},
+						})
+
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
 				}
 			}
 		}

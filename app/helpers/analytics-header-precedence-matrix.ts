@@ -61,3 +61,20 @@ export const repeatedForwardedForHeaderBuilders = [
 ] as const satisfies ReadonlyArray<
 	(firstValue: string, secondValue: string) => string
 >
+
+export const repeatedForwardedTripleForValues = [
+	'198.51.100.211',
+	'unknown',
+	'_hidden',
+	'"198.51.100.212"',
+	'[::ffff:198.51.100.213]:443',
+] as const satisfies ReadonlyArray<string>
+
+export const repeatedForwardedTripleForHeaderBuilders = [
+	(firstValue: string, secondValue: string, thirdValue: string) =>
+		`for=${firstValue};for=${secondValue};for=${thirdValue};proto=https`,
+	(firstValue: string, secondValue: string, thirdValue: string) =>
+		`proto=https;for=${firstValue};by=proxy;for=${secondValue};host=example.com;for=${thirdValue}`,
+] as const satisfies ReadonlyArray<
+	(firstValue: string, secondValue: string, thirdValue: string) => string
+>

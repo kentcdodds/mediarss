@@ -86,6 +86,8 @@ export const repeatedForwardedTripleForHeaderBuilders = [
 	(firstValue: string, secondValue: string, thirdValue: string) =>
 		`for=${firstValue};for=${secondValue};for=${thirdValue};proto=https`,
 	(firstValue: string, secondValue: string, thirdValue: string) =>
+		`FOR = ${firstValue}; FOR = ${secondValue}; FOR = ${thirdValue}; proto=https`,
+	(firstValue: string, secondValue: string, thirdValue: string) =>
 		`proto=https;for=${firstValue};by=proxy;for=${secondValue};host=example.com;for=${thirdValue}`,
 ] as const satisfies ReadonlyArray<
 	(firstValue: string, secondValue: string, thirdValue: string) => string

@@ -2459,6 +2459,8 @@ describe('analytics-request helpers', () => {
 			'[2001:db8::99]:443',
 			'\\"unknown\\", 198.51.100.147',
 			'_hidden, 198.51.100.148',
+			'   ,   ',
+			'UNKNOWN, 198.51.100.153',
 		]
 		const forwardedValues: Array<string | null> = [
 			null,
@@ -2468,6 +2470,8 @@ describe('analytics-request helpers', () => {
 			'for="[2001:DB8::9a]:443";proto=https',
 			'for="\\\\"unknown\\\\", 198.51.100.149";proto=https',
 			'for=_hidden;proto=https,for=198.51.100.150;proto=https',
+			'for="";proto=https',
+			'for=UNKNOWN;proto=https,for=198.51.100.154;proto=https',
 		]
 		const xRealIpValues: Array<string | null> = [
 			null,
@@ -2477,6 +2481,8 @@ describe('analytics-request helpers', () => {
 			'[2001:db8::9b]:443',
 			'\\"unknown\\", 198.51.100.151',
 			'_hidden, 198.51.100.152',
+			'   ,   ',
+			'UNKNOWN, 198.51.100.155',
 		]
 
 		const xForwardedForResults = new Map<string | null, string | null>()

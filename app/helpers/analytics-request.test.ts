@@ -687,6 +687,27 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers quoted nested forwarded for tokens in quoted chains', () => {
+		const malformedNestedQuotedForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for="unknown, "for=198.51.100.225"";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.225',
+			},
+		})
+
+		expect(getClientIp(malformedNestedQuotedForRequest)).toBe('198.51.100.225')
+		expect(getClientFingerprint(malformedNestedQuotedForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers nested uppercase forwarded for tokens in quoted chains', () => {
 		const malformedNestedUppercaseForRequest = new Request(
 			'https://example.com/media',
@@ -702,7 +723,9 @@ describe('analytics-request helpers', () => {
 			},
 		})
 
-		expect(getClientIp(malformedNestedUppercaseForRequest)).toBe('198.51.100.217')
+		expect(getClientIp(malformedNestedUppercaseForRequest)).toBe(
+			'198.51.100.217',
+		)
 		expect(getClientFingerprint(malformedNestedUppercaseForRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)

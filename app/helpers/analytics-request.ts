@@ -231,14 +231,24 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 	const forwardedSegments: string[] = []
 
 	const normalizeForwardedCandidate = (candidate: string): string => {
-		const trimmedCandidate = candidate.trim()
+		let trimmedCandidate = candidate.trim()
+
+		const unquotedCandidate =
+			getPossiblyMalformedQuotedInnerValue(trimmedCandidate)
+		if (unquotedCandidate !== null) {
+			trimmedCandidate = unquotedCandidate
+		}
+
+		trimmedCandidate = stripDanglingBoundaryQuotes(trimmedCandidate)
 		const equalsIndex = trimmedCandidate.indexOf('=')
 		if (equalsIndex === -1) return trimmedCandidate
 
 		const key = trimmedCandidate.slice(0, equalsIndex).trim().toLowerCase()
 		if (key !== 'for') return trimmedCandidate
 
-		return trimmedCandidate.slice(equalsIndex + 1).trim()
+		return stripDanglingBoundaryQuotes(
+			trimmedCandidate.slice(equalsIndex + 1).trim(),
+		)
 	}
 
 	for (const rawSegment of splitCommaSeparatedHeaderValues(forwardedHeader)) {

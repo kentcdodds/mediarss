@@ -3081,6 +3081,49 @@ test('media route handles repeated Forwarded for parameters within a segment', a
 	}
 })
 
+test('media route falls back to user-agent fingerprint for invalid repeated Forwarded values', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const userAgent = 'Pocket Casts/7.58'
+
+	const responseWithRepeatedForwardedFor = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: 'for=unknown;for=_hidden;proto=https',
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(responseWithRepeatedForwardedFor.status).toBe(200)
+
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe('Pocket Casts')
+})
+
 test('media route preserves repeated Forwarded for parameter precedence matrix', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

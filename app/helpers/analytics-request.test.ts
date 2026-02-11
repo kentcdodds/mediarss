@@ -1769,6 +1769,26 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('builds user-agent fallback fingerprint when repeated Forwarded values are all invalid', () => {
+		const userAgent = 'Pocket Casts/7.58'
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=unknown;for=_hidden;proto=https',
+				'User-Agent': userAgent,
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': userAgent,
+			},
+		})
+
+		expect(getClientIp(request)).toBeNull()
+		expect(getClientFingerprint(request)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('preserves repeated Forwarded for parameter precedence matrix', () => {
 		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
 			for (const firstValue of repeatedForwardedForValues) {

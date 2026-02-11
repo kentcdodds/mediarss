@@ -134,6 +134,26 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('uses first valid value from comma-separated X-Real-IP headers', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': 'unknown, "198.51.100.57:8443", 198.51.100.58',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.57')
+	})
+
+	test('returns null when comma-separated X-Real-IP values are all invalid', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': 'unknown, proxy.internal, "198.51.100.59:abc"',
+			},
+		})
+
+		expect(getClientIp(request)).toBeNull()
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

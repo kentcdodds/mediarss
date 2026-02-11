@@ -98,8 +98,12 @@ export function getClientIp(request: Request): string | null {
 	}
 
 	const realIp = request.headers.get('X-Real-IP')
-	const normalizedRealIp = realIp ? normalizeClientIpToken(realIp) : null
-	if (normalizedRealIp) return normalizedRealIp
+	if (realIp) {
+		for (const candidate of realIp.split(',')) {
+			const normalizedCandidate = normalizeClientIpToken(candidate)
+			if (normalizedCandidate) return normalizedCandidate
+		}
+	}
 
 	return null
 }

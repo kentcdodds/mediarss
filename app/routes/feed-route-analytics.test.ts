@@ -362,6 +362,45 @@ test('feed route fingerprints requests with X-Real-IP and no user-agent', async 
 	expect(event?.client_fingerprint).toBeTruthy()
 })
 
+test('feed route uses first forwarded IP for analytics fingerprinting', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithProxyChain = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.7, 198.51.100.17',
+		}),
+	)
+	expect(responseWithProxyChain.status).toBe(200)
+
+	const responseWithSingleIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.7',
+		}),
+	)
+	expect(responseWithSingleIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route does not log analytics for revoked directory tokens', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)

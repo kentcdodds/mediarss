@@ -160,6 +160,17 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.77')
 	})
 
+	test('prefers X-Forwarded-For over Forwarded header values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.88',
+				Forwarded: 'for=198.51.100.77;proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.88')
+	})
+
 	test('prefers X-Forwarded-For over X-Real-IP for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

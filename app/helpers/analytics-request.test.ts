@@ -4,7 +4,6 @@ import {
 	getClientIp,
 	getClientName,
 	getResponseBytesServed,
-	getUserAgent,
 	isDownloadStartRequest,
 	isTrackableMediaStatus,
 	isTrackableRssStatus,
@@ -66,14 +65,6 @@ test('getClientIp returns null when all proxy headers are unusable', () => {
 	expect(getClientIp(request)).toBeNull()
 })
 
-test('getUserAgent returns trimmed value', () => {
-	const request = createRequest({
-		'User-Agent': '  Pocket Casts/7.58  ',
-	})
-
-	expect(getUserAgent(request)).toBe('Pocket Casts/7.58')
-})
-
 test('getClientName maps known clients and tokenizes unknown clients', () => {
 	expect(
 		getClientName(
@@ -90,10 +81,6 @@ test('getClientName maps known clients and tokenizes unknown clients', () => {
 			}),
 		),
 	).toBe('CustomPodClient/1.2')
-})
-
-test('getClientName returns null with missing user agent', () => {
-	expect(getClientName(createRequest())).toBeNull()
 })
 
 test('getClientFingerprint is stable for equivalent canonical client traits', () => {

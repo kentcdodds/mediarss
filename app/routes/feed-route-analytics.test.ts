@@ -21,6 +21,9 @@ import {
 	getClientIp,
 } from '#app/helpers/analytics-request.ts'
 import {
+	crossHeaderInvalidForwardedValues,
+	crossHeaderInvalidXForwardedForValues,
+	crossHeaderInvalidXRealIpValues,
 	crossHeaderForwardedValues,
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
@@ -1066,6 +1069,56 @@ test('feed route falls back to user-agent fingerprint when proxy IP headers are 
 	expect(events[1]?.client_name).toBe('Pocket Casts')
 	expect(events[0]?.client_fingerprint).toBeTruthy()
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route uses user-agent fallback across all-invalid cross-header matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const userAgent = 'Pocket Casts/7.0'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+		for (const forwarded of crossHeaderInvalidForwardedValues) {
+			for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+				const response = await feedHandler.action(
+					createFeedActionContext(ctx.token, {
+						'X-Forwarded-For': xForwardedFor,
+						Forwarded: forwarded,
+						'X-Real-IP': xRealIp,
+						'User-Agent': userAgent,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_name: string | null
+							client_fingerprint: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_name, client_fingerprint
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'rss_fetch'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_name).toBe('Pocket Casts')
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+			}
+		}
+	}
 })
 
 test('feed route uses Forwarded header when X-Forwarded-For is missing', async () => {

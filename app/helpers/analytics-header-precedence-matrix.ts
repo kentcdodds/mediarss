@@ -46,6 +46,24 @@ export const crossHeaderXRealIpValues = [
 	'"\\"unknown\\", [::ffff:198.51.100.236]:443"',
 ] as const satisfies ReadonlyArray<string | null>
 
+export const crossHeaderInvalidXForwardedForValues = [
+	'unknown, nonsense',
+	'   ,   ',
+	'_hidden, unknown',
+] as const satisfies ReadonlyArray<string>
+
+export const crossHeaderInvalidForwardedValues = [
+	'for=unknown;proto=https',
+	'for=_hidden;proto=https',
+	'for="";proto=https',
+] as const satisfies ReadonlyArray<string>
+
+export const crossHeaderInvalidXRealIpValues = [
+	'unknown, nonsense',
+	'   ,   ',
+	'_hidden, unknown',
+] as const satisfies ReadonlyArray<string>
+
 export const repeatedForwardedForValues = [
 	'198.51.100.181',
 	'unknown',

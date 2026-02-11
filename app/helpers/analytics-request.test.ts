@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
+	crossHeaderInvalidForwardedValues,
+	crossHeaderInvalidXForwardedForValues,
+	crossHeaderInvalidXRealIpValues,
 	crossHeaderForwardedValues,
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
@@ -89,6 +92,34 @@ describe('analytics-request helpers', () => {
 			getClientFingerprint(requestWithUserAgentOnly),
 		)
 		expect(getClientFingerprint(requestWithInvalidIpHeaders)).toBeTruthy()
+	})
+
+	test('uses user-agent fallback across all-invalid cross-header combination matrix', () => {
+		const userAgent = 'Pocket Casts/7.0'
+		const userAgentOnlyRequest = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': userAgent,
+			},
+		})
+		const expectedFingerprint = getClientFingerprint(userAgentOnlyRequest)
+
+		for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+			for (const forwarded of crossHeaderInvalidForwardedValues) {
+				for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+					const request = new Request('https://example.com/media', {
+						headers: {
+							'X-Forwarded-For': xForwardedFor,
+							Forwarded: forwarded,
+							'X-Real-IP': xRealIp,
+							'User-Agent': userAgent,
+						},
+					})
+
+					expect(getClientIp(request)).toBeNull()
+					expect(getClientFingerprint(request)).toBe(expectedFingerprint)
+				}
+			}
+		}
 	})
 
 	test('builds fingerprint from X-Real-IP when forwarded-for is absent', () => {

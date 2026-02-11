@@ -97,6 +97,13 @@ test('media route logs media_request analytics for full and ranged requests', as
 	)
 	expect(rangedResponse.status).toBe(206)
 
+	const rangeFromStartResponse = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Range: 'bytes=0-',
+		}),
+	)
+	expect(rangeFromStartResponse.status).toBe(206)
+
 	const events = db
 		.query<
 			{
@@ -117,7 +124,7 @@ test('media route logs media_request analytics for full and ranged requests', as
 		)
 		.all(ctx.feed.id)
 
-	expect(events).toHaveLength(2)
+	expect(events).toHaveLength(3)
 	expect(events[0]).toMatchObject({
 		status_code: 200,
 		is_download_start: 1,
@@ -133,6 +140,14 @@ test('media route logs media_request analytics for full and ranged requests', as
 		relative_path: ctx.relativePath,
 	})
 	expect((events[1]?.bytes_served ?? 0) > 0).toBe(true)
+
+	expect(events[2]).toMatchObject({
+		status_code: 206,
+		is_download_start: 1,
+		media_root: ctx.rootName,
+		relative_path: ctx.relativePath,
+	})
+	expect((events[2]?.bytes_served ?? 0) > 0).toBe(true)
 })
 
 test('media route does not log analytics when token is missing', async () => {

@@ -2906,6 +2906,16 @@ test('feed route handles repeated Forwarded for parameters within a segment', as
 			forwarded: 'FOR=198.51.100.174; FOR=198.51.100.175; proto=https',
 			canonicalIp: '198.51.100.174',
 		},
+		{
+			forwarded:
+				'for="\\"unknown\\", 198.51.100.215";for=198.51.100.176;proto=https',
+			canonicalIp: '198.51.100.215',
+		},
+		{
+			forwarded:
+				'for="unknown, [::ffff:198.51.100.216]:443";for=198.51.100.177;proto=https',
+			canonicalIp: '198.51.100.216',
+		},
 	] as const
 
 	for (const testCase of cases) {

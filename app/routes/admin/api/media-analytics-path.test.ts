@@ -3,6 +3,8 @@ import path from 'node:path'
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
+import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
+import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import {
@@ -315,4 +317,70 @@ test('media analytics endpoint defaults analytics window for invalid values', as
 	const negativeData = await negativeResponse.json()
 	expect(invalidTextData.windowDays).toBe(30)
 	expect(negativeData.windowDays).toBe(30)
+})
+
+test('media analytics endpoint resolves curated token metadata', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	const curatedFeed = createCuratedFeed({
+		name: `curated media analytics feed ${Date.now()}`,
+		description: 'Curated media analytics test feed',
+	})
+	const curatedToken = createCuratedFeedToken({
+		feedId: curatedFeed.id,
+		label: 'Curated Token',
+	})
+
+	using _cleanupCurated = {
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				curatedFeed.id,
+			)
+			deleteCuratedFeed(curatedFeed.id)
+		},
+	}
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: curatedFeed.id,
+		feedType: 'curated',
+		token: curatedToken.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 900,
+		statusCode: 200,
+		clientFingerprint: 'curated-fingerprint',
+		clientName: 'Downcast',
+		createdAt: now - 30,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.summary).toMatchObject({
+		mediaRequests: 1,
+		downloadStarts: 1,
+		bytesServed: 900,
+	})
+
+	expect(data.byFeed).toHaveLength(1)
+	expect(data.byFeed[0]).toMatchObject({
+		feedId: curatedFeed.id,
+		feedType: 'curated',
+		feedName: curatedFeed.name,
+	})
+
+	expect(data.byToken).toHaveLength(1)
+	expect(data.byToken[0]).toMatchObject({
+		token: curatedToken.token,
+		feedId: curatedFeed.id,
+		feedType: 'curated',
+		label: 'Curated Token',
+		feedName: curatedFeed.name,
+	})
 })

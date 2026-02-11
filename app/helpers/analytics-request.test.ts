@@ -3,6 +3,8 @@ import {
 	crossHeaderForwardedValues,
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
+	repeatedForwardedForHeaderBuilders,
+	repeatedForwardedForValues,
 } from './analytics-header-precedence-matrix.ts'
 import {
 	getClientFingerprint,
@@ -1742,6 +1744,53 @@ describe('analytics-request helpers', () => {
 			expect(getClientFingerprint(request)).toBe(
 				getClientFingerprint(canonicalRequest),
 			)
+		}
+	})
+
+	test('preserves repeated Forwarded for parameter precedence matrix', () => {
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedForValues) {
+				for (const secondValue of repeatedForwardedForValues) {
+					const repeatedHeader = buildHeader(firstValue, secondValue)
+					const request = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: repeatedHeader,
+						},
+					})
+					const firstOnlyRequest = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: `for=${firstValue};proto=https`,
+						},
+					})
+					const secondOnlyRequest = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: `for=${secondValue};proto=https`,
+						},
+					})
+
+					const expectedIp =
+						getClientIp(firstOnlyRequest) ??
+						getClientIp(secondOnlyRequest) ??
+						null
+
+					expect(getClientIp(request)).toBe(expectedIp)
+
+					if (expectedIp === null) {
+						expect(getClientFingerprint(request)).toBeNull()
+						continue
+					}
+
+					const canonicalRequest = new Request('https://example.com/media', {
+						headers: {
+							'X-Forwarded-For': expectedIp,
+						},
+					})
+
+					expect(getClientFingerprint(request)).toBe(
+						getClientFingerprint(canonicalRequest),
+					)
+				}
+			}
 		}
 	})
 

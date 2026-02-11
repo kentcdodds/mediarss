@@ -93,6 +93,23 @@ function createActionContext(
 	} as unknown as AnalyticsActionContext
 }
 
+function createRawActionContext(
+	rawPathParam: string | undefined,
+	days: number | string = 30,
+): AnalyticsActionContext {
+	const pathSegment = rawPathParam ?? ''
+	const request = new Request(
+		`http://localhost/admin/api/media-analytics/${pathSegment}?days=${days}`,
+	)
+
+	return {
+		request,
+		method: 'GET',
+		url: new URL(request.url),
+		params: { path: rawPathParam },
+	} as unknown as AnalyticsActionContext
+}
+
 test('media analytics endpoint returns aggregate data across feeds and tokens', async () => {
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
@@ -271,6 +288,14 @@ test('media analytics endpoint validates params and returns expected errors', as
 	expect(invalidFormatResponse.status).toBe(400)
 	expect(await invalidFormatResponse.json()).toEqual({
 		error: 'Invalid path format',
+	})
+
+	const invalidEncodingResponse = await analyticsHandler.action(
+		createRawActionContext('%E0%A4%A'),
+	)
+	expect(invalidEncodingResponse.status).toBe(400)
+	expect(await invalidEncodingResponse.json()).toEqual({
+		error: 'Invalid path encoding',
 	})
 
 	const unknownRootResponse = await analyticsHandler.action(

@@ -106,6 +106,9 @@ export default {
 	middleware: [],
 	action(context) {
 		const { id } = context.params
+		if (!id) {
+			return Response.json({ error: 'Feed id required' }, { status: 400 })
+		}
 		const windowDays = parseAnalyticsWindowDays(context.request)
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60

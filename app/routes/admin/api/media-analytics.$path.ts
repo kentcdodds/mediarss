@@ -88,7 +88,12 @@ export default {
 			return Response.json({ error: 'Path required' }, { status: 400 })
 		}
 
-		const decodedPath = decodeURIComponent(splatParam)
+		let decodedPath: string
+		try {
+			decodedPath = decodeURIComponent(splatParam)
+		} catch {
+			return Response.json({ error: 'Invalid path encoding' }, { status: 400 })
+		}
 		const parsed = parseMediaPathStrict(decodedPath)
 		if (!parsed) {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })

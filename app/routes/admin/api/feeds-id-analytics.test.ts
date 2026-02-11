@@ -315,3 +315,18 @@ test('feed analytics endpoint returns not found for unknown feed id', async () =
 	expect(response.status).toBe(404)
 	expect(await response.json()).toEqual({ error: 'Feed not found' })
 })
+
+test('feed analytics endpoint validates required feed id param', async () => {
+	const request = new Request(
+		'http://localhost/admin/api/feeds//analytics?days=30',
+	)
+	const response = await analyticsHandler.action({
+		request,
+		method: 'GET',
+		url: new URL(request.url),
+		params: {},
+	} as unknown as AnalyticsActionContext)
+
+	expect(response.status).toBe(400)
+	expect(await response.json()).toEqual({ error: 'Feed id required' })
+})

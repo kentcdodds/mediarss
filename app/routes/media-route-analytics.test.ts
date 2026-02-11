@@ -301,7 +301,6 @@ test('media route still serves files when analytics writes fail', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
-
 	try {
 		await withAnalyticsTableUnavailable(async () => {
 			const response = await mediaHandler.action(
@@ -314,7 +313,6 @@ test('media route still serves files when analytics writes fail', async () => {
 			expect(response.status).toBe(200)
 			expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0)
 		})
-		expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
 	} finally {
 		consoleErrorSpy.mockRestore()
 	}

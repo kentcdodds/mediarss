@@ -3032,6 +3032,16 @@ test('media route handles repeated Forwarded for parameters within a segment', a
 				'for="unknown, [::ffff:198.51.100.216]:443";for=198.51.100.177;proto=https',
 			canonicalIp: '198.51.100.216',
 		},
+		{
+			forwarded:
+				'for="unknown, for=198.51.100.244;proto=https";for=198.51.100.178;proto=https',
+			canonicalIp: '198.51.100.244',
+		},
+		{
+			forwarded:
+				'for="\\"unknown\\", FOR = [::ffff:198.51.100.245]:443;proto=https";for=198.51.100.179;proto=https',
+			canonicalIp: '198.51.100.245',
+		},
 	] as const
 
 	for (const testCase of cases) {

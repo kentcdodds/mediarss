@@ -154,6 +154,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBeNull()
 	})
 
+	test('parses quoted whole-chain X-Real-IP values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '"unknown, 198.51.100.60:8443"',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.60')
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {
@@ -169,6 +179,16 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
+	})
+
+	test('parses quoted whole-chain X-Forwarded-For values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"203.0.113.201, 198.51.100.201"',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.201')
 	})
 
 	test('skips blank forwarded entries before falling back to real values', () => {

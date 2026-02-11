@@ -113,13 +113,61 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 	return candidates
 }
 
+function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
+	const tokens: string[] = []
+	let currentToken = ''
+	let inQuotes = false
+
+	for (let i = 0; i < headerValue.length; i++) {
+		const character = headerValue[i]
+		if (character === '"') {
+			inQuotes = !inQuotes
+			currentToken += character
+			continue
+		}
+		if (character === ',' && !inQuotes) {
+			const trimmedToken = currentToken.trim()
+			if (trimmedToken) tokens.push(trimmedToken)
+			currentToken = ''
+			continue
+		}
+		currentToken += character
+	}
+
+	const trimmedToken = currentToken.trim()
+	if (trimmedToken) tokens.push(trimmedToken)
+	return tokens
+}
+
+function getIpHeaderCandidates(headerValue: string): string[] {
+	const candidates: string[] = []
+
+	for (const rawCandidate of splitCommaSeparatedHeaderValues(headerValue)) {
+		const quotedMatch = rawCandidate.match(/^"(.*)"$/)
+		const quotedValue = quotedMatch?.[1]?.trim()
+		if (quotedValue?.includes(',')) {
+			for (const nestedCandidate of splitCommaSeparatedHeaderValues(
+				quotedValue,
+			)) {
+				const trimmedNestedCandidate = nestedCandidate.trim()
+				if (trimmedNestedCandidate) candidates.push(trimmedNestedCandidate)
+			}
+			continue
+		}
+
+		candidates.push(rawCandidate)
+	}
+
+	return candidates
+}
+
 /**
  * Parse the best-effort client IP from request headers.
  */
 export function getClientIp(request: Request): string | null {
 	const forwardedFor = request.headers.get('X-Forwarded-For')
 	if (forwardedFor) {
-		for (const candidate of forwardedFor.split(',')) {
+		for (const candidate of getIpHeaderCandidates(forwardedFor)) {
 			const normalizedCandidate = normalizeClientIpToken(candidate)
 			if (normalizedCandidate) return normalizedCandidate
 		}
@@ -135,7 +183,7 @@ export function getClientIp(request: Request): string | null {
 
 	const realIp = request.headers.get('X-Real-IP')
 	if (realIp) {
-		for (const candidate of realIp.split(',')) {
+		for (const candidate of getIpHeaderCandidates(realIp)) {
 			const normalizedCandidate = normalizeClientIpToken(candidate)
 			if (normalizedCandidate) return normalizedCandidate
 		}

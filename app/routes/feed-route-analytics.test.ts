@@ -2765,6 +2765,54 @@ test('feed route parses Forwarded when for appears after other parameters', asyn
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route normalizes nested mapped Forwarded chains when for appears after other parameters', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const forwardedHeaders = [
+		'proto=https;by=198.51.100.1;for="unknown, for=for=[::ffff:198.51.100.193]:443";host=example.com',
+		'proto=https;by=198.51.100.1;for="unknown, FOR = for = [::ffff:c633:64c1]:443;proto=https";host=example.com',
+		'by=198.51.100.1;host=example.com;for="unknown, FOR = FOR = [::FFFF:C633:64C1]:443";proto=https',
+	]
+
+	for (const forwarded of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: forwarded,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.193',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route prefers Forwarded over X-Real-IP when X-Forwarded-For is missing', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

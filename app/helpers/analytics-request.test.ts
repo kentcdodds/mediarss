@@ -1375,6 +1375,44 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('normalizes nested mapped forwarded values when for appears after other parameters', () => {
+		const cases = [
+			{
+				forwarded:
+					'proto=https;by=198.51.100.1;for="unknown, for=for=[::ffff:198.51.100.193]:443";host=example.com',
+				canonicalIp: '198.51.100.193',
+			},
+			{
+				forwarded:
+					'proto=https;by=198.51.100.1;for="unknown, FOR = for = [::ffff:c633:64c2]:443;proto=https";host=example.com',
+				canonicalIp: '198.51.100.194',
+			},
+			{
+				forwarded:
+					'by=198.51.100.1;host=example.com;for="unknown, FOR = FOR = [::FFFF:C633:64C3]:443";proto=https',
+				canonicalIp: '198.51.100.195',
+			},
+		]
+
+		for (const testCase of cases) {
+			const request = new Request('https://example.com/media', {
+				headers: {
+					Forwarded: testCase.forwarded,
+				},
+			})
+			const canonicalRequest = new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+				},
+			})
+
+			expect(getClientIp(request)).toBe(testCase.canonicalIp)
+			expect(getClientFingerprint(request)).toBe(
+				getClientFingerprint(canonicalRequest),
+			)
+		}
+	})
+
 	test('falls through deeply nested invalid forwarded for token to later valid candidate', () => {
 		const malformedNestedInvalidThenValidRequest = new Request(
 			'https://example.com/media',

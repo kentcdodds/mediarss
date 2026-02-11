@@ -3715,6 +3715,108 @@ test('media route falls back to X-Real-IP when repeated Forwarded and X-Forwarde
 	}
 })
 
+test('media route falls back to X-Real-IP and preserves unknown user-agent across repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.219'
+	const userAgent = 'CustomPodClient/1.2 (Linux)'
+	const expectedClientName = 'CustomPodClient/1.2'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+	)
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': `${expectedIp}:443`,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe(expectedClientName)
+})
+
+test('media route falls back to X-Real-IP and preserves known user-agent classification across repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.218'
+	const userAgent = 'Pocket Casts/7.58'
+	const expectedClientName = 'Pocket Casts'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+	)
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': `${expectedIp}:443`,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe(expectedClientName)
+})
+
 test('media route uses user-agent fallback when repeated Forwarded and other proxy headers are invalid', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
@@ -4281,6 +4383,110 @@ test('media route falls back to X-Real-IP when triple repeated Forwarded and X-F
 			}
 		}
 	}
+})
+
+test('media route falls back to X-Real-IP and preserves unknown user-agent across triple repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.217'
+	const userAgent = 'CustomPodClient/1.2 (Linux)'
+	const expectedClientName = 'CustomPodClient/1.2'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedTripleForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+		'nonsense',
+	)
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe(expectedClientName)
+})
+
+test('media route falls back to X-Real-IP and preserves known user-agent classification across triple repeated Forwarded invalid-value matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const expectedIp = '198.51.100.216'
+	const userAgent = 'Pocket Casts/7.58'
+	const expectedClientName = 'Pocket Casts'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'X-Real-IP': expectedIp,
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedTripleForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+		'nonsense',
+	)
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe(expectedClientName)
 })
 
 test('media route uses user-agent fallback when triple repeated Forwarded and other proxy headers are invalid', async () => {

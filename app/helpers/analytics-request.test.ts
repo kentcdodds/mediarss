@@ -2109,6 +2109,78 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('falls back to X-Real-IP and preserves unknown user-agent across repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.227'
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+						const repeatedHeader = buildHeader(firstValue, secondValue)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+								'X-Forwarded-For': invalidXForwardedFor,
+								'X-Real-IP': `${expectedIp}:443`,
+								'User-Agent': userAgent,
+							},
+						})
+
+						expect(getClientIp(request)).toBe(expectedIp)
+						expect(getClientName(request)).toBe(expectedClientName)
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
+				}
+			}
+		}
+	})
+
+	test('falls back to X-Real-IP and preserves known user-agent classification across repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.226'
+		const userAgent = 'Pocket Casts/7.58'
+		const expectedClientName = 'Pocket Casts'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+						const repeatedHeader = buildHeader(firstValue, secondValue)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+								'X-Forwarded-For': invalidXForwardedFor,
+								'X-Real-IP': `${expectedIp}:443`,
+								'User-Agent': userAgent,
+							},
+						})
+
+						expect(getClientIp(request)).toBe(expectedIp)
+						expect(getClientName(request)).toBe(expectedClientName)
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
+				}
+			}
+		}
+	})
+
 	test('uses user-agent fallback when repeated Forwarded and other proxy headers are invalid', () => {
 		const userAgent = 'Pocket Casts/7.58'
 		const userAgentOnlyRequest = new Request('https://example.com/media', {
@@ -2480,6 +2552,90 @@ describe('analytics-request helpers', () => {
 
 							expect(getClientIp(request)).toBe(expectedIp)
 							expect(getClientName(request)).toBeNull()
+							expect(getClientFingerprint(request)).toBe(
+								getClientFingerprint(canonicalRequest),
+							)
+						}
+					}
+				}
+			}
+		}
+	})
+
+	test('falls back to X-Real-IP and preserves unknown user-agent across triple repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.225'
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+							const repeatedHeader = buildHeader(
+								firstValue,
+								secondValue,
+								thirdValue,
+							)
+							const request = new Request('https://example.com/media', {
+								headers: {
+									Forwarded: repeatedHeader,
+									'X-Forwarded-For': invalidXForwardedFor,
+									'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+									'User-Agent': userAgent,
+								},
+							})
+
+							expect(getClientIp(request)).toBe(expectedIp)
+							expect(getClientName(request)).toBe(expectedClientName)
+							expect(getClientFingerprint(request)).toBe(
+								getClientFingerprint(canonicalRequest),
+							)
+						}
+					}
+				}
+			}
+		}
+	})
+
+	test('falls back to X-Real-IP and preserves known user-agent classification across triple repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.224'
+		const userAgent = 'Pocket Casts/7.58'
+		const expectedClientName = 'Pocket Casts'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+							const repeatedHeader = buildHeader(
+								firstValue,
+								secondValue,
+								thirdValue,
+							)
+							const request = new Request('https://example.com/media', {
+								headers: {
+									Forwarded: repeatedHeader,
+									'X-Forwarded-For': invalidXForwardedFor,
+									'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+									'User-Agent': userAgent,
+								},
+							})
+
+							expect(getClientIp(request)).toBe(expectedIp)
+							expect(getClientName(request)).toBe(expectedClientName)
 							expect(getClientFingerprint(request)).toBe(
 								getClientFingerprint(canonicalRequest),
 							)

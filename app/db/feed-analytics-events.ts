@@ -1,3 +1,4 @@
+import type { Database } from 'bun:sqlite'
 import { generateId } from '#app/helpers/crypto.ts'
 import { normalizePath } from '#app/helpers/path-parsing.ts'
 import { db } from './index.ts'
@@ -78,11 +79,13 @@ function normalizeRelativePathForStorage(
  */
 export function createFeedAnalyticsEvent(
 	data: CreateFeedAnalyticsEventData,
+	database: Database = db,
 ): void {
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
+	database
+		.query(
+			sql`
 			INSERT INTO feed_analytics_events (
 				id,
 				event_type,
@@ -114,28 +117,32 @@ export function createFeedAnalyticsEvent(
 				$createdAt
 			);
 		`,
-	).run({
-		$id: generateId(),
-		$eventType: data.eventType,
-		$feedId: data.feedId,
-		$feedType: data.feedType,
-		$token: data.token,
-		$mediaRoot: data.mediaRoot ?? null,
-		$relativePath: normalizeRelativePathForStorage(data.relativePath),
-		$isDownloadStart: data.isDownloadStart ? 1 : 0,
-		$bytesServed: data.bytesServed ?? null,
-		$statusCode: data.statusCode,
-		$clientFingerprint: data.clientFingerprint ?? null,
-		$clientName: data.clientName ?? null,
-		$createdAt: data.createdAt ?? now,
-	})
+		)
+		.run({
+			$id: generateId(),
+			$eventType: data.eventType,
+			$feedId: data.feedId,
+			$feedType: data.feedType,
+			$token: data.token,
+			$mediaRoot: data.mediaRoot ?? null,
+			$relativePath: normalizeRelativePathForStorage(data.relativePath),
+			$isDownloadStart: data.isDownloadStart ? 1 : 0,
+			$bytesServed: data.bytesServed ?? null,
+			$statusCode: data.statusCode,
+			$clientFingerprint: data.clientFingerprint ?? null,
+			$clientName: data.clientName ?? null,
+			$createdAt: data.createdAt ?? now,
+		})
 }
 
 /**
  * Delete analytics events older than the given unix timestamp.
  */
-export function pruneFeedAnalyticsEvents(olderThan: number): number {
-	const result = db
+export function pruneFeedAnalyticsEvents(
+	olderThan: number,
+	database: Database = db,
+): number {
+	const result = database
 		.query(sql`DELETE FROM feed_analytics_events WHERE created_at < ?;`)
 		.run(olderThan)
 	return result.changes
@@ -168,8 +175,9 @@ function mapAnalyticsSummaryRow(
 export function getFeedAnalyticsSummary(
 	feedId: string,
 	since: number,
+	database: Database = db,
 ): AnalyticsSummary {
-	const row = db
+	const row = database
 		.query<
 			{
 				rss_fetches: number | null
@@ -202,8 +210,9 @@ export function getFeedAnalyticsSummary(
 export function getFeedAnalyticsByToken(
 	feedId: string,
 	since: number,
+	database: Database = db,
 ): Array<TokenAnalyticsRow> {
-	const rows = db
+	const rows = database
 		.query<
 			{
 				token: string
@@ -254,8 +263,9 @@ export function getFeedTopMediaItemAnalytics(
 	feedId: string,
 	since: number,
 	limit = 10,
+	database: Database = db,
 ): Array<FeedTopMediaItemAnalyticsRow> {
-	const rows = db
+	const rows = database
 		.query<
 			{
 				media_root: string
@@ -308,8 +318,9 @@ export function getFeedTopMediaItemAnalytics(
 export function getFeedDailyAnalytics(
 	feedId: string,
 	since: number,
+	database: Database = db,
 ): Array<DailyAnalyticsRow> {
-	const rows = db
+	const rows = database
 		.query<
 			{
 				day: string
@@ -357,9 +368,10 @@ export function getMediaAnalyticsSummary(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
+	database: Database = db,
 ): AnalyticsSummary {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const row = db
+	const row = database
 		.query<
 			{
 				rss_fetches: number | null
@@ -393,9 +405,10 @@ export function getMediaAnalyticsByToken(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
+	database: Database = db,
 ): Array<MediaByTokenAnalyticsRow> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = db
+	const rows = database
 		.query<
 			{
 				token: string
@@ -452,9 +465,10 @@ export function getMediaAnalyticsByFeed(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
+	database: Database = db,
 ): Array<MediaByFeedAnalyticsRow> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = db
+	const rows = database
 		.query<
 			{
 				feed_id: string
@@ -508,9 +522,10 @@ export function getMediaDailyAnalytics(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
+	database: Database = db,
 ): Array<DailyAnalyticsRow> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = db
+	const rows = database
 		.query<
 			{
 				day: string

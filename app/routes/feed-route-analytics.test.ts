@@ -557,6 +557,46 @@ test('feed route parses quoted whole-chain X-Real-IP values', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route recovers dangling trailing quotes in X-Real-IP values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithDanglingTrailingQuoteRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': 'unknown',
+			'X-Real-IP': '198.51.100.255"',
+		}),
+	)
+	expect(responseWithDanglingTrailingQuoteRealIp.status).toBe(200)
+
+	const responseWithEquivalentRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.255',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route parses escaped-quote whole-chain X-Real-IP values', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -800,6 +840,45 @@ test('feed route parses quoted whole-chain Forwarded for values', async () => {
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'X-Forwarded-For': '203.0.113.207',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers dangling trailing quotes in Forwarded for values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithDanglingTrailingQuoteForwarded = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for=198.51.100.240";proto=https',
+		}),
+	)
+	expect(responseWithDanglingTrailingQuoteForwarded.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.240',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)
@@ -1470,6 +1549,46 @@ test('feed route parses quoted whole-chain X-Forwarded-For values', async () => 
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'X-Forwarded-For': '203.0.113.202',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers dangling trailing quotes in X-Forwarded-For values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithDanglingTrailingQuoteForwardedFor =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': 'unknown, 203.0.113.249"',
+			}),
+		)
+	expect(responseWithDanglingTrailingQuoteForwardedFor.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.249',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

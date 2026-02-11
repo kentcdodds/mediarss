@@ -194,6 +194,27 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.225')
 	})
 
+	test('recovers dangling trailing quotes in X-Real-IP values', () => {
+		const danglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '198.51.100.250"',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.250',
+			},
+		})
+
+		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('198.51.100.250')
+		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {
@@ -249,6 +270,27 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('203.0.113.234')
+	})
+
+	test('recovers dangling trailing quotes in X-Forwarded-For chains', () => {
+		const danglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, 203.0.113.250"',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.250',
+			},
+		})
+
+		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('203.0.113.250')
+		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
 	})
 
 	test('skips blank forwarded entries before falling back to real values', () => {
@@ -390,6 +432,27 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('198.51.100.242')
+	})
+
+	test('recovers dangling trailing quotes in Forwarded for values', () => {
+		const danglingTrailingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for=198.51.100.250";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.250',
+			},
+		})
+
+		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('198.51.100.250')
+		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
 	})
 
 	test('uses stable fingerprints for malformed escaped-quote X-Forwarded-For chains', () => {

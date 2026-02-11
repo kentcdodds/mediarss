@@ -62,12 +62,34 @@ function hasUnclosedQuotes(value: string): boolean {
 	return inQuotes
 }
 
+function stripDanglingBoundaryQuotes(value: string): string {
+	let normalizedValue = value.trim()
+
+	const hasSingleLeadingQuote =
+		normalizedValue.startsWith('"') &&
+		!normalizedValue.endsWith('"') &&
+		normalizedValue.indexOf('"', 1) === -1
+	if (hasSingleLeadingQuote) {
+		normalizedValue = normalizedValue.slice(1).trim()
+	}
+
+	const hasSingleTrailingQuote =
+		normalizedValue.endsWith('"') &&
+		!normalizedValue.startsWith('"') &&
+		normalizedValue.lastIndexOf('"') === normalizedValue.length - 1
+	if (hasSingleTrailingQuote) {
+		normalizedValue = normalizedValue.slice(0, -1).trim()
+	}
+
+	return normalizedValue
+}
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
 
 	const unquotedValue = getQuotedInnerValue(trimmedValue) ?? trimmedValue
-	const normalizedUnquotedValue = unquotedValue.trim()
+	const normalizedUnquotedValue = stripDanglingBoundaryQuotes(unquotedValue)
 	if (!normalizedUnquotedValue) return null
 
 	let normalizedValue = normalizedUnquotedValue

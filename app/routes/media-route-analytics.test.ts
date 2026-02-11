@@ -586,8 +586,7 @@ test('media route preserves first valid X-Real-IP candidate across trailing segm
 	]
 
 	const realIpHeaders = trailingSegments.map(
-		(trailingSegment) =>
-			`198.51.100.226,${trailingSegment},198.51.100.227`,
+		(trailingSegment) => `198.51.100.226,${trailingSegment},198.51.100.227`,
 	)
 
 	for (const realIp of realIpHeaders) {
@@ -3366,6 +3365,73 @@ test('media route prefers Forwarded over X-Real-IP when X-Forwarded-For is missi
 	expect(events).toHaveLength(2)
 	expect(events[0]?.client_fingerprint).toBeTruthy()
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('media route applies X-Forwarded-For, Forwarded, then X-Real-IP precedence matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const cases = [
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, 203.0.113.121',
+				Forwarded: 'for=198.51.100.131;proto=https',
+				'X-Real-IP': '198.51.100.141',
+			},
+			canonicalIp: '203.0.113.121',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=198.51.100.132;proto=https',
+				'X-Real-IP': '198.51.100.142',
+			},
+			canonicalIp: '198.51.100.132',
+		},
+		{
+			headers: {
+				'X-Forwarded-For': 'unknown, nonsense',
+				Forwarded: 'for=unknown;proto=https',
+				'X-Real-IP': '"198.51.100.143:8443"',
+			},
+			canonicalIp: '198.51.100.143',
+		},
+	] as const
+
+	for (const testCase of cases) {
+		const responseWithHeaderMatrix = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, testCase.headers),
+		)
+		expect(responseWithHeaderMatrix.status).toBe(200)
+
+		const responseWithCanonicalForwardedFor = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Forwarded-For': testCase.canonicalIp,
+			}),
+		)
+		expect(responseWithCanonicalForwardedFor.status).toBe(200)
+
+		const events = db
+			.query<
+				{
+					client_fingerprint: string | null
+				},
+				[string]
+			>(
+				sql`
+					SELECT client_fingerprint
+					FROM feed_analytics_events
+					WHERE feed_id = ? AND event_type = 'media_request'
+					ORDER BY rowid DESC
+					LIMIT 2;
+				`,
+			)
+			.all(ctx.feed.id)
+
+		expect(events).toHaveLength(2)
+		expect(events[0]?.client_fingerprint).toBeTruthy()
+		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+	}
 })
 
 test('media route uses Forwarded header when X-Forwarded-For candidates are unknown', async () => {

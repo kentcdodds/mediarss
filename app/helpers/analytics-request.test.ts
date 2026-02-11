@@ -340,11 +340,14 @@ describe('analytics-request helpers', () => {
 
 			let expectedIp: string | null = null
 			for (const segment of segmentCombination) {
-				const isolatedSegmentRequest = new Request('https://example.com/media', {
-					headers: {
-						'X-Real-IP': segment,
+				const isolatedSegmentRequest = new Request(
+					'https://example.com/media',
+					{
+						headers: {
+							'X-Real-IP': segment,
+						},
 					},
-				})
+				)
 				const isolatedIp = getClientIp(isolatedSegmentRequest)
 				if (isolatedIp) {
 					expectedIp = isolatedIp
@@ -2400,6 +2403,51 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(requestA)).not.toBe(
 			getClientFingerprint(requestC),
 		)
+	})
+
+	test('applies X-Forwarded-For, Forwarded, then X-Real-IP precedence matrix', () => {
+		const cases = [
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, 203.0.113.121',
+					Forwarded: 'for=198.51.100.131;proto=https',
+					'X-Real-IP': '198.51.100.141',
+				},
+				canonicalIp: '203.0.113.121',
+			},
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, nonsense',
+					Forwarded: 'for=198.51.100.132;proto=https',
+					'X-Real-IP': '198.51.100.142',
+				},
+				canonicalIp: '198.51.100.132',
+			},
+			{
+				headers: {
+					'X-Forwarded-For': 'unknown, nonsense',
+					Forwarded: 'for=unknown;proto=https',
+					'X-Real-IP': '"198.51.100.143:8443"',
+				},
+				canonicalIp: '198.51.100.143',
+			},
+		]
+
+		for (const testCase of cases) {
+			const request = new Request('https://example.com/media', {
+				headers: testCase.headers,
+			})
+			const canonicalRequest = new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+				},
+			})
+
+			expect(getClientIp(request)).toBe(testCase.canonicalIp)
+			expect(getClientFingerprint(request)).toBe(
+				getClientFingerprint(canonicalRequest),
+			)
+		}
 	})
 
 	test('extracts known podcast client names from user agent', () => {

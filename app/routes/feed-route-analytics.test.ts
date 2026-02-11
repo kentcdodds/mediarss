@@ -2888,6 +2888,81 @@ test('feed route normalizes reordered Forwarded nested prefix matrix for mapped 
 	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
 })
 
+test('feed route normalizes reordered escaped-quote Forwarded nested prefix matrix for mapped values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const forms = ['for=', 'for =', 'FOR=', 'FOR =']
+	const wrappers = [
+		(candidate: string) =>
+			`proto=https;by=198.51.100.1;for="\\"unknown\\", ${candidate}";host=example.com`,
+		(candidate: string) =>
+			`by=198.51.100.1;host=example.com;for="\\"unknown\\", ${candidate};proto=https";proto=https`,
+	]
+	const mappedIpv6 = '[::ffff:198.51.100.197]:443'
+
+	const buildNestedPrefixes = (
+		depth: number,
+		accumulatedPrefixes: string[] = [],
+	): string[][] => {
+		if (depth === 0) return [accumulatedPrefixes]
+		const combinations: string[][] = []
+		for (const form of forms) {
+			combinations.push(
+				...buildNestedPrefixes(depth - 1, [...accumulatedPrefixes, form]),
+			)
+		}
+		return combinations
+	}
+
+	const forwardedHeaders: string[] = []
+	for (const depth of [1, 2]) {
+		for (const prefixCombination of buildNestedPrefixes(depth)) {
+			const candidate = `${prefixCombination.join('')}${mappedIpv6}`
+			for (const wrapCandidate of wrappers) {
+				forwardedHeaders.push(wrapCandidate(candidate))
+			}
+		}
+	}
+
+	for (const forwarded of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: forwarded,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.197',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route prefers Forwarded over X-Real-IP when X-Forwarded-For is missing', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

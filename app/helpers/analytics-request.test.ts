@@ -1461,6 +1461,54 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('normalizes reordered escaped-quote Forwarded nested prefix matrix for mapped values', () => {
+		const forms = ['for=', 'for =', 'FOR=', 'FOR =']
+		const wrappers = [
+			(candidate: string) =>
+				`proto=https;by=198.51.100.1;for="\\"unknown\\", ${candidate}";host=example.com`,
+			(candidate: string) =>
+				`by=198.51.100.1;host=example.com;for="\\"unknown\\", ${candidate};proto=https";proto=https`,
+		]
+		const mappedIpv6 = '[::ffff:198.51.100.197]:443'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.197',
+			},
+		})
+
+		const buildNestedPrefixes = (
+			depth: number,
+			accumulatedPrefixes: string[] = [],
+		): string[][] => {
+			if (depth === 0) return [accumulatedPrefixes]
+			const combinations: string[][] = []
+			for (const form of forms) {
+				combinations.push(
+					...buildNestedPrefixes(depth - 1, [...accumulatedPrefixes, form]),
+				)
+			}
+			return combinations
+		}
+
+		for (const depth of [1, 2, 3, 4]) {
+			for (const prefixCombination of buildNestedPrefixes(depth)) {
+				const candidate = `${prefixCombination.join('')}${mappedIpv6}`
+				for (const wrapCandidate of wrappers) {
+					const request = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: wrapCandidate(candidate),
+						},
+					})
+
+					expect(getClientIp(request)).toBe('198.51.100.197')
+					expect(getClientFingerprint(request)).toBe(
+						getClientFingerprint(canonicalRequest),
+					)
+				}
+			}
+		}
+	})
+
 	test('falls through deeply nested invalid forwarded for token to later valid candidate', () => {
 		const malformedNestedInvalidThenValidRequest = new Request(
 			'https://example.com/media',

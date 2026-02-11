@@ -4,9 +4,32 @@ function normalizeClientIpToken(value: string): string | null {
 
 	const unquotedValue = trimmedValue.replace(/^"(.+)"$/, '$1').trim()
 	if (!unquotedValue) return null
-	if (unquotedValue.toLowerCase() === 'unknown') return null
 
-	return unquotedValue
+	let normalizedValue = unquotedValue
+
+	if (normalizedValue.startsWith('[')) {
+		const closingBracketIndex = normalizedValue.indexOf(']')
+		if (closingBracketIndex > 1) {
+			normalizedValue = normalizedValue.slice(1, closingBracketIndex).trim()
+		}
+	} else {
+		const lastColonIndex = normalizedValue.lastIndexOf(':')
+		const hasSingleColon =
+			lastColonIndex > -1 && normalizedValue.indexOf(':') === lastColonIndex
+		if (hasSingleColon) {
+			const hostPart = normalizedValue.slice(0, lastColonIndex)
+			const portPart = normalizedValue.slice(lastColonIndex + 1)
+			if (hostPart.includes('.') && /^\d+$/.test(portPart)) {
+				normalizedValue = hostPart
+			}
+		}
+	}
+
+	const normalizedLower = normalizedValue.toLowerCase()
+	if (!normalizedValue || normalizedLower === 'unknown') return null
+	if (normalizedValue.startsWith('_')) return null
+
+	return normalizedValue
 }
 
 function getForwardedHeaderCandidates(forwardedHeader: string): string[] {

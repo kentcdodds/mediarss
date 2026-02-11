@@ -160,6 +160,36 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.77')
 	})
 
+	test('normalizes forwarded IPv4 values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=198.51.100.77:8443;proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.77')
+	})
+
+	test('normalizes quoted forwarded IPv6 values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="[2001:db8:cafe::17]:4711";proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('2001:db8:cafe::17')
+	})
+
+	test('skips obfuscated Forwarded for values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=_hidden, for=198.51.100.77',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.77')
+	})
+
 	test('prefers X-Forwarded-For over Forwarded header values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

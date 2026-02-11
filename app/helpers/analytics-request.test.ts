@@ -122,6 +122,36 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('uses unknown user-agent fallback name across all-invalid cross-header combination matrix', () => {
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const userAgentOnlyRequest = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': userAgent,
+			},
+		})
+		const expectedFingerprint = getClientFingerprint(userAgentOnlyRequest)
+
+		for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+			for (const forwarded of crossHeaderInvalidForwardedValues) {
+				for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+					const request = new Request('https://example.com/media', {
+						headers: {
+							'X-Forwarded-For': xForwardedFor,
+							Forwarded: forwarded,
+							'X-Real-IP': xRealIp,
+							'User-Agent': userAgent,
+						},
+					})
+
+					expect(getClientIp(request)).toBeNull()
+					expect(getClientName(request)).toBe(expectedClientName)
+					expect(getClientFingerprint(request)).toBe(expectedFingerprint)
+				}
+			}
+		}
+	})
+
 	test('builds fingerprint from X-Real-IP when forwarded-for is absent', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

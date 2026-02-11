@@ -1188,6 +1188,58 @@ test('media route uses user-agent fallback across all-invalid cross-header matri
 	}
 })
 
+test('media route uses unknown user-agent fallback across all-invalid cross-header matrix', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const userAgent = 'CustomPlayer/9.1 (Android)'
+	const expectedClientName = 'CustomPlayer/9.1'
+	const canonicalRequest = new Request('https://example.com/media', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+		for (const forwarded of crossHeaderInvalidForwardedValues) {
+			for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+				const response = await mediaHandler.action(
+					createMediaActionContext(ctx.token, pathParam, {
+						'X-Forwarded-For': xForwardedFor,
+						Forwarded: forwarded,
+						'X-Real-IP': xRealIp,
+						'User-Agent': userAgent,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_name: string | null
+							client_fingerprint: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_name, client_fingerprint
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'media_request'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_name).toBe(expectedClientName)
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+			}
+		}
+	}
+})
+
 test('media route uses Forwarded header when X-Forwarded-For is missing', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

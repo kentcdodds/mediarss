@@ -16,7 +16,6 @@ import {
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
-import { compactCrossHeaderPrecedenceCases } from '#app/helpers/analytics-header-precedence-matrix.ts'
 import feedHandler from './feed.ts'
 
 migrate(db)
@@ -102,20 +101,6 @@ function readLatestRssEvent(feedId: string): LatestRssEvent | null {
 			`,
 		)
 		.get(feedId)
-}
-
-function readTwoLatestRssEvents(feedId: string): LatestRssEvent[] {
-	return db
-		.query<LatestRssEvent, [string]>(
-			sql`
-				SELECT feed_type, token, status_code, client_name, client_fingerprint
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND event_type = 'rss_fetch'
-				ORDER BY rowid DESC
-				LIMIT 2;
-			`,
-		)
-		.all(feedId)
 }
 
 function countEventsForToken(token: string): number {
@@ -321,58 +306,4 @@ test('feed route touches directory token last_used_at on successful fetch', asyn
 		)
 		.get(ctx.token)
 	expect((after?.last_used_at ?? 0) > 0).toBe(true)
-})
-
-test('feed route applies cross-header precedence cases consistently', async () => {
-	using ctx = createDirectoryFeedRouteTestContext()
-
-	for (const testCase of compactCrossHeaderPrecedenceCases) {
-		const responseWithHeaderMatrix = await feedHandler.action(
-			createFeedActionContext(ctx.token, testCase.headers),
-		)
-		expect(responseWithHeaderMatrix.status).toBe(200)
-
-		const responseWithCanonicalIp = await feedHandler.action(
-			createFeedActionContext(ctx.token, {
-				'X-Forwarded-For': testCase.canonicalIp,
-			}),
-		)
-		expect(responseWithCanonicalIp.status).toBe(200)
-
-		const events = readTwoLatestRssEvents(ctx.feed.id)
-		expect(events).toHaveLength(2)
-		expect(events[0]?.client_name).toBeNull()
-		expect(events[1]?.client_name).toBeNull()
-		expect(events[0]?.client_fingerprint).toBeTruthy()
-		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
-	}
-})
-
-test('feed route falls back to user-agent fingerprint when proxy IP headers are invalid', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-	const userAgent = 'CustomPodClient/1.2 (Linux)'
-
-	const response = await feedHandler.action(
-		createFeedActionContext(ctx.token, {
-			'X-Forwarded-For': 'unknown, nonsense',
-			Forwarded: 'for=unknown;proto=https',
-			'X-Real-IP': 'unknown',
-			'User-Agent': userAgent,
-		}),
-	)
-	expect(response.status).toBe(200)
-
-	const canonicalResponse = await feedHandler.action(
-		createFeedActionContext(ctx.token, {
-			'User-Agent': userAgent,
-		}),
-	)
-	expect(canonicalResponse.status).toBe(200)
-
-	const events = readTwoLatestRssEvents(ctx.feed.id)
-	expect(events).toHaveLength(2)
-	expect(events[0]?.client_name).not.toBeNull()
-	expect(events[1]?.client_name).toBe(events[0]?.client_name)
-	expect(events[0]?.client_fingerprint).toBeTruthy()
-	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })

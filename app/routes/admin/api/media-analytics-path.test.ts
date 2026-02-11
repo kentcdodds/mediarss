@@ -558,3 +558,55 @@ test('media analytics endpoint labels missing feed and token metadata as deleted
 		mediaRequests: 1,
 	})
 })
+
+test('media analytics endpoint requires token metadata to match feed id', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+	const mismatchedFeedId = `mismatched-feed-${Date.now()}`
+
+	using _cleanupEvents = {
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				mismatchedFeedId,
+			)
+		},
+	}
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: mismatchedFeedId,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 654,
+		statusCode: 200,
+		clientFingerprint: 'mismatch-fingerprint',
+		clientName: 'Mismatch Client',
+		createdAt: now - 10,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.byFeed).toHaveLength(1)
+	expect(data.byFeed[0]).toMatchObject({
+		feedId: mismatchedFeedId,
+		feedName: 'Deleted feed',
+		mediaRequests: 1,
+	})
+
+	expect(data.byToken).toHaveLength(1)
+	expect(data.byToken[0]).toMatchObject({
+		token: ctx.tokenOne.token,
+		feedId: mismatchedFeedId,
+		feedName: 'Deleted feed',
+		label: 'Deleted token',
+		createdAt: null,
+		mediaRequests: 1,
+	})
+})

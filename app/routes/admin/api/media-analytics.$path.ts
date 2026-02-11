@@ -17,6 +17,7 @@ import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 
 function getTokenMetadata(
 	token: string,
+	feedId: string,
 	feedType: 'directory' | 'curated',
 ): {
 	label: string
@@ -33,15 +34,15 @@ function getTokenMetadata(
 					last_used_at: number | null
 					revoked_at: number | null
 				},
-				[string]
+				[string, string]
 			>(
 				sql`
 					SELECT label, created_at, last_used_at, revoked_at
 					FROM directory_feed_tokens
-					WHERE token = ?;
+					WHERE token = ? AND feed_id = ?;
 				`,
 			)
-			.get(token)
+			.get(token, feedId)
 		if (!row) return null
 		return {
 			label: row.label,
@@ -59,15 +60,15 @@ function getTokenMetadata(
 				last_used_at: number | null
 				revoked_at: number | null
 			},
-			[string]
+			[string, string]
 		>(
 			sql`
 				SELECT label, created_at, last_used_at, revoked_at
 				FROM curated_feed_tokens
-				WHERE token = ?;
+				WHERE token = ? AND feed_id = ?;
 			`,
 		)
-		.get(token)
+		.get(token, feedId)
 	if (!row) return null
 	return {
 		label: row.label,
@@ -155,7 +156,7 @@ export default {
 		}))
 
 		const byTokenWithMetadata = byToken.map((row) => {
-			const tokenMeta = getTokenMetadata(row.token, row.feedType)
+			const tokenMeta = getTokenMetadata(row.token, row.feedId, row.feedType)
 			return {
 				...row,
 				feedName: feedNameById.get(row.feedId) ?? 'Deleted feed',

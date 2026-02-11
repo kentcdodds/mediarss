@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
 	getClientFingerprint,
+	getClientIp,
 	getClientName,
 	getResponseBytesServed,
 	isDownloadStartRequest,
@@ -56,6 +57,22 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientFingerprint(requestA)).toBeTruthy()
 		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
+	})
+
+	test('trims X-Real-IP and ignores blank values', () => {
+		const trimmedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': ' 198.51.100.9 ',
+			},
+		})
+		const blankRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '   ',
+			},
+		})
+
+		expect(getClientIp(trimmedRequest)).toBe('198.51.100.9')
+		expect(getClientIp(blankRequest)).toBeNull()
 	})
 
 	test('uses first X-Forwarded-For address for fingerprinting', () => {

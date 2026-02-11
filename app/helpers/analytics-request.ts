@@ -8,7 +8,7 @@ export function getClientIp(request: Request): string | null {
 		if (firstIp) return firstIp
 	}
 
-	const realIp = request.headers.get('X-Real-IP')
+	const realIp = request.headers.get('X-Real-IP')?.trim()
 	if (realIp) return realIp
 
 	return null

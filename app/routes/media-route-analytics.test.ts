@@ -3444,6 +3444,8 @@ test('media route preserves cross-header precedence across segment combination m
 		'unknown, nonsense',
 		'"198.51.100.144"',
 		'[2001:db8::99]:443',
+		'\\"unknown\\", 198.51.100.147',
+		'_hidden, 198.51.100.148',
 	]
 	const forwardedValues: Array<string | null> = [
 		null,
@@ -3451,6 +3453,8 @@ test('media route preserves cross-header precedence across segment combination m
 		'for=unknown;proto=https',
 		'for="\\"unknown\\", 198.51.100.145";proto=https',
 		'for="[2001:DB8::9a]:443";proto=https',
+		'for="\\\\"unknown\\\\", 198.51.100.149";proto=https',
+		'for=_hidden;proto=https,for=198.51.100.150;proto=https',
 	]
 	const xRealIpValues: Array<string | null> = [
 		null,
@@ -3458,6 +3462,8 @@ test('media route preserves cross-header precedence across segment combination m
 		'unknown, nonsense',
 		'"unknown,198.51.100.146"',
 		'[2001:db8::9b]:443',
+		'\\"unknown\\", 198.51.100.151',
+		'_hidden, 198.51.100.152',
 	]
 
 	const readLatestFingerprint = () =>

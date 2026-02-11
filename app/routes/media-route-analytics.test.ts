@@ -335,6 +335,29 @@ test('media route does not log analytics for curated media outside item list', a
 	expect(events?.count ?? 0).toBe(0)
 })
 
+test('media route does not log analytics for traversal paths on curated feeds', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/../${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Not found')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
 test('media route does not log analytics when token is missing', async () => {
 	await using ctx = await createMediaAnalyticsTestContext()
 	const missingToken = `missing-token-${Date.now()}`
@@ -520,6 +543,29 @@ test('media route does not log analytics for paths outside feed directories', as
 			`,
 		)
 		.get(ctx.feed.id, ctx.secondaryRootName!)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for traversal paths on directory feeds', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/../${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Not found')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
 
 	expect(events?.count ?? 0).toBe(0)
 })

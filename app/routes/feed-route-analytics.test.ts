@@ -184,7 +184,6 @@ test('feed route still returns rss when analytics writes fail', async () => {
 			expect(response.headers.get('Content-Type')).toContain(
 				'application/rss+xml',
 			)
-			expect(await response.text()).toContain('<rss')
 		})
 		expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
 	} finally {

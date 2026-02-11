@@ -118,6 +118,24 @@ describe('analytics-request helpers', () => {
 
 		expect(getResponseBytesServed(response)).toBe(12345)
 		expect(getResponseBytesServed(new Response())).toBeNull()
+		expect(
+			getResponseBytesServed(
+				new Response(null, {
+					headers: {
+						'Content-Length': '-10',
+					},
+				}),
+			),
+		).toBeNull()
+		expect(
+			getResponseBytesServed(
+				new Response(null, {
+					headers: {
+						'Content-Length': 'not-a-number',
+					},
+				}),
+			),
+		).toBeNull()
 	})
 
 	test('tracks expected RSS and media statuses', () => {

@@ -686,6 +686,57 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('preserves first valid Forwarded candidate across segment combination matrix', () => {
+		const forwardedSegments = [
+			'for=198.51.100.10;proto=https',
+			'for="198.51.100.11";proto=https',
+			'for=unknown;proto=https',
+			'for="unknown";proto=https',
+			'for="[2001:db8::44]:443";proto=https',
+			'for="_hidden";proto=https',
+			'by=proxy',
+			'proto=https',
+			'host=example.com',
+			'nonsense',
+		]
+
+		const segmentCombinations: string[][] = []
+		for (const first of forwardedSegments) {
+			segmentCombinations.push([first])
+			for (const second of forwardedSegments) {
+				segmentCombinations.push([first, second])
+				for (const third of forwardedSegments) {
+					segmentCombinations.push([first, second, third])
+				}
+			}
+		}
+
+		for (const segmentCombination of segmentCombinations) {
+			const forwardedHeader = segmentCombination.join(',')
+			const request = new Request('https://example.com/media', {
+				headers: {
+					Forwarded: forwardedHeader,
+				},
+			})
+
+			let expectedIp: string | null = null
+			for (const segment of segmentCombination) {
+				const isolatedSegmentRequest = new Request('https://example.com/media', {
+					headers: {
+						Forwarded: segment,
+					},
+				})
+				const isolatedIp = getClientIp(isolatedSegmentRequest)
+				if (isolatedIp) {
+					expectedIp = isolatedIp
+					break
+				}
+			}
+
+			expect(getClientIp(request)).toBe(expectedIp)
+		}
+	})
+
 	test('falls through nested invalid forwarded for token to later valid candidate', () => {
 		const malformedThenValidRequest = new Request('https://example.com/media', {
 			headers: {

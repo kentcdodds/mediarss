@@ -2844,6 +2844,63 @@ test('feed route keeps earliest valid quoted Forwarded candidate when bare malfo
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route preserves first valid Forwarded candidate across trailing segment noise matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const trailingSegments = [
+		'nonsense',
+		'proto=https',
+		'by=proxy',
+		'host=example.com',
+		'for=unknown;proto=https',
+		'for="_hidden";proto=https',
+		'for="unknown";proto=https',
+	]
+
+	const forwardedHeaders = trailingSegments.map(
+		(trailingSegment) =>
+			`for=198.51.100.218;proto=https,${trailingSegment},for=198.51.100.219;proto=https`,
+	)
+
+	for (const forwarded of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: forwarded,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.218',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route normalizes nested mapped Forwarded chains when for appears after other parameters', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

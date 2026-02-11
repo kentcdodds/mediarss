@@ -102,6 +102,27 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.19')
 	})
 
+	test('skips unknown forwarded entries and picks first valid IP', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'unknown, 203.0.113.21, 198.51.100.12',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.21')
+	})
+
+	test('falls back to X-Real-IP when forwarded entries are unknown', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'unknown,  ',
+				'X-Real-IP': '198.51.100.44',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.44')
+	})
+
 	test('prefers X-Forwarded-For over X-Real-IP for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

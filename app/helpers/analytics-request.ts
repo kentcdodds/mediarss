@@ -6,12 +6,14 @@ export function getClientIp(request: Request): string | null {
 	if (forwardedFor) {
 		for (const candidate of forwardedFor.split(',')) {
 			const trimmedCandidate = candidate.trim()
-			if (trimmedCandidate) return trimmedCandidate
+			if (trimmedCandidate && trimmedCandidate.toLowerCase() !== 'unknown') {
+				return trimmedCandidate
+			}
 		}
 	}
 
 	const realIp = request.headers.get('X-Real-IP')?.trim()
-	if (realIp) return realIp
+	if (realIp && realIp.toLowerCase() !== 'unknown') return realIp
 
 	return null
 }

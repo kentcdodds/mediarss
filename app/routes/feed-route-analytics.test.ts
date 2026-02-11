@@ -1026,6 +1026,47 @@ test('feed route stores null fingerprint when proxy IP headers are invalid', asy
 	})
 })
 
+test('feed route stores null fingerprint across all-invalid cross-header matrix', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+		for (const forwarded of crossHeaderInvalidForwardedValues) {
+			for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+				const response = await feedHandler.action(
+					createFeedActionContext(ctx.token, {
+						'X-Forwarded-For': xForwardedFor,
+						Forwarded: forwarded,
+						'X-Real-IP': xRealIp,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_name: string | null
+							client_fingerprint: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_name, client_fingerprint
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'rss_fetch'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_name).toBeNull()
+				expect(events[0]?.client_fingerprint).toBeNull()
+			}
+		}
+	}
+})
+
 test('feed route falls back to user-agent fingerprint when proxy IP headers are invalid', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

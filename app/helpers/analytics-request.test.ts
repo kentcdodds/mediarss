@@ -69,6 +69,25 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(request)).toBeNull()
 	})
 
+	test('returns null fingerprint across all-invalid cross-header combination matrix', () => {
+		for (const xForwardedFor of crossHeaderInvalidXForwardedForValues) {
+			for (const forwarded of crossHeaderInvalidForwardedValues) {
+				for (const xRealIp of crossHeaderInvalidXRealIpValues) {
+					const request = new Request('https://example.com/media', {
+						headers: {
+							'X-Forwarded-For': xForwardedFor,
+							Forwarded: forwarded,
+							'X-Real-IP': xRealIp,
+						},
+					})
+
+					expect(getClientIp(request)).toBeNull()
+					expect(getClientFingerprint(request)).toBeNull()
+				}
+			}
+		}
+	})
+
 	test('builds fingerprint from user-agent when client IP headers are invalid', () => {
 		const requestWithInvalidIpHeaders = new Request(
 			'https://example.com/media',

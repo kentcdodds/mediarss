@@ -667,6 +667,25 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('falls through deeply nested obfuscated forwarded for token to later valid candidate', () => {
+		const malformedThenValidRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded:
+					'for="unknown, for=for=for=_hidden";proto=https,for=198.51.100.251;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.251',
+			},
+		})
+
+		expect(getClientIp(malformedThenValidRequest)).toBe('198.51.100.251')
+		expect(getClientFingerprint(malformedThenValidRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers nested forwarded for tokens in quoted for chains', () => {
 		const malformedNestedForRequest = new Request('https://example.com/media', {
 			headers: {

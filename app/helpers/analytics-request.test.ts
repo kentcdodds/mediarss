@@ -42,6 +42,22 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(request)).toBeNull()
 	})
 
+	test('builds fingerprint from X-Real-IP when forwarded-for is absent', () => {
+		const requestA = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.9',
+			},
+		})
+		const requestB = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.9',
+			},
+		})
+
+		expect(getClientFingerprint(requestA)).toBeTruthy()
+		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
+	})
+
 	test('extracts known podcast client names from user agent', () => {
 		const request = new Request('https://example.com/feed', {
 			headers: {

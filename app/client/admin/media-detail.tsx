@@ -178,6 +178,7 @@ function isVideo(mimeType: string): boolean {
 export function MediaDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
+	let analyticsWindowDays = 30
 	let currentPath = ''
 	let selectedFeedIds: Set<string> = new Set()
 	let saving = false
@@ -209,13 +210,17 @@ export function MediaDetail(handle: Handle) {
 		subtitle: '',
 	}
 
-	const fetchAnalytics = async (rootName: string, relativePath: string) => {
+	const fetchAnalytics = async (
+		rootName: string,
+		relativePath: string,
+		windowDays: number,
+	) => {
 		analyticsState = { status: 'loading' }
 		handle.update()
 
 		try {
 			const res = await fetch(
-				`/admin/api/media-analytics/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}?days=30`,
+				`/admin/api/media-analytics/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}?days=${windowDays}`,
 				{ signal: handle.signal },
 			)
 
@@ -263,7 +268,11 @@ export function MediaDetail(handle: Handle) {
 					.map((a) => a.feedId),
 			)
 
-			fetchAnalytics(data.media.rootName, data.media.relativePath)
+			fetchAnalytics(
+				data.media.rootName,
+				data.media.relativePath,
+				analyticsWindowDays,
+			)
 
 			handle.update()
 		} catch (err) {
@@ -1526,16 +1535,77 @@ export function MediaDetail(handle: Handle) {
 								boxShadow: shadows.sm,
 							}}
 						>
-							<h3
+							<div
 								css={{
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.semibold,
-									color: colors.text,
-									margin: `0 0 ${spacing.md} 0`,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									gap: spacing.sm,
+									marginBottom: spacing.md,
+									flexWrap: 'wrap',
 								}}
 							>
-								Analytics (last 30 days)
-							</h3>
+								<h3
+									css={{
+										fontSize: typography.fontSize.base,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										margin: 0,
+									}}
+								>
+									Analytics (last {analyticsWindowDays} days)
+								</h3>
+								<div css={{ display: 'flex', gap: spacing.xs }}>
+									{[7, 30, 90].map((days) => (
+										<button
+											key={days}
+											type="button"
+											css={{
+												padding: `${spacing.xs} ${spacing.sm}`,
+												fontSize: typography.fontSize.xs,
+												fontWeight: typography.fontWeight.medium,
+												color:
+													days === analyticsWindowDays
+														? colors.background
+														: colors.textMuted,
+												backgroundColor:
+													days === analyticsWindowDays
+														? colors.primary
+														: 'transparent',
+												border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
+												borderRadius: radius.sm,
+												cursor: 'pointer',
+												transition: `all ${transitions.fast}`,
+												'&:hover': {
+													borderColor: colors.primary,
+													color:
+														days === analyticsWindowDays
+															? colors.background
+															: colors.text,
+												},
+											}}
+											on={{
+												click: () => {
+													if (
+														days === analyticsWindowDays ||
+														state.status !== 'success'
+													) {
+														return
+													}
+													analyticsWindowDays = days
+													fetchAnalytics(
+														state.data.media.rootName,
+														state.data.media.relativePath,
+														days,
+													)
+												},
+											}}
+										>
+											{days}d
+										</button>
+									))}
+								</div>
+							</div>
 							<MediaAnalyticsSection analyticsState={analyticsState} />
 						</div>
 					</div>

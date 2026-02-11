@@ -274,12 +274,15 @@ export function FeedDetail(handle: Handle) {
 	let newTokenLabel = ''
 	let createLoading = false
 	let feedId = ''
+	let analyticsWindowDays = 30
 
-	const fetchAnalytics = (id: string) => {
+	const fetchAnalytics = (id: string, windowDays: number) => {
 		analyticsState = { status: 'loading' }
 		handle.update()
 
-		fetch(`/admin/api/feeds/${id}/analytics?days=30`, { signal: handle.signal })
+		fetch(`/admin/api/feeds/${id}/analytics?days=${windowDays}`, {
+			signal: handle.signal,
+		})
 			.then((res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`)
 				return res.json() as Promise<FeedAnalyticsResponse>
@@ -490,7 +493,7 @@ export function FeedDetail(handle: Handle) {
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
-				fetchAnalytics(id)
+				fetchAnalytics(id, analyticsWindowDays)
 				handle.update()
 			})
 			.catch((err) => {
@@ -2068,16 +2071,72 @@ export function FeedDetail(handle: Handle) {
 						boxShadow: shadows.sm,
 					}}
 				>
-					<h3
+					<div
 						css={{
-							fontSize: typography.fontSize.base,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: `0 0 ${spacing.md} 0`,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							gap: spacing.sm,
+							marginBottom: spacing.md,
+							flexWrap: 'wrap',
 						}}
 					>
-						Analytics (last 30 days)
-					</h3>
+						<h3
+							css={{
+								fontSize: typography.fontSize.base,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+							}}
+						>
+							Analytics (last {analyticsWindowDays} days)
+						</h3>
+						<div css={{ display: 'flex', gap: spacing.xs }}>
+							{[7, 30, 90].map((days) => (
+								<button
+									key={days}
+									type="button"
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color:
+											days === analyticsWindowDays
+												? colors.background
+												: colors.textMuted,
+										backgroundColor:
+											days === analyticsWindowDays
+												? colors.primary
+												: 'transparent',
+										border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											borderColor: colors.primary,
+											color:
+												days === analyticsWindowDays
+													? colors.background
+													: colors.text,
+										},
+									}}
+									on={{
+										click: () => {
+											if (days === analyticsWindowDays) return
+											analyticsWindowDays = days
+											if (feedId) {
+												fetchAnalytics(feedId, days)
+											} else {
+												handle.update()
+											}
+										},
+									}}
+								>
+									{days}d
+								</button>
+							))}
+						</div>
+					</div>
 
 					<FeedAnalyticsSection analyticsState={analyticsState} />
 				</div>

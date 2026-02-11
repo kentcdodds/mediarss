@@ -345,6 +345,39 @@ test('media route stores null client metadata for curated requests without trait
 	})
 })
 
+test('media route fingerprints requests with X-Real-IP and no user-agent', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Real-IP': '198.51.100.23',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event?.client_name).toBeNull()
+	expect(event?.client_fingerprint).toBeTruthy()
+})
+
 test('media route stores null client metadata when request lacks client traits', async () => {
 	await using ctx = await createMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

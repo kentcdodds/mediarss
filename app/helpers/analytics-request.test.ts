@@ -134,6 +134,17 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.45')
 	})
 
+	test('falls back to X-Real-IP when X-Forwarded-For values are not IPs', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'not-an-ip, also-not-an-ip',
+				'X-Real-IP': '198.51.100.46',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.46')
+	})
+
 	test('normalizes quoted forwarded and real IP values', () => {
 		const forwardedRequest = new Request('https://example.com/media', {
 			headers: {
@@ -202,6 +213,17 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientIp(request)).toBe('198.51.100.122')
+	})
+
+	test('falls back to X-Real-IP when Forwarded values are not IPs', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=app-server.internal, for=proxy.local',
+				'X-Real-IP': '198.51.100.124',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.124')
 	})
 
 	test('normalizes forwarded IPv4 values with ports', () => {

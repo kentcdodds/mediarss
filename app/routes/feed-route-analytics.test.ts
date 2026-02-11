@@ -560,6 +560,46 @@ test('feed route falls back to X-Real-IP when X-Forwarded-For unknown values inc
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route falls back to X-Real-IP when X-Forwarded-For contains non-IP values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithInvalidForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': 'proxy.internal, app.server',
+			'X-Real-IP': '198.51.100.125',
+		}),
+	)
+	expect(responseWithInvalidForwardedFor.status).toBe(200)
+
+	const responseWithEquivalentRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.125',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route normalizes Forwarded IPv4 values with ports', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

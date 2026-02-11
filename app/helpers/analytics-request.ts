@@ -1,3 +1,5 @@
+import { isIP } from 'node:net'
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
@@ -39,6 +41,7 @@ function normalizeClientIpToken(value: string): string | null {
 	}
 	if (/["\s,;]/.test(normalizedValue)) return null
 	if (normalizedValue.startsWith('_')) return null
+	if (isIP(normalizedValue) === 0) return null
 
 	return normalizedValue
 }

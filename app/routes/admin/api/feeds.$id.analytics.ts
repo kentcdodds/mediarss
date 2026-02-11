@@ -19,7 +19,7 @@ const TOP_ITEMS_LIMIT = 20
 type TokenWithMetrics = {
 	token: string
 	label: string
-	createdAt: number
+	createdAt: number | null
 	lastUsedAt: number | null
 	revokedAt: number | null
 	rssFetches: number
@@ -29,6 +29,14 @@ type TokenWithMetrics = {
 	uniqueClients: number
 	firstSeenAt: number | null
 	lastSeenAt: number | null
+}
+
+type FeedTokenMetadata = {
+	token: string
+	label: string
+	createdAt: number
+	lastUsedAt: number | null
+	revokedAt: number | null
 }
 
 function parseWindowDays(request: Request): number {
@@ -41,6 +49,67 @@ function parseWindowDays(request: Request): number {
 		return DEFAULT_WINDOW_DAYS
 	}
 	return Math.min(requested, MAX_WINDOW_DAYS)
+}
+
+function buildTokenAnalytics(
+	tokens: Array<FeedTokenMetadata>,
+	tokenMetrics: ReturnType<typeof getFeedAnalyticsByToken>,
+): Array<TokenWithMetrics> {
+	const tokenMetadataByToken = new Map(
+		tokens.map((token) => [token.token, token]),
+	)
+	const tokenMetricsByToken = new Map(
+		tokenMetrics.map((metrics) => [metrics.token, metrics]),
+	)
+
+	const byToken: Array<TokenWithMetrics> = tokens.map((token) => {
+		const metrics = tokenMetricsByToken.get(token.token)
+		return {
+			token: token.token,
+			label: token.label,
+			createdAt: token.createdAt,
+			lastUsedAt: token.lastUsedAt,
+			revokedAt: token.revokedAt,
+			rssFetches: metrics?.rssFetches ?? 0,
+			mediaRequests: metrics?.mediaRequests ?? 0,
+			downloadStarts: metrics?.downloadStarts ?? 0,
+			bytesServed: metrics?.bytesServed ?? 0,
+			uniqueClients: metrics?.uniqueClients ?? 0,
+			firstSeenAt: metrics?.firstSeenAt ?? null,
+			lastSeenAt: metrics?.lastSeenAt ?? null,
+		}
+	})
+
+	// Include historical analytics rows for tokens that have been deleted.
+	for (const metrics of tokenMetrics) {
+		if (tokenMetadataByToken.has(metrics.token)) continue
+		byToken.push({
+			token: metrics.token,
+			label: 'Deleted token',
+			createdAt: null,
+			lastUsedAt: null,
+			revokedAt: null,
+			rssFetches: metrics.rssFetches,
+			mediaRequests: metrics.mediaRequests,
+			downloadStarts: metrics.downloadStarts,
+			bytesServed: metrics.bytesServed,
+			uniqueClients: metrics.uniqueClients,
+			firstSeenAt: metrics.firstSeenAt,
+			lastSeenAt: metrics.lastSeenAt,
+		})
+	}
+
+	byToken.sort((a, b) => {
+		if (b.downloadStarts !== a.downloadStarts) {
+			return b.downloadStarts - a.downloadStarts
+		}
+		if (b.mediaRequests !== a.mediaRequests) {
+			return b.mediaRequests - a.mediaRequests
+		}
+		return (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0)
+	})
+
+	return byToken
 }
 
 /**
@@ -66,37 +135,7 @@ export default {
 			const topClients = getFeedTopClientAnalytics(id, since)
 			const daily = getFeedDailyAnalytics(id, since)
 			const tokens = listDirectoryFeedTokens(id)
-			const tokenMetricsByToken = new Map(
-				tokenMetrics.map((row) => [row.token, row]),
-			)
-
-			const byToken: Array<TokenWithMetrics> = tokens.map((token) => {
-				const metrics = tokenMetricsByToken.get(token.token)
-				return {
-					token: token.token,
-					label: token.label,
-					createdAt: token.createdAt,
-					lastUsedAt: token.lastUsedAt,
-					revokedAt: token.revokedAt,
-					rssFetches: metrics?.rssFetches ?? 0,
-					mediaRequests: metrics?.mediaRequests ?? 0,
-					downloadStarts: metrics?.downloadStarts ?? 0,
-					bytesServed: metrics?.bytesServed ?? 0,
-					uniqueClients: metrics?.uniqueClients ?? 0,
-					firstSeenAt: metrics?.firstSeenAt ?? null,
-					lastSeenAt: metrics?.lastSeenAt ?? null,
-				}
-			})
-
-			byToken.sort((a, b) => {
-				if (b.downloadStarts !== a.downloadStarts) {
-					return b.downloadStarts - a.downloadStarts
-				}
-				if (b.mediaRequests !== a.mediaRequests) {
-					return b.mediaRequests - a.mediaRequests
-				}
-				return (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0)
-			})
+			const byToken = buildTokenAnalytics(tokens, tokenMetrics)
 
 			return Response.json({
 				feed: {
@@ -126,37 +165,7 @@ export default {
 			const topClients = getFeedTopClientAnalytics(id, since)
 			const daily = getFeedDailyAnalytics(id, since)
 			const tokens = listCuratedFeedTokens(id)
-			const tokenMetricsByToken = new Map(
-				tokenMetrics.map((row) => [row.token, row]),
-			)
-
-			const byToken: Array<TokenWithMetrics> = tokens.map((token) => {
-				const metrics = tokenMetricsByToken.get(token.token)
-				return {
-					token: token.token,
-					label: token.label,
-					createdAt: token.createdAt,
-					lastUsedAt: token.lastUsedAt,
-					revokedAt: token.revokedAt,
-					rssFetches: metrics?.rssFetches ?? 0,
-					mediaRequests: metrics?.mediaRequests ?? 0,
-					downloadStarts: metrics?.downloadStarts ?? 0,
-					bytesServed: metrics?.bytesServed ?? 0,
-					uniqueClients: metrics?.uniqueClients ?? 0,
-					firstSeenAt: metrics?.firstSeenAt ?? null,
-					lastSeenAt: metrics?.lastSeenAt ?? null,
-				}
-			})
-
-			byToken.sort((a, b) => {
-				if (b.downloadStarts !== a.downloadStarts) {
-					return b.downloadStarts - a.downloadStarts
-				}
-				if (b.mediaRequests !== a.mediaRequests) {
-					return b.mediaRequests - a.mediaRequests
-				}
-				return (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0)
-			})
+			const byToken = buildTokenAnalytics(tokens, tokenMetrics)
 
 			return Response.json({
 				feed: {

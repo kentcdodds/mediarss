@@ -169,7 +169,7 @@ type FeedAnalyticsSummary = {
 type FeedTokenAnalytics = FeedAnalyticsSummary & {
 	token: string
 	label: string
-	createdAt: number
+	createdAt: number | null
 	lastUsedAt: number | null
 	revokedAt: number | null
 	firstSeenAt: number | null

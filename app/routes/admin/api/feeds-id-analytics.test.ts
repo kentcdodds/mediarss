@@ -80,6 +80,7 @@ function createActionContext(
 test('feed analytics endpoint returns summary, token breakdown, and top clients', () => {
 	using ctx = createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
+	const deletedToken = `deleted-token-${Date.now()}`
 
 	createFeedAnalyticsEvent({
 		eventType: 'rss_fetch',
@@ -105,6 +106,20 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 		clientName: 'Apple Podcasts',
 		createdAt: now - 30,
 	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feed.id,
+		feedType: 'directory',
+		token: deletedToken,
+		mediaRoot: 'audio',
+		relativePath: 'episode.mp3',
+		isDownloadStart: true,
+		bytesServed: 2000,
+		statusCode: 200,
+		clientFingerprint: 'fp-2',
+		clientName: 'Overcast',
+		createdAt: now - 20,
+	})
 
 	const response = analyticsHandler.action(createActionContext(ctx.feed.id))
 	expect(response.status).toBe(200)
@@ -113,33 +128,56 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 		expect(data.feed.id).toBe(ctx.feed.id)
 		expect(data.summary).toMatchObject({
 			rssFetches: 1,
-			mediaRequests: 1,
-			downloadStarts: 1,
-			bytesServed: 12345,
-			uniqueClients: 1,
+			mediaRequests: 2,
+			downloadStarts: 2,
+			bytesServed: 14345,
+			uniqueClients: 2,
 		})
 
-		expect(data.byToken).toHaveLength(1)
-		expect(data.byToken[0]).toMatchObject({
-			token: ctx.token.token,
+		expect(data.byToken).toHaveLength(2)
+
+		const knownToken = data.byToken.find(
+			(row: { token: string }) => row.token === ctx.token.token,
+		)
+		expect(knownToken).toMatchObject({
 			label: 'Test Token',
 			rssFetches: 1,
 			mediaRequests: 1,
+		})
+		expect(knownToken.createdAt).not.toBeNull()
+
+		const deletedTokenRow = data.byToken.find(
+			(row: { token: string }) => row.token === deletedToken,
+		)
+		expect(deletedTokenRow).toMatchObject({
+			token: deletedToken,
+			label: 'Deleted token',
+			createdAt: null,
+			mediaRequests: 1,
+			downloadStarts: 1,
+			bytesServed: 2000,
 		})
 
 		expect(data.topMediaItems).toHaveLength(1)
 		expect(data.topMediaItems[0]).toMatchObject({
 			mediaRoot: 'audio',
 			relativePath: 'episode.mp3',
-			mediaRequests: 1,
+			mediaRequests: 2,
 		})
 
-		expect(data.topClients).toHaveLength(1)
-		expect(data.topClients[0]).toMatchObject({
-			clientName: 'Apple Podcasts',
-			mediaRequests: 1,
-			rssFetches: 1,
-		})
+		expect(data.topClients).toHaveLength(2)
+		expect(
+			data.topClients.some(
+				(client: { clientName: string; mediaRequests: number }) =>
+					client.clientName === 'Apple Podcasts' && client.mediaRequests === 1,
+			),
+		).toBe(true)
+		expect(
+			data.topClients.some(
+				(client: { clientName: string; mediaRequests: number }) =>
+					client.clientName === 'Overcast' && client.mediaRequests === 1,
+			),
+		).toBe(true)
 	})
 })
 

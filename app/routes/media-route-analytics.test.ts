@@ -3,6 +3,8 @@ import path from 'node:path'
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
+import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
+import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	createDirectoryFeedToken,
 	revokeDirectoryFeedToken,
@@ -11,6 +13,7 @@ import {
 	createDirectoryFeed,
 	deleteDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
+import { addItemToFeed } from '#app/db/feed-items.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
@@ -87,6 +90,56 @@ async function createMediaAnalyticsTestContext(options?: {
 			if (secondaryRootPath) {
 				rmSync(secondaryRootPath, { recursive: true, force: true })
 			}
+		},
+	}
+}
+
+async function createCuratedMediaAnalyticsTestContext() {
+	const previousMediaPaths = Bun.env.MEDIA_PATHS
+	const rootName = `curated-media-route-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
+	const rootPath = path.join('/tmp', rootName)
+	const relativePath = 'curated-episode.mp3'
+	const otherRelativePath = 'not-in-feed.mp3'
+	const filePath = path.join(rootPath, relativePath)
+	const otherFilePath = path.join(rootPath, otherRelativePath)
+
+	mkdirSync(rootPath, { recursive: true })
+	await Bun.write(filePath, 'curated media fixture bytes')
+	await Bun.write(otherFilePath, 'excluded fixture bytes')
+
+	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
+	initEnv()
+
+	const feed = createCuratedFeed({
+		name: `media-route-curated-feed-${Date.now()}`,
+		description: 'Curated media route analytics feed',
+	})
+	const token = createCuratedFeedToken({
+		feedId: feed.id,
+		label: 'Curated media route token',
+	})
+	addItemToFeed(feed.id, rootName, relativePath)
+
+	return {
+		rootName,
+		relativePath,
+		otherRelativePath,
+		feed,
+		token: token.token,
+		[Symbol.asyncDispose]: async () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				feed.id,
+			)
+			deleteCuratedFeed(feed.id)
+
+			if (previousMediaPaths === undefined) {
+				delete Bun.env.MEDIA_PATHS
+			} else {
+				Bun.env.MEDIA_PATHS = previousMediaPaths
+			}
+			initEnv()
+
+			rmSync(rootPath, { recursive: true, force: true })
 		},
 	}
 }
@@ -216,6 +269,70 @@ test('media route logs media_request analytics for full and ranged requests', as
 			Boolean(event.client_fingerprint),
 	)
 	expect(hasPartialStartEvent).toBe(true)
+})
+
+test('media route logs analytics for curated feed items', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'User-Agent': 'AppleCoreMedia/1.0',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				feed_type: string
+				token: string
+				media_root: string | null
+				relative_path: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT feed_type, token, media_root, relative_path, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		feed_type: 'curated',
+		token: ctx.token,
+		media_root: ctx.rootName,
+		relative_path: ctx.relativePath,
+		client_name: 'AppleCoreMedia',
+	})
+})
+
+test('media route does not log analytics for curated media outside item list', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.otherRelativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Not found')
+
+	const events = db
+		.query<{ count: number }, [string, string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND relative_path = ?;
+			`,
+		)
+		.get(ctx.feed.id, ctx.otherRelativePath)
+
+	expect(events?.count ?? 0).toBe(0)
 })
 
 test('media route does not log analytics when token is missing', async () => {

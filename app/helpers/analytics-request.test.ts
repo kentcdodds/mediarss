@@ -78,6 +78,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientName(request)).toBe('CustomPodApp/2.4')
 	})
 
+	test('returns null client name when user-agent is blank', () => {
+		const request = new Request('https://example.com/feed', {
+			headers: {
+				'User-Agent': '   ',
+			},
+		})
+
+		expect(getClientName(request)).toBeNull()
+	})
+
 	test('detects download-start requests from range headers', () => {
 		const fullRequest = new Request('https://example.com/media')
 		const zeroRangeRequest = new Request('https://example.com/media', {

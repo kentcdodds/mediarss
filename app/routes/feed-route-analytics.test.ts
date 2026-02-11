@@ -3590,6 +3590,45 @@ test('feed route uses unknown user-agent fallback when repeated Forwarded and ot
 	expect(events[0]?.client_name).toBe(expectedClientName)
 })
 
+test('feed route stores null metadata when repeated Forwarded and other proxy headers are invalid without user-agent', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const repeatedHeader = repeatedForwardedForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+	)
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': crossHeaderInvalidXRealIpValues[0]!,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBeNull()
+	expect(events[0]?.client_name).toBeNull()
+})
+
 test('feed route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -4013,6 +4052,46 @@ test('feed route uses unknown user-agent fallback when triple repeated Forwarded
 	expect(events).toHaveLength(1)
 	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 	expect(events[0]?.client_name).toBe(expectedClientName)
+})
+
+test('feed route stores null metadata when triple repeated Forwarded and other proxy headers are invalid without user-agent', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const repeatedHeader = repeatedForwardedTripleForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+		'nonsense',
+	)
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': crossHeaderInvalidXRealIpValues[0]!,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBeNull()
+	expect(events[0]?.client_name).toBeNull()
 })
 
 test('feed route preserves repeated Forwarded for parameter precedence matrix', async () => {

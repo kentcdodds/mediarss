@@ -2106,6 +2106,31 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('returns null metadata when repeated Forwarded and other proxy headers are invalid without user-agent', () => {
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+						for (const invalidXRealIp of crossHeaderInvalidXRealIpValues) {
+							const repeatedHeader = buildHeader(firstValue, secondValue)
+							const request = new Request('https://example.com/media', {
+								headers: {
+									Forwarded: repeatedHeader,
+									'X-Forwarded-For': invalidXForwardedFor,
+									'X-Real-IP': invalidXRealIp,
+								},
+							})
+
+							expect(getClientIp(request)).toBeNull()
+							expect(getClientName(request)).toBeNull()
+							expect(getClientFingerprint(request)).toBeNull()
+						}
+					}
+				}
+			}
+		}
+	})
+
 	test('uses user-agent fallback across triple repeated Forwarded invalid-value matrix', () => {
 		const userAgent = 'Pocket Casts/7.58'
 		const canonicalRequest = new Request('https://example.com/media', {
@@ -2382,6 +2407,37 @@ describe('analytics-request helpers', () => {
 								expect(getClientIp(request)).toBeNull()
 								expect(getClientName(request)).toBe(expectedClientName)
 								expect(getClientFingerprint(request)).toBe(expectedFingerprint)
+							}
+						}
+					}
+				}
+			}
+		}
+	})
+
+	test('returns null metadata when triple repeated Forwarded and other proxy headers are invalid without user-agent', () => {
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						for (const invalidXForwardedFor of crossHeaderInvalidXForwardedForValues) {
+							for (const invalidXRealIp of crossHeaderInvalidXRealIpValues) {
+								const repeatedHeader = buildHeader(
+									firstValue,
+									secondValue,
+									thirdValue,
+								)
+								const request = new Request('https://example.com/media', {
+									headers: {
+										Forwarded: repeatedHeader,
+										'X-Forwarded-For': invalidXForwardedFor,
+										'X-Real-IP': invalidXRealIp,
+									},
+								})
+
+								expect(getClientIp(request)).toBeNull()
+								expect(getClientName(request)).toBeNull()
+								expect(getClientFingerprint(request)).toBeNull()
 							}
 						}
 					}

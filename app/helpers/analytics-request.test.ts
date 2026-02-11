@@ -58,6 +58,23 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
 	})
 
+	test('uses first X-Forwarded-For address for fingerprinting', () => {
+		const requestA = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.5, 198.51.100.11',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const requestB = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.5',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(requestA)).toBe(getClientFingerprint(requestB))
+	})
+
 	test('extracts known podcast client names from user agent', () => {
 		const request = new Request('https://example.com/feed', {
 			headers: {

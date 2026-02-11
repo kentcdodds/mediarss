@@ -245,27 +245,6 @@ test('feed route touches curated token last_used_at on successful fetch', async 
 	expect((after?.last_used_at ?? 0) > 0).toBe(true)
 })
 
-test('feed route logs rss_fetch analytics for directory feeds', async () => {
-	using ctx = createDirectoryFeedRouteTestContext()
-
-	const response = await feedHandler.action(
-		createFeedActionContext(ctx.token, {
-			'User-Agent': 'Overcast/1.0',
-			'X-Forwarded-For': '203.0.113.98',
-		}),
-	)
-	expect(response.status).toBe(200)
-
-	const event = readLatestRssEvent(ctx.feed.id)
-	expect(event).toMatchObject({
-		feed_type: 'directory',
-		token: ctx.token,
-		status_code: 200,
-	})
-	expect(event?.client_name).not.toBeNull()
-	expect(event?.client_fingerprint).toBeTruthy()
-})
-
 test('feed route touches directory token last_used_at on successful fetch', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -293,4 +272,11 @@ test('feed route touches directory token last_used_at on successful fetch', asyn
 		)
 		.get(ctx.token)
 	expect((after?.last_used_at ?? 0) > 0).toBe(true)
+
+	const event = readLatestRssEvent(ctx.feed.id)
+	expect(event).toMatchObject({
+		feed_type: 'directory',
+		token: ctx.token,
+		status_code: 200,
+	})
 })

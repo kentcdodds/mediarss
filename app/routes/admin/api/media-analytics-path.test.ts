@@ -273,6 +273,41 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 	expect(data.windowDays).toBe(30)
 })
 
+test('media analytics endpoint groups missing client names under Unknown', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 777,
+		statusCode: 200,
+		clientFingerprint: 'media-unknown-client-fingerprint',
+		clientName: null,
+		createdAt: now - 20,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.topClients).toHaveLength(1)
+	expect(data.topClients[0]).toMatchObject({
+		clientName: 'Unknown',
+		mediaRequests: 1,
+		downloadStarts: 1,
+		bytesServed: 777,
+		uniqueClients: 1,
+	})
+})
+
 test('media analytics endpoint validates params and returns expected errors', async () => {
 	await using ctx = await createMediaApiTestContext()
 

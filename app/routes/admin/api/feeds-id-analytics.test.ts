@@ -181,6 +181,41 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 	})
 })
 
+test('feed analytics endpoint groups missing client names under Unknown', async () => {
+	using ctx = createTestFeedContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feed.id,
+		feedType: 'directory',
+		token: ctx.token.token,
+		mediaRoot: 'audio',
+		relativePath: 'episode.mp3',
+		isDownloadStart: true,
+		bytesServed: 512,
+		statusCode: 200,
+		clientFingerprint: 'unknown-client-fingerprint',
+		clientName: null,
+		createdAt: now - 10,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(ctx.feed.id),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.topClients).toHaveLength(1)
+	expect(data.topClients[0]).toMatchObject({
+		clientName: 'Unknown',
+		mediaRequests: 1,
+		downloadStarts: 1,
+		bytesServed: 512,
+		uniqueClients: 1,
+	})
+})
+
 test('feed analytics endpoint clamps analytics window days to max', () => {
 	using ctx = createTestFeedContext()
 	const response = analyticsHandler.action(

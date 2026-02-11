@@ -3493,6 +3493,54 @@ test('feed route falls back to X-Real-IP when repeated Forwarded and X-Forwarded
 	}
 })
 
+test('feed route uses user-agent fallback when repeated Forwarded and other proxy headers are invalid', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const userAgent = 'Pocket Casts/7.58'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+	)
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': crossHeaderInvalidXRealIpValues[0]!,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe('Pocket Casts')
+})
+
 test('feed route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -3817,6 +3865,55 @@ test('feed route falls back to X-Real-IP when triple repeated Forwarded and X-Fo
 			}
 		}
 	}
+})
+
+test('feed route uses user-agent fallback when triple repeated Forwarded and other proxy headers are invalid', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const userAgent = 'Pocket Casts/7.58'
+	const canonicalRequest = new Request('https://example.com/feed', {
+		headers: {
+			'User-Agent': userAgent,
+		},
+	})
+	const expectedFingerprint = getClientFingerprint(canonicalRequest)
+
+	const repeatedHeader = repeatedForwardedTripleForHeaderBuilders[0]!(
+		'unknown',
+		'_hidden',
+		'nonsense',
+	)
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: repeatedHeader,
+			'X-Forwarded-For': crossHeaderInvalidXForwardedForValues[0]!,
+			'X-Real-IP': crossHeaderInvalidXRealIpValues[0]!,
+			'User-Agent': userAgent,
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(1)
+	expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
+	expect(events[0]?.client_name).toBe('Pocket Casts')
 })
 
 test('feed route preserves repeated Forwarded for parameter precedence matrix', async () => {

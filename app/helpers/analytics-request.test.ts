@@ -160,6 +160,17 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.77')
 	})
 
+	test('falls back to X-Real-IP when Forwarded values are unknown', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=unknown, for=_hidden',
+				'X-Real-IP': '198.51.100.120',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.120')
+	})
+
 	test('normalizes forwarded IPv4 values with ports', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

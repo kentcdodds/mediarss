@@ -270,6 +270,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.78')
 	})
 
+	test('normalizes X-Forwarded-For bracketed IPv6 values with ports', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '[2001:db8:cafe::31]:8443',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('2001:db8:cafe::31')
+	})
+
 	test('normalizes quoted forwarded IPv6 values with ports', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

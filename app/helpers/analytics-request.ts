@@ -2,7 +2,7 @@ function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
 
-	const unquotedValue = trimmedValue.replace(/^"(.+)"$/, '$1').trim()
+	const unquotedValue = trimmedValue.replace(/^"(.*)"$/, '$1').trim()
 	if (!unquotedValue) return null
 
 	let normalizedValue = unquotedValue

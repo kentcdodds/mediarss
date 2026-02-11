@@ -210,6 +210,26 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.79')
 	})
 
+	test('skips empty quoted Forwarded values and uses next candidate', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="", for=198.51.100.80',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.80')
+	})
+
+	test('ignores empty quoted X-Real-IP values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '""',
+			},
+		})
+
+		expect(getClientIp(request)).toBeNull()
+	})
+
 	test('prefers X-Forwarded-For over Forwarded header values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

@@ -3421,6 +3421,47 @@ test('media route uses unknown user-agent fallback across repeated Forwarded inv
 	}
 })
 
+test('media route stores null client metadata across repeated Forwarded invalid-value matrix without user-agent', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				const repeatedHeader = buildHeader(firstValue, secondValue)
+				const response = await mediaHandler.action(
+					createMediaActionContext(ctx.token, pathParam, {
+						Forwarded: repeatedHeader,
+					}),
+				)
+				expect(response.status).toBe(200)
+
+				const events = db
+					.query<
+						{
+							client_fingerprint: string | null
+							client_name: string | null
+						},
+						[string]
+					>(
+						sql`
+							SELECT client_fingerprint, client_name
+							FROM feed_analytics_events
+							WHERE feed_id = ? AND event_type = 'media_request'
+							ORDER BY rowid DESC
+							LIMIT 1;
+						`,
+					)
+					.all(ctx.feed.id)
+
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_fingerprint).toBeNull()
+				expect(events[0]?.client_name).toBeNull()
+			}
+		}
+	}
+})
+
 test('media route uses user-agent fallback across triple repeated Forwarded invalid-value matrix', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
@@ -3526,6 +3567,53 @@ test('media route uses unknown user-agent fallback across triple repeated Forwar
 					expect(events).toHaveLength(1)
 					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 					expect(events[0]?.client_name).toBe(expectedClientName)
+				}
+			}
+		}
+	}
+})
+
+test('media route stores null client metadata across triple repeated Forwarded invalid-value matrix without user-agent', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
+				for (const thirdValue of repeatedForwardedInvalidValues) {
+					const repeatedHeader = buildHeader(
+						firstValue,
+						secondValue,
+						thirdValue,
+					)
+					const response = await mediaHandler.action(
+						createMediaActionContext(ctx.token, pathParam, {
+							Forwarded: repeatedHeader,
+						}),
+					)
+					expect(response.status).toBe(200)
+
+					const events = db
+						.query<
+							{
+								client_fingerprint: string | null
+								client_name: string | null
+							},
+							[string]
+						>(
+							sql`
+								SELECT client_fingerprint, client_name
+								FROM feed_analytics_events
+								WHERE feed_id = ? AND event_type = 'media_request'
+								ORDER BY rowid DESC
+								LIMIT 1;
+							`,
+						)
+						.all(ctx.feed.id)
+
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBeNull()
+					expect(events[0]?.client_name).toBeNull()
 				}
 			}
 		}

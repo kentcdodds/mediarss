@@ -218,6 +218,7 @@ test('feed analytics endpoint defaults analytics window for invalid values', () 
 test('feed analytics endpoint supports curated feeds', () => {
 	using ctx = createCuratedTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
+	const deletedToken = `curated-deleted-token-${Date.now()}`
 
 	createFeedAnalyticsEvent({
 		eventType: 'media_request',
@@ -233,6 +234,20 @@ test('feed analytics endpoint supports curated feeds', () => {
 		clientName: 'Overcast',
 		createdAt: now - 30,
 	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feed.id,
+		feedType: 'curated',
+		token: deletedToken,
+		mediaRoot: 'audio',
+		relativePath: 'curated-episode.mp3',
+		isDownloadStart: false,
+		bytesServed: 800,
+		statusCode: 206,
+		clientFingerprint: 'curated-fp-2',
+		clientName: 'Downcast',
+		createdAt: now - 20,
+	})
 
 	const response = analyticsHandler.action(createActionContext(ctx.feed.id))
 	expect(response.status).toBe(200)
@@ -244,14 +259,28 @@ test('feed analytics endpoint supports curated feeds', () => {
 			type: 'curated',
 		})
 		expect(data.summary).toMatchObject({
-			mediaRequests: 1,
+			mediaRequests: 2,
 			downloadStarts: 1,
-			bytesServed: 4200,
+			bytesServed: 5000,
 		})
-		expect(data.byToken).toHaveLength(1)
-		expect(data.byToken[0]).toMatchObject({
+		expect(data.byToken).toHaveLength(2)
+		const knownToken = data.byToken.find(
+			(row: { token: string }) => row.token === ctx.token.token,
+		)
+		expect(knownToken).toMatchObject({
 			token: ctx.token.token,
 			label: 'Curated Token',
+		})
+		const deletedTokenRow = data.byToken.find(
+			(row: { token: string }) => row.token === deletedToken,
+		)
+		expect(deletedTokenRow).toMatchObject({
+			token: deletedToken,
+			label: 'Deleted token',
+			createdAt: null,
+			mediaRequests: 1,
+			downloadStarts: 0,
+			bytesServed: 800,
 		})
 	})
 })

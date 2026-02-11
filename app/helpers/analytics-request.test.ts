@@ -1716,6 +1716,14 @@ describe('analytics-request helpers', () => {
 					'proto=https;for=_hidden;for="[::ffff:198.51.100.169]:443";by=proxy',
 				canonicalIp: '198.51.100.169',
 			},
+			{
+				forwarded: 'for = unknown; for = 198.51.100.173; proto=https',
+				canonicalIp: '198.51.100.173',
+			},
+			{
+				forwarded: 'FOR=198.51.100.174; FOR=198.51.100.175; proto=https',
+				canonicalIp: '198.51.100.174',
+			},
 		]
 
 		for (const testCase of cases) {

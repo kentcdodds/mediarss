@@ -10,6 +10,7 @@ export const crossHeaderXForwardedForValues = [
 	'UNKNOWN, 198.51.100.153',
 	'for=198.51.100.156;proto=https, 198.51.100.157',
 	'[::FFFF:198.51.100.158]:443',
+	'for=198.51.100.170;proto=https',
 ] as const satisfies ReadonlyArray<string | null>
 
 export const crossHeaderForwardedValues = [
@@ -24,6 +25,7 @@ export const crossHeaderForwardedValues = [
 	'for=UNKNOWN;proto=https,for=198.51.100.154;proto=https',
 	'proto=https;by=proxy;for=198.51.100.159',
 	'for="[::ffff:198.51.100.160]:443";proto=https',
+	'for = unknown; for = 198.51.100.171; proto=https',
 ] as const satisfies ReadonlyArray<string | null>
 
 export const crossHeaderXRealIpValues = [
@@ -38,4 +40,5 @@ export const crossHeaderXRealIpValues = [
 	'UNKNOWN, 198.51.100.155',
 	'for=198.51.100.161, 198.51.100.162',
 	'"[::FFFF:198.51.100.163]:443"',
+	'for=198.51.100.172;proto=https',
 ] as const satisfies ReadonlyArray<string | null>

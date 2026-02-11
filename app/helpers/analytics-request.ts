@@ -30,7 +30,13 @@ function normalizeClientIpToken(value: string): string | null {
 	}
 
 	const normalizedLower = normalizedValue.toLowerCase()
-	if (!normalizedValue || normalizedLower === 'unknown') return null
+	if (
+		!normalizedValue ||
+		normalizedLower === 'unknown' ||
+		normalizedLower.startsWith('unknown:')
+	) {
+		return null
+	}
 	if (normalizedValue.startsWith('_')) return null
 
 	return normalizedValue

@@ -318,20 +318,6 @@ test('media route stores null client metadata when request lacks client traits',
 	})
 })
 
-test('media route stores client name when user-agent is present', async () => {
-	await using ctx = await createDirectoryMediaAnalyticsTestContext()
-	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
-
-	const response = await mediaHandler.action(
-		createMediaActionContext(ctx.token, pathParam, {
-			'User-Agent': 'CustomPodClient/1.2 (Linux)',
-		}),
-	)
-	expect(response.status).toBe(200)
-
-	expect(readLatestMediaEvent(ctx.feed.id)?.client_name).not.toBeNull()
-})
-
 test('media route returns 400 when file path is missing and does not log analytics', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 

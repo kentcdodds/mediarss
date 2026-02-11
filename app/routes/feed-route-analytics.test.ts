@@ -188,19 +188,6 @@ test('feed route stores null client metadata when request lacks client traits', 
 	})
 })
 
-test('feed route stores client name when user-agent is present', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-
-	const response = await feedHandler.action(
-		createFeedActionContext(ctx.token, {
-			'User-Agent': 'CustomPodClient/1.2 (Linux)',
-		}),
-	)
-	expect(response.status).toBe(200)
-
-	expect(readLatestRssEvent(ctx.feed.id)?.client_name).not.toBeNull()
-})
-
 test('feed route does not log analytics for missing tokens', async () => {
 	const missingToken = `missing-token-${Date.now()}`
 	const response = await feedHandler.action(

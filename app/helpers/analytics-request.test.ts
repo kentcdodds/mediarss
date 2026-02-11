@@ -394,6 +394,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('2001:db8:cafe::3a')
 	})
 
+	test('normalizes expanded IPv6 values to canonical compressed form', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:0db8:cafe:0000:0000:0000:0000:0065',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('2001:db8:cafe::65')
+	})
+
 	test('skips malformed bracketed X-Forwarded-For IPv6 values', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {
@@ -440,6 +450,25 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientFingerprint(uppercaseRequest)).toBe(
 			getClientFingerprint(lowercaseRequest),
+		)
+	})
+
+	test('normalizes expanded and compressed IPv6 values to stable fingerprints', () => {
+		const expandedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:0db8:cafe:0000:0000:0000:0000:0066',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const compressedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8:cafe::66',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(expandedRequest)).toBe(
+			getClientFingerprint(compressedRequest),
 		)
 	})
 

@@ -52,7 +52,12 @@ function normalizeClientIpToken(value: string): string | null {
 	}
 
 	if (ipVersion === 6) {
-		return normalizedValue.toLowerCase()
+		try {
+			const canonicalHostname = new URL(`http://[${normalizedValue}]/`).hostname
+			return canonicalHostname.slice(1, -1)
+		} catch {
+			return normalizedValue.toLowerCase()
+		}
 	}
 
 	return normalizedValue

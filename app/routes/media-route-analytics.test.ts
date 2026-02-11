@@ -1209,6 +1209,46 @@ test('media route normalizes uppercase IPv6 header forms', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route normalizes expanded IPv6 header forms', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const responseWithExpandedIpv6 = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '2001:0db8:cafe:0000:0000:0000:0000:0068',
+		}),
+	)
+	expect(responseWithExpandedIpv6.status).toBe(200)
+
+	const responseWithCompressedIpv6 = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '2001:db8:cafe::68',
+		}),
+	)
+	expect(responseWithCompressedIpv6.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('media route skips malformed bracketed X-Forwarded-For IPv6 candidates', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

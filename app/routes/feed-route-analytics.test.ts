@@ -437,6 +437,46 @@ test('feed route uses Forwarded header when X-Forwarded-For is missing', async (
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route prefers Forwarded over X-Real-IP when X-Forwarded-For is missing', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithForwardedAndRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for=203.0.113.67;proto=https',
+			'X-Real-IP': '198.51.100.127',
+		}),
+	)
+	expect(responseWithForwardedAndRealIp.status).toBe(200)
+
+	const responseWithEquivalentForwarded = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for=203.0.113.67;proto=https',
+		}),
+	)
+	expect(responseWithEquivalentForwarded.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route uses Forwarded header when X-Forwarded-For candidates are unknown', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

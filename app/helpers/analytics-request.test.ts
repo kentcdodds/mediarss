@@ -250,6 +250,17 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.124')
 	})
 
+	test('prefers Forwarded over X-Real-IP when X-Forwarded-For is missing', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=203.0.113.66;proto=https',
+				'X-Real-IP': '198.51.100.126',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.66')
+	})
+
 	test('normalizes forwarded IPv4 values with ports', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

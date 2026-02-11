@@ -1296,6 +1296,45 @@ test('feed route aligns mapped IPv6 and plain IPv4 fingerprints', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route aligns hex and dotted mapped IPv6 fingerprints', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithHexMappedIpv6 = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '::ffff:cb00:710c',
+		}),
+	)
+	expect(responseWithHexMappedIpv6.status).toBe(200)
+
+	const responseWithPlainIpv4 = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.12',
+		}),
+	)
+	expect(responseWithPlainIpv4.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route uses first forwarded IP for analytics fingerprinting', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

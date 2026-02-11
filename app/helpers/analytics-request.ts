@@ -1,5 +1,40 @@
 import { isIP } from 'node:net'
 
+function normalizeIpv4MappedIpv6(value: string): string | null {
+	const normalizedValue = value.toLowerCase()
+	if (!normalizedValue.startsWith('::ffff:')) return null
+
+	const tail = normalizedValue.slice('::ffff:'.length)
+	if (!tail) return null
+
+	if (tail.includes('.')) {
+		const octets = tail.split('.')
+		if (octets.length !== 4) return null
+
+		const parsedOctets: number[] = []
+		for (const octet of octets) {
+			if (!/^\d{1,3}$/.test(octet)) return null
+			const value = Number.parseInt(octet, 10)
+			if (!Number.isInteger(value) || value < 0 || value > 255) return null
+			parsedOctets.push(value)
+		}
+
+		return parsedOctets.join('.')
+	}
+
+	const hexParts = tail.split(':')
+	if (
+		hexParts.length !== 2 ||
+		hexParts.some((part) => !/^[0-9a-f]{1,4}$/.test(part))
+	) {
+		return null
+	}
+
+	const high = Number.parseInt(hexParts[0]!, 16)
+	const low = Number.parseInt(hexParts[1]!, 16)
+	return `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`
+}
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
@@ -44,17 +79,13 @@ function normalizeClientIpToken(value: string): string | null {
 	const ipVersion = isIP(normalizedValue)
 	if (ipVersion === 0) return null
 
-	const ipv4MappedMatch = normalizedValue.match(
-		/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i,
-	)
-	if (ipv4MappedMatch?.[1]) {
-		return ipv4MappedMatch[1]
-	}
-
 	if (ipVersion === 6) {
 		try {
 			const canonicalHostname = new URL(`http://[${normalizedValue}]/`).hostname
-			return canonicalHostname.slice(1, -1)
+			const canonicalIpv6 = canonicalHostname.slice(1, -1)
+			const mappedIpv4 = normalizeIpv4MappedIpv6(canonicalIpv6)
+			if (mappedIpv4) return mappedIpv4
+			return canonicalIpv6
 		} catch {
 			return normalizedValue.toLowerCase()
 		}

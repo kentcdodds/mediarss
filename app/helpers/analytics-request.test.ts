@@ -482,6 +482,16 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.90')
 	})
 
+	test('normalizes hexadecimal IPv4-mapped IPv6 values', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '::ffff:cb00:710a',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.10')
+	})
+
 	test('normalizes IPv4-mapped IPv6 values for stable fingerprints', () => {
 		const mappedRequest = new Request('https://example.com/media', {
 			headers: {
@@ -497,6 +507,34 @@ describe('analytics-request helpers', () => {
 		})
 
 		expect(getClientFingerprint(mappedRequest)).toBe(
+			getClientFingerprint(plainIpv4Request),
+		)
+	})
+
+	test('normalizes hex and dotted IPv4-mapped IPv6 values to stable fingerprints', () => {
+		const hexMappedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '::ffff:cb00:710b',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const dottedMappedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '::ffff:203.0.113.11',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+		const plainIpv4Request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.11',
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientFingerprint(hexMappedRequest)).toBe(
+			getClientFingerprint(dottedMappedRequest),
+		)
+		expect(getClientFingerprint(hexMappedRequest)).toBe(
 			getClientFingerprint(plainIpv4Request),
 		)
 	})

@@ -1975,6 +1975,36 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('prefers X-Forwarded-For across repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.246'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': expectedIp,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					const repeatedHeader = buildHeader(firstValue, secondValue)
+					const request = new Request('https://example.com/media', {
+						headers: {
+							Forwarded: repeatedHeader,
+							'X-Forwarded-For': `unknown, ${expectedIp}:443`,
+							'X-Real-IP': '198.51.100.1',
+						},
+					})
+
+					expect(getClientIp(request)).toBe(expectedIp)
+					expect(getClientName(request)).toBeNull()
+					expect(getClientFingerprint(request)).toBe(
+						getClientFingerprint(canonicalRequest),
+					)
+				}
+			}
+		}
+	})
+
 	test('uses user-agent fallback across triple repeated Forwarded invalid-value matrix', () => {
 		const userAgent = 'Pocket Casts/7.58'
 		const canonicalRequest = new Request('https://example.com/media', {
@@ -2090,6 +2120,42 @@ describe('analytics-request helpers', () => {
 							headers: {
 								Forwarded: repeatedHeader,
 								'X-Real-IP': `[::ffff:${expectedIp}]:443`,
+							},
+						})
+
+						expect(getClientIp(request)).toBe(expectedIp)
+						expect(getClientName(request)).toBeNull()
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
+				}
+			}
+		}
+	})
+
+	test('prefers X-Forwarded-For across triple repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.247'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': expectedIp,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						const repeatedHeader = buildHeader(
+							firstValue,
+							secondValue,
+							thirdValue,
+						)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+								'X-Forwarded-For': `unknown, [::ffff:${expectedIp}]:443`,
+								'X-Real-IP': '198.51.100.2',
 							},
 						})
 

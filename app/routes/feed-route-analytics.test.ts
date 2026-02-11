@@ -4,7 +4,15 @@ import {
 	createCuratedFeedToken,
 	revokeCuratedFeedToken,
 } from '#app/db/curated-feed-tokens.ts'
+import {
+	createDirectoryFeedToken,
+	revokeDirectoryFeedToken,
+} from '#app/db/directory-feed-tokens.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
+import {
+	createDirectoryFeed,
+	deleteDirectoryFeed,
+} from '#app/db/directory-feeds.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
@@ -14,7 +22,7 @@ migrate(db)
 
 type FeedActionContext = Parameters<typeof feedHandler.action>[0]
 
-function createFeedRouteTestContext() {
+function createCuratedFeedRouteTestContext() {
 	const feed = createCuratedFeed({
 		name: `feed-route-analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		description: 'Feed route analytics test',
@@ -36,6 +44,28 @@ function createFeedRouteTestContext() {
 	}
 }
 
+function createDirectoryFeedRouteTestContext() {
+	const feed = createDirectoryFeed({
+		name: `directory-feed-route-analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		directoryPaths: ['missing-root'],
+	})
+	const token = createDirectoryFeedToken({
+		feedId: feed.id,
+		label: 'Directory feed route token',
+	})
+
+	return {
+		feed,
+		token: token.token,
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				feed.id,
+			)
+			deleteDirectoryFeed(feed.id)
+		},
+	}
+}
+
 function createFeedActionContext(
 	token: string,
 	headers: Record<string, string> = {},
@@ -52,7 +82,7 @@ function createFeedActionContext(
 }
 
 test('feed route logs rss_fetch analytics for successful responses', async () => {
-	using ctx = createFeedRouteTestContext()
+	using ctx = createCuratedFeedRouteTestContext()
 
 	const response = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
@@ -120,7 +150,7 @@ test('feed route does not log analytics for missing tokens', async () => {
 })
 
 test('feed route does not log analytics for revoked tokens', async () => {
-	using ctx = createFeedRouteTestContext()
+	using ctx = createCuratedFeedRouteTestContext()
 	expect(revokeCuratedFeedToken(ctx.token)).toBe(true)
 
 	const response = await feedHandler.action(createFeedActionContext(ctx.token))
@@ -141,7 +171,7 @@ test('feed route does not log analytics for revoked tokens', async () => {
 })
 
 test('feed route touches token last_used_at on successful fetch', async () => {
-	using ctx = createFeedRouteTestContext()
+	using ctx = createCuratedFeedRouteTestContext()
 
 	const before = db
 		.query<{ last_used_at: number | null }, [string]>(
@@ -162,6 +192,95 @@ test('feed route touches token last_used_at on successful fetch', async () => {
 			sql`
 				SELECT last_used_at
 				FROM curated_feed_tokens
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
+	expect((after?.last_used_at ?? 0) > 0).toBe(true)
+})
+
+test('feed route logs rss_fetch analytics for directory feeds', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': 'Overcast/1.0',
+			'X-Forwarded-For': '203.0.113.98',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				feed_type: string
+				token: string
+				status_code: number
+				client_name: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT feed_type, token, status_code, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		feed_type: 'directory',
+		token: ctx.token,
+		status_code: 200,
+		client_name: 'Overcast',
+	})
+})
+
+test('feed route does not log analytics for revoked directory tokens', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Feed not found')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('feed route touches directory token last_used_at on successful fetch', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const before = db
+		.query<{ last_used_at: number | null }, [string]>(
+			sql`
+				SELECT last_used_at
+				FROM directory_feed_tokens
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
+	expect(before?.last_used_at ?? null).toBeNull()
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(200)
+
+	const after = db
+		.query<{ last_used_at: number | null }, [string]>(
+			sql`
+				SELECT last_used_at
+				FROM directory_feed_tokens
 				WHERE token = ?;
 			`,
 		)

@@ -2005,6 +2005,42 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('prefers X-Forwarded-For and preserves unknown user-agent across repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.230'
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const invalidXRealIp of crossHeaderInvalidXRealIpValues) {
+						const repeatedHeader = buildHeader(firstValue, secondValue)
+						const request = new Request('https://example.com/media', {
+							headers: {
+								Forwarded: repeatedHeader,
+								'X-Forwarded-For': `unknown, ${expectedIp}:443`,
+								'X-Real-IP': invalidXRealIp,
+								'User-Agent': userAgent,
+							},
+						})
+
+						expect(getClientIp(request)).toBe(expectedIp)
+						expect(getClientName(request)).toBe(expectedClientName)
+						expect(getClientFingerprint(request)).toBe(
+							getClientFingerprint(canonicalRequest),
+						)
+					}
+				}
+			}
+		}
+	})
+
 	test('falls back to X-Real-IP when repeated Forwarded and X-Forwarded-For are invalid', () => {
 		const expectedIp = '198.51.100.248'
 		const canonicalRequest = new Request('https://example.com/media', {
@@ -2290,6 +2326,48 @@ describe('analytics-request helpers', () => {
 						expect(getClientFingerprint(request)).toBe(
 							getClientFingerprint(canonicalRequest),
 						)
+					}
+				}
+			}
+		}
+	})
+
+	test('prefers X-Forwarded-For and preserves unknown user-agent across triple repeated Forwarded invalid-value matrix', () => {
+		const expectedIp = '198.51.100.231'
+		const userAgent = 'CustomPodClient/1.2 (Linux)'
+		const expectedClientName = 'CustomPodClient/1.2'
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': expectedIp,
+				'User-Agent': userAgent,
+			},
+		})
+
+		for (const buildHeader of repeatedForwardedTripleForHeaderBuilders) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
+					for (const thirdValue of repeatedForwardedInvalidValues) {
+						for (const invalidXRealIp of crossHeaderInvalidXRealIpValues) {
+							const repeatedHeader = buildHeader(
+								firstValue,
+								secondValue,
+								thirdValue,
+							)
+							const request = new Request('https://example.com/media', {
+								headers: {
+									Forwarded: repeatedHeader,
+									'X-Forwarded-For': `unknown, [::ffff:${expectedIp}]:443`,
+									'X-Real-IP': invalidXRealIp,
+									'User-Agent': userAgent,
+								},
+							})
+
+							expect(getClientIp(request)).toBe(expectedIp)
+							expect(getClientName(request)).toBe(expectedClientName)
+							expect(getClientFingerprint(request)).toBe(
+								getClientFingerprint(canonicalRequest),
+							)
+						}
 					}
 				}
 			}

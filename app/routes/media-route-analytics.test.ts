@@ -2992,6 +2992,64 @@ test('media route parses Forwarded when for appears after other parameters', asy
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route handles repeated Forwarded for parameters within a segment', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const cases = [
+		{
+			forwarded: 'for=unknown;for=198.51.100.166;proto=https',
+			canonicalIp: '198.51.100.166',
+		},
+		{
+			forwarded: 'for=198.51.100.167;for=198.51.100.168;proto=https',
+			canonicalIp: '198.51.100.167',
+		},
+		{
+			forwarded:
+				'proto=https;for=_hidden;for="[::ffff:198.51.100.169]:443";by=proxy',
+			canonicalIp: '198.51.100.169',
+		},
+	] as const
+
+	for (const testCase of cases) {
+		const responseWithRepeatedForwardedFor = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				Forwarded: testCase.forwarded,
+			}),
+		)
+		expect(responseWithRepeatedForwardedFor.status).toBe(200)
+
+		const responseWithEquivalentForwardedFor = await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				'X-Forwarded-For': testCase.canonicalIp,
+			}),
+		)
+		expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+		const events = db
+			.query<
+				{
+					client_fingerprint: string | null
+				},
+				[string]
+			>(
+				sql`
+					SELECT client_fingerprint
+					FROM feed_analytics_events
+					WHERE feed_id = ? AND event_type = 'media_request'
+					ORDER BY rowid DESC
+					LIMIT 2;
+				`,
+			)
+			.all(ctx.feed.id)
+
+		expect(events).toHaveLength(2)
+		expect(events[0]?.client_fingerprint).toBeTruthy()
+		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+	}
+})
+
 test('media route keeps earliest valid Forwarded candidate when bare malformed segment follows', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

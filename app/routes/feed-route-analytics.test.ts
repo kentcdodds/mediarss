@@ -2877,6 +2877,63 @@ test('feed route parses Forwarded when for appears after other parameters', asyn
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route handles repeated Forwarded for parameters within a segment', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const cases = [
+		{
+			forwarded: 'for=unknown;for=198.51.100.166;proto=https',
+			canonicalIp: '198.51.100.166',
+		},
+		{
+			forwarded: 'for=198.51.100.167;for=198.51.100.168;proto=https',
+			canonicalIp: '198.51.100.167',
+		},
+		{
+			forwarded:
+				'proto=https;for=_hidden;for="[::ffff:198.51.100.169]:443";by=proxy',
+			canonicalIp: '198.51.100.169',
+		},
+	] as const
+
+	for (const testCase of cases) {
+		const responseWithRepeatedForwardedFor = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: testCase.forwarded,
+			}),
+		)
+		expect(responseWithRepeatedForwardedFor.status).toBe(200)
+
+		const responseWithEquivalentForwardedFor = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': testCase.canonicalIp,
+			}),
+		)
+		expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+		const events = db
+			.query<
+				{
+					client_fingerprint: string | null
+				},
+				[string]
+			>(
+				sql`
+					SELECT client_fingerprint
+					FROM feed_analytics_events
+					WHERE feed_id = ? AND event_type = 'rss_fetch'
+					ORDER BY rowid DESC
+					LIMIT 2;
+				`,
+			)
+			.all(ctx.feed.id)
+
+		expect(events).toHaveLength(2)
+		expect(events[0]?.client_fingerprint).toBeTruthy()
+		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+	}
+})
+
 test('feed route keeps earliest valid Forwarded candidate when bare malformed segment follows', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

@@ -1701,6 +1701,42 @@ describe('analytics-request helpers', () => {
 		}
 	})
 
+	test('handles repeated Forwarded for parameters within a segment', () => {
+		const cases = [
+			{
+				forwarded: 'for=unknown;for=198.51.100.166;proto=https',
+				canonicalIp: '198.51.100.166',
+			},
+			{
+				forwarded: 'for=198.51.100.167;for=198.51.100.168;proto=https',
+				canonicalIp: '198.51.100.167',
+			},
+			{
+				forwarded:
+					'proto=https;for=_hidden;for="[::ffff:198.51.100.169]:443";by=proxy',
+				canonicalIp: '198.51.100.169',
+			},
+		]
+
+		for (const testCase of cases) {
+			const request = new Request('https://example.com/media', {
+				headers: {
+					Forwarded: testCase.forwarded,
+				},
+			})
+			const canonicalRequest = new Request('https://example.com/media', {
+				headers: {
+					'X-Forwarded-For': testCase.canonicalIp,
+				},
+			})
+
+			expect(getClientIp(request)).toBe(testCase.canonicalIp)
+			expect(getClientFingerprint(request)).toBe(
+				getClientFingerprint(canonicalRequest),
+			)
+		}
+	})
+
 	test('normalizes reordered Forwarded nested prefix matrix for mapped values', () => {
 		const forms = ['for=', 'for =', 'FOR=', 'FOR =']
 		const wrappers = [

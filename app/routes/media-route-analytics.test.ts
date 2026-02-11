@@ -1746,6 +1746,49 @@ test('media route recovers nested forwarded ipv6 tokens with parameter suffixes 
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('media route recovers doubly-prefixed nested uppercase forwarded for tokens inside quoted chains', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const responseWithNestedUppercaseDoublePrefixForwardedForToken =
+		await mediaHandler.action(
+			createMediaActionContext(ctx.token, pathParam, {
+				Forwarded: 'for="unknown, FOR=FOR=198.51.100.255";proto=https',
+			}),
+		)
+	expect(responseWithNestedUppercaseDoublePrefixForwardedForToken.status).toBe(
+		200,
+	)
+
+	const responseWithEquivalentForwardedFor = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': '198.51.100.255',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('media route recovers malformed Forwarded proto tail segments', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

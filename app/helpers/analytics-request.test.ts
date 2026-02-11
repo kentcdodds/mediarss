@@ -842,6 +842,29 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers doubly-prefixed nested uppercase forwarded for tokens in quoted chains', () => {
+		const malformedNestedUppercaseDoublePrefixForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for="unknown, FOR=FOR=198.51.100.251";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.251',
+			},
+		})
+
+		expect(getClientIp(malformedNestedUppercaseDoublePrefixForRequest)).toBe(
+			'198.51.100.251',
+		)
+		expect(
+			getClientFingerprint(malformedNestedUppercaseDoublePrefixForRequest),
+		).toBe(getClientFingerprint(canonicalRequest))
+	})
+
 	test('recovers doubly-prefixed nested forwarded ipv6 tokens in quoted chains', () => {
 		const malformedNestedIpv6DoublePrefixForRequest = new Request(
 			'https://example.com/media',

@@ -84,14 +84,19 @@ function createMediaActionContext(
 test('media route logs media_request analytics for full and ranged requests', async () => {
 	await using ctx = await createMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const clientHeaders = {
+		'User-Agent': 'AntennaPod/3.0',
+		'X-Forwarded-For': '198.51.100.42',
+	}
 
 	const fullResponse = await mediaHandler.action(
-		createMediaActionContext(ctx.token, pathParam),
+		createMediaActionContext(ctx.token, pathParam, clientHeaders),
 	)
 	expect(fullResponse.status).toBe(200)
 
 	const rangedResponse = await mediaHandler.action(
 		createMediaActionContext(ctx.token, pathParam, {
+			...clientHeaders,
 			Range: 'bytes=10-',
 		}),
 	)
@@ -99,6 +104,7 @@ test('media route logs media_request analytics for full and ranged requests', as
 
 	const rangeFromStartResponse = await mediaHandler.action(
 		createMediaActionContext(ctx.token, pathParam, {
+			...clientHeaders,
 			Range: 'bytes=0-',
 		}),
 	)
@@ -112,11 +118,13 @@ test('media route logs media_request analytics for full and ranged requests', as
 				bytes_served: number | null
 				media_root: string | null
 				relative_path: string | null
+				client_name: string | null
+				client_fingerprint: string | null
 			},
 			[string]
 		>(
 			sql`
-				SELECT status_code, is_download_start, bytes_served, media_root, relative_path
+				SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint
 				FROM feed_analytics_events
 				WHERE feed_id = ? AND event_type = 'media_request'
 				ORDER BY created_at ASC, id ASC;
@@ -130,24 +138,30 @@ test('media route logs media_request analytics for full and ranged requests', as
 		is_download_start: 1,
 		media_root: ctx.rootName,
 		relative_path: ctx.relativePath,
+		client_name: 'AntennaPod',
 	})
 	expect((events[0]?.bytes_served ?? 0) > 0).toBe(true)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
 
 	expect(events[1]).toMatchObject({
 		status_code: 206,
 		is_download_start: 0,
 		media_root: ctx.rootName,
 		relative_path: ctx.relativePath,
+		client_name: 'AntennaPod',
 	})
 	expect((events[1]?.bytes_served ?? 0) > 0).toBe(true)
+	expect(events[1]?.client_fingerprint).toBeTruthy()
 
 	expect(events[2]).toMatchObject({
 		status_code: 206,
 		is_download_start: 1,
 		media_root: ctx.rootName,
 		relative_path: ctx.relativePath,
+		client_name: 'AntennaPod',
 	})
 	expect((events[2]?.bytes_served ?? 0) > 0).toBe(true)
+	expect(events[2]?.client_fingerprint).toBeTruthy()
 })
 
 test('media route does not log analytics when token is missing', async () => {

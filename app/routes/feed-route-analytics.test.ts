@@ -33,8 +33,13 @@ function createFeedRouteTestContext() {
 	}
 }
 
-function createFeedActionContext(token: string): FeedActionContext {
-	const request = new Request(`http://localhost/feed/${token}`)
+function createFeedActionContext(
+	token: string,
+	headers: Record<string, string> = {},
+): FeedActionContext {
+	const request = new Request(`http://localhost/feed/${token}`, {
+		headers,
+	})
 	return {
 		request,
 		method: 'GET',
@@ -46,7 +51,12 @@ function createFeedActionContext(token: string): FeedActionContext {
 test('feed route logs rss_fetch analytics for successful responses', async () => {
 	using ctx = createFeedRouteTestContext()
 
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': 'Pocket Casts/7.0',
+			'X-Forwarded-For': '203.0.113.25',
+		}),
+	)
 	expect(response.status).toBe(200)
 	expect(response.headers.get('Content-Type')).toContain('application/rss+xml')
 
@@ -58,11 +68,13 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 				feed_type: string
 				token: string
 				status_code: number
+				client_name: string | null
+				client_fingerprint: string | null
 			},
 			[string, string]
 		>(
 			sql`
-				SELECT event_type, feed_id, feed_type, token, status_code
+				SELECT event_type, feed_id, feed_type, token, status_code, client_name, client_fingerprint
 				FROM feed_analytics_events
 				WHERE feed_id = ? AND event_type = ?
 				ORDER BY created_at DESC
@@ -77,7 +89,9 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 		feed_type: 'curated',
 		token: ctx.token,
 		status_code: 200,
+		client_name: 'Pocket Casts',
 	})
+	expect(event?.client_fingerprint).toBeTruthy()
 })
 
 test('feed route does not log analytics for missing tokens', async () => {

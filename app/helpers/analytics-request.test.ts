@@ -88,6 +88,31 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(blankRequest)).toBeNull()
 	})
 
+	test('normalizes X-Real-IP values with ports', () => {
+		const ipv4WithPortRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.47:8443',
+			},
+		})
+		const bracketedIpv6WithPortRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '[2001:db8:cafe::51]:443',
+				},
+			},
+		)
+		const invalidPortRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.47:abc',
+			},
+		})
+
+		expect(getClientIp(ipv4WithPortRequest)).toBe('198.51.100.47')
+		expect(getClientIp(bracketedIpv6WithPortRequest)).toBe('2001:db8:cafe::51')
+		expect(getClientIp(invalidPortRequest)).toBeNull()
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

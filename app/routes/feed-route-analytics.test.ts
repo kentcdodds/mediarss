@@ -362,6 +362,45 @@ test('feed route fingerprints requests with X-Real-IP and no user-agent', async 
 	expect(event?.client_fingerprint).toBeTruthy()
 })
 
+test('feed route normalizes X-Real-IP values with ports', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithRealIpPort = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.148:8443',
+		}),
+	)
+	expect(responseWithRealIpPort.status).toBe(200)
+
+	const responseWithEquivalentRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.148',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route stores null fingerprint when proxy IP headers are invalid', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

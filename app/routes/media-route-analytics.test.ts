@@ -26,6 +26,7 @@ import {
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
+	repeatedForwardedInvalidValues,
 	repeatedForwardedForValues,
 	repeatedForwardedTripleForHeaderBuilders,
 	repeatedForwardedTripleForValues,
@@ -3127,7 +3128,6 @@ test('media route falls back to user-agent fingerprint for invalid repeated Forw
 test('media route uses user-agent fallback across repeated Forwarded invalid-value matrix', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
-	const invalidValues = ['unknown', '_hidden', 'nonsense'] as const
 	const userAgent = 'Pocket Casts/7.58'
 	const canonicalRequest = new Request('https://example.com/media', {
 		headers: {
@@ -3137,8 +3137,8 @@ test('media route uses user-agent fallback across repeated Forwarded invalid-val
 	const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 	for (const buildHeader of repeatedForwardedForHeaderBuilders) {
-		for (const firstValue of invalidValues) {
-			for (const secondValue of invalidValues) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
 				const repeatedHeader = buildHeader(firstValue, secondValue)
 				const response = await mediaHandler.action(
 					createMediaActionContext(ctx.token, pathParam, {

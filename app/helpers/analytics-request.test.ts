@@ -4,6 +4,7 @@ import {
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
+	repeatedForwardedInvalidValues,
 	repeatedForwardedForValues,
 	repeatedForwardedTripleForHeaderBuilders,
 	repeatedForwardedTripleForValues,
@@ -1790,7 +1791,6 @@ describe('analytics-request helpers', () => {
 	})
 
 	test('uses user-agent fallback across repeated Forwarded invalid-value matrix', () => {
-		const invalidValues = ['unknown', '_hidden', 'nonsense'] as const
 		const userAgent = 'Pocket Casts/7.58'
 		const canonicalRequest = new Request('https://example.com/media', {
 			headers: {
@@ -1799,8 +1799,8 @@ describe('analytics-request helpers', () => {
 		})
 
 		for (const buildHeader of repeatedForwardedForHeaderBuilders) {
-			for (const firstValue of invalidValues) {
-				for (const secondValue of invalidValues) {
+			for (const firstValue of repeatedForwardedInvalidValues) {
+				for (const secondValue of repeatedForwardedInvalidValues) {
 					const repeatedHeader = buildHeader(firstValue, secondValue)
 					const request = new Request('https://example.com/media', {
 						headers: {

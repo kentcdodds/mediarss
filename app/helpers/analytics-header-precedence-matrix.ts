@@ -60,6 +60,12 @@ export const repeatedForwardedForValues = [
 	'"\\"unknown\\", FOR = [::ffff:198.51.100.221]:443"',
 ] as const satisfies ReadonlyArray<string>
 
+export const repeatedForwardedInvalidValues = [
+	'unknown',
+	'_hidden',
+	'nonsense',
+] as const satisfies ReadonlyArray<string>
+
 export const repeatedForwardedForHeaderBuilders = [
 	(firstValue: string, secondValue: string) =>
 		`for=${firstValue};for=${secondValue};proto=https`,

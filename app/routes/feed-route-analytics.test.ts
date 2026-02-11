@@ -25,6 +25,7 @@ import {
 	crossHeaderXForwardedForValues,
 	crossHeaderXRealIpValues,
 	repeatedForwardedForHeaderBuilders,
+	repeatedForwardedInvalidValues,
 	repeatedForwardedForValues,
 	repeatedForwardedTripleForHeaderBuilders,
 	repeatedForwardedTripleForValues,
@@ -3010,7 +3011,6 @@ test('feed route falls back to user-agent fingerprint for invalid repeated Forwa
 test('feed route uses user-agent fallback across repeated Forwarded invalid-value matrix', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
-	const invalidValues = ['unknown', '_hidden', 'nonsense'] as const
 	const userAgent = 'Pocket Casts/7.58'
 	const canonicalRequest = new Request('https://example.com/feed', {
 		headers: {
@@ -3020,8 +3020,8 @@ test('feed route uses user-agent fallback across repeated Forwarded invalid-valu
 	const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 	for (const buildHeader of repeatedForwardedForHeaderBuilders) {
-		for (const firstValue of invalidValues) {
-			for (const secondValue of invalidValues) {
+		for (const firstValue of repeatedForwardedInvalidValues) {
+			for (const secondValue of repeatedForwardedInvalidValues) {
 				const repeatedHeader = buildHeader(firstValue, secondValue)
 				const response = await feedHandler.action(
 					createFeedActionContext(ctx.token, {

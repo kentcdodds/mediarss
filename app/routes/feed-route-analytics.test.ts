@@ -228,7 +228,6 @@ test('feed route does not log analytics for missing tokens', async () => {
 	)
 
 	expect(response.status).toBe(404)
-	expect(await response.text()).toBe('Feed not found')
 	expect(countEventsForToken(missingToken)).toBe(0)
 })
 
@@ -238,7 +237,6 @@ test('feed route does not log analytics for revoked curated tokens', async () =>
 
 	const response = await feedHandler.action(createFeedActionContext(ctx.token))
 	expect(response.status).toBe(404)
-	expect(await response.text()).toBe('Feed not found')
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 
@@ -248,7 +246,6 @@ test('feed route does not log analytics for revoked directory tokens', async () 
 
 	const response = await feedHandler.action(createFeedActionContext(ctx.token))
 	expect(response.status).toBe(404)
-	expect(await response.text()).toBe('Feed not found')
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 

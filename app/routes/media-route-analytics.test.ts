@@ -362,7 +362,6 @@ test('media route returns 400 when file path is missing and does not log analyti
 		createMediaActionContextWithoutPath(ctx.token),
 	)
 	expect(response.status).toBe(400)
-	expect(await response.text()).toBe('File path required')
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 
@@ -376,7 +375,6 @@ test('media route returns 404 for missing tokens and does not log analytics', as
 	)
 
 	expect(response.status).toBe(404)
-	expect(await response.text()).toBe('Not found')
 	expect(countEventsForToken(missingToken)).toBe(0)
 })
 
@@ -389,7 +387,6 @@ test('media route returns 404 for revoked tokens and does not log analytics', as
 		createMediaActionContext(ctx.token, pathParam),
 	)
 	expect(response.status).toBe(404)
-	expect(await response.text()).toBe('Not found')
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 

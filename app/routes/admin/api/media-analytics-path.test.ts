@@ -308,6 +308,55 @@ test('media analytics endpoint groups missing client names under Unknown', async
 	})
 })
 
+test('media analytics endpoint merges null and explicit Unknown client names', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 400,
+		statusCode: 200,
+		clientFingerprint: 'media-unknown-client-fingerprint-a',
+		clientName: null,
+		createdAt: now - 20,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 600,
+		statusCode: 200,
+		clientFingerprint: 'media-unknown-client-fingerprint-b',
+		clientName: 'Unknown',
+		createdAt: now - 10,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.topClients).toHaveLength(1)
+	expect(data.topClients[0]).toMatchObject({
+		clientName: 'Unknown',
+		mediaRequests: 2,
+		downloadStarts: 2,
+		bytesServed: 1000,
+		uniqueClients: 2,
+	})
+})
+
 test('media analytics endpoint validates params and returns expected errors', async () => {
 	await using ctx = await createMediaApiTestContext()
 

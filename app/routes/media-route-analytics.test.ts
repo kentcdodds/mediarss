@@ -3,7 +3,10 @@ import path from 'node:path'
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
-import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
+import {
+	createDirectoryFeedToken,
+	revokeDirectoryFeedToken,
+} from '#app/db/directory-feed-tokens.ts'
 import {
 	createDirectoryFeed,
 	deleteDirectoryFeed,
@@ -217,6 +220,30 @@ test('media route does not log analytics when token is missing', async () => {
 			`,
 		)
 		.get(missingToken)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for revoked tokens', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam),
+	)
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Not found')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
 
 	expect(events?.count ?? 0).toBe(0)
 })

@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
-import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
+import {
+	createCuratedFeedToken,
+	revokeCuratedFeedToken,
+} from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
@@ -112,6 +115,27 @@ test('feed route does not log analytics for missing tokens', async () => {
 			`,
 		)
 		.get(missingToken)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('feed route does not log analytics for revoked tokens', async () => {
+	using ctx = createFeedRouteTestContext()
+	expect(revokeCuratedFeedToken(ctx.token)).toBe(true)
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(404)
+	expect(await response.text()).toBe('Feed not found')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE token = ?;
+			`,
+		)
+		.get(ctx.token)
 
 	expect(events?.count ?? 0).toBe(0)
 })

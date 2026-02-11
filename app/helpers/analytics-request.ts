@@ -287,11 +287,14 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 					},
 				)
 			: false
+		const previousSegmentHasUnclosedQuotes = previousSegment
+			? hasUnclosedQuotes(previousSegment)
+			: false
 		const shouldMergeWithPreviousSegment =
 			previousSegment &&
-			(!hasForwardedParameter ||
+			((!hasForwardedParameter && previousSegmentHasUnclosedQuotes) ||
 				(!segmentHasForParameter &&
-					(hasUnclosedQuotes(previousSegment) ||
+					(previousSegmentHasUnclosedQuotes ||
 						previousSegmentHasQuotedForParameter)))
 		if (shouldMergeWithPreviousSegment) {
 			const previousSegmentIndex = forwardedSegments.length - 1

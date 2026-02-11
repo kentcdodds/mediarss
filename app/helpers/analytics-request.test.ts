@@ -648,6 +648,24 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('keeps earliest valid Forwarded candidate when bare malformed segment follows', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for=198.51.100.201, nonsense,for=198.51.100.202;proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.201',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.201')
+		expect(getClientFingerprint(request)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('falls through nested invalid forwarded for token to later valid candidate', () => {
 		const malformedThenValidRequest = new Request('https://example.com/media', {
 			headers: {

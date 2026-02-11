@@ -1083,6 +1083,52 @@ test('media route stores null fingerprint when proxy IP headers are invalid', as
 	})
 })
 
+test('media route falls back to user-agent fingerprint when proxy IP headers are invalid', async () => {
+	await using ctx = await createCuratedMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const responseWithInvalidIpHeaders = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'X-Forwarded-For': 'proxy.internal, app.server',
+			Forwarded: 'for=unknown',
+			'X-Real-IP': '_hidden',
+			'User-Agent': 'Pocket Casts/7.0',
+		}),
+	)
+	expect(responseWithInvalidIpHeaders.status).toBe(200)
+
+	const responseWithUserAgentOnly = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'User-Agent': 'Pocket Casts/7.0',
+		}),
+	)
+	expect(responseWithUserAgentOnly.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_name).toBe('Pocket Casts')
+	expect(events[1]?.client_name).toBe('Pocket Casts')
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('media route uses Forwarded header when X-Forwarded-For is missing', async () => {
 	await using ctx = await createCuratedMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

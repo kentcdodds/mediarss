@@ -61,6 +61,31 @@ describe('analytics-request helpers', () => {
 		expect(getClientFingerprint(request)).toBeNull()
 	})
 
+	test('builds fingerprint from user-agent when client IP headers are invalid', () => {
+		const requestWithInvalidIpHeaders = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': 'proxy.internal, app.server',
+					Forwarded: 'for=unknown',
+					'X-Real-IP': '_hidden',
+					'User-Agent': 'Pocket Casts/7.0',
+				},
+			},
+		)
+		const requestWithUserAgentOnly = new Request('https://example.com/media', {
+			headers: {
+				'User-Agent': 'Pocket Casts/7.0',
+			},
+		})
+
+		expect(getClientIp(requestWithInvalidIpHeaders)).toBeNull()
+		expect(getClientFingerprint(requestWithInvalidIpHeaders)).toBe(
+			getClientFingerprint(requestWithUserAgentOnly),
+		)
+		expect(getClientFingerprint(requestWithInvalidIpHeaders)).toBeTruthy()
+	})
+
 	test('builds fingerprint from X-Real-IP when forwarded-for is absent', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

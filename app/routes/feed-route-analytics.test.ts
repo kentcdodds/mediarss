@@ -1018,6 +1018,51 @@ test('feed route stores null fingerprint when proxy IP headers are invalid', asy
 	})
 })
 
+test('feed route falls back to user-agent fingerprint when proxy IP headers are invalid', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithInvalidIpHeaders = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': 'proxy.internal, app.server',
+			Forwarded: 'for=unknown',
+			'X-Real-IP': '_hidden',
+			'User-Agent': 'Pocket Casts/7.0',
+		}),
+	)
+	expect(responseWithInvalidIpHeaders.status).toBe(200)
+
+	const responseWithUserAgentOnly = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': 'Pocket Casts/7.0',
+		}),
+	)
+	expect(responseWithUserAgentOnly.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY rowid DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_name).toBe('Pocket Casts')
+	expect(events[1]?.client_name).toBe('Pocket Casts')
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route uses Forwarded header when X-Forwarded-For is missing', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

@@ -836,7 +836,7 @@ test('feed route recovers from malformed quoted Forwarded chains', async () => {
 
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
-			'X-Forwarded-For': '198.51.100.215',
+			'X-Forwarded-For': '203.0.113.215',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

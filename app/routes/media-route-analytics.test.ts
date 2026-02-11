@@ -900,7 +900,7 @@ test('media route recovers from malformed quoted Forwarded chains', async () => 
 
 	const responseWithEquivalentForwardedFor = await mediaHandler.action(
 		createMediaActionContext(ctx.token, pathParam, {
-			'X-Forwarded-For': '198.51.100.216',
+			'X-Forwarded-For': '203.0.113.216',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

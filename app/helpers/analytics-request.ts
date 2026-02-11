@@ -41,6 +41,13 @@ function getQuotedInnerValue(value: string): string | null {
 	return quotedMatch[1]?.replace(/\\"/g, '"').trim() ?? null
 }
 
+function getPossiblyMalformedQuotedInnerValue(value: string): string | null {
+	const quotedValue = getQuotedInnerValue(value)
+	if (quotedValue !== null) return quotedValue
+	if (!value.startsWith('"')) return null
+	return value.slice(1).replace(/\\"/g, '"').trim()
+}
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
@@ -150,7 +157,7 @@ function getIpHeaderCandidates(headerValue: string): string[] {
 	const candidates: string[] = []
 
 	for (const rawCandidate of splitCommaSeparatedHeaderValues(headerValue)) {
-		const quotedValue = getQuotedInnerValue(rawCandidate)
+		const quotedValue = getPossiblyMalformedQuotedInnerValue(rawCandidate)
 		if (quotedValue?.includes(',')) {
 			for (const nestedCandidate of splitCommaSeparatedHeaderValues(
 				quotedValue,
@@ -169,8 +176,22 @@ function getIpHeaderCandidates(headerValue: string): string[] {
 
 function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 	const candidates: string[] = []
+	const forwardedSegments: string[] = []
 
-	for (const segment of splitCommaSeparatedHeaderValues(forwardedHeader)) {
+	for (const rawSegment of splitCommaSeparatedHeaderValues(forwardedHeader)) {
+		const hasForwardedParameter = rawSegment.includes('=')
+		if (!hasForwardedParameter && forwardedSegments.length > 0) {
+			const previousSegmentIndex = forwardedSegments.length - 1
+			const previousSegment = forwardedSegments[previousSegmentIndex]
+			forwardedSegments[previousSegmentIndex] =
+				`${previousSegment}, ${rawSegment}`
+			continue
+		}
+
+		forwardedSegments.push(rawSegment)
+	}
+
+	for (const segment of forwardedSegments) {
 		for (const parameter of splitSemicolonSeparatedHeaderValues(segment)) {
 			const equalsIndex = parameter.indexOf('=')
 			if (equalsIndex === -1) continue
@@ -181,7 +202,7 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 			const value = parameter.slice(equalsIndex + 1).trim()
 			if (!value) continue
 
-			const quotedValue = getQuotedInnerValue(value)
+			const quotedValue = getPossiblyMalformedQuotedInnerValue(value)
 			if (quotedValue?.includes(',')) {
 				for (const nestedCandidate of splitCommaSeparatedHeaderValues(
 					quotedValue,

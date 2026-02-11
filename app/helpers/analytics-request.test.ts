@@ -37,6 +37,11 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('returns null fingerprint when no client traits are available', () => {
+		const request = new Request('https://example.com/media')
+		expect(getClientFingerprint(request)).toBeNull()
+	})
+
 	test('extracts known podcast client names from user agent', () => {
 		const request = new Request('https://example.com/feed', {
 			headers: {

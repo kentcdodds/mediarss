@@ -29,8 +29,8 @@ export function getUserAgent(request: Request): string | null {
 export function getClientFingerprint(request: Request): string | null {
 	const ip = getClientIp(request)
 	const userAgent = getUserAgent(request)
+	if (!ip && !userAgent) return null
 	const source = `${ip ?? ''}|${userAgent ?? ''}`
-	if (!source.trim()) return null
 
 	let hash = 5381
 	for (let i = 0; i < source.length; i++) {

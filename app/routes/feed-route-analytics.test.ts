@@ -117,6 +117,34 @@ function countEventsForToken(token: string): number {
 	)
 }
 
+function getCuratedTokenLastUsedAt(token: string): number | null {
+	return (
+		db
+			.query<{ last_used_at: number | null }, [string]>(
+				sql`
+					SELECT last_used_at
+					FROM curated_feed_tokens
+					WHERE token = ?;
+				`,
+			)
+			.get(token)?.last_used_at ?? null
+	)
+}
+
+function getDirectoryTokenLastUsedAt(token: string): number | null {
+	return (
+		db
+			.query<{ last_used_at: number | null }, [string]>(
+				sql`
+					SELECT last_used_at
+					FROM directory_feed_tokens
+					WHERE token = ?;
+				`,
+			)
+			.get(token)?.last_used_at ?? null
+	)
+}
+
 async function withAnalyticsTableUnavailable(
 	run: () => Promise<void>,
 ): Promise<void> {
@@ -198,85 +226,59 @@ test('feed route does not log analytics for missing tokens', async () => {
 	expect(countEventsForToken(missingToken)).toBe(0)
 })
 
-test('feed route does not log analytics for revoked curated tokens', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-	expect(revokeCuratedFeedToken(ctx.token)).toBe(true)
+test('feed route does not log analytics for revoked tokens', async () => {
+	const cases = [
+		{
+			createContext: createCuratedFeedRouteTestContext,
+			revokeToken: revokeCuratedFeedToken,
+		},
+		{
+			createContext: createDirectoryFeedRouteTestContext,
+			revokeToken: revokeDirectoryFeedToken,
+		},
+	] as const
 
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
-	expect(response.status).toBe(404)
-	expect(countEventsForToken(ctx.token)).toBe(0)
+	for (const testCase of cases) {
+		using ctx = testCase.createContext()
+		expect(testCase.revokeToken(ctx.token)).toBe(true)
+
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token),
+		)
+		expect(response.status).toBe(404)
+		expect(countEventsForToken(ctx.token)).toBe(0)
+	}
 })
 
-test('feed route does not log analytics for revoked directory tokens', async () => {
-	using ctx = createDirectoryFeedRouteTestContext()
-	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)
+test('feed route touches token last_used_at on successful fetch', async () => {
+	const cases = [
+		{
+			createContext: createCuratedFeedRouteTestContext,
+			getLastUsedAt: getCuratedTokenLastUsedAt,
+			expectedFeedType: 'curated',
+		},
+		{
+			createContext: createDirectoryFeedRouteTestContext,
+			getLastUsedAt: getDirectoryTokenLastUsedAt,
+			expectedFeedType: 'directory',
+		},
+	] as const
 
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
-	expect(response.status).toBe(404)
-	expect(countEventsForToken(ctx.token)).toBe(0)
-})
+	for (const testCase of cases) {
+		using ctx = testCase.createContext()
+		expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
 
-test('feed route touches curated token last_used_at on successful fetch', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-
-	const before = db
-		.query<{ last_used_at: number | null }, [string]>(
-			sql`
-				SELECT last_used_at
-				FROM curated_feed_tokens
-				WHERE token = ?;
-			`,
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token),
 		)
-		.get(ctx.token)
-	expect(before?.last_used_at ?? null).toBeNull()
+		expect(response.status).toBe(200)
+		expect((testCase.getLastUsedAt(ctx.token) ?? 0) > 0).toBe(true)
 
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
-	expect(response.status).toBe(200)
-
-	const after = db
-		.query<{ last_used_at: number | null }, [string]>(
-			sql`
-				SELECT last_used_at
-				FROM curated_feed_tokens
-				WHERE token = ?;
-			`,
-		)
-		.get(ctx.token)
-	expect((after?.last_used_at ?? 0) > 0).toBe(true)
-})
-
-test('feed route touches directory token last_used_at on successful fetch', async () => {
-	using ctx = createDirectoryFeedRouteTestContext()
-
-	const before = db
-		.query<{ last_used_at: number | null }, [string]>(
-			sql`
-				SELECT last_used_at
-				FROM directory_feed_tokens
-				WHERE token = ?;
-			`,
-		)
-		.get(ctx.token)
-	expect(before?.last_used_at ?? null).toBeNull()
-
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
-	expect(response.status).toBe(200)
-
-	const after = db
-		.query<{ last_used_at: number | null }, [string]>(
-			sql`
-				SELECT last_used_at
-				FROM directory_feed_tokens
-				WHERE token = ?;
-			`,
-		)
-		.get(ctx.token)
-	expect((after?.last_used_at ?? 0) > 0).toBe(true)
-
-	const event = readLatestRssEvent(ctx.feed.id)
-	expect(event).toMatchObject({
-		feed_type: 'directory',
-		token: ctx.token,
-		status_code: 200,
-	})
+		const event = readLatestRssEvent(ctx.feed.id)
+		expect(event).toMatchObject({
+			feed_type: testCase.expectedFeedType,
+			token: ctx.token,
+			status_code: 200,
+		})
+	}
 })

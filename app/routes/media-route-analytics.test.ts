@@ -318,38 +318,28 @@ test('media route stores null client metadata when request lacks client traits',
 	})
 })
 
-test('media route returns 400 when file path is missing and does not log analytics', async () => {
+test('media route rejects invalid access cases without logging analytics', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
-	const response = await mediaHandler.action(
+	const missingPathResponse = await mediaHandler.action(
 		createMediaActionContextWithoutPath(ctx.token),
 	)
-	expect(response.status).toBe(400)
+	expect(missingPathResponse.status).toBe(400)
 	expect(countEventsForToken(ctx.token)).toBe(0)
-})
 
-test('media route returns 404 for missing tokens and does not log analytics', async () => {
-	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const missingToken = `missing-token-${Date.now()}`
-	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
-
-	const response = await mediaHandler.action(
+	const missingTokenResponse = await mediaHandler.action(
 		createMediaActionContext(missingToken, pathParam),
 	)
-
-	expect(response.status).toBe(404)
+	expect(missingTokenResponse.status).toBe(404)
 	expect(countEventsForToken(missingToken)).toBe(0)
-})
 
-test('media route returns 404 for revoked tokens and does not log analytics', async () => {
-	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)
-	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
-
-	const response = await mediaHandler.action(
+	const revokedTokenResponse = await mediaHandler.action(
 		createMediaActionContext(ctx.token, pathParam),
 	)
-	expect(response.status).toBe(404)
+	expect(revokedTokenResponse.status).toBe(404)
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 

@@ -637,6 +637,47 @@ test('feed route recovers from malformed quoted whole-chain X-Real-IP values', a
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route recovers from malformed escaped-quote whole-chain X-Real-IP values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithMalformedEscapedQuotedRealIpChain =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': 'unknown',
+				'X-Real-IP': '"\\"unknown\\", 198.51.100.246:8443',
+			}),
+		)
+	expect(responseWithMalformedEscapedQuotedRealIpChain.status).toBe(200)
+
+	const responseWithEquivalentRealIp = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Real-IP': '198.51.100.246',
+		}),
+	)
+	expect(responseWithEquivalentRealIp.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route stores null fingerprint for all-invalid comma-separated X-Real-IP header', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 
@@ -1428,6 +1469,46 @@ test('feed route recovers from malformed quoted whole-chain X-Forwarded-For valu
 	const responseWithEquivalentForwardedFor = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'X-Forwarded-For': '203.0.113.217',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
+test('feed route recovers from malformed escaped-quote whole-chain X-Forwarded-For values', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithMalformedEscapedQuotedForwardedForChain =
+		await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'X-Forwarded-For': '"\\"unknown\\", 203.0.113.246',
+			}),
+		)
+	expect(responseWithMalformedEscapedQuotedForwardedForChain.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '203.0.113.246',
 		}),
 	)
 	expect(responseWithEquivalentForwardedFor.status).toBe(200)

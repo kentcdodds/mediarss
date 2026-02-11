@@ -230,6 +230,17 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 	const candidates: string[] = []
 	const forwardedSegments: string[] = []
 
+	const normalizeForwardedCandidate = (candidate: string): string => {
+		const trimmedCandidate = candidate.trim()
+		const equalsIndex = trimmedCandidate.indexOf('=')
+		if (equalsIndex === -1) return trimmedCandidate
+
+		const key = trimmedCandidate.slice(0, equalsIndex).trim().toLowerCase()
+		if (key !== 'for') return trimmedCandidate
+
+		return trimmedCandidate.slice(equalsIndex + 1).trim()
+	}
+
 	for (const rawSegment of splitCommaSeparatedHeaderValues(forwardedHeader)) {
 		const segmentHasForParameter = splitSemicolonSeparatedHeaderValues(
 			rawSegment,
@@ -286,13 +297,14 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 				for (const nestedCandidate of splitCommaSeparatedHeaderValues(
 					quotedValue,
 				)) {
-					const trimmedNestedCandidate = nestedCandidate.trim()
+					const trimmedNestedCandidate =
+						normalizeForwardedCandidate(nestedCandidate)
 					if (trimmedNestedCandidate) candidates.push(trimmedNestedCandidate)
 				}
 				continue
 			}
 
-			candidates.push(quotedValue ?? value)
+			candidates.push(normalizeForwardedCandidate(quotedValue ?? value))
 		}
 	}
 

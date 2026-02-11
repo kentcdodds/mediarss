@@ -648,6 +648,45 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers nested forwarded for tokens in quoted for chains', () => {
+		const malformedNestedForRequest = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown, for=198.51.100.248";proto=https',
+			},
+		})
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.248',
+			},
+		})
+
+		expect(getClientIp(malformedNestedForRequest)).toBe('198.51.100.248')
+		expect(getClientFingerprint(malformedNestedForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers nested forwarded for tokens in escaped quoted for chains', () => {
+		const malformedNestedEscapedForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for="\\"unknown\\", for=198.51.100.249";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.249',
+			},
+		})
+
+		expect(getClientIp(malformedNestedEscapedForRequest)).toBe('198.51.100.249')
+		expect(getClientFingerprint(malformedNestedEscapedForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

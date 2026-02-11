@@ -268,6 +268,36 @@ test('feed route logs rss_fetch analytics for directory feeds', async () => {
 	})
 })
 
+test('feed route stores null client metadata for directory requests without traits', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				client_name: string | null
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_name, client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		client_name: null,
+		client_fingerprint: null,
+	})
+})
+
 test('feed route does not log analytics for revoked directory tokens', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)

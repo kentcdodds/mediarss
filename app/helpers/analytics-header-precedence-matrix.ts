@@ -67,6 +67,8 @@ export const repeatedForwardedForHeaderBuilders = [
 		`FOR = ${firstValue}; FOR = ${secondValue}; proto=https`,
 	(firstValue: string, secondValue: string) =>
 		`proto=https;for=${firstValue};by=proxy;for=${secondValue}`,
+	(firstValue: string, secondValue: string) =>
+		`host=example.com; FOR = ${firstValue}; by=proxy; FOR = ${secondValue}; proto=https`,
 ] as const satisfies ReadonlyArray<
 	(firstValue: string, secondValue: string) => string
 >

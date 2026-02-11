@@ -161,6 +161,17 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.60')
 	})
 
+	test('uses Forwarded header when X-Forwarded-For values are all unknown', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': 'unknown, unknown:8443',
+				Forwarded: 'for=203.0.113.61;proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('203.0.113.61')
+	})
+
 	test('skips unknown Forwarded for values and uses next candidate', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

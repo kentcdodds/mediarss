@@ -259,6 +259,29 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers repeated dangling leading quotes in X-Real-IP values', () => {
+		const repeatedDanglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '""198.51.100.254',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.254',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingLeadingQuoteRequest)).toBe(
+			'198.51.100.254',
+		)
+		expect(getClientFingerprint(repeatedDanglingLeadingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {
@@ -377,6 +400,29 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingLeadingQuoteRequest)).toBe('203.0.113.251')
 		expect(getClientFingerprint(danglingLeadingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers repeated dangling leading quotes in X-Forwarded-For chains', () => {
+		const repeatedDanglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': '""unknown, 203.0.113.254',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.254',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingLeadingQuoteRequest)).toBe(
+			'203.0.113.254',
+		)
+		expect(getClientFingerprint(repeatedDanglingLeadingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})
@@ -583,6 +629,29 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingLeadingQuoteRequest)).toBe('198.51.100.252')
 		expect(getClientFingerprint(danglingLeadingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers repeated dangling leading quotes in Forwarded for values', () => {
+		const repeatedDanglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for=""198.51.100.254;proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.254',
+			},
+		})
+
+		expect(getClientIp(repeatedDanglingLeadingQuoteRequest)).toBe(
+			'198.51.100.254',
+		)
+		expect(getClientFingerprint(repeatedDanglingLeadingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})

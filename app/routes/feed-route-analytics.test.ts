@@ -2936,12 +2936,12 @@ test('feed route handles repeated Forwarded for parameters within a segment', as
 		)
 		expect(responseWithRepeatedForwardedFor.status).toBe(200)
 
-		const responseWithEquivalentForwardedFor = await feedHandler.action(
-			createFeedActionContext(ctx.token, {
+		const canonicalRequest = new Request('https://example.com/feed', {
+			headers: {
 				'X-Forwarded-For': testCase.canonicalIp,
-			}),
-		)
-		expect(responseWithEquivalentForwardedFor.status).toBe(200)
+			},
+		})
+		const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 		const events = db
 			.query<
@@ -2955,14 +2955,13 @@ test('feed route handles repeated Forwarded for parameters within a segment', as
 					FROM feed_analytics_events
 					WHERE feed_id = ? AND event_type = 'rss_fetch'
 					ORDER BY rowid DESC
-					LIMIT 2;
+					LIMIT 1;
 				`,
 			)
 			.all(ctx.feed.id)
 
-		expect(events).toHaveLength(2)
-		expect(events[0]?.client_fingerprint).toBeTruthy()
-		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+		expect(events).toHaveLength(1)
+		expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 	}
 })
 

@@ -3052,12 +3052,12 @@ test('media route handles repeated Forwarded for parameters within a segment', a
 		)
 		expect(responseWithRepeatedForwardedFor.status).toBe(200)
 
-		const responseWithEquivalentForwardedFor = await mediaHandler.action(
-			createMediaActionContext(ctx.token, pathParam, {
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
 				'X-Forwarded-For': testCase.canonicalIp,
-			}),
-		)
-		expect(responseWithEquivalentForwardedFor.status).toBe(200)
+			},
+		})
+		const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 		const events = db
 			.query<
@@ -3071,14 +3071,13 @@ test('media route handles repeated Forwarded for parameters within a segment', a
 					FROM feed_analytics_events
 					WHERE feed_id = ? AND event_type = 'media_request'
 					ORDER BY rowid DESC
-					LIMIT 2;
+					LIMIT 1;
 				`,
 			)
 			.all(ctx.feed.id)
 
-		expect(events).toHaveLength(2)
-		expect(events[0]?.client_fingerprint).toBeTruthy()
-		expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+		expect(events).toHaveLength(1)
+		expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 	}
 })
 

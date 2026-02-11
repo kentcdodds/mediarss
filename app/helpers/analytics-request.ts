@@ -48,6 +48,20 @@ function getPossiblyMalformedQuotedInnerValue(value: string): string | null {
 	return value.slice(1).replace(/\\"/g, '"').trim()
 }
 
+function hasUnclosedQuotes(value: string): boolean {
+	let inQuotes = false
+
+	for (let i = 0; i < value.length; i++) {
+		const character = value[i]
+		const isEscapedQuote = character === '"' && i > 0 && value[i - 1] === '\\'
+		if (character === '"' && !isEscapedQuote) {
+			inQuotes = !inQuotes
+		}
+	}
+
+	return inQuotes
+}
+
 function normalizeClientIpToken(value: string): string | null {
 	const trimmedValue = value.trim()
 	if (!trimmedValue) return null
@@ -179,10 +193,21 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 	const forwardedSegments: string[] = []
 
 	for (const rawSegment of splitCommaSeparatedHeaderValues(forwardedHeader)) {
+		const segmentHasForParameter = splitSemicolonSeparatedHeaderValues(
+			rawSegment,
+		).some((parameter) => {
+			const equalsIndex = parameter.indexOf('=')
+			if (equalsIndex === -1) return false
+			return parameter.slice(0, equalsIndex).trim().toLowerCase() === 'for'
+		})
 		const hasForwardedParameter = rawSegment.includes('=')
-		if (!hasForwardedParameter && forwardedSegments.length > 0) {
+		const previousSegment = forwardedSegments.at(-1)
+		const shouldMergeWithPreviousSegment =
+			previousSegment &&
+			(!hasForwardedParameter ||
+				(!segmentHasForParameter && hasUnclosedQuotes(previousSegment)))
+		if (shouldMergeWithPreviousSegment) {
 			const previousSegmentIndex = forwardedSegments.length - 1
-			const previousSegment = forwardedSegments[previousSegmentIndex]
 			forwardedSegments[previousSegmentIndex] =
 				`${previousSegment}, ${rawSegment}`
 			continue

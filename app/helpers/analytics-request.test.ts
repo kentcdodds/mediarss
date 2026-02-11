@@ -372,6 +372,26 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('203.0.113.214')
 	})
 
+	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="unknown, 198.51.100.249;proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.249')
+	})
+
+	test('recovers malformed escaped-quote Forwarded chains with proto segments', () => {
+		const request = new Request('https://example.com/media', {
+			headers: {
+				Forwarded: 'for="\\"unknown\\", 198.51.100.242;proto=https',
+			},
+		})
+
+		expect(getClientIp(request)).toBe('198.51.100.242')
+	})
+
 	test('uses Forwarded header when X-Forwarded-For values are all unknown', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

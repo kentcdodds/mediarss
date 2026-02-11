@@ -2991,10 +2991,10 @@ test('feed route preserves repeated Forwarded for parameter precedence matrix', 
 				if (expectedIp !== null) {
 					canonicalHeaders['X-Forwarded-For'] = expectedIp
 				}
-				const responseWithCanonicalHeader = await feedHandler.action(
-					createFeedActionContext(ctx.token, canonicalHeaders),
-				)
-				expect(responseWithCanonicalHeader.status).toBe(200)
+				const canonicalRequest = new Request('https://example.com/feed', {
+					headers: canonicalHeaders,
+				})
+				const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 				const events = db
 					.query<
@@ -3008,15 +3008,13 @@ test('feed route preserves repeated Forwarded for parameter precedence matrix', 
 							FROM feed_analytics_events
 							WHERE feed_id = ? AND event_type = 'rss_fetch'
 							ORDER BY rowid DESC
-							LIMIT 2;
+							LIMIT 1;
 						`,
 					)
 					.all(ctx.feed.id)
 
-				expect(events).toHaveLength(2)
-				expect(events[0]?.client_fingerprint).toBe(
-					events[1]?.client_fingerprint,
-				)
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 			}
 		}
 	}
@@ -3069,10 +3067,10 @@ test('feed route preserves triple repeated Forwarded for parameter precedence ma
 					if (expectedIp !== null) {
 						canonicalHeaders['X-Forwarded-For'] = expectedIp
 					}
-					const responseWithCanonicalHeader = await feedHandler.action(
-						createFeedActionContext(ctx.token, canonicalHeaders),
-					)
-					expect(responseWithCanonicalHeader.status).toBe(200)
+					const canonicalRequest = new Request('https://example.com/feed', {
+						headers: canonicalHeaders,
+					})
+					const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 					const events = db
 						.query<
@@ -3086,15 +3084,13 @@ test('feed route preserves triple repeated Forwarded for parameter precedence ma
 								FROM feed_analytics_events
 								WHERE feed_id = ? AND event_type = 'rss_fetch'
 								ORDER BY rowid DESC
-								LIMIT 2;
+								LIMIT 1;
 							`,
 						)
 						.all(ctx.feed.id)
 
-					expect(events).toHaveLength(2)
-					expect(events[0]?.client_fingerprint).toBe(
-						events[1]?.client_fingerprint,
-					)
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 				}
 			}
 		}

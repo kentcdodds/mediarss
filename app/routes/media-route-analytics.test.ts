@@ -3108,10 +3108,10 @@ test('media route preserves repeated Forwarded for parameter precedence matrix',
 				if (expectedIp !== null) {
 					canonicalHeaders['X-Forwarded-For'] = expectedIp
 				}
-				const responseWithCanonicalHeader = await mediaHandler.action(
-					createMediaActionContext(ctx.token, pathParam, canonicalHeaders),
-				)
-				expect(responseWithCanonicalHeader.status).toBe(200)
+				const canonicalRequest = new Request('https://example.com/media', {
+					headers: canonicalHeaders,
+				})
+				const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 				const events = db
 					.query<
@@ -3125,15 +3125,13 @@ test('media route preserves repeated Forwarded for parameter precedence matrix',
 							FROM feed_analytics_events
 							WHERE feed_id = ? AND event_type = 'media_request'
 							ORDER BY rowid DESC
-							LIMIT 2;
+							LIMIT 1;
 						`,
 					)
 					.all(ctx.feed.id)
 
-				expect(events).toHaveLength(2)
-				expect(events[0]?.client_fingerprint).toBe(
-					events[1]?.client_fingerprint,
-				)
+				expect(events).toHaveLength(1)
+				expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 			}
 		}
 	}
@@ -3187,10 +3185,10 @@ test('media route preserves triple repeated Forwarded for parameter precedence m
 					if (expectedIp !== null) {
 						canonicalHeaders['X-Forwarded-For'] = expectedIp
 					}
-					const responseWithCanonicalHeader = await mediaHandler.action(
-						createMediaActionContext(ctx.token, pathParam, canonicalHeaders),
-					)
-					expect(responseWithCanonicalHeader.status).toBe(200)
+					const canonicalRequest = new Request('https://example.com/media', {
+						headers: canonicalHeaders,
+					})
+					const expectedFingerprint = getClientFingerprint(canonicalRequest)
 
 					const events = db
 						.query<
@@ -3204,15 +3202,13 @@ test('media route preserves triple repeated Forwarded for parameter precedence m
 								FROM feed_analytics_events
 								WHERE feed_id = ? AND event_type = 'media_request'
 								ORDER BY rowid DESC
-								LIMIT 2;
+								LIMIT 1;
 							`,
 						)
 						.all(ctx.feed.id)
 
-					expect(events).toHaveLength(2)
-					expect(events[0]?.client_fingerprint).toBe(
-						events[1]?.client_fingerprint,
-					)
+					expect(events).toHaveLength(1)
+					expect(events[0]?.client_fingerprint).toBe(expectedFingerprint)
 				}
 			}
 		}

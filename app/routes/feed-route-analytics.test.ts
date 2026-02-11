@@ -2963,6 +2963,54 @@ test('feed route normalizes reordered escaped-quote Forwarded nested prefix matr
 	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
 })
 
+test('feed route falls through reordered nested invalid Forwarded chains to later valid candidates', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const forwardedHeaders = [
+		'proto=https;by=198.51.100.1;for="unknown, for=for=_hidden";host=example.com,for=198.51.100.198;proto=https',
+		'proto=https;by=198.51.100.1;for="\\"unknown\\", FOR = for = _hidden;proto=https";host=example.com,for=198.51.100.198;proto=https',
+		'host=example.com;proto=https;for="unknown, for=for=unknown";by=198.51.100.1,for=198.51.100.198;proto=https',
+	]
+
+	for (const forwarded of forwardedHeaders) {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				Forwarded: forwarded,
+			}),
+		)
+		expect(response.status).toBe(200)
+	}
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.198',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(forwardedHeaders.length + 1)
+	const uniqueFingerprints = new Set(
+		events.map((event) => event.client_fingerprint),
+	)
+	expect(uniqueFingerprints.size).toBe(1)
+	expect(Array.from(uniqueFingerprints)[0]).toBeTruthy()
+})
+
 test('feed route prefers Forwarded over X-Real-IP when X-Forwarded-For is missing', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

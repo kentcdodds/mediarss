@@ -64,6 +64,12 @@ export type MediaByFeedAnalyticsRow = AnalyticsSummary & {
 	lastSeenAt: number | null
 }
 
+export type TopClientAnalyticsRow = AnalyticsSummary & {
+	clientName: string
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+}
+
 function normalizeRelativePathForStorage(
 	relativePath: string | null | undefined,
 ): string | null {
@@ -362,6 +368,60 @@ export function getFeedDailyAnalytics(
 }
 
 /**
+ * Top client applications for a feed.
+ */
+export function getFeedTopClientAnalytics(
+	feedId: string,
+	since: number,
+	limit = 10,
+	database: Database = db,
+): Array<TopClientAnalyticsRow> {
+	const rows = database
+		.query<
+			{
+				client_name: string
+				rss_fetches: number | null
+				media_requests: number | null
+				download_starts: number | null
+				bytes_served: number | null
+				unique_clients: number | null
+				first_seen_at: number | null
+				last_seen_at: number | null
+			},
+			[string, number, number]
+		>(
+			sql`
+				SELECT
+					COALESCE(client_name, 'Unknown') AS client_name,
+					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+					MIN(created_at) AS first_seen_at,
+					MAX(created_at) AS last_seen_at
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND created_at >= ?
+				GROUP BY COALESCE(client_name, 'Unknown')
+				ORDER BY media_requests DESC, rss_fetches DESC, download_starts DESC
+				LIMIT ?;
+			`,
+		)
+		.all(feedId, since, limit)
+
+	return rows.map((row) => ({
+		clientName: row.client_name,
+		rssFetches: row.rss_fetches ?? 0,
+		mediaRequests: row.media_requests ?? 0,
+		downloadStarts: row.download_starts ?? 0,
+		bytesServed: row.bytes_served ?? 0,
+		uniqueClients: row.unique_clients ?? 0,
+		firstSeenAt: row.first_seen_at,
+		lastSeenAt: row.last_seen_at,
+	}))
+}
+
+/**
  * Summary analytics for a specific media item across all feeds/tokens.
  */
 export function getMediaAnalyticsSummary(
@@ -563,5 +623,61 @@ export function getMediaDailyAnalytics(
 		downloadStarts: row.download_starts ?? 0,
 		bytesServed: row.bytes_served ?? 0,
 		uniqueClients: row.unique_clients ?? 0,
+	}))
+}
+
+/**
+ * Top client applications for a specific media item.
+ */
+export function getMediaTopClientAnalytics(
+	mediaRoot: string,
+	relativePath: string,
+	since: number,
+	limit = 10,
+	database: Database = db,
+): Array<TopClientAnalyticsRow> {
+	const normalizedRelativePath = normalizePath(relativePath)
+	const rows = database
+		.query<
+			{
+				client_name: string
+				rss_fetches: number | null
+				media_requests: number | null
+				download_starts: number | null
+				bytes_served: number | null
+				unique_clients: number | null
+				first_seen_at: number | null
+				last_seen_at: number | null
+			},
+			[string, string, number, number]
+		>(
+			sql`
+				SELECT
+					COALESCE(client_name, 'Unknown') AS client_name,
+					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+					MIN(created_at) AS first_seen_at,
+					MAX(created_at) AS last_seen_at
+				FROM feed_analytics_events
+				WHERE media_root = ? AND relative_path = ? AND created_at >= ?
+				GROUP BY COALESCE(client_name, 'Unknown')
+				ORDER BY media_requests DESC, download_starts DESC, rss_fetches DESC
+				LIMIT ?;
+			`,
+		)
+		.all(mediaRoot, normalizedRelativePath, since, limit)
+
+	return rows.map((row) => ({
+		clientName: row.client_name,
+		rssFetches: row.rss_fetches ?? 0,
+		mediaRequests: row.media_requests ?? 0,
+		downloadStarts: row.download_starts ?? 0,
+		bytesServed: row.bytes_served ?? 0,
+		uniqueClients: row.unique_clients ?? 0,
+		firstSeenAt: row.first_seen_at,
+		lastSeenAt: row.last_seen_at,
 	}))
 }

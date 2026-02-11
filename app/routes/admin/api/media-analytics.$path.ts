@@ -8,6 +8,7 @@ import {
 	getMediaAnalyticsByToken,
 	getMediaAnalyticsSummary,
 	getMediaDailyAnalytics,
+	getMediaTopClientAnalytics,
 } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
@@ -141,6 +142,11 @@ export default {
 			parsed.relativePath,
 			since,
 		)
+		const topClients = getMediaTopClientAnalytics(
+			parsed.rootName,
+			parsed.relativePath,
+			since,
+		)
 
 		const curatedFeeds = listCuratedFeeds()
 		const directoryFeeds = listDirectoryFeeds()
@@ -179,6 +185,7 @@ export default {
 			summary,
 			byToken: byTokenWithMetadata,
 			byFeed: byFeedWithNames,
+			topClients,
 			daily,
 		})
 	},

@@ -8,6 +8,7 @@ import {
 	getFeedAnalyticsByToken,
 	getFeedAnalyticsSummary,
 	getFeedDailyAnalytics,
+	getFeedTopClientAnalytics,
 	getFeedTopMediaItemAnalytics,
 } from '#app/db/feed-analytics-events.ts'
 
@@ -62,6 +63,7 @@ export default {
 				since,
 				TOP_ITEMS_LIMIT,
 			)
+			const topClients = getFeedTopClientAnalytics(id, since)
 			const daily = getFeedDailyAnalytics(id, since)
 			const tokens = listDirectoryFeedTokens(id)
 			const tokenMetricsByToken = new Map(
@@ -107,6 +109,7 @@ export default {
 				summary,
 				byToken,
 				topMediaItems,
+				topClients,
 				daily,
 			})
 		}
@@ -120,6 +123,7 @@ export default {
 				since,
 				TOP_ITEMS_LIMIT,
 			)
+			const topClients = getFeedTopClientAnalytics(id, since)
 			const daily = getFeedDailyAnalytics(id, since)
 			const tokens = listCuratedFeedTokens(id)
 			const tokenMetricsByToken = new Map(
@@ -165,6 +169,7 @@ export default {
 				summary,
 				byToken,
 				topMediaItems,
+				topClients,
 				daily,
 			})
 		}

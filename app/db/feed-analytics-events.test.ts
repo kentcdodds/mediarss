@@ -8,10 +8,12 @@ import {
 	getFeedAnalyticsByToken,
 	getFeedAnalyticsSummary,
 	getFeedDailyAnalytics,
+	getFeedTopClientAnalytics,
 	getFeedTopMediaItemAnalytics,
 	getMediaAnalyticsByFeed,
 	getMediaAnalyticsByToken,
 	getMediaAnalyticsSummary,
+	getMediaTopClientAnalytics,
 	pruneFeedAnalyticsEvents,
 } from './feed-analytics-events.ts'
 import { migrate } from './migrations.ts'
@@ -51,6 +53,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			token: 'token-a',
 			statusCode: 200,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base,
 		},
 		database,
@@ -63,6 +66,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			token: 'token-a',
 			statusCode: 200,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base + 60,
 		},
 		database,
@@ -79,6 +83,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			bytesServed: 1000,
 			statusCode: 200,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base + 120,
 		},
 		database,
@@ -95,6 +100,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			bytesServed: 500,
 			statusCode: 206,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base + 180,
 		},
 		database,
@@ -111,6 +117,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			bytesServed: 2000,
 			statusCode: 200,
 			clientFingerprint: 'fp-2',
+			clientName: 'Pocket Casts',
 			createdAt: base + day + 60,
 		},
 		database,
@@ -127,6 +134,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			bytesServed: 1500,
 			statusCode: 200,
 			clientFingerprint: 'fp-3',
+			clientName: 'Overcast',
 			createdAt: base + day + 120,
 		},
 		database,
@@ -143,6 +151,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 			bytesServed: 700,
 			statusCode: 200,
 			clientFingerprint: 'fp-4',
+			clientName: 'Overcast',
 			createdAt: base + day + 200,
 		},
 		database,
@@ -211,6 +220,20 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		bytesServed: 3500,
 		uniqueClients: 2,
 	})
+
+	const topClients = getFeedTopClientAnalytics('feed-1', base, 10, database)
+	expect(topClients).toHaveLength(3)
+	expect(topClients[0]).toMatchObject({
+		clientName: 'Apple Podcasts',
+		rssFetches: 2,
+		mediaRequests: 2,
+		downloadStarts: 1,
+		bytesServed: 1500,
+		uniqueClients: 1,
+	})
+	expect(topClients.map((client) => client.clientName)).toEqual(
+		expect.arrayContaining(['Pocket Casts', 'Overcast']),
+	)
 })
 
 test('media analytics aggregate across feeds/tokens and normalize paths', () => {
@@ -230,6 +253,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 			bytesServed: 1000,
 			statusCode: 200,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base,
 		},
 		database,
@@ -246,6 +270,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 			bytesServed: 500,
 			statusCode: 206,
 			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
 			createdAt: base + 60,
 		},
 		database,
@@ -262,6 +287,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 			bytesServed: 800,
 			statusCode: 200,
 			clientFingerprint: 'fp-2',
+			clientName: 'Pocket Casts',
 			createdAt: base + 120,
 		},
 		database,
@@ -278,6 +304,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 			bytesServed: 700,
 			statusCode: 200,
 			clientFingerprint: 'fp-3',
+			clientName: 'Overcast',
 			createdAt: base + 180,
 		},
 		database,
@@ -336,6 +363,25 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		bytesServed: 1500,
 		uniqueClients: 1,
 	})
+
+	const topClients = getMediaTopClientAnalytics(
+		'audio',
+		'series/book.mp3',
+		base - 1,
+		10,
+		database,
+	)
+	expect(topClients).toHaveLength(3)
+	expect(topClients[0]).toMatchObject({
+		clientName: 'Apple Podcasts',
+		mediaRequests: 2,
+		downloadStarts: 1,
+		bytesServed: 1500,
+		uniqueClients: 1,
+	})
+	expect(topClients.map((client) => client.clientName)).toEqual(
+		expect.arrayContaining(['Pocket Casts', 'Overcast']),
+	)
 })
 
 test('pruneFeedAnalyticsEvents removes older analytics rows', () => {

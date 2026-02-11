@@ -186,6 +186,17 @@ type FeedTopMediaAnalytics = {
 	lastSeenAt: number | null
 }
 
+type FeedTopClientAnalytics = {
+	clientName: string
+	rssFetches: number
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+}
+
 type FeedDailyAnalytics = FeedAnalyticsSummary & {
 	day: string
 	dayStart: number
@@ -202,6 +213,7 @@ type FeedAnalyticsResponse = {
 	summary: FeedAnalyticsSummary
 	byToken: Array<FeedTokenAnalytics>
 	topMediaItems: Array<FeedTopMediaAnalytics>
+	topClients: Array<FeedTopClientAnalytics>
 	daily: Array<FeedDailyAnalytics>
 }
 
@@ -4015,7 +4027,8 @@ function FeedAnalyticsSection() {
 			)
 		}
 
-		const { summary, byToken, topMediaItems, daily } = analyticsState.data
+		const { summary, byToken, topMediaItems, topClients, daily } =
+			analyticsState.data
 		const maxDailyRequests = Math.max(
 			1,
 			...daily.map((point) => point.mediaRequests),
@@ -4148,10 +4161,82 @@ function FeedAnalyticsSection() {
 				<div
 					css={{
 						display: 'grid',
-						gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
 						gap: spacing.lg,
 					}}
 				>
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							Top Clients
+						</h4>
+						{topClients.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No client analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{topClients.slice(0, 8).map((client) => (
+									<li
+										key={`${client.clientName}-${client.lastSeenAt ?? 0}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<div
+											css={{
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.text,
+											}}
+										>
+											{client.clientName}
+										</div>
+										<div
+											css={{
+												marginTop: spacing.xs,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{client.downloadStarts} starts</span>
+											<span>{client.mediaRequests} requests</span>
+											<span>{client.uniqueClients} clients</span>
+											<span>{formatFileSize(client.bytesServed)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+
 					<div>
 						<h4
 							css={{

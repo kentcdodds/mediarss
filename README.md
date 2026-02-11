@@ -36,6 +36,28 @@
 
 ![Media Details](docs/screenshots/media-details.png)
 
+## Analytics
+
+MediaRSS includes built-in feed and media analytics in the admin dashboard:
+
+- **Feed analytics** (per feed + per token):
+  - RSS fetches
+  - media requests
+  - download starts
+  - bytes served
+  - unique clients
+  - top media items
+  - top clients
+  - daily activity trends
+- **Media analytics** (aggregated across all feed tokens):
+  - requests/download starts
+  - bytes served
+  - unique clients
+  - per-feed/per-token breakdowns
+  - top clients
+  - daily activity trends
+- **Time windows**: switch between 7d / 30d / 90d directly in the UI
+
 ## Self-Hosting
 
 ### Prerequisites
@@ -225,6 +247,9 @@ The following environment variables can be configured:
   - Each media root has a name (used in URLs) and a path (filesystem location)
   - **Names must be unique** - duplicate names are not allowed
   - Names should be URL-safe (alphanumeric, hyphens, underscores)
+- `ANALYTICS_RETENTION_DAYS`: Number of days to retain feed analytics events
+  (default: `180`)
+  - Older analytics events are pruned automatically on startup
 
 ### Securing the Admin Dashboard
 

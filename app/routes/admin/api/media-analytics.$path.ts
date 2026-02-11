@@ -12,22 +12,8 @@ import {
 } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
+import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
-
-const DEFAULT_WINDOW_DAYS = 30
-const MAX_WINDOW_DAYS = 365
-
-function parseWindowDays(request: Request): number {
-	const { searchParams } = new URL(request.url)
-	const requested = Number.parseInt(
-		searchParams.get('days') ?? `${DEFAULT_WINDOW_DAYS}`,
-		10,
-	)
-	if (!Number.isFinite(requested) || requested <= 0) {
-		return DEFAULT_WINDOW_DAYS
-	}
-	return Math.min(requested, MAX_WINDOW_DAYS)
-}
 
 function getTokenMetadata(
 	token: string,
@@ -118,7 +104,7 @@ export default {
 			return Response.json({ error: 'File not found' }, { status: 404 })
 		}
 
-		const windowDays = parseWindowDays(context.request)
+		const windowDays = parseAnalyticsWindowDays(context.request)
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60
 

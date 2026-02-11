@@ -11,9 +11,8 @@ import {
 	getFeedTopClientAnalytics,
 	getFeedTopMediaItemAnalytics,
 } from '#app/db/feed-analytics-events.ts'
+import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
 
-const DEFAULT_WINDOW_DAYS = 30
-const MAX_WINDOW_DAYS = 365
 const TOP_ITEMS_LIMIT = 20
 
 type TokenWithMetrics = {
@@ -37,18 +36,6 @@ type FeedTokenMetadata = {
 	createdAt: number
 	lastUsedAt: number | null
 	revokedAt: number | null
-}
-
-function parseWindowDays(request: Request): number {
-	const { searchParams } = new URL(request.url)
-	const requested = Number.parseInt(
-		searchParams.get('days') ?? `${DEFAULT_WINDOW_DAYS}`,
-		10,
-	)
-	if (!Number.isFinite(requested) || requested <= 0) {
-		return DEFAULT_WINDOW_DAYS
-	}
-	return Math.min(requested, MAX_WINDOW_DAYS)
 }
 
 function buildTokenAnalytics(
@@ -119,7 +106,7 @@ export default {
 	middleware: [],
 	action(context) {
 		const { id } = context.params
-		const windowDays = parseWindowDays(context.request)
+		const windowDays = parseAnalyticsWindowDays(context.request)
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60
 

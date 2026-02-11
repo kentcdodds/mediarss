@@ -201,6 +201,16 @@ test('feed analytics endpoint defaults analytics window for invalid values', () 
 	)
 	expect(invalidTextResponse.status).toBe(200)
 
+	const decimalResponse = analyticsHandler.action(
+		createActionContext(ctx.feed.id, '7.5'),
+	)
+	expect(decimalResponse.status).toBe(200)
+
+	const mixedResponse = analyticsHandler.action(
+		createActionContext(ctx.feed.id, '30abc'),
+	)
+	expect(mixedResponse.status).toBe(200)
+
 	const negativeResponse = analyticsHandler.action(
 		createActionContext(ctx.feed.id, -5),
 	)
@@ -208,9 +218,13 @@ test('feed analytics endpoint defaults analytics window for invalid values', () 
 
 	return Promise.all([
 		invalidTextResponse.json(),
+		decimalResponse.json(),
+		mixedResponse.json(),
 		negativeResponse.json(),
-	]).then(([invalidTextData, negativeData]) => {
+	]).then(([invalidTextData, decimalData, mixedData, negativeData]) => {
 		expect(invalidTextData.windowDays).toBe(30)
+		expect(decimalData.windowDays).toBe(30)
+		expect(mixedData.windowDays).toBe(30)
 		expect(negativeData.windowDays).toBe(30)
 	})
 })

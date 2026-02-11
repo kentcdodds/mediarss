@@ -308,14 +308,28 @@ test('media analytics endpoint defaults analytics window for invalid values', as
 	)
 	expect(invalidTextResponse.status).toBe(200)
 
+	const decimalResponse = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, '7.5'),
+	)
+	expect(decimalResponse.status).toBe(200)
+
+	const mixedResponse = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, '30abc'),
+	)
+	expect(mixedResponse.status).toBe(200)
+
 	const negativeResponse = await analyticsHandler.action(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, -10),
 	)
 	expect(negativeResponse.status).toBe(200)
 
 	const invalidTextData = await invalidTextResponse.json()
+	const decimalData = await decimalResponse.json()
+	const mixedData = await mixedResponse.json()
 	const negativeData = await negativeResponse.json()
 	expect(invalidTextData.windowDays).toBe(30)
+	expect(decimalData.windowDays).toBe(30)
+	expect(mixedData.windowDays).toBe(30)
 	expect(negativeData.windowDays).toBe(30)
 })
 

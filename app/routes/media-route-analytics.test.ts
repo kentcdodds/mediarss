@@ -110,6 +110,24 @@ function createMediaActionContext(
 	} as unknown as MediaActionContext
 }
 
+function createMediaActionContextWithoutPath(
+	token: string,
+	headers: Record<string, string> = {},
+): MediaActionContext {
+	const request = new Request(`http://localhost/media/${token}`, {
+		headers,
+	})
+	return {
+		request,
+		method: 'GET',
+		url: new URL(request.url),
+		params: {
+			token,
+			path: undefined,
+		},
+	} as unknown as MediaActionContext
+}
+
 test('media route logs media_request analytics for full and ranged requests', async () => {
 	await using ctx = await createMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
@@ -220,6 +238,72 @@ test('media route does not log analytics when token is missing', async () => {
 			`,
 		)
 		.get(missingToken)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics when path param is missing', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+
+	const response = await mediaHandler.action(
+		createMediaActionContextWithoutPath(ctx.token),
+	)
+	expect(response.status).toBe(400)
+	expect(await response.text()).toBe('File path required')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for malformed path encoding', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, '%E0%A4%A'),
+	)
+	expect(response.status).toBe(400)
+	expect(await response.text()).toBe('Invalid path encoding')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(events?.count ?? 0).toBe(0)
+})
+
+test('media route does not log analytics for invalid path format', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, ctx.rootName),
+	)
+	expect(response.status).toBe(400)
+	expect(await response.text()).toBe('Invalid path format')
+
+	const events = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ?;
+			`,
+		)
+		.get(ctx.feed.id)
 
 	expect(events?.count ?? 0).toBe(0)
 })

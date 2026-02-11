@@ -123,6 +123,23 @@ describe('analytics-request helpers', () => {
 		expect(getClientIp(request)).toBe('198.51.100.44')
 	})
 
+	test('normalizes quoted forwarded and real IP values', () => {
+		const forwardedRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"203.0.113.33", 198.51.100.12',
+			},
+		})
+		const realIpRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '"unknown", ',
+				'X-Real-IP': '"198.51.100.99"',
+			},
+		})
+
+		expect(getClientIp(forwardedRequest)).toBe('203.0.113.33')
+		expect(getClientIp(realIpRequest)).toBe('198.51.100.99')
+	})
+
 	test('prefers X-Forwarded-For over X-Real-IP for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {

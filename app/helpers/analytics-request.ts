@@ -1,3 +1,14 @@
+function normalizeClientIpToken(value: string): string | null {
+	const trimmedValue = value.trim()
+	if (!trimmedValue) return null
+
+	const unquotedValue = trimmedValue.replace(/^"(.+)"$/, '$1').trim()
+	if (!unquotedValue) return null
+	if (unquotedValue.toLowerCase() === 'unknown') return null
+
+	return unquotedValue
+}
+
 /**
  * Parse the best-effort client IP from request headers.
  */
@@ -5,15 +16,14 @@ export function getClientIp(request: Request): string | null {
 	const forwardedFor = request.headers.get('X-Forwarded-For')
 	if (forwardedFor) {
 		for (const candidate of forwardedFor.split(',')) {
-			const trimmedCandidate = candidate.trim()
-			if (trimmedCandidate && trimmedCandidate.toLowerCase() !== 'unknown') {
-				return trimmedCandidate
-			}
+			const normalizedCandidate = normalizeClientIpToken(candidate)
+			if (normalizedCandidate) return normalizedCandidate
 		}
 	}
 
-	const realIp = request.headers.get('X-Real-IP')?.trim()
-	if (realIp && realIp.toLowerCase() !== 'unknown') return realIp
+	const realIp = request.headers.get('X-Real-IP')
+	const normalizedRealIp = realIp ? normalizeClientIpToken(realIp) : null
+	if (normalizedRealIp) return normalizedRealIp
 
 	return null
 }

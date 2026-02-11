@@ -752,6 +752,54 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers nested forwarded for tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedParameterizedForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded:
+						'for="unknown, for=198.51.100.228;proto=https";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.228',
+			},
+		})
+
+		expect(getClientIp(malformedNestedParameterizedForRequest)).toBe(
+			'198.51.100.228',
+		)
+		expect(getClientFingerprint(malformedNestedParameterizedForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers nested forwarded ipv6 tokens with parameter suffixes in quoted chains', () => {
+		const malformedNestedIpv6ParameterizedForRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded:
+						'for="unknown, for=[2001:DB8::c]:443;proto=https";proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '2001:db8::c',
+			},
+		})
+
+		expect(getClientIp(malformedNestedIpv6ParameterizedForRequest)).toBe(
+			'2001:db8::c',
+		)
+		expect(getClientFingerprint(malformedNestedIpv6ParameterizedForRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('recovers malformed Forwarded chains with proto on trailing segment', () => {
 		const request = new Request('https://example.com/media', {
 			headers: {

@@ -246,9 +246,17 @@ function getForwardedHeaderCandidates(forwardedHeader: string): string[] {
 		const key = trimmedCandidate.slice(0, equalsIndex).trim().toLowerCase()
 		if (key !== 'for') return trimmedCandidate
 
-		return stripDanglingBoundaryQuotes(
+		let normalizedForValue = stripDanglingBoundaryQuotes(
 			trimmedCandidate.slice(equalsIndex + 1).trim(),
 		)
+		const parameterDelimiterIndex = normalizedForValue.indexOf(';')
+		if (parameterDelimiterIndex !== -1) {
+			normalizedForValue = normalizedForValue
+				.slice(0, parameterDelimiterIndex)
+				.trim()
+		}
+
+		return stripDanglingBoundaryQuotes(normalizedForValue)
 	}
 
 	for (const rawSegment of splitCommaSeparatedHeaderValues(forwardedHeader)) {

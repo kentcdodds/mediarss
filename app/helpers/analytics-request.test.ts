@@ -215,6 +215,27 @@ describe('analytics-request helpers', () => {
 		)
 	})
 
+	test('recovers dangling leading quotes in X-Real-IP values', () => {
+		const danglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Real-IP': '"198.51.100.251',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Real-IP': '198.51.100.251',
+			},
+		})
+
+		expect(getClientIp(danglingLeadingQuoteRequest)).toBe('198.51.100.251')
+		expect(getClientFingerprint(danglingLeadingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
 	test('uses first X-Forwarded-For address for fingerprinting', () => {
 		const requestA = new Request('https://example.com/media', {
 			headers: {
@@ -289,6 +310,27 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('203.0.113.250')
 		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers dangling leading quotes in X-Forwarded-For chains', () => {
+		const danglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					'X-Forwarded-For': '"unknown, 203.0.113.251',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '203.0.113.251',
+			},
+		})
+
+		expect(getClientIp(danglingLeadingQuoteRequest)).toBe('203.0.113.251')
+		expect(getClientFingerprint(danglingLeadingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})
@@ -451,6 +493,27 @@ describe('analytics-request helpers', () => {
 
 		expect(getClientIp(danglingTrailingQuoteRequest)).toBe('198.51.100.250')
 		expect(getClientFingerprint(danglingTrailingQuoteRequest)).toBe(
+			getClientFingerprint(canonicalRequest),
+		)
+	})
+
+	test('recovers dangling leading quotes in Forwarded for values', () => {
+		const danglingLeadingQuoteRequest = new Request(
+			'https://example.com/media',
+			{
+				headers: {
+					Forwarded: 'for="198.51.100.252;proto=https',
+				},
+			},
+		)
+		const canonicalRequest = new Request('https://example.com/media', {
+			headers: {
+				'X-Forwarded-For': '198.51.100.252',
+			},
+		})
+
+		expect(getClientIp(danglingLeadingQuoteRequest)).toBe('198.51.100.252')
+		expect(getClientFingerprint(danglingLeadingQuoteRequest)).toBe(
 			getClientFingerprint(canonicalRequest),
 		)
 	})

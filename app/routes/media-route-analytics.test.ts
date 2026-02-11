@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -198,6 +198,20 @@ function createMediaActionContextWithoutPath(
 	} as unknown as MediaActionContext
 }
 
+async function withAnalyticsTableUnavailable(
+	run: () => Promise<void>,
+): Promise<void> {
+	const backupTableName = `feed_analytics_events_backup_${Date.now()}_${Math.random()
+		.toString(36)
+		.slice(2)}`
+	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
+	try {
+		await run()
+	} finally {
+		db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+	}
+}
+
 test('media route logs media_request analytics for full and ranged requests', async () => {
 	await using ctx = await createMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
@@ -286,6 +300,41 @@ test('media route logs media_request analytics for full and ranged requests', as
 			Boolean(event.client_fingerprint),
 	)
 	expect(hasPartialStartEvent).toBe(true)
+})
+
+test('media route still serves files when analytics writes fail', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+
+	try {
+		await withAnalyticsTableUnavailable(async () => {
+			const response = await mediaHandler.action(
+				createMediaActionContext(ctx.token, pathParam, {
+					'User-Agent': 'AntennaPod/3.0',
+					'X-Forwarded-For': '198.51.100.42',
+				}),
+			)
+
+			expect(response.status).toBe(200)
+			expect(await response.text()).toBe('0123456789abcdefghijklmnopqrstuvwxyz')
+		})
+		expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+	} finally {
+		consoleErrorSpy.mockRestore()
+	}
+
+	const analyticsCount = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request';
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(analyticsCount?.count ?? 0).toBe(0)
 })
 
 test('media route logs analytics for curated feed items', async () => {

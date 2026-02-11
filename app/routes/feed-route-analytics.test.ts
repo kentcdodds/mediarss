@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import {
 	createCuratedFeedToken,
@@ -98,6 +98,20 @@ function createFeedActionContext(
 	} as unknown as FeedActionContext
 }
 
+async function withAnalyticsTableUnavailable(
+	run: () => Promise<void>,
+): Promise<void> {
+	const backupTableName = `feed_analytics_events_backup_${Date.now()}_${Math.random()
+		.toString(36)
+		.slice(2)}`
+	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
+	try {
+		await run()
+	} finally {
+		db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+	}
+}
+
 test('feed route logs rss_fetch analytics for successful responses', async () => {
 	using ctx = createCuratedFeedRouteTestContext()
 
@@ -142,6 +156,42 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 		client_name: 'Pocket Casts',
 	})
 	expect(event?.client_fingerprint).toBeTruthy()
+})
+
+test('feed route still returns rss when analytics writes fail', async () => {
+	using ctx = createCuratedFeedRouteTestContext()
+	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+
+	try {
+		await withAnalyticsTableUnavailable(async () => {
+			const response = await feedHandler.action(
+				createFeedActionContext(ctx.token, {
+					'User-Agent': 'Pocket Casts/7.0',
+					'X-Forwarded-For': '203.0.113.25',
+				}),
+			)
+			expect(response.status).toBe(200)
+			expect(response.headers.get('Content-Type')).toContain(
+				'application/rss+xml',
+			)
+			expect(await response.text()).toContain('<rss')
+		})
+		expect(consoleErrorSpy).toHaveBeenCalledTimes(1)
+	} finally {
+		consoleErrorSpy.mockRestore()
+	}
+
+	const analyticsCount = db
+		.query<{ count: number }, [string]>(
+			sql`
+				SELECT COUNT(*) AS count
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch';
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(analyticsCount?.count ?? 0).toBe(0)
 })
 
 test('feed route stores null client metadata when request lacks client traits', async () => {

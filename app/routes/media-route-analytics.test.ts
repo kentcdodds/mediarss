@@ -5427,24 +5427,26 @@ test('media route preserves cross-header precedence across segment combination m
 	const xRealIpValues = crossHeaderXRealIpValues
 	const userAgent = 'Pocket Casts/7.0'
 
+	const latestClientEventQuery = db.query<
+		{
+			client_fingerprint: string | null
+			client_name: string | null
+		},
+		[string]
+	>(
+		sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+	)
 	const readLatestClientEvent = () =>
-		db
-			.query<
-				{
-					client_fingerprint: string | null
-					client_name: string | null
-				},
-				[string]
-			>(
-				sql`
-						SELECT client_fingerprint, client_name
-						FROM feed_analytics_events
-						WHERE feed_id = ? AND event_type = 'media_request'
-						ORDER BY rowid DESC
-						LIMIT 1;
-					`,
-			)
-			.get(ctx.feed.id) ?? { client_fingerprint: null, client_name: null }
+		latestClientEventQuery.get(ctx.feed.id) ?? {
+			client_fingerprint: null,
+			client_name: null,
+		}
 
 	for (const xForwardedForValue of xForwardedForValues) {
 		for (const forwardedValue of forwardedValues) {
@@ -5498,24 +5500,26 @@ test('media route preserves cross-header precedence across segment combination m
 	const userAgent = 'CustomPodClient/1.2 (Linux)'
 	const expectedClientName = 'CustomPodClient/1.2'
 
+	const latestClientEventQuery = db.query<
+		{
+			client_fingerprint: string | null
+			client_name: string | null
+		},
+		[string]
+	>(
+		sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+	)
 	const readLatestClientEvent = () =>
-		db
-			.query<
-				{
-					client_fingerprint: string | null
-					client_name: string | null
-				},
-				[string]
-			>(
-				sql`
-						SELECT client_fingerprint, client_name
-						FROM feed_analytics_events
-						WHERE feed_id = ? AND event_type = 'media_request'
-						ORDER BY rowid DESC
-						LIMIT 1;
-					`,
-			)
-			.get(ctx.feed.id) ?? { client_fingerprint: null, client_name: null }
+		latestClientEventQuery.get(ctx.feed.id) ?? {
+			client_fingerprint: null,
+			client_name: null,
+		}
 
 	for (const xForwardedForValue of xForwardedForValues) {
 		for (const forwardedValue of forwardedValues) {
@@ -5567,24 +5571,26 @@ test('media route preserves cross-header precedence across segment combination m
 	const forwardedValues = crossHeaderForwardedValues
 	const xRealIpValues = crossHeaderXRealIpValues
 
+	const latestClientEventQuery = db.query<
+		{
+			client_fingerprint: string | null
+			client_name: string | null
+		},
+		[string]
+	>(
+		sql`
+				SELECT client_fingerprint, client_name
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
+			`,
+	)
 	const readLatestClientEvent = () =>
-		db
-			.query<
-				{
-					client_fingerprint: string | null
-					client_name: string | null
-				},
-				[string]
-			>(
-				sql`
-						SELECT client_fingerprint, client_name
-						FROM feed_analytics_events
-						WHERE feed_id = ? AND event_type = 'media_request'
-						ORDER BY rowid DESC
-						LIMIT 1;
-					`,
-			)
-			.get(ctx.feed.id) ?? { client_fingerprint: null, client_name: null }
+		latestClientEventQuery.get(ctx.feed.id) ?? {
+			client_fingerprint: null,
+			client_name: null,
+		}
 
 	for (const xForwardedForValue of xForwardedForValues) {
 		for (const forwardedValue of forwardedValues) {

@@ -705,6 +705,45 @@ test('feed route parses quoted whole-chain Forwarded for values', async () => {
 	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
 })
 
+test('feed route recovers from malformed quoted Forwarded chains', async () => {
+	using ctx = createDirectoryFeedRouteTestContext()
+
+	const responseWithMalformedQuotedForwardedForChain = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			Forwarded: 'for="unknown, 203.0.113.215, for=198.51.100.215;proto=https',
+		}),
+	)
+	expect(responseWithMalformedQuotedForwardedForChain.status).toBe(200)
+
+	const responseWithEquivalentForwardedFor = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'X-Forwarded-For': '198.51.100.215',
+		}),
+	)
+	expect(responseWithEquivalentForwardedFor.status).toBe(200)
+
+	const events = db
+		.query<
+			{
+				client_fingerprint: string | null
+			},
+			[string]
+		>(
+			sql`
+				SELECT client_fingerprint
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 2;
+			`,
+		)
+		.all(ctx.feed.id)
+
+	expect(events).toHaveLength(2)
+	expect(events[0]?.client_fingerprint).toBeTruthy()
+	expect(events[0]?.client_fingerprint).toBe(events[1]?.client_fingerprint)
+})
+
 test('feed route parses Forwarded when for appears after other parameters', async () => {
 	using ctx = createDirectoryFeedRouteTestContext()
 

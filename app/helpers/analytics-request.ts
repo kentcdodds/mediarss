@@ -94,7 +94,10 @@ function normalizeClientIpToken(value: string): string | null {
 	return normalizedValue
 }
 
-function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
+function splitHeaderValues(
+	headerValue: string,
+	separator: ',' | ';',
+): string[] {
 	const tokens: string[] = []
 	let currentToken = ''
 	let inQuotes = false
@@ -106,7 +109,7 @@ function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
 			currentToken += character
 			continue
 		}
-		if (character === ',' && !inQuotes) {
+		if (character === separator && !inQuotes) {
 			const trimmedToken = currentToken.trim()
 			if (trimmedToken) tokens.push(trimmedToken)
 			currentToken = ''
@@ -117,33 +120,21 @@ function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
 
 	const trimmedToken = currentToken.trim()
 	if (trimmedToken) tokens.push(trimmedToken)
-	return tokens
+
+	if (!inQuotes) return tokens
+
+	return headerValue
+		.split(separator)
+		.map((token) => token.trim())
+		.filter((token) => token.length > 0)
+}
+
+function splitCommaSeparatedHeaderValues(headerValue: string): string[] {
+	return splitHeaderValues(headerValue, ',')
 }
 
 function splitSemicolonSeparatedHeaderValues(headerValue: string): string[] {
-	const tokens: string[] = []
-	let currentToken = ''
-	let inQuotes = false
-
-	for (let i = 0; i < headerValue.length; i++) {
-		const character = headerValue[i]
-		if (character === '"') {
-			inQuotes = !inQuotes
-			currentToken += character
-			continue
-		}
-		if (character === ';' && !inQuotes) {
-			const trimmedToken = currentToken.trim()
-			if (trimmedToken) tokens.push(trimmedToken)
-			currentToken = ''
-			continue
-		}
-		currentToken += character
-	}
-
-	const trimmedToken = currentToken.trim()
-	if (trimmedToken) tokens.push(trimmedToken)
-	return tokens
+	return splitHeaderValues(headerValue, ';')
 }
 
 function getIpHeaderCandidates(headerValue: string): string[] {

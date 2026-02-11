@@ -211,3 +211,38 @@ test('media route does not log analytics for missing files', async () => {
 
 	expect(events?.count ?? 0).toBe(0)
 })
+
+test('media route logs malformed range requests as non-start downloads', async () => {
+	await using ctx = await createMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			Range: 'bytes=invalid',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = db
+		.query<
+			{
+				status_code: number
+				is_download_start: number
+			},
+			[string]
+		>(
+			sql`
+				SELECT status_code, is_download_start
+				FROM feed_analytics_events
+				WHERE feed_id = ? AND event_type = 'media_request'
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1;
+			`,
+		)
+		.get(ctx.feed.id)
+
+	expect(event).toMatchObject({
+		status_code: 200,
+		is_download_start: 0,
+	})
+})

@@ -4,11 +4,11 @@ import {
 	createCuratedFeedToken,
 	revokeCuratedFeedToken,
 } from '#app/db/curated-feed-tokens.ts'
+import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	createDirectoryFeedToken,
 	revokeDirectoryFeedToken,
 } from '#app/db/directory-feed-tokens.ts'
-import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	createDirectoryFeed,
 	deleteDirectoryFeed,

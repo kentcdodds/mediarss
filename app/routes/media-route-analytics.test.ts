@@ -1,6 +1,6 @@
+import { expect, spyOn, test } from 'bun:test'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
-import { expect, spyOn, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'

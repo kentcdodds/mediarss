@@ -1,21 +1,21 @@
 import type { BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import type { CuratedFeed } from '#app/db/types.ts'
 import { isDirectoryFeed } from '#app/db/types.ts'
-import {
-	getCuratedFeedItems,
-	getDirectoryFeedItems,
-} from '#app/helpers/feed-items.ts'
 import {
 	getClientFingerprint,
 	getClientName,
 	isTrackableRssStatus,
 } from '#app/helpers/analytics-request.ts'
+import {
+	getCuratedFeedItems,
+	getDirectoryFeedItems,
+} from '#app/helpers/feed-items.ts'
 import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import type { MediaFile } from '#app/helpers/media.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
-import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 
 /**
  * Get the base URL from the request.

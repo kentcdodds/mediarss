@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import artworkHandler from './artwork.ts'
-import mediaDetailHandler from './media.$path.ts'
 import mediaMetadataHandler from './media.$path.metadata.ts'
+import mediaDetailHandler from './media.$path.ts'
 import mediaStreamHandler from './media-stream.ts'
 
 type ArtworkActionContext = Parameters<typeof artworkHandler.action>[0]

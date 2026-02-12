@@ -114,16 +114,24 @@ export default {
 		const since = now - windowDays * 24 * 60 * 60
 
 		const directoryFeed = getDirectoryFeedById(id)
-		const curatedFeed = directoryFeed ? null : getCuratedFeedById(id)
-		if (!directoryFeed && !curatedFeed) {
-			return Response.json({ error: 'Feed not found' }, { status: 404 })
-		}
+		let feedType: 'directory' | 'curated'
+		let feed: { id: string; name: string }
+		let tokens: Array<FeedTokenMetadata>
 
-		const feed = directoryFeed ?? curatedFeed
-		const feedType = directoryFeed ? 'directory' : 'curated'
-		const tokens = directoryFeed
-			? listDirectoryFeedTokens(id)
-			: listCuratedFeedTokens(id)
+		if (directoryFeed) {
+			feedType = 'directory'
+			feed = directoryFeed
+			tokens = listDirectoryFeedTokens(id)
+		} else {
+			const curatedFeed = getCuratedFeedById(id)
+			if (!curatedFeed) {
+				return Response.json({ error: 'Feed not found' }, { status: 404 })
+			}
+
+			feedType = 'curated'
+			feed = curatedFeed
+			tokens = listCuratedFeedTokens(id)
+		}
 
 		const summary = getFeedAnalyticsSummary(id, since)
 		const tokenMetrics = getFeedAnalyticsByToken(id, since)

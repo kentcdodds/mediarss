@@ -440,7 +440,10 @@ export function isDownloadStartRequest(
 	const match = range.match(/bytes=(\d*)-(\d*)/)
 	if (!match) return responseStatus !== 206
 
-	const start = Number.parseInt(match[1] || '0', 10)
+	const startToken = match[1] ?? ''
+	if (startToken === '') return false
+
+	const start = Number.parseInt(startToken, 10)
 	return start === 0
 }
 

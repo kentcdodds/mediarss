@@ -120,7 +120,7 @@ test('getClientFingerprint returns null when no identifying traits are present',
 	expect(getClientFingerprint(createRequest())).toBeNull()
 })
 
-test('isDownloadStartRequest identifies full and range-start requests', () => {
+test('isDownloadStartRequest treats full responses and range-start requests as download starts', () => {
 	expect(isDownloadStartRequest(createRequest())).toBe(true)
 	expect(
 		isDownloadStartRequest(
@@ -142,7 +142,46 @@ test('isDownloadStartRequest identifies full and range-start requests', () => {
 				Range: 'nonsense',
 			}),
 		),
+	).toBe(true)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'nonsense',
+			}),
+			206,
+		),
 	).toBe(false)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=10-5',
+			}),
+			200,
+		),
+	).toBe(true)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+		),
+	).toBe(false)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+			206,
+		),
+	).toBe(false)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+			200,
+		),
+	).toBe(true)
 })
 
 test('getResponseBytesServed parses valid content length and ignores invalid values', () => {

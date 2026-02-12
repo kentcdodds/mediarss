@@ -428,14 +428,22 @@ export function getClientName(request: Request): string | null {
 /**
  * Determine whether a media request looks like a playback/download start.
  */
-export function isDownloadStartRequest(request: Request): boolean {
+export function isDownloadStartRequest(
+	request: Request,
+	responseStatus?: number,
+): boolean {
+	if (responseStatus === 200) return true
+
 	const range = request.headers.get('Range')?.trim()
 	if (!range) return true
 
-	const match = range.match(/^bytes=(\d+)-(\d*)$/)
-	if (!match) return false
+	const match = range.match(/^bytes=(\d*)-(\d*)$/)
+	if (!match) return responseStatus !== 206
 
-	const start = Number.parseInt(match[1] ?? '0', 10)
+	const startToken = match[1] ?? ''
+	if (startToken === '') return false
+
+	const start = Number.parseInt(startToken, 10)
 	return start === 0
 }
 

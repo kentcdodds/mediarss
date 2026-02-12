@@ -38,6 +38,12 @@ type FeedTokenMetadata = {
 	revokedAt: number | null
 }
 
+type FeedAnalyticsContext = {
+	feedType: 'directory' | 'curated'
+	feed: { id: string; name: string }
+	tokens: Array<FeedTokenMetadata>
+}
+
 function buildTokenAnalytics(
 	tokens: Array<FeedTokenMetadata>,
 	tokenMetrics: ReturnType<typeof getFeedAnalyticsByToken>,
@@ -99,6 +105,28 @@ function buildTokenAnalytics(
 	return byToken
 }
 
+function resolveFeedAnalyticsContext(id: string): FeedAnalyticsContext | null {
+	const directoryFeed = getDirectoryFeedById(id)
+	if (directoryFeed) {
+		return {
+			feedType: 'directory',
+			feed: directoryFeed,
+			tokens: listDirectoryFeedTokens(id),
+		}
+	}
+
+	const curatedFeed = getCuratedFeedById(id)
+	if (!curatedFeed) {
+		return null
+	}
+
+	return {
+		feedType: 'curated',
+		feed: curatedFeed,
+		tokens: listCuratedFeedTokens(id),
+	}
+}
+
 /**
  * GET /admin/api/feeds/:id/analytics
  */
@@ -113,24 +141,9 @@ export default {
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60
 
-		const directoryFeed = getDirectoryFeedById(id)
-		let feedType: 'directory' | 'curated'
-		let feed: { id: string; name: string }
-		let tokens: Array<FeedTokenMetadata>
-
-		if (directoryFeed) {
-			feedType = 'directory'
-			feed = directoryFeed
-			tokens = listDirectoryFeedTokens(id)
-		} else {
-			const curatedFeed = getCuratedFeedById(id)
-			if (!curatedFeed) {
-				return Response.json({ error: 'Feed not found' }, { status: 404 })
-			}
-
-			feedType = 'curated'
-			feed = curatedFeed
-			tokens = listCuratedFeedTokens(id)
+		const feedContext = resolveFeedAnalyticsContext(id)
+		if (!feedContext) {
+			return Response.json({ error: 'Feed not found' }, { status: 404 })
 		}
 
 		const summary = getFeedAnalyticsSummary(id, since)
@@ -142,18 +155,17 @@ export default {
 		)
 		const topClients = getFeedTopClientAnalytics(id, since, TOP_ITEMS_LIMIT)
 		const daily = getFeedDailyAnalytics(id, since)
-		const byToken = buildTokenAnalytics(tokens, tokenMetrics)
 
 		return Response.json({
 			feed: {
-				id: feed.id,
-				name: feed.name,
-				type: feedType,
+				id: feedContext.feed.id,
+				name: feedContext.feed.name,
+				type: feedContext.feedType,
 			},
 			windowDays,
 			since,
 			summary,
-			byToken,
+			byToken: buildTokenAnalytics(feedContext.tokens, tokenMetrics),
 			topMediaItems,
 			topClients,
 			daily,

@@ -289,10 +289,6 @@ export function MediaDetail(handle: Handle) {
 				status: 'error',
 				message: err instanceof Error ? err.message : 'Unknown error',
 			}
-			analyticsState = {
-				status: 'error',
-				message: err instanceof Error ? err.message : 'Unknown error',
-			}
 			handle.update()
 		}
 	}

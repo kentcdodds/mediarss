@@ -71,23 +71,6 @@ export type AnalyticsEventType = z.infer<typeof AnalyticsEventTypeSchema>
 export const AnalyticsFeedTypeSchema = z.enum(['directory', 'curated'])
 export type AnalyticsFeedType = z.infer<typeof AnalyticsFeedTypeSchema>
 
-export const FeedAnalyticsEventSchema = z.object({
-	id: z.string(),
-	eventType: AnalyticsEventTypeSchema,
-	feedId: z.string(),
-	feedType: AnalyticsFeedTypeSchema,
-	token: z.string(),
-	mediaRoot: z.string().nullable(),
-	relativePath: z.string().nullable(),
-	isDownloadStart: z.number(),
-	bytesServed: z.number().nullable(),
-	statusCode: z.number(),
-	clientFingerprint: z.string().nullable(),
-	clientName: z.string().nullable(),
-	createdAt: z.number(),
-})
-export type FeedAnalyticsEvent = z.infer<typeof FeedAnalyticsEventSchema>
-
 /**
  * Token for accessing a directory feed.
  * Tokens are the only public identifier used in feed URLs.

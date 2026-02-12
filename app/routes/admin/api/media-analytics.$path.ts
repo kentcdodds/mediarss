@@ -17,6 +17,11 @@ import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 type FeedType = 'directory' | 'curated'
 type TokenTableName = 'directory_feed_tokens' | 'curated_feed_tokens'
 type FeedTableName = 'directory_feeds' | 'curated_feeds'
+const DEFAULT_MAX_SQLITE_VARIABLE_NUMBER = 32_766
+const SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX = 'MAX_VARIABLE_NUMBER='
+const SQLITE_MAX_VARIABLE_NUMBER_ENV =
+	'MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER'
+let cachedCompiledMaxSqliteVariableNumber: number | null = null
 
 type FeedToken = {
 	feedId: string
@@ -30,6 +35,50 @@ type TokenMetadata = {
 	revokedAt: number | null
 }
 
+function parsePositiveInteger(value: string | undefined): number | null {
+	if (!value) return null
+	const parsed = Number.parseInt(value, 10)
+	if (!Number.isInteger(parsed) || parsed < 1) return null
+	return parsed
+}
+
+function getCompiledMaxSqliteVariableNumber(): number {
+	if (cachedCompiledMaxSqliteVariableNumber !== null) {
+		return cachedCompiledMaxSqliteVariableNumber
+	}
+
+	try {
+		const options = db
+			.query<{ compile_options: string }, []>(sql`PRAGMA compile_options;`)
+			.all()
+		const matchingOption = options
+			.map((option) => option.compile_options)
+			.find((option) =>
+				option.startsWith(SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX),
+			)
+		const parsedLimit = parsePositiveInteger(
+			matchingOption?.slice(
+				SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX.length,
+			),
+		)
+		cachedCompiledMaxSqliteVariableNumber =
+			parsedLimit ?? DEFAULT_MAX_SQLITE_VARIABLE_NUMBER
+	} catch {
+		cachedCompiledMaxSqliteVariableNumber = DEFAULT_MAX_SQLITE_VARIABLE_NUMBER
+	}
+
+	return cachedCompiledMaxSqliteVariableNumber
+}
+
+function getMaxSqliteVariableNumber(): number {
+	const configuredLimit = parsePositiveInteger(
+		Bun.env[SQLITE_MAX_VARIABLE_NUMBER_ENV],
+	)
+	const compiledLimit = getCompiledMaxSqliteVariableNumber()
+	if (configuredLimit === null) return compiledLimit
+	return Math.min(configuredLimit, compiledLimit)
+}
+
 function listTokenMetadataByFeedTokensFromTable(
 	tableName: TokenTableName,
 	feedType: FeedType,
@@ -39,7 +88,7 @@ function listTokenMetadataByFeedTokensFromTable(
 		return new Map()
 	}
 
-	const maxSqliteVariables = 999
+	const maxSqliteVariables = getMaxSqliteVariableNumber()
 	const variablesPerToken = 2
 	const maxTokensPerBatch = Math.max(
 		1,

@@ -60,6 +60,18 @@ function createCuratedTestFeedContext() {
 }
 
 type AnalyticsActionContext = Parameters<typeof analyticsHandler.action>[0]
+type MinimalFeedActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string>
+}
+
+function asActionContext(
+	context: MinimalFeedActionContext,
+): AnalyticsActionContext {
+	return context as AnalyticsActionContext
+}
 
 function createActionContext(
 	id: string,
@@ -69,12 +81,12 @@ function createActionContext(
 		`http://localhost/admin/api/feeds/${id}/analytics?days=${days}`,
 	)
 
-	return {
+	return asActionContext({
 		request,
 		method: 'GET',
 		url: new URL(request.url),
 		params: { id },
-	} as unknown as AnalyticsActionContext
+	})
 }
 
 test('feed analytics endpoint returns summary, token breakdown, and top clients', async () => {
@@ -265,16 +277,13 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 	})
 })
 
-test('feed analytics endpoint clamps analytics window days to max', () => {
+test('feed analytics endpoint clamps analytics window days to max', async () => {
 	using ctx = createTestFeedContext()
-	const response = analyticsHandler.action(
+	const response = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, 9999),
 	)
 	expect(response.status).toBe(200)
-
-	return response.json().then((data) => {
-		expect(data.windowDays).toBe(365)
-	})
+	expect((await response.json()).windowDays).toBe(365)
 })
 
 test('feed analytics endpoint clamps huge integer window values', async () => {
@@ -286,43 +295,40 @@ test('feed analytics endpoint clamps huge integer window values', async () => {
 	expect((await response.json()).windowDays).toBe(365)
 })
 
-test('feed analytics endpoint defaults analytics window for invalid values', () => {
+test('feed analytics endpoint defaults analytics window for invalid values', async () => {
 	using ctx = createTestFeedContext()
 
-	const invalidTextResponse = analyticsHandler.action(
+	const invalidTextResponse = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, 'abc'),
 	)
 	expect(invalidTextResponse.status).toBe(200)
 
-	const decimalResponse = analyticsHandler.action(
+	const decimalResponse = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, '7.5'),
 	)
 	expect(decimalResponse.status).toBe(200)
 
-	const mixedResponse = analyticsHandler.action(
+	const mixedResponse = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, '30abc'),
 	)
 	expect(mixedResponse.status).toBe(200)
 
-	const negativeResponse = analyticsHandler.action(
+	const negativeResponse = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, -5),
 	)
 	expect(negativeResponse.status).toBe(200)
 
-	return Promise.all([
-		invalidTextResponse.json(),
-		decimalResponse.json(),
-		mixedResponse.json(),
-		negativeResponse.json(),
-	]).then(([invalidTextData, decimalData, mixedData, negativeData]) => {
-		expect(invalidTextData.windowDays).toBe(30)
-		expect(decimalData.windowDays).toBe(30)
-		expect(mixedData.windowDays).toBe(30)
-		expect(negativeData.windowDays).toBe(30)
-	})
+	const invalidTextData = await invalidTextResponse.json()
+	const decimalData = await decimalResponse.json()
+	const mixedData = await mixedResponse.json()
+	const negativeData = await negativeResponse.json()
+	expect(invalidTextData.windowDays).toBe(30)
+	expect(decimalData.windowDays).toBe(30)
+	expect(mixedData.windowDays).toBe(30)
+	expect(negativeData.windowDays).toBe(30)
 })
 
-test('feed analytics endpoint supports curated feeds', () => {
+test('feed analytics endpoint supports curated feeds', async () => {
 	using ctx = createCuratedTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `curated-deleted-token-${Date.now()}`
@@ -356,39 +362,39 @@ test('feed analytics endpoint supports curated feeds', () => {
 		createdAt: now - 20,
 	})
 
-	const response = analyticsHandler.action(createActionContext(ctx.feed.id))
+	const response = await analyticsHandler.action(
+		createActionContext(ctx.feed.id),
+	)
 	expect(response.status).toBe(200)
-
-	return response.json().then((data) => {
-		expect(data.feed).toMatchObject({
-			id: ctx.feed.id,
-			name: ctx.feed.name,
-			type: 'curated',
-		})
-		expect(data.summary).toMatchObject({
-			mediaRequests: 2,
-			downloadStarts: 1,
-			bytesServed: 5000,
-		})
-		expect(data.byToken).toHaveLength(2)
-		const knownToken = data.byToken.find(
-			(row: { token: string }) => row.token === ctx.token.token,
-		)
-		expect(knownToken).toMatchObject({
-			token: ctx.token.token,
-			label: 'Curated Token',
-		})
-		const deletedTokenRow = data.byToken.find(
-			(row: { token: string }) => row.token === deletedToken,
-		)
-		expect(deletedTokenRow).toMatchObject({
-			token: deletedToken,
-			label: 'Deleted token',
-			createdAt: null,
-			mediaRequests: 1,
-			downloadStarts: 0,
-			bytesServed: 800,
-		})
+	const data = await response.json()
+	expect(data.feed).toMatchObject({
+		id: ctx.feed.id,
+		name: ctx.feed.name,
+		type: 'curated',
+	})
+	expect(data.summary).toMatchObject({
+		mediaRequests: 2,
+		downloadStarts: 1,
+		bytesServed: 5000,
+	})
+	expect(data.byToken).toHaveLength(2)
+	const knownToken = data.byToken.find(
+		(row: { token: string }) => row.token === ctx.token.token,
+	)
+	expect(knownToken).toMatchObject({
+		token: ctx.token.token,
+		label: 'Curated Token',
+	})
+	const deletedTokenRow = data.byToken.find(
+		(row: { token: string }) => row.token === deletedToken,
+	)
+	expect(deletedTokenRow).toMatchObject({
+		token: deletedToken,
+		label: 'Deleted token',
+		createdAt: null,
+		mediaRequests: 1,
+		downloadStarts: 0,
+		bytesServed: 800,
 	})
 })
 
@@ -404,12 +410,14 @@ test('feed analytics endpoint validates required feed id param', async () => {
 	const request = new Request(
 		'http://localhost/admin/api/feeds//analytics?days=30',
 	)
-	const response = await analyticsHandler.action({
-		request,
-		method: 'GET',
-		url: new URL(request.url),
-		params: {},
-	} as unknown as AnalyticsActionContext)
+	const response = await analyticsHandler.action(
+		asActionContext({
+			request,
+			method: 'GET',
+			url: new URL(request.url),
+			params: {},
+		}),
+	)
 
 	expect(response.status).toBe(400)
 	expect(await response.json()).toEqual({ error: 'Feed id required' })

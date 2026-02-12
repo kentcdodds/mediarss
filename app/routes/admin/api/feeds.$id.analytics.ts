@@ -140,7 +140,7 @@ export default {
 			since,
 			TOP_ITEMS_LIMIT,
 		)
-		const topClients = getFeedTopClientAnalytics(id, since)
+		const topClients = getFeedTopClientAnalytics(id, since, TOP_ITEMS_LIMIT)
 		const daily = getFeedDailyAnalytics(id, since)
 		const byToken = buildTokenAnalytics(tokens, tokenMetrics)
 

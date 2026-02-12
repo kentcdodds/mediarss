@@ -438,7 +438,7 @@ export function isDownloadStartRequest(
 	if (!range) return true
 
 	const match = range.match(/bytes=(\d*)-(\d*)/)
-	if (!match) return responseStatus === 206 ? false : true
+	if (!match) return responseStatus !== 206
 
 	const start = Number.parseInt(match[1] || '0', 10)
 	return start === 0

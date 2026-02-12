@@ -22,7 +22,9 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
+import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
 import { Link } from './router.tsx'
 
 type DirectoryFeed = {
@@ -4094,11 +4096,6 @@ function FeedAnalyticsSection() {
 
 		const { summary, byToken, topMediaItems, topClients, daily } =
 			analyticsState.data
-		const maxDailyRequests = Math.max(
-			1,
-			...daily.map((point) => point.mediaRequests),
-		)
-
 		return (
 			<div
 				css={{
@@ -4230,77 +4227,7 @@ function FeedAnalyticsSection() {
 						gap: spacing.lg,
 					}}
 				>
-					<div>
-						<h4
-							css={{
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.semibold,
-								margin: `0 0 ${spacing.sm} 0`,
-								color: colors.text,
-							}}
-						>
-							Top Clients
-						</h4>
-						{topClients.length === 0 ? (
-							<p
-								css={{
-									margin: 0,
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-								}}
-							>
-								No client analytics yet.
-							</p>
-						) : (
-							<ul
-								css={{
-									listStyle: 'none',
-									padding: 0,
-									margin: 0,
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
-								}}
-							>
-								{topClients.slice(0, 8).map((client) => (
-									<li
-										key={`${client.clientName}-${client.lastSeenAt ?? 0}`}
-										css={{
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
-											backgroundColor: colors.background,
-										}}
-									>
-										<div
-											css={{
-												fontSize: typography.fontSize.sm,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.text,
-											}}
-										>
-											{client.clientName}
-										</div>
-										<div
-											css={{
-												marginTop: spacing.xs,
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												display: 'flex',
-												gap: spacing.sm,
-												flexWrap: 'wrap',
-											}}
-										>
-											<span>{client.downloadStarts} starts</span>
-											<span>{client.mediaRequests} requests</span>
-											<span>{client.uniqueClients} clients</span>
-											<span>{formatFileSize(client.bytesServed)}</span>
-										</div>
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
+					<AnalyticsTopClientsList clients={topClients} />
 
 					<div>
 						<h4
@@ -4375,84 +4302,7 @@ function FeedAnalyticsSection() {
 						)}
 					</div>
 
-					<div>
-						<h4
-							css={{
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.semibold,
-								margin: `0 0 ${spacing.sm} 0`,
-								color: colors.text,
-							}}
-						>
-							Daily Activity
-						</h4>
-						{daily.length === 0 ? (
-							<p
-								css={{
-									margin: 0,
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-								}}
-							>
-								No daily activity yet.
-							</p>
-						) : (
-							<div
-								css={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.xs,
-								}}
-							>
-								{daily.slice(-14).map((point) => (
-									<div
-										key={point.day}
-										css={{
-											display: 'grid',
-											gridTemplateColumns: '68px 1fr 52px',
-											alignItems: 'center',
-											gap: spacing.sm,
-										}}
-									>
-										<span
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												fontFamily: 'monospace',
-											}}
-										>
-											{point.day.slice(5)}
-										</span>
-										<div
-											css={{
-												height: '8px',
-												borderRadius: radius.sm,
-												backgroundColor: colors.background,
-												overflow: 'hidden',
-											}}
-										>
-											<div
-												css={{
-													height: '100%',
-													width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
-													backgroundColor: colors.primary,
-												}}
-											/>
-										</div>
-										<span
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												textAlign: 'right',
-											}}
-										>
-											{point.mediaRequests}
-										</span>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
+					<AnalyticsDailyActivityChart daily={daily} />
 				</div>
 			</div>
 		)

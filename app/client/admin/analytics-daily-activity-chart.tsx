@@ -7,9 +7,10 @@ type DailyActivityPoint = {
 
 export function AnalyticsDailyActivityChart() {
 	return ({ daily }: { daily: Array<DailyActivityPoint> }) => {
+		const visibleDaily = daily.slice(-14)
 		const maxDailyRequests = Math.max(
 			1,
-			...daily.map((point) => point.mediaRequests),
+			...visibleDaily.map((point) => point.mediaRequests),
 		)
 
 		return (
@@ -42,7 +43,7 @@ export function AnalyticsDailyActivityChart() {
 							gap: spacing.xs,
 						}}
 					>
-						{daily.slice(-14).map((point) => (
+						{visibleDaily.map((point) => (
 							<div
 								key={point.day}
 								css={{

@@ -159,6 +159,29 @@ test('isDownloadStartRequest treats full responses and range-start requests as d
 			200,
 		),
 	).toBe(true)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+		),
+	).toBe(false)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+			206,
+		),
+	).toBe(false)
+	expect(
+		isDownloadStartRequest(
+			createRequest({
+				Range: 'bytes=-500',
+			}),
+			200,
+		),
+	).toBe(true)
 })
 
 test('getResponseBytesServed parses valid content length and ignores invalid values', () => {

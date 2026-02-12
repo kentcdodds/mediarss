@@ -521,6 +521,99 @@ test('media analytics endpoint resolves curated token metadata', async () => {
 	})
 })
 
+test('media analytics endpoint resolves feed names across feed types', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	const curatedFeed = createCuratedFeed({
+		name: `mixed feed-type analytics ${Date.now()}`,
+		description: 'Mixed feed-type name resolution test',
+	})
+	const curatedToken = createCuratedFeedToken({
+		feedId: curatedFeed.id,
+		label: 'Mixed Curated Token',
+	})
+
+	using _cleanupCurated = {
+		[Symbol.dispose]: () => {
+			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
+				curatedFeed.id,
+			)
+			deleteCuratedFeed(curatedFeed.id)
+		},
+	}
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 550,
+		statusCode: 200,
+		clientFingerprint: 'mixed-directory-fingerprint',
+		clientName: 'Apple Podcasts',
+		createdAt: now - 45,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: curatedFeed.id,
+		feedType: 'curated',
+		token: curatedToken.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 650,
+		statusCode: 200,
+		clientFingerprint: 'mixed-curated-fingerprint',
+		clientName: 'Overcast',
+		createdAt: now - 30,
+	})
+
+	const response = await analyticsHandler.action(
+		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.byFeed).toHaveLength(2)
+	expect(data.byToken).toHaveLength(2)
+
+	const directoryByFeedRow = data.byFeed.find(
+		(row: { feedId: string; feedType: string }) =>
+			row.feedId === ctx.feedOne.id && row.feedType === 'directory',
+	)
+	expect(directoryByFeedRow).toMatchObject({
+		feedName: ctx.feedOne.name,
+	})
+
+	const curatedByFeedRow = data.byFeed.find(
+		(row: { feedId: string; feedType: string }) =>
+			row.feedId === curatedFeed.id && row.feedType === 'curated',
+	)
+	expect(curatedByFeedRow).toMatchObject({
+		feedName: curatedFeed.name,
+	})
+
+	const directoryByTokenRow = data.byToken.find(
+		(row: { token: string }) => row.token === ctx.tokenOne.token,
+	)
+	expect(directoryByTokenRow).toMatchObject({
+		feedName: ctx.feedOne.name,
+		label: 'Token One',
+	})
+
+	const curatedByTokenRow = data.byToken.find(
+		(row: { token: string }) => row.token === curatedToken.token,
+	)
+	expect(curatedByTokenRow).toMatchObject({
+		feedName: curatedFeed.name,
+		label: 'Mixed Curated Token',
+	})
+})
+
 test('media analytics endpoint labels missing feed metadata as deleted feed', async () => {
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)

@@ -4,8 +4,10 @@ import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
 import { render } from '#app/helpers/render.ts'
+import { adminAuth } from '#app/middleware/admin-auth.ts'
 import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'
+import { securityHeaders } from '#app/middleware/security-headers.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
@@ -108,7 +110,9 @@ function bunStaticFiles(
 
 const router = createRouter({
 	middleware: [
+		securityHeaders(),
 		rateLimit(),
+		adminAuth(),
 		bunStaticFiles('./public', {
 			cacheControl:
 				Bun.env.NODE_ENV === 'production'

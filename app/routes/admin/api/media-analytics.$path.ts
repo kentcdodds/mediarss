@@ -17,7 +17,7 @@ import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 type FeedType = 'directory' | 'curated'
 type TokenTableName = 'directory_feed_tokens' | 'curated_feed_tokens'
 type FeedTableName = 'directory_feeds' | 'curated_feeds'
-const DEFAULT_MAX_SQLITE_VARIABLE_NUMBER = 32_766
+const DEFAULT_MAX_SQLITE_VARIABLE_NUMBER = 999
 const SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX = 'MAX_VARIABLE_NUMBER='
 const SQLITE_MAX_VARIABLE_NUMBER_ENV =
 	'MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER'

@@ -19,6 +19,10 @@ import analyticsHandler from './media-analytics.$path.ts'
 migrate(db)
 
 type AnalyticsActionContext = Parameters<typeof analyticsHandler.action>[0]
+type MinimalAnalyticsActionContext = Pick<
+	AnalyticsActionContext,
+	'request' | 'method' | 'url' | 'params'
+>
 
 async function createMediaApiTestContext() {
 	const previousMediaPaths = Bun.env.MEDIA_PATHS
@@ -85,12 +89,14 @@ function createActionContext(
 		`http://localhost/admin/api/media-analytics/${encodeURIComponent(pathParam ?? '')}?days=${days}`,
 	)
 
-	return {
+	const context: MinimalAnalyticsActionContext = {
 		request,
 		method: 'GET',
 		url: new URL(request.url),
-		params: { path: pathParam },
-	} as unknown as AnalyticsActionContext
+		params: { path: pathParam ?? '' },
+	}
+
+	return context as AnalyticsActionContext
 }
 
 function createRawActionContext(
@@ -102,12 +108,14 @@ function createRawActionContext(
 		`http://localhost/admin/api/media-analytics/${pathSegment}?days=${days}`,
 	)
 
-	return {
+	const context: MinimalAnalyticsActionContext = {
 		request,
 		method: 'GET',
 		url: new URL(request.url),
-		params: { path: rawPathParam },
-	} as unknown as AnalyticsActionContext
+		params: { path: rawPathParam ?? '' },
+	}
+
+	return context as AnalyticsActionContext
 }
 
 test('media analytics endpoint returns aggregate data across feeds and tokens', async () => {

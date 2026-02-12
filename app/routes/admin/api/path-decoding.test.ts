@@ -64,7 +64,7 @@ test('admin media metadata route rejects malformed path encoding', async () => {
 		request,
 		method: 'PUT',
 		url: new URL(request.url),
-		params: { path: '%E0%A4%A/metadata' },
+		params: { path: '%E0%A4%A' },
 	} as unknown as MediaMetadataActionContext)
 
 	expect(response.status).toBe(400)

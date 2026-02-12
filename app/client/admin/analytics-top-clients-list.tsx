@@ -44,9 +44,9 @@ export function AnalyticsTopClientsList() {
 						gap: spacing.sm,
 					}}
 				>
-					{clients.slice(0, 8).map((client) => (
+					{clients.slice(0, 8).map((client, index) => (
 						<li
-							key={`${client.clientName}-${client.lastSeenAt ?? 0}`}
+							key={`${client.clientName}-${client.lastSeenAt ?? 0}-${index}`}
 							css={{
 								padding: spacing.sm,
 								borderRadius: radius.md,

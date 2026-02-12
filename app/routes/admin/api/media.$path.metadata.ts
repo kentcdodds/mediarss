@@ -10,6 +10,7 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
@@ -211,7 +212,10 @@ export default {
 		const pathWithoutMetadata = splatParam.replace(/\/metadata$/, '')
 
 		// Decode the path parameter
-		const decodedPath = decodeURIComponent(pathWithoutMetadata)
+		const decodedPath = decodePathParam(pathWithoutMetadata)
+		if (decodedPath === null) {
+			return Response.json({ error: 'Invalid path encoding' }, { status: 400 })
+		}
 
 		// Parse root name and relative path from URL
 		const parsed = parseMediaPath(decodedPath)

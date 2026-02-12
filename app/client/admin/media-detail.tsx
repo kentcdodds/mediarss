@@ -3,6 +3,7 @@ import {
 	formatDate,
 	formatDuration,
 	formatFileSize,
+	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
 	artworkLayout,
@@ -16,6 +17,9 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
+import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
+import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
 import { Link } from './router.tsx'
 
 type MediaInfo = {
@@ -78,6 +82,65 @@ type MediaDetailResponse = {
 	directoryFeeds: DirectoryFeed[]
 }
 
+type MediaAnalyticsSummary = {
+	rssFetches: number
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+}
+
+type MediaAnalyticsByToken = MediaAnalyticsSummary & {
+	token: string
+	feedId: string
+	feedType: 'directory' | 'curated'
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+	feedName: string
+	label: string
+	createdAt: number | null
+	lastUsedAt: number | null
+	revokedAt: number | null
+}
+
+type MediaAnalyticsByFeed = MediaAnalyticsSummary & {
+	feedId: string
+	feedType: 'directory' | 'curated'
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+	feedName: string
+}
+
+type MediaAnalyticsDaily = MediaAnalyticsSummary & {
+	day: string
+	dayStart: number
+}
+
+type MediaTopClientAnalytics = MediaAnalyticsSummary & {
+	clientName: string
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+}
+
+type MediaAnalyticsResponse = {
+	media: {
+		rootName: string
+		relativePath: string
+	}
+	windowDays: number
+	since: number
+	summary: MediaAnalyticsSummary
+	byToken: Array<MediaAnalyticsByToken>
+	byFeed: Array<MediaAnalyticsByFeed>
+	topClients: Array<MediaTopClientAnalytics>
+	daily: Array<MediaAnalyticsDaily>
+}
+
+type MediaAnalyticsLoadingState =
+	| { status: 'loading' }
+	| { status: 'error'; message: string }
+	| { status: 'success'; data: MediaAnalyticsResponse }
+
 type LoadingState =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
@@ -117,6 +180,9 @@ function isVideo(mimeType: string): boolean {
  */
 export function MediaDetail(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
+	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
+	let analyticsRequestId = 0
+	let analyticsWindowDays = 30
 	let currentPath = ''
 	let selectedFeedIds: Set<string> = new Set()
 	let saving = false
@@ -148,9 +214,46 @@ export function MediaDetail(handle: Handle) {
 		subtitle: '',
 	}
 
+	const fetchAnalytics = async (
+		rootName: string,
+		relativePath: string,
+		windowDays: number,
+	) => {
+		analyticsRequestId += 1
+		const requestId = analyticsRequestId
+		analyticsState = { status: 'loading' }
+		handle.update()
+
+		try {
+			const res = await fetch(
+				`/admin/api/media-analytics/${encodeURIComponent(rootName)}/${encodeURIComponent(relativePath)}?days=${windowDays}`,
+				{ signal: handle.signal },
+			)
+
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}))
+				throw new Error(data.error || `HTTP ${res.status}`)
+			}
+
+			const data = (await res.json()) as MediaAnalyticsResponse
+			if (requestId !== analyticsRequestId) return
+			analyticsState = { status: 'success', data }
+			handle.update()
+		} catch (err) {
+			if (handle.signal.aborted) return
+			if (requestId !== analyticsRequestId) return
+			analyticsState = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Unknown error',
+			}
+			handle.update()
+		}
+	}
+
 	const fetchMedia = async (encodedPath: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
+		analyticsState = { status: 'loading' }
 		handle.update()
 
 		try {
@@ -171,6 +274,12 @@ export function MediaDetail(handle: Handle) {
 				data.assignments
 					.filter((a) => a.feedType === 'curated')
 					.map((a) => a.feedId),
+			)
+
+			fetchAnalytics(
+				data.media.rootName,
+				data.media.relativePath,
+				analyticsWindowDays,
 			)
 
 			handle.update()
@@ -1418,6 +1527,91 @@ export function MediaDetail(handle: Handle) {
 									</p>
 								)}
 						</div>
+
+						{/* Media Analytics Card */}
+						<div
+							css={{
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: responsive.spacingSection,
+								marginTop: spacing.xl,
+								boxShadow: shadows.sm,
+							}}
+						>
+							<div
+								css={{
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'space-between',
+									gap: spacing.sm,
+									marginBottom: spacing.md,
+									flexWrap: 'wrap',
+								}}
+							>
+								<h3
+									css={{
+										fontSize: typography.fontSize.base,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										margin: 0,
+									}}
+								>
+									Analytics (last {analyticsWindowDays} days)
+								</h3>
+								<div css={{ display: 'flex', gap: spacing.xs }}>
+									{[7, 30, 90].map((days) => (
+										<button
+											key={days}
+											type="button"
+											css={{
+												padding: `${spacing.xs} ${spacing.sm}`,
+												fontSize: typography.fontSize.xs,
+												fontWeight: typography.fontWeight.medium,
+												color:
+													days === analyticsWindowDays
+														? colors.background
+														: colors.textMuted,
+												backgroundColor:
+													days === analyticsWindowDays
+														? colors.primary
+														: 'transparent',
+												border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
+												borderRadius: radius.sm,
+												cursor: 'pointer',
+												transition: `all ${transitions.fast}`,
+												'&:hover': {
+													borderColor: colors.primary,
+													color:
+														days === analyticsWindowDays
+															? colors.background
+															: colors.text,
+												},
+											}}
+											on={{
+												click: () => {
+													if (
+														days === analyticsWindowDays ||
+														state.status !== 'success'
+													) {
+														return
+													}
+													analyticsWindowDays = days
+													fetchAnalytics(
+														state.data.media.rootName,
+														state.data.media.relativePath,
+														days,
+													)
+												},
+											}}
+										>
+											{days}d
+										</button>
+									))}
+								</div>
+							</div>
+							<MediaAnalyticsSection analyticsState={analyticsState} />
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1512,6 +1706,235 @@ function MetadataItem() {
 			</dd>
 		</div>
 	)
+}
+
+function MediaAnalyticsSection() {
+	return ({
+		analyticsState,
+	}: {
+		analyticsState: MediaAnalyticsLoadingState
+	}) => {
+		if (analyticsState.status === 'loading') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+					}}
+				>
+					Loading analytics...
+				</p>
+			)
+		}
+
+		if (analyticsState.status === 'error') {
+			return (
+				<p
+					css={{
+						margin: 0,
+						fontSize: typography.fontSize.sm,
+						color: '#ef4444',
+					}}
+				>
+					Unable to load analytics: {analyticsState.message}
+				</p>
+			)
+		}
+
+		const { summary, byFeed, byToken, topClients, daily } = analyticsState.data
+		return (
+			<div
+				css={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap: spacing.lg,
+				}}
+			>
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+						gap: spacing.sm,
+					}}
+				>
+					<AnalyticsMetricCard
+						label="Requests"
+						value={summary.mediaRequests.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Download Starts"
+						value={summary.downloadStarts.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Unique Clients"
+						value={summary.uniqueClients.toLocaleString()}
+					/>
+					<AnalyticsMetricCard
+						label="Bytes Served"
+						value={formatFileSize(summary.bytesServed)}
+					/>
+				</div>
+
+				<div
+					css={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+						gap: spacing.lg,
+					}}
+				>
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							By Feed
+						</h4>
+						{byFeed.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No feed-level analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{byFeed.map((feed) => (
+									<li
+										key={`${feed.feedType}-${feed.feedId}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<Link
+											href={`/admin/feeds/${feed.feedId}`}
+											css={{
+												color: colors.primary,
+												textDecoration: 'none',
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+											}}
+										>
+											{feed.feedName}
+										</Link>
+										<div
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												display: 'flex',
+												gap: spacing.sm,
+												marginTop: spacing.xs,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{feed.downloadStarts} starts</span>
+											<span>{feed.mediaRequests} requests</span>
+											<span>{formatFileSize(feed.bytesServed)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+
+					<div>
+						<h4
+							css={{
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.semibold,
+								margin: `0 0 ${spacing.sm} 0`,
+								color: colors.text,
+							}}
+						>
+							Top Tokens
+						</h4>
+						{byToken.length === 0 ? (
+							<p
+								css={{
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+								}}
+							>
+								No token-level analytics yet.
+							</p>
+						) : (
+							<ul
+								css={{
+									listStyle: 'none',
+									padding: 0,
+									margin: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.sm,
+								}}
+							>
+								{byToken.slice(0, 8).map((token) => (
+									<li
+										key={`${token.feedType}-${token.feedId}-${token.token}`}
+										css={{
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: colors.background,
+										}}
+									>
+										<div
+											css={{
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												fontWeight: typography.fontWeight.medium,
+											}}
+										>
+											{token.label || 'Unlabeled token'}
+										</div>
+										<div
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												marginTop: spacing.xs,
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+											}}
+										>
+											<span>{token.downloadStarts} starts</span>
+											<span>{token.mediaRequests} requests</span>
+											<span>{token.uniqueClients} clients</span>
+											<span>{formatRelativeTime(token.lastSeenAt)}</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				</div>
+
+				<AnalyticsTopClientsList clients={topClients} />
+
+				<AnalyticsDailyActivityChart daily={daily} />
+			</div>
+		)
+	}
 }
 
 function MetadataField() {

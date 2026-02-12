@@ -187,6 +187,49 @@ const migrations: Array<Migration> = [
 		`)
 		},
 	},
+	{
+		version: 5,
+		name: 'add_feed_analytics_events',
+		up: (db) => {
+			db.run(sql`
+				CREATE TABLE IF NOT EXISTS feed_analytics_events (
+					id TEXT PRIMARY KEY,
+					event_type TEXT NOT NULL CHECK (event_type IN ('rss_fetch', 'media_request')),
+					feed_id TEXT NOT NULL,
+					feed_type TEXT NOT NULL CHECK (feed_type IN ('directory', 'curated')),
+					token TEXT NOT NULL,
+					media_root TEXT,
+					relative_path TEXT,
+					is_download_start INTEGER NOT NULL DEFAULT 0,
+					bytes_served INTEGER,
+					status_code INTEGER NOT NULL,
+					client_fingerprint TEXT,
+					client_name TEXT,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_feed_id_created_at
+				ON feed_analytics_events(feed_id, created_at);
+			`)
+
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_token_created_at
+				ON feed_analytics_events(token, created_at);
+			`)
+
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_media_path_created_at
+				ON feed_analytics_events(media_root, relative_path, created_at);
+			`)
+
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_event_type_created_at
+				ON feed_analytics_events(event_type, created_at);
+			`)
+		},
+	},
 ]
 
 /**

@@ -65,6 +65,12 @@ export const FeedItemSchema = z.object({
 })
 export type FeedItem = z.infer<typeof FeedItemSchema>
 
+export const AnalyticsEventTypeSchema = z.enum(['rss_fetch', 'media_request'])
+export type AnalyticsEventType = z.infer<typeof AnalyticsEventTypeSchema>
+
+export const AnalyticsFeedTypeSchema = z.enum(['directory', 'curated'])
+export type AnalyticsFeedType = z.infer<typeof AnalyticsFeedTypeSchema>
+
 /**
  * Token for accessing a directory feed.
  * Tokens are the only public identifier used in feed URLs.

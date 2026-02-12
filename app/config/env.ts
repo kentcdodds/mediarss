@@ -80,6 +80,10 @@ const EnvSchema = z.object({
 	RATE_LIMIT_MEDIA: optionalInt(300),
 	RATE_LIMIT_DEFAULT: optionalInt(1000),
 
+	// Feed analytics retention window in days.
+	// Events older than this are pruned on startup.
+	ANALYTICS_RETENTION_DAYS: optionalInt(180),
+
 	// GitHub repository URL for linking to commits (optional)
 	GITHUB_REPO: z
 		.string()

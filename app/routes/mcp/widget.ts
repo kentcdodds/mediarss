@@ -14,6 +14,7 @@
 import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
+import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
@@ -46,10 +47,8 @@ export default {
 		const { feed, type } = result
 
 		// Decode the path parameter with error handling for malformed encoding
-		let decodedPath: string
-		try {
-			decodedPath = decodeURIComponent(splatParam)
-		} catch {
+		const decodedPath = decodePathParam(splatParam)
+		if (decodedPath === null) {
 			return new Response('Invalid URL encoding', { status: 400 })
 		}
 

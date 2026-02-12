@@ -3,6 +3,7 @@ import '#app/config/init-env.ts'
 
 import getPort from 'get-port'
 import { getEnv } from '#app/config/env.ts'
+import { pruneFeedAnalyticsEvents } from '#app/db/feed-analytics-events.ts'
 import { warmMediaCache } from '#app/helpers/media.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
@@ -16,6 +17,18 @@ const env = getEnv()
 
 // Initialize database and run migrations
 migrate(db)
+
+// Prune old analytics events to keep the event table bounded.
+if (env.ANALYTICS_RETENTION_DAYS > 0) {
+	const now = Math.floor(Date.now() / 1000)
+	const cutoff = now - env.ANALYTICS_RETENTION_DAYS * 24 * 60 * 60
+	const deleted = pruneFeedAnalyticsEvents(cutoff)
+	if (deleted > 0) {
+		console.log(
+			`Pruned ${deleted} feed analytics event(s) older than ${env.ANALYTICS_RETENTION_DAYS} day(s).`,
+		)
+	}
+}
 
 // Ensure default OAuth client exists
 ensureDefaultClient()

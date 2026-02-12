@@ -9,6 +9,7 @@ import { rateLimit } from '#app/middleware/rate-limit.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
+import adminApiFeedAnalyticsHandlers from '#app/routes/admin/api/feeds.$id.analytics.ts'
 import adminApiFeedArtworkHandlers from '#app/routes/admin/api/feeds.$id.artwork.ts'
 import adminApiFeedItemsHandlers from '#app/routes/admin/api/feeds.$id.items.ts'
 import adminApiFeedTokensHandlers from '#app/routes/admin/api/feeds.$id.tokens.ts'
@@ -20,6 +21,7 @@ import adminApiHealthHandlers from '#app/routes/admin/api/health.ts'
 import adminApiMediaMetadataHandlers from '#app/routes/admin/api/media.$path.metadata.ts'
 import adminApiMediaDetailHandlers from '#app/routes/admin/api/media.$path.ts'
 import adminApiMediaHandlers from '#app/routes/admin/api/media.ts'
+import adminApiMediaAnalyticsHandlers from '#app/routes/admin/api/media-analytics.$path.ts'
 import adminApiMediaAssignmentsHandlers from '#app/routes/admin/api/media-assignments.ts'
 import adminApiMediaStreamHandlers from '#app/routes/admin/api/media-stream.ts'
 import adminApiMediaUploadHandlers from '#app/routes/admin/api/media-upload.ts'
@@ -160,11 +162,13 @@ router.map(
 	adminApiCreateDirectoryFeedHandlers,
 )
 router.map(routes.adminApiCreateCuratedFeed, adminApiCreateCuratedFeedHandlers)
+router.map(routes.adminApiFeedAnalytics, adminApiFeedAnalyticsHandlers)
 router.map(routes.adminApiFeedTokens, adminApiFeedTokensHandlers)
 router.map(routes.adminApiFeedItems, adminApiFeedItemsHandlers)
 router.map(routes.adminApiFeedArtwork, adminApiFeedArtworkHandlers)
 router.map(routes.adminApiFeed, adminApiFeedHandlers)
 router.map(routes.adminApiToken, adminApiTokenHandlers)
+router.map(routes.adminApiMediaAnalytics, adminApiMediaAnalyticsHandlers)
 router.map(routes.adminApiMedia, adminApiMediaHandlers)
 router.map(routes.adminApiMediaAssignments, adminApiMediaAssignmentsHandlers)
 router.map(routes.adminApiMediaUpload, adminApiMediaUploadHandlers)

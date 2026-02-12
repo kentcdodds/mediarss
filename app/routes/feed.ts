@@ -1,7 +1,13 @@
 import type { BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
+import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import type { CuratedFeed } from '#app/db/types.ts'
 import { isDirectoryFeed } from '#app/db/types.ts'
+import {
+	getClientFingerprint,
+	getClientName,
+	isTrackableRssStatus,
+} from '#app/helpers/analytics-request.ts'
 import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
@@ -54,11 +60,29 @@ export default {
 			sortFields: feed.sortFields,
 		})
 
-		return new Response(rssXml, {
+		const response = new Response(rssXml, {
 			headers: {
 				'Content-Type': 'application/rss+xml; charset=utf-8',
 				'Cache-Control': 'no-cache',
 			},
 		})
+
+		if (isTrackableRssStatus(response.status)) {
+			try {
+				createFeedAnalyticsEvent({
+					eventType: 'rss_fetch',
+					feedId: feed.id,
+					feedType: type,
+					token,
+					statusCode: response.status,
+					clientFingerprint: getClientFingerprint(context.request),
+					clientName: getClientName(context.request),
+				})
+			} catch (error) {
+				console.error('Failed to record feed analytics event:', error)
+			}
+		}
+
+		return response
 	},
 } satisfies BuildAction<typeof routes.feed.method, typeof routes.feed.pattern>

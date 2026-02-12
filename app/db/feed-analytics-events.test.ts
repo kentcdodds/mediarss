@@ -1,7 +1,4 @@
-import { Database } from 'bun:sqlite'
 import { expect, test } from 'bun:test'
-import fs from 'node:fs'
-import path from 'node:path'
 import '#app/config/init-env.ts'
 import {
 	createFeedAnalyticsEvent,
@@ -16,32 +13,11 @@ import {
 	getMediaTopClientAnalytics,
 	pruneFeedAnalyticsEvents,
 } from './feed-analytics-events.ts'
-import { migrate } from './migrations.ts'
-
-function createTestDatabase() {
-	const dbPath = `./data/test-feed-analytics-events-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
-	const dir = path.dirname(dbPath)
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, { recursive: true })
-	}
-
-	const database = new Database(dbPath)
-	migrate(database)
-
-	return {
-		database,
-		[Symbol.dispose]: () => {
-			database.close()
-			if (fs.existsSync(dbPath)) {
-				fs.unlinkSync(dbPath)
-			}
-		},
-	}
-}
+import { createMigratedTestDatabase } from './test-database.ts'
 
 test('feed analytics aggregate correctly by summary/token/day/top-items', () => {
-	using ctx = createTestDatabase()
-	const { database } = ctx
+	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+	const { db: database } = ctx
 	const base = 1_700_000_000
 	const day = 86_400
 
@@ -237,8 +213,8 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 })
 
 test('media analytics aggregate across feeds/tokens and normalize paths', () => {
-	using ctx = createTestDatabase()
-	const { database } = ctx
+	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+	const { db: database } = ctx
 	const base = 1_700_100_000
 
 	createFeedAnalyticsEvent(
@@ -385,8 +361,8 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 })
 
 test('pruneFeedAnalyticsEvents removes older analytics rows', () => {
-	using ctx = createTestDatabase()
-	const { database } = ctx
+	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+	const { db: database } = ctx
 	const base = 1_700_200_000
 
 	createFeedAnalyticsEvent(

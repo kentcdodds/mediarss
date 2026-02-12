@@ -1,33 +1,9 @@
-import { Database } from 'bun:sqlite'
 import { expect, test } from 'bun:test'
-import fs from 'node:fs'
-import path from 'node:path'
-import { migrate } from './migrations.ts'
 import { sql } from './sql.ts'
-
-function createTestDatabase() {
-	const dbPath = `./data/test-analytics-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
-	const dir = path.dirname(dbPath)
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, { recursive: true })
-	}
-
-	const db = new Database(dbPath)
-	migrate(db)
-
-	return {
-		db,
-		[Symbol.dispose]: () => {
-			db.close()
-			if (fs.existsSync(dbPath)) {
-				fs.unlinkSync(dbPath)
-			}
-		},
-	}
-}
+import { createMigratedTestDatabase } from './test-database.ts'
 
 test('migration creates feed_analytics_events table and indexes', () => {
-	using ctx = createTestDatabase()
+	using ctx = createMigratedTestDatabase('test-analytics')
 
 	const columns = ctx.db
 		.query(sql`PRAGMA table_info(feed_analytics_events);`)
@@ -66,7 +42,7 @@ test('migration creates feed_analytics_events table and indexes', () => {
 })
 
 test('analytics table enforces event_type and feed_type constraints', () => {
-	using ctx = createTestDatabase()
+	using ctx = createMigratedTestDatabase('test-analytics')
 
 	ctx.db.run(sql`
 		INSERT INTO feed_analytics_events (

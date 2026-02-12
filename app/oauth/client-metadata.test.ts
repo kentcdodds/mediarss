@@ -1,7 +1,7 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, expect, test } from 'bun:test'
 import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
@@ -77,7 +77,7 @@ function setupMockFetch() {
 	mockFetchResponses = new Map()
 
 	// Mock global fetch for HTTPS URLs
-	globalThis.fetch = mock(
+	const mockFetch = Object.assign(
 		async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url =
 				typeof input === 'string'
@@ -95,7 +95,11 @@ function setupMockFetch() {
 			// For non-mocked URLs, use original fetch (e.g., localhost test server)
 			return originalFetch(input, init)
 		},
-	) as unknown as typeof fetch
+		{
+			preconnect: originalFetch.preconnect.bind(originalFetch),
+		},
+	)
+	globalThis.fetch = mockFetch as typeof fetch
 
 	return {
 		mockFetchResponses,

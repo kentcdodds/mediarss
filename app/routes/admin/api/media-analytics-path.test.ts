@@ -331,21 +331,21 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 
 	const tokenMetadataQueries: Array<string> = []
 	const originalQuery = db.query.bind(db)
-	const querySpy = spyOn(db, 'query').mockImplementation(
-		((...args: Array<unknown>) => {
-			const [queryText] = args
-			if (
-				typeof queryText === 'string' &&
-				queryText.includes(
-					'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
-				) &&
-				queryText.includes('FROM directory_feed_tokens')
-			) {
-				tokenMetadataQueries.push(queryText)
-			}
-			return originalQuery(...(args as Parameters<typeof originalQuery>))
-		}) as typeof db.query,
-	)
+	const querySpy = spyOn(db, 'query').mockImplementation(((
+		...args: Array<unknown>
+	) => {
+		const [queryText] = args
+		if (
+			typeof queryText === 'string' &&
+			queryText.includes(
+				'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
+			) &&
+			queryText.includes('FROM directory_feed_tokens')
+		) {
+			tokenMetadataQueries.push(queryText)
+		}
+		return originalQuery(...(args as Parameters<typeof originalQuery>))
+	}) as typeof db.query)
 
 	try {
 		const response = await analyticsHandler.action(

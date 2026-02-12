@@ -103,7 +103,11 @@ function getFeedKey(feedType: FeedType, feedId: string): string {
 	return `${feedType}:${feedId}`
 }
 
-function getFeedTokenKey(feedType: FeedType, feedId: string, token: string): string {
+function getFeedTokenKey(
+	feedType: FeedType,
+	feedId: string,
+	token: string,
+): string {
 	return `${feedType}:${feedId}:${token}`
 }
 
@@ -204,10 +208,7 @@ export default {
 		}
 
 		const tokenMetadataByKey = new Map<string, TokenMetadata>()
-		for (const [
-			tokenKey,
-			tokenMetadata,
-		] of listTokenMetadataByFeedIds(
+		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedIds(
 			'directory',
 			directoryFeedIdList,
 		).entries()) {

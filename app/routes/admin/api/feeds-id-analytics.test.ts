@@ -277,6 +277,36 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 	})
 })
 
+test('feed analytics endpoint returns more than default top-client limit when available', async () => {
+	using ctx = createTestFeedContext()
+	const now = Math.floor(Date.now() / 1000)
+
+	for (let index = 0; index < 12; index += 1) {
+		createFeedAnalyticsEvent({
+			eventType: 'media_request',
+			feedId: ctx.feed.id,
+			feedType: 'directory',
+			token: ctx.token.token,
+			mediaRoot: 'audio',
+			relativePath: `episode-${index}.mp3`,
+			isDownloadStart: true,
+			bytesServed: 1000 + index,
+			statusCode: 200,
+			clientFingerprint: `top-client-fingerprint-${index}`,
+			clientName: `Top Client ${index}`,
+			createdAt: now - index,
+		})
+	}
+
+	const response = await analyticsHandler.action(
+		createActionContext(ctx.feed.id),
+	)
+	expect(response.status).toBe(200)
+
+	const data = await response.json()
+	expect(data.topClients).toHaveLength(12)
+})
+
 test('feed analytics endpoint clamps analytics window days to max', async () => {
 	using ctx = createTestFeedContext()
 	const response = await analyticsHandler.action(

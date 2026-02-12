@@ -437,7 +437,7 @@ export function isDownloadStartRequest(
 	const range = request.headers.get('Range')?.trim()
 	if (!range) return true
 
-	const match = range.match(/bytes=(\d*)-(\d*)/)
+	const match = range.match(/^bytes=(\d*)-(\d*)$/)
 	if (!match) return responseStatus !== 206
 
 	const startToken = match[1] ?? ''

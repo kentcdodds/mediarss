@@ -292,6 +292,28 @@ test('media route logs media_request analytics for full and ranged requests', as
 	expect(events.every((event) => event.client_name !== null)).toBe(true)
 })
 
+test('media route treats malformed range headers as download starts when serving full files', async () => {
+	await using ctx = await createDirectoryMediaAnalyticsTestContext()
+	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
+
+	const response = await mediaHandler.action(
+		createMediaActionContext(ctx.token, pathParam, {
+			'User-Agent': 'AntennaPod/3.0',
+			'X-Forwarded-For': '198.51.100.42',
+			Range: 'nonsense',
+		}),
+	)
+	expect(response.status).toBe(200)
+
+	const event = readLatestMediaEvent(ctx.feed.id)
+	expect(event).not.toBeNull()
+	expect(event).toMatchObject({
+		status_code: 200,
+		is_download_start: 1,
+	})
+	expect((event?.bytes_served ?? 0) > 0).toBe(true)
+})
+
 test('media route still serves files when analytics writes fail', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`

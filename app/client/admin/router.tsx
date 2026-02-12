@@ -56,9 +56,8 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		if (path === this.#currentPath) return
 		history.pushState(null, '', path)
 		this.#currentPath = path
+		window.scrollTo(0, 0)
 		this.dispatchEvent(new Event('navigate'))
-		// TODO: force refresh because there's a bug in Remix
-		window.location.reload()
 	}
 
 	/**
@@ -97,13 +96,48 @@ export const router = new RouterState()
 // Listen for browser navigation
 window.addEventListener('popstate', router.handlePopState)
 
+type LinkProps = {
+	href: string
+	target?: string
+	on?: Record<string, ((event: MouseEvent) => void) | undefined>
+} & Record<string, unknown>
+
 /**
  * Link component for navigation.
- * Currently uses full page refreshes to work around a Remix DOM bug.
- * TODO: Re-enable client-side navigation once the bug is fixed.
+ * Uses client-side navigation for same-origin paths.
  */
 export function Link() {
-	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
+	return (props: LinkProps) => {
+		const { href, on, target, ...rest } = props
+		const userOn = on ?? {}
+
+		return (
+			<a
+				{...rest}
+				href={href}
+				target={target}
+				on={{
+					...userOn,
+					click: (event) => {
+						userOn.click?.(event)
+						if (event.defaultPrevented) return
+						if (event.button !== 0) return
+						if (
+							event.metaKey ||
+							event.altKey ||
+							event.ctrlKey ||
+							event.shiftKey
+						)
+							return
+						if (target && target !== '_self') return
+						if (!href.startsWith('/')) return
+						event.preventDefault()
+						router.navigate(href)
+					},
+				}}
+			/>
+		)
+	}
 }
 
 /**

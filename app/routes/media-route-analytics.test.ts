@@ -22,6 +22,12 @@ import mediaHandler from './media.ts'
 migrate(db)
 
 type MediaActionContext = Parameters<typeof mediaHandler.action>[0]
+type MinimalMediaActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string | undefined>
+}
 
 type LatestMediaEvent = {
 	status_code: number
@@ -33,6 +39,12 @@ type LatestMediaEvent = {
 	client_fingerprint: string | null
 	token: string
 	feed_type: string
+}
+
+function asActionContext(
+	context: MinimalMediaActionContext,
+): MediaActionContext {
+	return context as MediaActionContext
 }
 
 async function createDirectoryMediaAnalyticsTestContext() {
@@ -138,7 +150,7 @@ function createMediaActionContext(
 	const request = new Request(`http://localhost/media/${token}/${pathParam}`, {
 		headers,
 	})
-	return {
+	return asActionContext({
 		request,
 		method: 'GET',
 		url: new URL(request.url),
@@ -146,7 +158,7 @@ function createMediaActionContext(
 			token,
 			path: pathParam,
 		},
-	} as unknown as MediaActionContext
+	})
 }
 
 function createMediaActionContextWithoutPath(
@@ -156,7 +168,7 @@ function createMediaActionContextWithoutPath(
 	const request = new Request(`http://localhost/media/${token}`, {
 		headers,
 	})
-	return {
+	return asActionContext({
 		request,
 		method: 'GET',
 		url: new URL(request.url),
@@ -164,7 +176,7 @@ function createMediaActionContextWithoutPath(
 			token,
 			path: undefined,
 		},
-	} as unknown as MediaActionContext
+	})
 }
 
 function readLatestMediaEvent(feedId: string): LatestMediaEvent | null {

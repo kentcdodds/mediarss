@@ -21,6 +21,12 @@ import feedHandler from './feed.ts'
 migrate(db)
 
 type FeedActionContext = Parameters<typeof feedHandler.action>[0]
+type MinimalFeedActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string>
+}
 
 type LatestRssEvent = {
 	feed_type: string
@@ -28,6 +34,10 @@ type LatestRssEvent = {
 	status_code: number
 	client_name: string | null
 	client_fingerprint: string | null
+}
+
+function asActionContext(context: MinimalFeedActionContext): FeedActionContext {
+	return context as FeedActionContext
 }
 
 function createCuratedFeedRouteTestContext() {
@@ -81,12 +91,12 @@ function createFeedActionContext(
 	const request = new Request(`http://localhost/feed/${token}`, {
 		headers,
 	})
-	return {
+	return asActionContext({
 		request,
 		method: 'GET',
 		url: new URL(request.url),
 		params: { token },
-	} as unknown as FeedActionContext
+	})
 }
 
 function readLatestRssEvent(feedId: string): LatestRssEvent | null {

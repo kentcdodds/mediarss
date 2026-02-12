@@ -39,40 +39,51 @@ function listTokenMetadataByFeedTokensFromTable(
 		return new Map()
 	}
 
-	const placeholders = feedTokens.map(() => '(?, ?)').join(', ')
-	const rows = db
-		.query<
-			{
-				token: string
-				feed_id: string
-				label: string
-				created_at: number
-				last_used_at: number | null
-				revoked_at: number | null
-			},
-			Array<string>
-		>(
-			sql`
-				SELECT token, feed_id, label, created_at, last_used_at, revoked_at
-				FROM ${tableName}
-				WHERE (feed_id, token) IN (${placeholders});
-			`,
-		)
-		.all(
-			...feedTokens.flatMap((feedToken) => [feedToken.feedId, feedToken.token]),
-		)
-
-	return new Map(
-		rows.map((row) => [
-			getFeedTokenKey(feedType, row.feed_id, row.token),
-			{
-				label: row.label,
-				createdAt: row.created_at,
-				lastUsedAt: row.last_used_at,
-				revokedAt: row.revoked_at,
-			},
-		]),
+	const maxSqliteVariables = 999
+	const variablesPerToken = 2
+	const maxTokensPerBatch = Math.max(
+		1,
+		Math.floor(maxSqliteVariables / variablesPerToken),
 	)
+	const tokenMetadataByKey = new Map<string, TokenMetadata>()
+
+	for (let start = 0; start < feedTokens.length; start += maxTokensPerBatch) {
+		const batch = feedTokens.slice(start, start + maxTokensPerBatch)
+		const placeholders = batch.map(() => '(?, ?)').join(', ')
+		const rows = db
+			.query<
+				{
+					token: string
+					feed_id: string
+					label: string
+					created_at: number
+					last_used_at: number | null
+					revoked_at: number | null
+				},
+				Array<string>
+			>(
+				sql`
+					SELECT token, feed_id, label, created_at, last_used_at, revoked_at
+					FROM ${tableName}
+					WHERE (feed_id, token) IN (${placeholders});
+				`,
+			)
+			.all(...batch.flatMap((feedToken) => [feedToken.feedId, feedToken.token]))
+
+		for (const row of rows) {
+			tokenMetadataByKey.set(
+				getFeedTokenKey(feedType, row.feed_id, row.token),
+				{
+					label: row.label,
+					createdAt: row.created_at,
+					lastUsedAt: row.last_used_at,
+					revokedAt: row.revoked_at,
+				},
+			)
+		}
+	}
+
+	return tokenMetadataByKey
 }
 
 function listTokenMetadataByFeedTokens(

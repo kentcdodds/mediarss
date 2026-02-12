@@ -358,7 +358,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 	}
 
 	expect(tokenMetadataQueries).toHaveLength(1)
-	expect(tokenMetadataQueries[0]).toContain('WHERE feed_id IN')
+	expect(tokenMetadataQueries[0]).toContain('WHERE (feed_id, token) IN')
 })
 
 test('media analytics endpoint groups missing client names under Unknown', async () => {

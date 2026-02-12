@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, spyOn, test } from 'bun:test'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import '#app/config/init-env.ts'
@@ -279,6 +279,179 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 
 	expect(data.daily.length).toBeGreaterThanOrEqual(1)
 	expect(data.windowDays).toBe(30)
+})
+
+test('media analytics endpoint batch-loads token metadata', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+	const deletedToken = `deleted-batch-token-${Date.now()}`
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 111,
+		statusCode: 200,
+		clientFingerprint: 'batch-fingerprint-one',
+		clientName: 'Batch Client One',
+		createdAt: now - 90,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedTwo.id,
+		feedType: 'directory',
+		token: ctx.tokenTwo.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 222,
+		statusCode: 200,
+		clientFingerprint: 'batch-fingerprint-two',
+		clientName: 'Batch Client Two',
+		createdAt: now - 60,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: deletedToken,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 333,
+		statusCode: 200,
+		clientFingerprint: 'batch-fingerprint-three',
+		clientName: 'Batch Client Three',
+		createdAt: now - 30,
+	})
+
+	const tokenMetadataQueries: Array<string> = []
+	const originalQuery = db.query.bind(db)
+	const querySpy = spyOn(db, 'query').mockImplementation(((
+		...args: Array<unknown>
+	) => {
+		const [queryText] = args
+		if (
+			typeof queryText === 'string' &&
+			queryText.includes(
+				'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
+			) &&
+			queryText.includes('FROM directory_feed_tokens')
+		) {
+			tokenMetadataQueries.push(queryText)
+		}
+		return originalQuery(...(args as Parameters<typeof originalQuery>))
+	}) as typeof db.query)
+
+	try {
+		const response = await analyticsHandler.action(
+			createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+		)
+		expect(response.status).toBe(200)
+		expect((await response.json()).byToken).toHaveLength(3)
+	} finally {
+		querySpy.mockRestore()
+	}
+
+	expect(tokenMetadataQueries).toHaveLength(1)
+	expect(tokenMetadataQueries[0]).toContain('WHERE (feed_id, token) IN')
+})
+
+test('media analytics endpoint chunks token metadata queries for low variable limits', async () => {
+	await using ctx = await createMediaApiTestContext()
+	const now = Math.floor(Date.now() / 1000)
+	const previousLimit = Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
+	const tokenThree = createDirectoryFeedToken({
+		feedId: ctx.feedOne.id,
+		label: 'Token Three',
+	})
+
+	Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER = '4'
+
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: ctx.tokenOne.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 111,
+		statusCode: 200,
+		clientFingerprint: 'chunking-fingerprint-one',
+		clientName: 'Chunking Client One',
+		createdAt: now - 90,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedTwo.id,
+		feedType: 'directory',
+		token: ctx.tokenTwo.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 222,
+		statusCode: 200,
+		clientFingerprint: 'chunking-fingerprint-two',
+		clientName: 'Chunking Client Two',
+		createdAt: now - 60,
+	})
+	createFeedAnalyticsEvent({
+		eventType: 'media_request',
+		feedId: ctx.feedOne.id,
+		feedType: 'directory',
+		token: tokenThree.token,
+		mediaRoot: ctx.rootName,
+		relativePath: ctx.relativePath,
+		isDownloadStart: true,
+		bytesServed: 333,
+		statusCode: 200,
+		clientFingerprint: 'chunking-fingerprint-three',
+		clientName: 'Chunking Client Three',
+		createdAt: now - 30,
+	})
+
+	const tokenMetadataQueries: Array<string> = []
+	const originalQuery = db.query.bind(db)
+	const querySpy = spyOn(db, 'query').mockImplementation(((
+		...args: Array<unknown>
+	) => {
+		const [queryText] = args
+		if (
+			typeof queryText === 'string' &&
+			queryText.includes(
+				'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
+			) &&
+			queryText.includes('FROM directory_feed_tokens')
+		) {
+			tokenMetadataQueries.push(queryText)
+		}
+		return originalQuery(...(args as Parameters<typeof originalQuery>))
+	}) as typeof db.query)
+
+	try {
+		const response = await analyticsHandler.action(
+			createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
+		)
+		expect(response.status).toBe(200)
+		expect((await response.json()).byToken).toHaveLength(3)
+	} finally {
+		querySpy.mockRestore()
+		if (previousLimit === undefined) {
+			delete Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
+		} else {
+			Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER = previousLimit
+		}
+	}
+
+	expect(tokenMetadataQueries).toHaveLength(2)
+	for (const queryText of tokenMetadataQueries) {
+		expect(queryText).toContain('WHERE (feed_id, token) IN')
+	}
 })
 
 test('media analytics endpoint groups missing client names under Unknown', async () => {

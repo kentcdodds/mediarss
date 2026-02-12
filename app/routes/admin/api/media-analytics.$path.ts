@@ -17,56 +17,131 @@ import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 type FeedType = 'directory' | 'curated'
 type TokenTableName = 'directory_feed_tokens' | 'curated_feed_tokens'
 type FeedTableName = 'directory_feeds' | 'curated_feeds'
+const DEFAULT_MAX_SQLITE_VARIABLE_NUMBER = 999
+const SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX = 'MAX_VARIABLE_NUMBER='
+const SQLITE_MAX_VARIABLE_NUMBER_ENV =
+	'MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER'
+let cachedCompiledMaxSqliteVariableNumber: number | null = null
 
-function getTokenMetadataFromTable(
-	tableName: TokenTableName,
-	token: string,
-	feedId: string,
-): {
-	label: string
-	createdAt: number
-	lastUsedAt: number | null
-	revokedAt: number | null
-} | null {
-	const row = db
-		.query<
-			{
-				label: string
-				created_at: number
-				last_used_at: number | null
-				revoked_at: number | null
-			},
-			[string, string]
-		>(
-			sql`
-				SELECT label, created_at, last_used_at, revoked_at
-				FROM ${tableName}
-				WHERE token = ? AND feed_id = ?;
-			`,
-		)
-		.get(token, feedId)
-	if (!row) return null
-	return {
-		label: row.label,
-		createdAt: row.created_at,
-		lastUsedAt: row.last_used_at,
-		revokedAt: row.revoked_at,
-	}
+type FeedToken = {
+	feedId: string
+	token: string
 }
 
-function getTokenMetadata(
-	token: string,
-	feedId: string,
-	feedType: FeedType,
-): {
+type TokenMetadata = {
 	label: string
 	createdAt: number
 	lastUsedAt: number | null
 	revokedAt: number | null
-} | null {
+}
+
+function parsePositiveInteger(value: string | undefined): number | null {
+	if (!value) return null
+	const parsed = Number.parseInt(value, 10)
+	if (!Number.isInteger(parsed) || parsed < 1) return null
+	return parsed
+}
+
+function getCompiledMaxSqliteVariableNumber(): number {
+	if (cachedCompiledMaxSqliteVariableNumber !== null) {
+		return cachedCompiledMaxSqliteVariableNumber
+	}
+
+	try {
+		const options = db
+			.query<{ compile_options: string }, []>(sql`PRAGMA compile_options;`)
+			.all()
+		const matchingOption = options
+			.map((option) => option.compile_options)
+			.find((option) =>
+				option.startsWith(SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX),
+			)
+		const parsedLimit = parsePositiveInteger(
+			matchingOption?.slice(
+				SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX.length,
+			),
+		)
+		cachedCompiledMaxSqliteVariableNumber =
+			parsedLimit ?? DEFAULT_MAX_SQLITE_VARIABLE_NUMBER
+	} catch {
+		cachedCompiledMaxSqliteVariableNumber = DEFAULT_MAX_SQLITE_VARIABLE_NUMBER
+	}
+
+	return cachedCompiledMaxSqliteVariableNumber
+}
+
+function getMaxSqliteVariableNumber(): number {
+	const configuredLimit = parsePositiveInteger(
+		Bun.env[SQLITE_MAX_VARIABLE_NUMBER_ENV],
+	)
+	const compiledLimit = getCompiledMaxSqliteVariableNumber()
+	if (configuredLimit === null) return compiledLimit
+	return Math.min(configuredLimit, compiledLimit)
+}
+
+function listTokenMetadataByFeedTokensFromTable(
+	tableName: TokenTableName,
+	feedType: FeedType,
+	feedTokens: Array<FeedToken>,
+): Map<string, TokenMetadata> {
+	if (feedTokens.length === 0) {
+		return new Map()
+	}
+
+	const maxSqliteVariables = getMaxSqliteVariableNumber()
+	const variablesPerToken = 2
+	const maxTokensPerBatch = Math.max(
+		1,
+		Math.floor(maxSqliteVariables / variablesPerToken),
+	)
+	const tokenMetadataByKey = new Map<string, TokenMetadata>()
+
+	for (let start = 0; start < feedTokens.length; start += maxTokensPerBatch) {
+		const batch = feedTokens.slice(start, start + maxTokensPerBatch)
+		const placeholders = batch.map(() => '(?, ?)').join(', ')
+		const rows = db
+			.query<
+				{
+					token: string
+					feed_id: string
+					label: string
+					created_at: number
+					last_used_at: number | null
+					revoked_at: number | null
+				},
+				Array<string>
+			>(
+				sql`
+					SELECT token, feed_id, label, created_at, last_used_at, revoked_at
+					FROM ${tableName}
+					WHERE (feed_id, token) IN (${placeholders});
+				`,
+			)
+			.all(...batch.flatMap((feedToken) => [feedToken.feedId, feedToken.token]))
+
+		for (const row of rows) {
+			tokenMetadataByKey.set(
+				getFeedTokenKey(feedType, row.feed_id, row.token),
+				{
+					label: row.label,
+					createdAt: row.created_at,
+					lastUsedAt: row.last_used_at,
+					revokedAt: row.revoked_at,
+				},
+			)
+		}
+	}
+
+	return tokenMetadataByKey
+}
+
+function listTokenMetadataByFeedTokens(
+	feedType: FeedType,
+	feedTokens: Array<FeedToken>,
+): Map<string, TokenMetadata> {
 	const tableName: TokenTableName =
 		feedType === 'directory' ? 'directory_feed_tokens' : 'curated_feed_tokens'
-	return getTokenMetadataFromTable(tableName, token, feedId)
+	return listTokenMetadataByFeedTokensFromTable(tableName, feedType, feedTokens)
 }
 
 function listFeedNamesByIds(
@@ -93,6 +168,14 @@ function listFeedNamesByIds(
 
 function getFeedKey(feedType: FeedType, feedId: string): string {
 	return `${feedType}:${feedId}`
+}
+
+function getFeedTokenKey(
+	feedType: FeedType,
+	feedId: string,
+	token: string,
+): string {
+	return `${feedType}:${feedId}:${token}`
 }
 
 /**
@@ -157,6 +240,10 @@ export default {
 
 		const directoryFeedIds = new Set<string>()
 		const curatedFeedIds = new Set<string>()
+		const directoryFeedTokens: Array<FeedToken> = []
+		const curatedFeedTokens: Array<FeedToken> = []
+		const directoryTokenKeys = new Set<string>()
+		const curatedTokenKeys = new Set<string>()
 		for (const row of byFeed) {
 			if (row.feedType === 'directory') {
 				directoryFeedIds.add(row.feedId)
@@ -167,18 +254,31 @@ export default {
 		for (const row of byToken) {
 			if (row.feedType === 'directory') {
 				directoryFeedIds.add(row.feedId)
+				const tokenKey = `${row.feedId}:${row.token}`
+				if (!directoryTokenKeys.has(tokenKey)) {
+					directoryTokenKeys.add(tokenKey)
+					directoryFeedTokens.push({ feedId: row.feedId, token: row.token })
+				}
 			} else {
 				curatedFeedIds.add(row.feedId)
+				const tokenKey = `${row.feedId}:${row.token}`
+				if (!curatedTokenKeys.has(tokenKey)) {
+					curatedTokenKeys.add(tokenKey)
+					curatedFeedTokens.push({ feedId: row.feedId, token: row.token })
+				}
 			}
 		}
 
+		const directoryFeedIdList = Array.from(directoryFeedIds)
+		const curatedFeedIdList = Array.from(curatedFeedIds)
+
 		const directoryFeedNameById = listFeedNamesByIds(
 			'directory_feeds',
-			Array.from(directoryFeedIds),
+			directoryFeedIdList,
 		)
 		const curatedFeedNameById = listFeedNamesByIds(
 			'curated_feeds',
-			Array.from(curatedFeedIds),
+			curatedFeedIdList,
 		)
 		const feedNameByKey = new Map<string, string>()
 		for (const [feedId, feedName] of directoryFeedNameById.entries()) {
@@ -186,6 +286,20 @@ export default {
 		}
 		for (const [feedId, feedName] of curatedFeedNameById.entries()) {
 			feedNameByKey.set(getFeedKey('curated', feedId), feedName)
+		}
+
+		const tokenMetadataByKey = new Map<string, TokenMetadata>()
+		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedTokens(
+			'directory',
+			directoryFeedTokens,
+		).entries()) {
+			tokenMetadataByKey.set(tokenKey, tokenMetadata)
+		}
+		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedTokens(
+			'curated',
+			curatedFeedTokens,
+		).entries()) {
+			tokenMetadataByKey.set(tokenKey, tokenMetadata)
 		}
 
 		const byFeedWithNames = byFeed.map((row) => ({
@@ -196,7 +310,9 @@ export default {
 		}))
 
 		const byTokenWithMetadata = byToken.map((row) => {
-			const tokenMeta = getTokenMetadata(row.token, row.feedId, row.feedType)
+			const tokenMeta = tokenMetadataByKey.get(
+				getFeedTokenKey(row.feedType, row.feedId, row.token),
+			)
 			return {
 				...row,
 				feedName:

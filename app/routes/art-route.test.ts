@@ -12,6 +12,16 @@ import artHandler from './art.ts'
 migrate(db)
 
 type ArtActionContext = Parameters<typeof artHandler.action>[0]
+type MinimalArtActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string>
+}
+
+function asActionContext(context: MinimalArtActionContext): ArtActionContext {
+	return context as ArtActionContext
+}
 
 function createArtRouteTestContext() {
 	const feed = createDirectoryFeed({
@@ -34,15 +44,17 @@ function createArtRouteTestContext() {
 test('art route rejects malformed path encoding', async () => {
 	using ctx = createArtRouteTestContext()
 	const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
-	const response = await artHandler.action({
-		request,
-		method: 'GET',
-		url: new URL(request.url),
-		params: {
-			token: ctx.token,
-			path: '%E0%A4%A',
-		},
-	} as unknown as ArtActionContext)
+	const response = await artHandler.action(
+		asActionContext({
+			request,
+			method: 'GET',
+			url: new URL(request.url),
+			params: {
+				token: ctx.token,
+				path: '%E0%A4%A',
+			},
+		}),
+	)
 
 	expect(response.status).toBe(400)
 	expect(await response.text()).toBe('Invalid path encoding')

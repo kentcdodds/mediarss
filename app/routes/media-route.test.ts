@@ -3,10 +3,22 @@ import '#app/config/init-env.ts'
 import mediaHandlers from './media.ts'
 
 type MediaActionContext = Parameters<typeof mediaHandlers.action>[0]
+type MinimalMediaActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string>
+}
+
+function asActionContext(
+	context: MinimalMediaActionContext,
+): MediaActionContext {
+	return context as MediaActionContext
+}
 
 function createMediaActionContext(pathParam: string): MediaActionContext {
 	const request = new Request(`http://localhost/media/token/${pathParam}`)
-	return {
+	return asActionContext({
 		request,
 		method: 'GET',
 		url: new URL(request.url),
@@ -14,7 +26,7 @@ function createMediaActionContext(pathParam: string): MediaActionContext {
 			token: 'test-token',
 			path: pathParam,
 		},
-	} as unknown as MediaActionContext
+	})
 }
 
 test('media route returns 400 for malformed path encoding', async () => {

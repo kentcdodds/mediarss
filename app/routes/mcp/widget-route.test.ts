@@ -12,6 +12,18 @@ import widgetHandler from './widget.ts'
 migrate(db)
 
 type WidgetActionContext = Parameters<typeof widgetHandler.action>[0]
+type MinimalWidgetActionContext = {
+	request: Request
+	method: string
+	url: URL
+	params: Record<string, string>
+}
+
+function asActionContext(
+	context: MinimalWidgetActionContext,
+): WidgetActionContext {
+	return context as WidgetActionContext
+}
 
 function createWidgetTestContext() {
 	const feed = createDirectoryFeed({
@@ -36,15 +48,17 @@ test('mcp widget route rejects malformed path encoding', async () => {
 	const request = new Request(
 		`http://localhost/mcp/widget/${ctx.token}/%E0%A4%A`,
 	)
-	const response = await widgetHandler.action({
-		request,
-		method: 'GET',
-		url: new URL(request.url),
-		params: {
-			token: ctx.token,
-			path: '%E0%A4%A',
-		},
-	} as unknown as WidgetActionContext)
+	const response = await widgetHandler.action(
+		asActionContext({
+			request,
+			method: 'GET',
+			url: new URL(request.url),
+			params: {
+				token: ctx.token,
+				path: '%E0%A4%A',
+			},
+		}),
+	)
 
 	expect(response.status).toBe(400)
 	expect(await response.text()).toBe('Invalid URL encoding')

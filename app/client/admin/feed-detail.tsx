@@ -507,7 +507,6 @@ export function FeedDetail(handle: Handle) {
 			.catch((err) => {
 				if (handle.signal.aborted) return
 				state = { status: 'error', message: err.message }
-				analyticsState = { status: 'error', message: err.message }
 				handle.update()
 			})
 	}

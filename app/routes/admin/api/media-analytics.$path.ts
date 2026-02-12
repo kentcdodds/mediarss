@@ -18,55 +18,63 @@ type FeedType = 'directory' | 'curated'
 type TokenTableName = 'directory_feed_tokens' | 'curated_feed_tokens'
 type FeedTableName = 'directory_feeds' | 'curated_feeds'
 
-function getTokenMetadataFromTable(
-	tableName: TokenTableName,
-	token: string,
-	feedId: string,
-): {
+type TokenMetadata = {
 	label: string
 	createdAt: number
 	lastUsedAt: number | null
 	revokedAt: number | null
-} | null {
-	const row = db
+}
+
+function listTokenMetadataByFeedIdsFromTable(
+	tableName: TokenTableName,
+	feedType: FeedType,
+	feedIds: Array<string>,
+): Map<string, TokenMetadata> {
+	if (feedIds.length === 0) {
+		return new Map()
+	}
+
+	const placeholders = feedIds.map(() => '?').join(', ')
+	const rows = db
 		.query<
 			{
+				token: string
+				feed_id: string
 				label: string
 				created_at: number
 				last_used_at: number | null
 				revoked_at: number | null
 			},
-			[string, string]
+			Array<string>
 		>(
 			sql`
-				SELECT label, created_at, last_used_at, revoked_at
+				SELECT token, feed_id, label, created_at, last_used_at, revoked_at
 				FROM ${tableName}
-				WHERE token = ? AND feed_id = ?;
+				WHERE feed_id IN (${placeholders});
 			`,
 		)
-		.get(token, feedId)
-	if (!row) return null
-	return {
-		label: row.label,
-		createdAt: row.created_at,
-		lastUsedAt: row.last_used_at,
-		revokedAt: row.revoked_at,
-	}
+		.all(...feedIds)
+
+	return new Map(
+		rows.map((row) => [
+			getFeedTokenKey(feedType, row.feed_id, row.token),
+			{
+				label: row.label,
+				createdAt: row.created_at,
+				lastUsedAt: row.last_used_at,
+				revokedAt: row.revoked_at,
+			},
+		]),
+	)
 }
 
-function getTokenMetadata(
-	token: string,
-	feedId: string,
+function listTokenMetadataByFeedIds(
 	feedType: FeedType,
-): {
-	label: string
-	createdAt: number
-	lastUsedAt: number | null
-	revokedAt: number | null
-} | null {
+	feedIds: Array<string>,
+): Map<string, TokenMetadata> {
 	const tableName: TokenTableName =
 		feedType === 'directory' ? 'directory_feed_tokens' : 'curated_feed_tokens'
-	return getTokenMetadataFromTable(tableName, token, feedId)
+	return listTokenMetadataByFeedIdsFromTable(tableName, feedType, feedIds)
 }
 
 function listFeedNamesByIds(
@@ -93,6 +101,10 @@ function listFeedNamesByIds(
 
 function getFeedKey(feedType: FeedType, feedId: string): string {
 	return `${feedType}:${feedId}`
+}
+
+function getFeedTokenKey(feedType: FeedType, feedId: string, token: string): string {
+	return `${feedType}:${feedId}:${token}`
 }
 
 /**
@@ -172,13 +184,16 @@ export default {
 			}
 		}
 
+		const directoryFeedIdList = Array.from(directoryFeedIds)
+		const curatedFeedIdList = Array.from(curatedFeedIds)
+
 		const directoryFeedNameById = listFeedNamesByIds(
 			'directory_feeds',
-			Array.from(directoryFeedIds),
+			directoryFeedIdList,
 		)
 		const curatedFeedNameById = listFeedNamesByIds(
 			'curated_feeds',
-			Array.from(curatedFeedIds),
+			curatedFeedIdList,
 		)
 		const feedNameByKey = new Map<string, string>()
 		for (const [feedId, feedName] of directoryFeedNameById.entries()) {
@@ -186,6 +201,23 @@ export default {
 		}
 		for (const [feedId, feedName] of curatedFeedNameById.entries()) {
 			feedNameByKey.set(getFeedKey('curated', feedId), feedName)
+		}
+
+		const tokenMetadataByKey = new Map<string, TokenMetadata>()
+		for (const [
+			tokenKey,
+			tokenMetadata,
+		] of listTokenMetadataByFeedIds(
+			'directory',
+			directoryFeedIdList,
+		).entries()) {
+			tokenMetadataByKey.set(tokenKey, tokenMetadata)
+		}
+		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedIds(
+			'curated',
+			curatedFeedIdList,
+		).entries()) {
+			tokenMetadataByKey.set(tokenKey, tokenMetadata)
 		}
 
 		const byFeedWithNames = byFeed.map((row) => ({
@@ -196,7 +228,9 @@ export default {
 		}))
 
 		const byTokenWithMetadata = byToken.map((row) => {
-			const tokenMeta = getTokenMetadata(row.token, row.feedId, row.feedType)
+			const tokenMeta = tokenMetadataByKey.get(
+				getFeedTokenKey(row.feedType, row.feedId, row.token),
+			)
 			return {
 				...row,
 				feedName:

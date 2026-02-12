@@ -118,7 +118,10 @@ export default {
 					token,
 					mediaRoot: parsed.rootName,
 					relativePath: parsed.relativePath,
-					isDownloadStart: isDownloadStartRequest(context.request),
+					isDownloadStart: isDownloadStartRequest(
+						context.request,
+						response.status,
+					),
 					bytesServed: getResponseBytesServed(response),
 					statusCode: response.status,
 					clientFingerprint: getClientFingerprint(context.request),

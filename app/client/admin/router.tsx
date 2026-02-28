@@ -131,7 +131,12 @@ export function Link() {
 						if (event.defaultPrevented) return
 						if (!(event instanceof MouseEvent)) return
 						if (event.button !== 0) return
-						if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+						if (
+							event.metaKey ||
+							event.ctrlKey ||
+							event.shiftKey ||
+							event.altKey
+						)
 							return
 						if (target && target !== '_self') return
 						if (download !== undefined && download !== false) return

@@ -1,4 +1,4 @@
-import { parse, type InferOutput, type Schema } from 'remix/data-schema'
+import { type InferOutput, parse, type Schema } from 'remix/data-schema'
 
 /**
  * Template tag for SQL that joins multiline SQL into a single line.

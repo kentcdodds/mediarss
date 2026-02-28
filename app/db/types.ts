@@ -1,11 +1,11 @@
 import {
 	enum_,
+	type InferOutput,
 	nullable,
 	number,
 	object,
 	string,
 	union,
-	type InferOutput,
 } from 'remix/data-schema'
 
 export const SortOrderSchema = enum_(['asc', 'desc'] as const)

@@ -4,11 +4,11 @@ import {
 	createSchema,
 	defaulted,
 	enum_,
+	type InferOutput,
+	type Issue,
 	object,
 	parseSafe,
 	string,
-	type InferOutput,
-	type Issue,
 } from 'remix/data-schema'
 import * as coerce from 'remix/data-schema/coerce'
 

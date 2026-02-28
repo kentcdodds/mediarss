@@ -1,7 +1,7 @@
 import { generateToken } from '#app/helpers/crypto.ts'
 import {
-	curatedFeedTokensTable,
 	curatedFeedsTable,
+	curatedFeedTokensTable,
 	dataTableDb,
 } from './data-table.ts'
 import { parseRow, parseRows } from './sql.ts'

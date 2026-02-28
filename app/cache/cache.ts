@@ -8,12 +8,12 @@ import {
 	type CachifiedOptions,
 } from '@epic-web/cachified'
 import {
+	type InferOutput,
 	nullable,
 	number,
 	object,
 	optional,
 	parse,
-	type InferOutput,
 } from 'remix/data-schema'
 import { getEnv } from '#app/config/env.ts'
 import { sql } from '#app/db/sql.ts'

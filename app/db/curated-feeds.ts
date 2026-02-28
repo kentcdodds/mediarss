@@ -1,5 +1,5 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { dataTableDb, curatedFeedsTable } from './data-table.ts'
+import { curatedFeedsTable, dataTableDb } from './data-table.ts'
 import { parseRow, parseRows } from './sql.ts'
 import { type CuratedFeed, CuratedFeedSchema, type SortOrder } from './types.ts'
 

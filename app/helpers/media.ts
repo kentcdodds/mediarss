@@ -6,6 +6,7 @@ import * as mm from 'music-metadata'
 import pLimit from 'p-limit'
 import {
 	array,
+	type InferOutput,
 	instanceof_,
 	literal,
 	nullable,
@@ -15,7 +16,6 @@ import {
 	parse,
 	parseSafe,
 	string,
-	type InferOutput,
 } from 'remix/data-schema'
 import { cachified, shouldRefreshCache } from '#app/cache/cache.ts'
 import { getMediaRoots } from '#app/config/env.ts'

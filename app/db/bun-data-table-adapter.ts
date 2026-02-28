@@ -1,3 +1,4 @@
+import type { Database as BunDatabase } from 'bun:sqlite'
 import type {
 	AdapterCapabilityOverrides,
 	AdapterExecuteRequest,
@@ -7,7 +8,6 @@ import type {
 	TransactionToken,
 } from 'remix/data-table'
 import { getTablePrimaryKey } from 'remix/data-table'
-import type { Database as BunDatabase } from 'bun:sqlite'
 import { compileBunSqliteStatement } from './bun-data-table-sql-compiler.ts'
 
 type BunStatementResult = {

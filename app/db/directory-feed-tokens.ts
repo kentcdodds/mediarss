@@ -1,8 +1,8 @@
 import { generateToken } from '#app/helpers/crypto.ts'
 import {
 	dataTableDb,
-	directoryFeedTokensTable,
 	directoryFeedsTable,
+	directoryFeedTokensTable,
 } from './data-table.ts'
 import { parseRow, parseRows } from './sql.ts'
 import {

@@ -11,11 +11,11 @@
 import { createRoot, type Handle } from 'remix/component'
 import {
 	array,
+	type InferOutput,
 	nullable,
+	number,
 	object,
 	string,
-	number,
-	type InferOutput,
 } from 'remix/data-schema'
 import { artworkLayout } from '#app/styles/tokens.ts'
 import { waitForRenderData } from './mcp-ui.ts'

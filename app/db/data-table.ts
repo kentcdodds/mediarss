@@ -1,5 +1,5 @@
-import { createDatabase, createTable } from 'remix/data-table'
 import { enum_, nullable, number, string } from 'remix/data-schema'
+import { createDatabase, createTable } from 'remix/data-table'
 import { createBunSqliteDatabaseAdapter } from './bun-data-table-adapter.ts'
 import { db as sqliteDb } from './index.ts'
 

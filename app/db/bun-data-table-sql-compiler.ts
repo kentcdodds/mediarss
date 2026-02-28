@@ -1,7 +1,7 @@
 import {
+	type AdapterStatement,
 	getTableName,
 	getTablePrimaryKey,
-	type AdapterStatement,
 } from 'remix/data-table'
 
 type CompilerContext = {

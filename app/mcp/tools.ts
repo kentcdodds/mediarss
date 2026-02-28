@@ -57,7 +57,7 @@ import {
 	parseMediaPathStrict,
 } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
-import { getAllFeeds, getFeedById, type FeedWithType } from './feed-helpers.ts'
+import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { toolsMetadata } from './metadata.ts'
 import {
 	createMediaWidgetResource,

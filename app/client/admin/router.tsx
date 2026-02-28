@@ -222,17 +222,7 @@ function handleDocumentSubmit(event: SubmitEvent) {
 	}
 	const search = new URLSearchParams()
 	for (const [key, value] of formData.entries()) {
-		if (typeof value !== 'string') {
-			const blobWithName = value as { name?: string }
-			search.append(
-				key,
-				typeof blobWithName.name === 'string' && blobWithName.name.length > 0
-					? blobWithName.name
-					: String(value),
-			)
-			continue
-		}
-		search.append(key, String(value))
+		search.append(key, typeof value === 'string' ? value : value.name)
 	}
 
 	url.search = search.toString()

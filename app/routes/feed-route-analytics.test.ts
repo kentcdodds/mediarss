@@ -43,7 +43,7 @@ function asActionContext(context: MinimalFeedActionContext): FeedActionContext {
 type FeedRouteTestContext = {
 	feed: { id: string }
 	token: string
-	cleanup: () => Promise<void>
+	[Symbol.asyncDispose]: () => Promise<void>
 }
 
 async function createCuratedFeedRouteTestContext(): Promise<FeedRouteTestContext> {
@@ -59,7 +59,7 @@ async function createCuratedFeedRouteTestContext(): Promise<FeedRouteTestContext
 	return {
 		feed,
 		token: token.token,
-		cleanup: async () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
@@ -81,7 +81,7 @@ async function createDirectoryFeedRouteTestContext(): Promise<FeedRouteTestConte
 	return {
 		feed,
 		token: token.token,
-		cleanup: async () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
@@ -168,16 +168,45 @@ async function withAnalyticsTableUnavailable(
 		.toString(36)
 		.slice(2)}`
 	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
-	try {
-		await run()
-	} finally {
-		db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+	using _restoreAnalyticsTable = {
+		[Symbol.dispose]: () => {
+			db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+		},
 	}
+	await run()
 }
 
 test('feed route logs rss_fetch analytics for successful responses', async () => {
-	const ctx = await createCuratedFeedRouteTestContext()
-	try {
+	await using ctx = await createCuratedFeedRouteTestContext()
+	const response = await feedHandler.action(
+		createFeedActionContext(ctx.token, {
+			'User-Agent': 'Pocket Casts/7.0',
+			'X-Forwarded-For': '203.0.113.25',
+		}),
+	)
+	expect(response.status).toBe(200)
+	expect(response.headers.get('Content-Type')).toContain('application/rss+xml')
+
+	const event = readLatestRssEvent(ctx.feed.id)
+	expect(event).toMatchObject({
+		feed_type: 'curated',
+		token: ctx.token,
+		status_code: 200,
+	})
+	expect(event?.client_name).not.toBeNull()
+	expect(event?.client_fingerprint).toBeTruthy()
+})
+
+test('feed route still returns rss when analytics writes fail', async () => {
+	await using ctx = await createCuratedFeedRouteTestContext()
+	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+	using _restoreConsoleErrorSpy = {
+		[Symbol.dispose]: () => {
+			consoleErrorSpy.mockRestore()
+		},
+	}
+
+	await withAnalyticsTableUnavailable(async () => {
 		const response = await feedHandler.action(
 			createFeedActionContext(ctx.token, {
 				'User-Agent': 'Pocket Casts/7.0',
@@ -188,58 +217,19 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 		expect(response.headers.get('Content-Type')).toContain(
 			'application/rss+xml',
 		)
-
-		const event = readLatestRssEvent(ctx.feed.id)
-		expect(event).toMatchObject({
-			feed_type: 'curated',
-			token: ctx.token,
-			status_code: 200,
-		})
-		expect(event?.client_name).not.toBeNull()
-		expect(event?.client_fingerprint).toBeTruthy()
-	} finally {
-		await ctx.cleanup()
-	}
-})
-
-test('feed route still returns rss when analytics writes fail', async () => {
-	const ctx = await createCuratedFeedRouteTestContext()
-	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
-	try {
-		await withAnalyticsTableUnavailable(async () => {
-			const response = await feedHandler.action(
-				createFeedActionContext(ctx.token, {
-					'User-Agent': 'Pocket Casts/7.0',
-					'X-Forwarded-For': '203.0.113.25',
-				}),
-			)
-			expect(response.status).toBe(200)
-			expect(response.headers.get('Content-Type')).toContain(
-				'application/rss+xml',
-			)
-		})
-		expect(countEventsForToken(ctx.token)).toBe(0)
-	} finally {
-		consoleErrorSpy.mockRestore()
-		await ctx.cleanup()
-	}
+	})
+	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 
 test('feed route stores null client metadata when request lacks client traits', async () => {
-	const ctx = await createCuratedFeedRouteTestContext()
-	try {
-		const response = await feedHandler.action(
-			createFeedActionContext(ctx.token),
-		)
-		expect(response.status).toBe(200)
+	await using ctx = await createCuratedFeedRouteTestContext()
+	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	expect(response.status).toBe(200)
 
-		expect(readLatestRssEvent(ctx.feed.id)).toMatchObject({
-			client_name: null,
-			client_fingerprint: null,
-		})
-	} finally {
-		await ctx.cleanup()
-	}
+	expect(readLatestRssEvent(ctx.feed.id)).toMatchObject({
+		client_name: null,
+		client_fingerprint: null,
+	})
 })
 
 test('feed route does not log analytics for missing tokens', async () => {
@@ -265,18 +255,14 @@ test('feed route does not log analytics for revoked tokens', async () => {
 	] as const
 
 	for (const testCase of cases) {
-		const ctx = await testCase.createContext()
-		try {
-			expect(await testCase.revokeToken(ctx.token)).toBe(true)
+		await using ctx = await testCase.createContext()
+		expect(await testCase.revokeToken(ctx.token)).toBe(true)
 
-			const response = await feedHandler.action(
-				createFeedActionContext(ctx.token),
-			)
-			expect(response.status).toBe(404)
-			expect(countEventsForToken(ctx.token)).toBe(0)
-		} finally {
-			await ctx.cleanup()
-		}
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token),
+		)
+		expect(response.status).toBe(404)
+		expect(countEventsForToken(ctx.token)).toBe(0)
 	}
 })
 
@@ -295,24 +281,20 @@ test('feed route touches token last_used_at on successful fetch', async () => {
 	] as const
 
 	for (const testCase of cases) {
-		const ctx = await testCase.createContext()
-		try {
-			expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
+		await using ctx = await testCase.createContext()
+		expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
 
-			const response = await feedHandler.action(
-				createFeedActionContext(ctx.token),
-			)
-			expect(response.status).toBe(200)
-			expect((testCase.getLastUsedAt(ctx.token) ?? 0) > 0).toBe(true)
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token),
+		)
+		expect(response.status).toBe(200)
+		expect((testCase.getLastUsedAt(ctx.token) ?? 0) > 0).toBe(true)
 
-			const event = readLatestRssEvent(ctx.feed.id)
-			expect(event).toMatchObject({
-				feed_type: testCase.expectedFeedType,
-				token: ctx.token,
-				status_code: 200,
-			})
-		} finally {
-			await ctx.cleanup()
-		}
+		const event = readLatestRssEvent(ctx.feed.id)
+		expect(event).toMatchObject({
+			feed_type: testCase.expectedFeedType,
+			token: ctx.token,
+			status_code: 200,
+		})
 	}
 })

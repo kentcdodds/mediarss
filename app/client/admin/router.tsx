@@ -209,7 +209,7 @@ function handleDocumentSubmit(event: SubmitEvent) {
 		: new FormData(form)
 	const search = new URLSearchParams()
 	for (const [key, value] of formData.entries()) {
-		search.append(key, typeof value === 'string' ? value : value.name)
+		search.append(key, String(value))
 	}
 
 	url.search = search.toString()

@@ -412,7 +412,7 @@ function normalizeJoinType(type: 'inner' | 'left' | 'right'): string {
 	return 'inner'
 }
 
-function quoteIdentifier(value: string): string {
+export function quoteIdentifier(value: string): string {
 	return `"${value.replace(/"/g, '""')}"`
 }
 

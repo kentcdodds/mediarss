@@ -8,7 +8,10 @@ import type {
 	TransactionToken,
 } from 'remix/data-table'
 import { getTablePrimaryKey } from 'remix/data-table'
-import { compileBunSqliteStatement } from './bun-data-table-sql-compiler.ts'
+import {
+	compileBunSqliteStatement,
+	quoteIdentifier,
+} from './bun-data-table-sql-compiler.ts'
 
 type BunStatementResult = {
 	changes: number
@@ -285,8 +288,4 @@ function isInsertStatementKind(
 	kind: AdapterExecuteRequest['statement']['kind'],
 ): boolean {
 	return kind === 'insert' || kind === 'insertMany' || kind === 'upsert'
-}
-
-function quoteIdentifier(value: string): string {
-	return `"${value.replace(/"/g, '""')}"`
 }

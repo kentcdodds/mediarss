@@ -114,12 +114,26 @@ const MediaPathsSchema = createSchema<unknown, Array<MediaRoot>>(
  * Helper to parse optional integer env vars with defaults.
  */
 function optionalInt(defaultValue: number) {
-	return defaulted(
-		coerce
-			.number()
-			.refine((num) => Number.isInteger(num), 'Expected an integer value'),
-		defaultValue,
-	)
+	const intSchema = coerce
+		.number()
+		.refine((num) => Number.isInteger(num), 'Expected an integer value')
+
+	return createSchema<unknown, number>((value, context) => {
+		if (value === undefined || value === '') {
+			return { value: defaultValue }
+		}
+
+		const parsed = parseSafe(intSchema, value)
+		if (parsed.success) {
+			return { value: parsed.value }
+		}
+
+		return {
+			issues: parsed.issues.map((issue) =>
+				createIssue(issue.message, [...context.path, ...(issue.path ?? [])]),
+			),
+		}
+	})
 }
 
 /**

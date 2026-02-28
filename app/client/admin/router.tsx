@@ -160,7 +160,11 @@ export function Link() {
  */
 export function RouterOutlet(handle: Handle) {
 	// Subscribe to navigation events
-	handle.on(router, { navigate: () => handle.update() })
+	handle.on(router, {
+		navigate: () => {
+			void handle.update()
+		},
+	})
 
 	return () => {
 		const result = router.match()

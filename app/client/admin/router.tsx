@@ -204,9 +204,10 @@ function handleDocumentSubmit(event: SubmitEvent) {
 	}
 	if (url.origin !== window.location.origin) return
 
-	const formData = submitter
-		? new FormData(form, submitter)
-		: new FormData(form)
+	const formData = new FormData(form)
+	if (submitter?.name) {
+		formData.append(submitter.name, submitter.value)
+	}
 	const search = new URLSearchParams()
 	for (const [key, value] of formData.entries()) {
 		search.append(key, String(value))

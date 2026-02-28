@@ -1,4 +1,4 @@
-import type { z } from 'zod'
+import { parse, type InferOutput, type Schema } from 'remix/data-schema'
 
 /**
  * Template tag for SQL that joins multiline SQL into a single line.
@@ -42,23 +42,23 @@ export function snakeToCamel<T extends Record<string, unknown>>(obj: T) {
 }
 
 /**
- * Converts a database row to a validated object using a Zod schema.
+ * Converts a database row to a validated object using a data schema.
  * Performs snake_case to camelCase conversion and runtime type validation.
  */
-export function parseRow<T extends z.ZodTypeAny>(
-	schema: T,
+export function parseRow<TSchema extends Schema<any, any>>(
+	schema: TSchema,
 	row: Record<string, unknown>,
-): z.infer<T> {
+): InferOutput<TSchema> {
 	const camelCased = snakeToCamel(row)
-	return schema.parse(camelCased)
+	return parse(schema, camelCased)
 }
 
 /**
- * Converts multiple database rows to validated objects using a Zod schema.
+ * Converts multiple database rows to validated objects using a data schema.
  */
-export function parseRows<T extends z.ZodTypeAny>(
-	schema: T,
+export function parseRows<TSchema extends Schema<any, any>>(
+	schema: TSchema,
 	rows: Array<Record<string, unknown>>,
-): Array<z.infer<T>> {
+): Array<InferOutput<TSchema>> {
 	return rows.map((row) => parseRow(schema, row))
 }

@@ -9,39 +9,50 @@
  * not embedded inline in the HTML.
  */
 import { createRoot, type Handle } from 'remix/component'
-import { z } from 'zod'
+import {
+	array,
+	nullable,
+	object,
+	string,
+	number,
+	type InferOutput,
+} from 'remix/data-schema'
 import { artworkLayout } from '#app/styles/tokens.ts'
 import { waitForRenderData } from './mcp-ui.ts'
 
 /**
  * Media data schema for validation
  */
-const MediaDataSchema = z.object({
-	title: z.string(),
-	author: z.string().nullable(),
-	duration: z.number().nullable(),
-	sizeBytes: z.number(),
-	mimeType: z.string(),
-	publicationDate: z.string().nullable(),
-	description: z.string().nullable(),
-	narrators: z.array(z.string()).nullable(),
-	genres: z.array(z.string()).nullable(),
-	artworkUrl: z.string(),
-	streamUrl: z.string(),
-})
+const MediaDataSchema = object(
+	{
+		title: string(),
+		author: nullable(string()),
+		duration: nullable(number()),
+		sizeBytes: number(),
+		mimeType: string(),
+		publicationDate: nullable(string()),
+		description: nullable(string()),
+		narrators: nullable(array(string())),
+		genres: nullable(array(string())),
+		artworkUrl: string(),
+		streamUrl: string(),
+	},
+	{ unknownKeys: 'passthrough' },
+)
 
-type MediaData = z.infer<typeof MediaDataSchema>
+type MediaData = InferOutput<typeof MediaDataSchema>
 
 /**
  * Render data schema from MCP-UI protocol
  * ChatGPT wraps the data in toolInput/toolOutput
  */
-const RenderDataSchema = z
-	.object({
-		toolInput: MediaDataSchema.passthrough().nullable(),
-		toolOutput: z.object({}).passthrough().nullable(),
-	})
-	.passthrough()
+const RenderDataSchema = object(
+	{
+		toolInput: nullable(MediaDataSchema),
+		toolOutput: nullable(object({}, { unknownKeys: 'passthrough' })),
+	},
+	{ unknownKeys: 'passthrough' },
+)
 
 // Color tokens for the widget (dark theme optimized for ChatGPT context)
 const colors = {

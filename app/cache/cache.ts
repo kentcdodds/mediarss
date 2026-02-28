@@ -7,7 +7,14 @@ import {
 	type CacheEntry,
 	type CachifiedOptions,
 } from '@epic-web/cachified'
-import { z } from 'zod'
+import {
+	nullable,
+	number,
+	object,
+	optional,
+	parse,
+	type InferOutput,
+} from 'remix/data-schema'
 import { getEnv } from '#app/config/env.ts'
 import { sql } from '#app/db/sql.ts'
 
@@ -91,11 +98,12 @@ function getDeleteStatement() {
 }
 
 // Schema for validating cache entry metadata
-const cacheMetadataSchema = z.object({
-	createdTime: z.number(),
-	ttl: z.number().nullable().optional(),
-	swr: z.number().nullable().optional(),
+const cacheMetadataSchema = object({
+	createdTime: number(),
+	ttl: optional(nullable(number())),
+	swr: optional(nullable(number())),
 })
+type CacheMetadata = InferOutput<typeof cacheMetadataSchema>
 
 /**
  * SQLite-backed cache implementation for cachified.
@@ -108,7 +116,10 @@ export const cache: Cache = {
 		if (!row) return null
 
 		try {
-			const metadata = cacheMetadataSchema.parse(JSON.parse(row.metadata))
+			const metadata: CacheMetadata = parse(
+				cacheMetadataSchema,
+				JSON.parse(row.metadata),
+			)
 			const value = JSON.parse(row.value)
 			return { metadata, value }
 		} catch (error) {
@@ -140,7 +151,10 @@ export function shouldRefreshCache(key: string, fileMtime: number): boolean {
 	if (!row) return false // No cache entry, will fetch fresh anyway
 
 	try {
-		const metadata = cacheMetadataSchema.parse(JSON.parse(row.metadata))
+		const metadata: CacheMetadata = parse(
+			cacheMetadataSchema,
+			JSON.parse(row.metadata),
+		)
 		// Convert fileMtime from ms to seconds for comparison with createdTime
 		const fileMtimeSeconds = Math.floor(fileMtime / 1000)
 		const createdTimeSeconds = Math.floor(metadata.createdTime / 1000)

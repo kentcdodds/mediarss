@@ -1,114 +1,125 @@
-import { z } from 'zod'
+import {
+	enum_,
+	nullable,
+	number,
+	object,
+	string,
+	union,
+	type InferOutput,
+} from 'remix/data-schema'
 
-export const SortOrderSchema = z.enum(['asc', 'desc'])
-export type SortOrder = z.infer<typeof SortOrderSchema>
+export const SortOrderSchema = enum_(['asc', 'desc'] as const)
+export type SortOrder = InferOutput<typeof SortOrderSchema>
 
-export const FeedTypeSchema = z.enum(['episodic', 'serial'])
-export type FeedType = z.infer<typeof FeedTypeSchema>
+export const FeedTypeSchema = enum_(['episodic', 'serial'] as const)
+export type FeedType = InferOutput<typeof FeedTypeSchema>
 
-export const DirectoryFeedSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	description: z.string(),
-	subtitle: z.string().nullable(),
-	directoryPaths: z.string(), // JSON array of "mediaRoot:relativePath" strings
-	sortFields: z.string(),
+export const DirectoryFeedSchema = object({
+	id: string(),
+	name: string(),
+	description: string(),
+	subtitle: nullable(string()),
+	directoryPaths: string(), // JSON array of "mediaRoot:relativePath" strings
+	sortFields: string(),
 	sortOrder: SortOrderSchema,
-	imageUrl: z.string().nullable(),
-	author: z.string().nullable(),
-	ownerName: z.string().nullable(),
-	ownerEmail: z.string().nullable(),
-	language: z.string(),
-	explicit: z.string(),
-	category: z.string().nullable(),
-	link: z.string().nullable(),
-	copyright: z.string().nullable(),
-	feedType: FeedTypeSchema.nullable(),
-	filterIn: z.string().nullable(),
-	filterOut: z.string().nullable(),
-	overrides: z.string().nullable(),
-	createdAt: z.number(),
-	updatedAt: z.number(),
+	imageUrl: nullable(string()),
+	author: nullable(string()),
+	ownerName: nullable(string()),
+	ownerEmail: nullable(string()),
+	language: string(),
+	explicit: string(),
+	category: nullable(string()),
+	link: nullable(string()),
+	copyright: nullable(string()),
+	feedType: nullable(FeedTypeSchema),
+	filterIn: nullable(string()),
+	filterOut: nullable(string()),
+	overrides: nullable(string()),
+	createdAt: number(),
+	updatedAt: number(),
 })
-export type DirectoryFeed = z.infer<typeof DirectoryFeedSchema>
+export type DirectoryFeed = InferOutput<typeof DirectoryFeedSchema>
 
-export const CuratedFeedSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	description: z.string(),
-	subtitle: z.string().nullable(),
-	sortFields: z.string(),
+export const CuratedFeedSchema = object({
+	id: string(),
+	name: string(),
+	description: string(),
+	subtitle: nullable(string()),
+	sortFields: string(),
 	sortOrder: SortOrderSchema,
-	imageUrl: z.string().nullable(),
-	author: z.string().nullable(),
-	ownerName: z.string().nullable(),
-	ownerEmail: z.string().nullable(),
-	language: z.string(),
-	explicit: z.string(),
-	category: z.string().nullable(),
-	link: z.string().nullable(),
-	copyright: z.string().nullable(),
-	feedType: FeedTypeSchema.nullable(),
-	overrides: z.string().nullable(),
-	createdAt: z.number(),
-	updatedAt: z.number(),
+	imageUrl: nullable(string()),
+	author: nullable(string()),
+	ownerName: nullable(string()),
+	ownerEmail: nullable(string()),
+	language: string(),
+	explicit: string(),
+	category: nullable(string()),
+	link: nullable(string()),
+	copyright: nullable(string()),
+	feedType: nullable(FeedTypeSchema),
+	overrides: nullable(string()),
+	createdAt: number(),
+	updatedAt: number(),
 })
-export type CuratedFeed = z.infer<typeof CuratedFeedSchema>
+export type CuratedFeed = InferOutput<typeof CuratedFeedSchema>
 
-export const FeedItemSchema = z.object({
-	id: z.string(),
-	feedId: z.string(),
-	mediaRoot: z.string(),
-	relativePath: z.string(),
-	position: z.number().nullable(),
-	addedAt: z.number(),
+export const FeedItemSchema = object({
+	id: string(),
+	feedId: string(),
+	mediaRoot: string(),
+	relativePath: string(),
+	position: nullable(number()),
+	addedAt: number(),
 })
-export type FeedItem = z.infer<typeof FeedItemSchema>
+export type FeedItem = InferOutput<typeof FeedItemSchema>
 
-export const AnalyticsEventTypeSchema = z.enum(['rss_fetch', 'media_request'])
-export type AnalyticsEventType = z.infer<typeof AnalyticsEventTypeSchema>
+export const AnalyticsEventTypeSchema = enum_([
+	'rss_fetch',
+	'media_request',
+] as const)
+export type AnalyticsEventType = InferOutput<typeof AnalyticsEventTypeSchema>
 
-export const AnalyticsFeedTypeSchema = z.enum(['directory', 'curated'])
-export type AnalyticsFeedType = z.infer<typeof AnalyticsFeedTypeSchema>
+export const AnalyticsFeedTypeSchema = enum_(['directory', 'curated'] as const)
+export type AnalyticsFeedType = InferOutput<typeof AnalyticsFeedTypeSchema>
 
 /**
  * Token for accessing a directory feed.
  * Tokens are the only public identifier used in feed URLs.
  * Multiple tokens per feed are allowed for per-client access control.
  */
-export const DirectoryFeedTokenSchema = z.object({
-	token: z.string(),
-	feedId: z.string(),
-	label: z.string(),
-	createdAt: z.number(),
-	lastUsedAt: z.number().nullable(),
-	revokedAt: z.number().nullable(),
+export const DirectoryFeedTokenSchema = object({
+	token: string(),
+	feedId: string(),
+	label: string(),
+	createdAt: number(),
+	lastUsedAt: nullable(number()),
+	revokedAt: nullable(number()),
 })
-export type DirectoryFeedToken = z.infer<typeof DirectoryFeedTokenSchema>
+export type DirectoryFeedToken = InferOutput<typeof DirectoryFeedTokenSchema>
 
 /**
  * Token for accessing a curated feed.
  * Tokens are the only public identifier used in feed URLs.
  * Multiple tokens per feed are allowed for per-client access control.
  */
-export const CuratedFeedTokenSchema = z.object({
-	token: z.string(),
-	feedId: z.string(),
-	label: z.string(),
-	createdAt: z.number(),
-	lastUsedAt: z.number().nullable(),
-	revokedAt: z.number().nullable(),
+export const CuratedFeedTokenSchema = object({
+	token: string(),
+	feedId: string(),
+	label: string(),
+	createdAt: number(),
+	lastUsedAt: nullable(number()),
+	revokedAt: nullable(number()),
 })
-export type CuratedFeedToken = z.infer<typeof CuratedFeedTokenSchema>
+export type CuratedFeedToken = InferOutput<typeof CuratedFeedTokenSchema>
 
-export const FeedSchema = z.union([DirectoryFeedSchema, CuratedFeedSchema])
-export type Feed = z.infer<typeof FeedSchema>
+export const FeedSchema = union([DirectoryFeedSchema, CuratedFeedSchema])
+export type Feed = InferOutput<typeof FeedSchema>
 
-export const FeedTokenSchema = z.union([
+export const FeedTokenSchema = union([
 	DirectoryFeedTokenSchema,
 	CuratedFeedTokenSchema,
 ])
-export type FeedToken = z.infer<typeof FeedTokenSchema>
+export type FeedToken = InferOutput<typeof FeedTokenSchema>
 
 /**
  * Type guard to check if a feed is a DirectoryFeed

@@ -1,25 +1,52 @@
 import nodePath from 'node:path'
-import { z } from 'zod'
+import {
+	createIssue,
+	createSchema,
+	defaulted,
+	enum_,
+	object,
+	parseSafe,
+	string,
+	type InferOutput,
+	type Issue,
+} from 'remix/data-schema'
+import * as coerce from 'remix/data-schema/coerce'
 
 /**
  * Schema for a single media root entry.
  * Format: "name:path" (e.g., "shows:/media/shows")
  */
-const MediaRootSchema = z.string().transform((entry) => {
-	const colonIndex = entry.indexOf(':')
+const MediaRootSchema = createSchema<unknown, MediaRoot>((value, context) => {
+	if (typeof value !== 'string') {
+		return { issues: [createIssue('Expected string', context.path)] }
+	}
+
+	const colonIndex = value.indexOf(':')
 	if (colonIndex === -1) {
-		throw new Error(
-			`Invalid media root format: "${entry}". Expected "name:path" (e.g., "shows:/media/shows")`,
-		)
+		return {
+			issues: [
+				createIssue(
+					`Invalid media root format: "${value}". Expected "name:path" (e.g., "shows:/media/shows")`,
+					context.path,
+				),
+			],
+		}
 	}
-	const name = entry.slice(0, colonIndex).trim()
-	const path = entry.slice(colonIndex + 1).trim()
+
+	const name = value.slice(0, colonIndex).trim()
+	const path = value.slice(colonIndex + 1).trim()
 	if (!name || !path) {
-		throw new Error(
-			`Invalid media root format: "${entry}". Both name and path are required.`,
-		)
+		return {
+			issues: [
+				createIssue(
+					`Invalid media root format: "${value}". Both name and path are required.`,
+					context.path,
+				),
+			],
+		}
 	}
-	return { name, path }
+
+	return { value: { name, path } }
 })
 
 /**
@@ -28,50 +55,84 @@ const MediaRootSchema = z.string().transform((entry) => {
  * Example: "shows:/media/shows,personal:/media/personal,other:/media/other"
  * Note: Each name must be unique - duplicate names are not allowed.
  */
-const MediaPathsSchema = z
-	.string()
-	.optional()
-	.transform((value) => {
-		if (!value) return []
-		return value
+const MediaPathsSchema = createSchema<unknown, Array<MediaRoot>>(
+	(value, context) => {
+		if (value === undefined || value === '') {
+			return { value: [] }
+		}
+		if (typeof value !== 'string') {
+			return { issues: [createIssue('Expected string', context.path)] }
+		}
+
+		const entries = value
 			.split(',')
 			.map((s) => s.trim())
 			.filter(Boolean)
-	})
-	.pipe(z.array(MediaRootSchema))
-	.superRefine((roots, ctx) => {
-		const names = roots.map((r) => r.name)
+
+		const roots: MediaRoot[] = []
+		const issues: Issue[] = []
+
+		for (const [index, entry] of entries.entries()) {
+			const parsed = parseSafe(MediaRootSchema, entry)
+			if (!parsed.success) {
+				for (const issue of parsed.issues) {
+					issues.push(
+						createIssue(issue.message, [
+							...context.path,
+							index,
+							...(issue.path ?? []),
+						]),
+					)
+				}
+				continue
+			}
+			roots.push(parsed.value)
+		}
+
+		const names = roots.map((root) => root.name)
 		if (new Set(names).size !== names.length) {
 			const duplicates = names.filter(
 				(name, index) => names.indexOf(name) !== index,
 			)
-			ctx.addIssue({
-				code: 'custom',
-				message: `Duplicate media path names are not allowed. Found duplicates: ${[...new Set(duplicates)].join(', ')}`,
-			})
+			issues.push(
+				createIssue(
+					`Duplicate media path names are not allowed. Found duplicates: ${[...new Set(duplicates)].join(', ')}`,
+					context.path,
+				),
+			)
 		}
-	})
+
+		if (issues.length > 0) {
+			return { issues }
+		}
+
+		return { value: roots }
+	},
+)
 
 /**
  * Helper to parse optional integer env vars with defaults.
  */
 function optionalInt(defaultValue: number) {
-	return z
-		.string()
-		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : defaultValue))
+	return defaulted(
+		coerce
+			.number()
+			.refine((num) => Number.isInteger(num), 'Expected an integer value'),
+		defaultValue,
+	)
 }
 
 /**
  * Environment variable schema for MediaRSS.
  */
-const EnvSchema = z.object({
-	NODE_ENV: z
-		.enum(['production', 'development', 'test'])
-		.default('development'),
+const EnvSchema = object({
+	NODE_ENV: defaulted(
+		enum_(['production', 'development', 'test'] as const),
+		'development',
+	),
 	PORT: optionalInt(22050),
-	DATABASE_PATH: z.string().default('./data/sqlite.db'),
-	CACHE_DATABASE_PATH: z.string().default('./data/cache.db'),
+	DATABASE_PATH: defaulted(string(), './data/sqlite.db'),
+	CACHE_DATABASE_PATH: defaulted(string(), './data/cache.db'),
 	MEDIA_PATHS: MediaPathsSchema,
 
 	// Rate limiting (requests per minute per IP)
@@ -85,13 +146,10 @@ const EnvSchema = z.object({
 	ANALYTICS_RETENTION_DAYS: optionalInt(180),
 
 	// GitHub repository URL for linking to commits (optional)
-	GITHUB_REPO: z
-		.string()
-		.optional()
-		.default('https://github.com/kentcdodds/mediarss'),
+	GITHUB_REPO: defaulted(string(), 'https://github.com/kentcdodds/mediarss'),
 })
 
-export type Env = z.infer<typeof EnvSchema>
+export type Env = InferOutput<typeof EnvSchema>
 export type MediaRoot = { name: string; path: string }
 
 let _env: Env | null = null
@@ -101,17 +159,21 @@ let _env: Env | null = null
  * Must be called before accessing env.
  */
 export function initEnv(): Env {
-	const parsed = EnvSchema.safeParse(Bun.env)
+	const parsed = parseSafe(EnvSchema, Bun.env)
 
 	if (!parsed.success) {
 		console.error('❌ Invalid environment variables:')
-		for (const issue of parsed.error.issues) {
-			console.error(`  - ${issue.path.join('.')}: ${issue.message}`)
+		for (const issue of parsed.issues) {
+			const pathLabel =
+				issue.path && issue.path.length > 0
+					? issue.path.map((segment) => String(segment)).join('.')
+					: '(root)'
+			console.error(`  - ${pathLabel}: ${issue.message}`)
 		}
 		throw new Error('Invalid environment variables')
 	}
 
-	_env = parsed.data
+	_env = parsed.value
 	return _env
 }
 

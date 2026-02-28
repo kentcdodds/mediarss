@@ -28,10 +28,13 @@ When updating or adding code:
 - `remix/fetch-router/routes`
   - Reason: this is the right API surface for route config modules and avoids
     pulling unnecessary server-oriented exports into route declaration files.
+- `remix/data-schema` (+ checks/coerce where needed)
+  - Reason: this now replaces app-level Zod usage for env parsing, DB row
+    validation, cache metadata validation, media metadata validation, and client
+    widget payload validation.
 
 ### Not adopted yet (intentional)
 
-- `remix/data-schema` (+ checks/coerce/lazy)
 - `remix/data-table` (+ mysql/postgres/sqlite)
 - `remix/file-storage-s3`
 - `remix/session-storage-memcache`
@@ -41,6 +44,12 @@ Reason: the current app already has stable, tested abstractions for validation,
 storage, and database access. We should only adopt these packages in targeted
 follow-up refactors where we can preserve behavior and test each migration in
 isolation.
+
+## Remaining Zod usage
+
+`@modelcontextprotocol/sdk` tool/prompt schema registration currently expects
+Zod-compatible schemas at runtime. Until MCP SDK supports Standard Schema for
+that path, MCP tool/prompt argument schemas remain on Zod.
 
 ## Router behavior expectation
 

@@ -4,7 +4,19 @@ import { invariant } from '@epic-web/invariant'
 import { fileTypeFromFile } from 'file-type'
 import * as mm from 'music-metadata'
 import pLimit from 'p-limit'
-import { z } from 'zod'
+import {
+	array,
+	instanceof_,
+	literal,
+	nullable,
+	number,
+	object,
+	optional,
+	parse,
+	parseSafe,
+	string,
+	type InferOutput,
+} from 'remix/data-schema'
 import { cachified, shouldRefreshCache } from '#app/cache/cache.ts'
 import { getMediaRoots } from '#app/config/env.ts'
 
@@ -118,52 +130,53 @@ function parseAudibleJson64(metadata: mm.IAudioMetadata): AudibleJson64 | null {
 /**
  * Schema for validating MediaFile data
  */
-const MediaFileSchema = z.object({
-	path: z.string(),
-	filename: z.string(),
-	directory: z.string(),
-	title: z.string(),
-	author: z.string().nullable(),
-	duration: z.number().nullable(),
-	publicationDate: z.date().nullable(),
-	trackNumber: z.number().nullable(),
-	description: z.string().nullable(),
-	narrators: z.array(z.string()).nullable(),
-	genres: z.array(z.string()).nullable(),
-	copyright: z.string().nullable(),
-	sizeBytes: z.number(),
-	mimeType: z.string(),
-	fileModifiedAt: z.number(),
+const MediaFileShape = {
+	path: string(),
+	filename: string(),
+	directory: string(),
+	title: string(),
+	author: nullable(string()),
+	duration: nullable(number()),
+	publicationDate: nullable(instanceof_(Date)),
+	trackNumber: nullable(number()),
+	description: nullable(string()),
+	narrators: nullable(array(string())),
+	genres: nullable(array(string())),
+	copyright: nullable(string()),
+	sizeBytes: number(),
+	mimeType: string(),
+	fileModifiedAt: number(),
 	// Additional metadata fields
-	album: z.string().nullable(),
-	albumArtist: z.string().nullable(),
-	composer: z.string().nullable(),
-	publisher: z.string().nullable(),
-	discNumber: z.number().nullable(),
-	totalDiscs: z.number().nullable(),
-	totalTracks: z.number().nullable(),
-	language: z.string().nullable(),
-	series: z.string().nullable(),
-	seriesPosition: z.string().nullable(),
-	encodedBy: z.string().nullable(),
-	subtitle: z.string().nullable(),
-})
+	album: nullable(string()),
+	albumArtist: nullable(string()),
+	composer: nullable(string()),
+	publisher: nullable(string()),
+	discNumber: nullable(number()),
+	totalDiscs: nullable(number()),
+	totalTracks: nullable(number()),
+	language: nullable(string()),
+	series: nullable(string()),
+	seriesPosition: nullable(string()),
+	encodedBy: nullable(string()),
+	subtitle: nullable(string()),
+} as const
 
-export type MediaFile = z.infer<typeof MediaFileSchema>
+const MediaFileSchema = object(MediaFileShape)
+
+export type MediaFile = InferOutput<typeof MediaFileSchema>
 
 /**
  * Schema for cached media file data (handles Date serialization).
  * Derived from MediaFileSchema with publicationDate as ISO string instead of Date.
  * Also adds a version field for cache invalidation when schema changes.
  */
-const CachedMediaFileSchema = MediaFileSchema.omit({
-	publicationDate: true,
-}).extend({
-	publicationDate: z.string().nullable(), // ISO string in cache
-	_cacheVersion: z.literal(2).optional(), // Increment when schema changes
+const CachedMediaFileSchema = object({
+	...MediaFileShape,
+	publicationDate: nullable(string()), // ISO string in cache
+	_cacheVersion: optional(literal(2 as const)), // Increment when schema changes
 })
 
-type CachedMediaFile = z.infer<typeof CachedMediaFileSchema>
+type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema changes
 const CACHE_VERSION = 2 as const
@@ -881,8 +894,8 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			subtitle: extractSubtitle(metadata),
 		}
 
-		// Validate with zod
-		return MediaFileSchema.parse(mediaFile)
+		// Validate parsed media metadata structure
+		return parse(MediaFileSchema, mediaFile)
 	} catch (error) {
 		console.error(`Error reading metadata for ${filepath}:`, error)
 		return null
@@ -912,10 +925,10 @@ async function getCachedFileMetadata(
 			// null is valid (means not a media file)
 			if (value === null) return true
 			// Validate cached value structure
-			const result = CachedMediaFileSchema.safeParse(value)
+			const result = parseSafe(CachedMediaFileSchema, value)
 			if (!result.success) return false
 			// Check cache version matches current version
-			if (result.data._cacheVersion !== CACHE_VERSION) return false
+			if (result.value._cacheVersion !== CACHE_VERSION) return false
 			return true
 		},
 	})

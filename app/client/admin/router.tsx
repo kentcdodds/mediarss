@@ -24,6 +24,7 @@ type Route = {
 class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
 	#currentPath: string = window.location.pathname
+	#currentHref: string = getLocationHref()
 
 	get currentPath() {
 		return this.#currentPath
@@ -53,10 +54,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Navigate to a new path using the History API.
 	 */
 	navigate(path: string) {
-		const normalizedPath = normalizePath(path)
-		if (normalizedPath === this.#currentPath) return
-		history.pushState(null, '', normalizedPath)
-		this.#currentPath = normalizedPath
+		const target = normalizeNavigationTarget(path)
+		if (target.href === this.#currentHref) return
+		history.pushState(null, '', target.href)
+		this.#currentHref = target.href
+		this.#currentPath = target.pathname
 		this.dispatchEvent(new Event('navigate'))
 	}
 
@@ -85,6 +87,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Handle browser back/forward navigation.
 	 */
 	handlePopState = () => {
+		this.#currentHref = getLocationHref()
 		this.#currentPath = window.location.pathname
 		this.dispatchEvent(new Event('navigate'))
 	}
@@ -95,63 +98,123 @@ export const router = new RouterState()
 
 // Listen for browser navigation
 window.addEventListener('popstate', router.handlePopState)
+document.addEventListener('click', handleDocumentClick)
+document.addEventListener('submit', handleDocumentSubmit)
 
-function normalizePath(path: string): string {
+function getLocationHref(): string {
+	return `${window.location.pathname}${window.location.search}${window.location.hash}`
+}
+
+function normalizeNavigationTarget(path: string): {
+	pathname: string
+	href: string
+} {
 	try {
-		return new URL(path, window.location.origin).pathname
+		const url = new URL(path, window.location.origin)
+		return {
+			pathname: url.pathname,
+			href: `${url.pathname}${url.search}${url.hash}`,
+		}
 	} catch {
-		return path
+		return {
+			pathname: window.location.pathname,
+			href: getLocationHref(),
+		}
 	}
 }
 
-/**
- * Link component for navigation.
- */
-export function Link() {
-	return (
-		props: {
-			href: string
-			target?: string
-			download?: string | boolean
-			on?: Record<string, (event: Event) => void>
-		} & Record<string, unknown>,
-	) => {
-		const { href, target, download, on, ...rest } = props
+function shouldIgnoreRouterNavigation(element: Element): boolean {
+	return element.closest('[data-router-ignore]') !== null
+}
 
-		return (
-			<a
-				{...rest}
-				href={href}
-				target={target}
-				download={download}
-				on={{
-					...on,
-					click: (event) => {
-						on?.click?.(event)
-						if (event.defaultPrevented) return
-						if (!(event instanceof MouseEvent)) return
-						if (event.button !== 0) return
-						if (
-							event.metaKey ||
-							event.ctrlKey ||
-							event.shiftKey ||
-							event.altKey
-						)
-							return
-						if (target && target !== '_self') return
-						if (download !== undefined && download !== false) return
-						if (href.startsWith('#')) return
+function handleDocumentClick(event: MouseEvent) {
+	if (event.defaultPrevented) return
+	if (event.button !== 0) return
+	if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+	if (!(event.target instanceof Element)) return
 
-						const url = new URL(href, window.location.href)
-						if (url.origin !== window.location.origin) return
+	const anchor = event.target.closest('a[href]')
+	if (!(anchor instanceof HTMLAnchorElement)) return
+	if (shouldIgnoreRouterNavigation(anchor)) return
 
-						event.preventDefault()
-						router.navigate(url.pathname)
-					},
-				}}
-			/>
-		)
+	const target = anchor.getAttribute('target')?.trim().toLowerCase()
+	if (target && target !== '_self') return
+	if (anchor.hasAttribute('download')) return
+
+	const href = anchor.getAttribute('href')
+	if (!href || href.startsWith('#')) return
+
+	let url: URL
+	try {
+		url = new URL(href, window.location.href)
+	} catch {
+		return
 	}
+	if (url.origin !== window.location.origin) return
+
+	event.preventDefault()
+	router.navigate(`${url.pathname}${url.search}${url.hash}`)
+}
+
+function getSubmitterElement(
+	submitter: SubmitEvent['submitter'],
+): HTMLButtonElement | HTMLInputElement | null {
+	if (submitter instanceof HTMLButtonElement) return submitter
+	if (
+		submitter instanceof HTMLInputElement &&
+		(submitter.type === 'submit' || submitter.type === 'image')
+	) {
+		return submitter
+	}
+	return null
+}
+
+function handleDocumentSubmit(event: SubmitEvent) {
+	if (event.defaultPrevented) return
+	if (!(event.target instanceof HTMLFormElement)) return
+
+	const form = event.target
+	if (shouldIgnoreRouterNavigation(form)) return
+
+	const submitter = getSubmitterElement(event.submitter)
+	if (submitter && shouldIgnoreRouterNavigation(submitter)) return
+
+	const target =
+		submitter?.getAttribute('formtarget') ?? form.getAttribute('target')
+	if (target?.trim() && target.trim().toLowerCase() !== '_self') return
+
+	const method = (
+		submitter?.getAttribute('formmethod') ??
+		form.getAttribute('method') ??
+		'get'
+	)
+		.trim()
+		.toLowerCase()
+	if (method !== 'get') return
+
+	const action =
+		submitter?.getAttribute('formaction') ??
+		form.getAttribute('action') ??
+		window.location.href
+	let url: URL
+	try {
+		url = new URL(action, window.location.href)
+	} catch {
+		return
+	}
+	if (url.origin !== window.location.origin) return
+
+	const formData = submitter
+		? new FormData(form, submitter)
+		: new FormData(form)
+	const search = new URLSearchParams()
+	for (const [key, value] of formData.entries()) {
+		search.append(key, typeof value === 'string' ? value : value.name)
+	}
+
+	url.search = search.toString()
+	event.preventDefault()
+	router.navigate(`${url.pathname}${url.search}${url.hash}`)
 }
 
 /**

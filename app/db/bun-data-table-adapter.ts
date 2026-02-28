@@ -238,6 +238,9 @@ function normalizeInsertIdForReader(
 	}
 
 	const key = primaryKey[0]
+	if (!key) {
+		return undefined
+	}
 	const row = rows[rows.length - 1]
 	return row ? row[key] : undefined
 }

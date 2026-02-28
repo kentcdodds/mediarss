@@ -13,6 +13,8 @@ type CompiledStatement = {
 	values: Array<unknown>
 }
 
+type DataTableAnyTable = Parameters<typeof getTableName>[0]
+
 export function compileBunSqliteStatement(
 	statement: AdapterStatement,
 ): CompiledStatement {
@@ -117,7 +119,7 @@ export function compileBunSqliteStatement(
 }
 
 function compileInsertStatement(
-	table: { [key: string]: unknown },
+	table: DataTableAnyTable,
 	values: Record<string, unknown>,
 	returning: '*' | Array<string> | undefined,
 	context: CompilerContext,
@@ -145,7 +147,7 @@ function compileInsertStatement(
 }
 
 function compileInsertManyStatement(
-	table: { [key: string]: unknown },
+	table: DataTableAnyTable,
 	rows: Array<Record<string, unknown>>,
 	returning: '*' | Array<string> | undefined,
 	context: CompilerContext,
@@ -176,9 +178,7 @@ function compileInsertManyStatement(
 				.map((row) => {
 					const values = columns
 						.map((column) => {
-							const value = Object.hasOwn(row, column)
-								? row[column]
-								: null
+							const value = Object.hasOwn(row, column) ? row[column] : null
 							return pushValue(context, value)
 						})
 						.join(', ')
@@ -232,10 +232,10 @@ function compileUpsertStatement(
 }
 
 function compileFromClause(
-	table: { [key: string]: unknown },
+	table: DataTableAnyTable,
 	joins: Array<{
 		type: 'inner' | 'left' | 'right'
-		table: { [key: string]: unknown }
+		table: DataTableAnyTable
 		on: unknown
 	}>,
 	context: CompilerContext,

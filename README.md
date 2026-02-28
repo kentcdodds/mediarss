@@ -12,6 +12,14 @@
 > is not the primary focus and may have limitations (especially with regard to
 > performance) with certain formats.
 
+## Remix Version Notes
+
+MediaRSS currently targets `remix@3.0.0-alpha.3`.
+
+For migration details (including import rules, package adoption decisions, and
+router behavior expectations), see
+[`docs/remix-3-0-0-alpha-3-upgrade.md`](docs/remix-3-0-0-alpha-3-upgrade.md).
+
 ## Screenshots
 
 ### Dashboard

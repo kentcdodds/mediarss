@@ -1,4 +1,4 @@
-import { parse, type InferOutput, type Schema } from 'remix/data-schema'
+import { parse, type Schema } from 'remix/data-schema'
 
 /**
  * Template tag for SQL that joins multiline SQL into a single line.
@@ -49,7 +49,7 @@ export function parseRow<
 	TInput,
 	TOutput,
 	TSchema extends Schema<TInput, TOutput>,
->(schema: TSchema, row: Record<string, unknown>): InferOutput<TSchema> {
+>(schema: TSchema, row: Record<string, unknown>): TOutput {
 	const camelCased = snakeToCamel(row)
 	return parse(schema, camelCased)
 }
@@ -61,9 +61,6 @@ export function parseRows<
 	TInput,
 	TOutput,
 	TSchema extends Schema<TInput, TOutput>,
->(
-	schema: TSchema,
-	rows: Array<Record<string, unknown>>,
-): Array<InferOutput<TSchema>> {
+>(schema: TSchema, rows: Array<Record<string, unknown>>): Array<TOutput> {
 	return rows.map((row) => parseRow(schema, row))
 }

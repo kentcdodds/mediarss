@@ -205,6 +205,9 @@ function compileUpsertStatement(
 
 	const updateValues = statement.update ?? statement.values
 	const updateColumns = Object.keys(updateValues)
+	const insertPlaceholders = insertColumns
+		.map((column) => pushValue(context, statement.values[column]))
+		.join(', ')
 
 	const conflictClause =
 		updateColumns.length === 0
@@ -216,19 +219,18 @@ function compileUpsertStatement(
 					)
 					.join(', ')}`
 
-	return {
+	const compiled = {
 		text:
 			`insert into ${quotePath(getTableName(statement.table))} (` +
 			insertColumns.map((column) => quotePath(column)).join(', ') +
 			') values (' +
-			insertColumns
-				.map((column) => pushValue(context, statement.values[column]))
-				.join(', ') +
+			insertPlaceholders +
 			')' +
 			conflictClause +
 			compileReturningClause(statement.returning),
 		values: context.values,
 	}
+	return compiled
 }
 
 function compileFromClause(

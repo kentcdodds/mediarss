@@ -45,7 +45,7 @@ export function snakeToCamel<T extends Record<string, unknown>>(obj: T) {
  * Converts a database row to a validated object using a data schema.
  * Performs snake_case to camelCase conversion and runtime type validation.
  */
-export function parseRow<TSchema extends Schema<any, any>>(
+export function parseRow<TSchema extends Schema<unknown, unknown>>(
 	schema: TSchema,
 	row: Record<string, unknown>,
 ): InferOutput<TSchema> {
@@ -56,7 +56,7 @@ export function parseRow<TSchema extends Schema<any, any>>(
 /**
  * Converts multiple database rows to validated objects using a data schema.
  */
-export function parseRows<TSchema extends Schema<any, any>>(
+export function parseRows<TSchema extends Schema<unknown, unknown>>(
 	schema: TSchema,
 	rows: Array<Record<string, unknown>>,
 ): Array<InferOutput<TSchema>> {

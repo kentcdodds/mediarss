@@ -85,7 +85,7 @@ function normalizeOptionalText(text: string | undefined): string {
 	return text ?? ''
 }
 
-function findRecentMatchingCuratedFeed(params: {
+async function findRecentMatchingCuratedFeed(params: {
 	name: string
 	description: string
 	subtitle: string | null
@@ -103,10 +103,10 @@ function findRecentMatchingCuratedFeed(params: {
 	feedType: 'episodic' | 'serial'
 	overrides: string | null
 	now: number
-}): CuratedFeed | undefined {
+}): Promise<CuratedFeed | undefined> {
 	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
 	// listCuratedFeeds() is already sorted newest-first
-	for (const feed of listCuratedFeeds()) {
+	for (const feed of await listCuratedFeeds()) {
 		if (feed.createdAt < cutoff) break
 		// Be fairly strict so we don't "dedupe" unrelated older feeds.
 		if (
@@ -133,7 +133,7 @@ function findRecentMatchingCuratedFeed(params: {
 	return undefined
 }
 
-function findRecentMatchingDirectoryFeed(params: {
+async function findRecentMatchingDirectoryFeed(params: {
 	name: string
 	description: string
 	subtitle: string | null
@@ -154,10 +154,10 @@ function findRecentMatchingDirectoryFeed(params: {
 	filterOut: string | null
 	overrides: string | null
 	now: number
-}): DirectoryFeed | undefined {
+}): Promise<DirectoryFeed | undefined> {
 	const cutoff = params.now - MCP_CREATE_DEDUPE_WINDOW_SECONDS
 	// listDirectoryFeeds() is already sorted newest-first
-	for (const feed of listDirectoryFeeds()) {
+	for (const feed of await listDirectoryFeeds()) {
 		if (feed.createdAt < cutoff) break
 		// Be fairly strict so we don't "dedupe" unrelated older feeds.
 		if (
@@ -190,12 +190,12 @@ function findRecentMatchingDirectoryFeed(params: {
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<FeedWithType> {
-	const directoryFeeds = listDirectoryFeeds().map((f) => ({
+async function getAllFeeds(): Promise<Array<FeedWithType>> {
+	const directoryFeeds = (await listDirectoryFeeds()).map((f) => ({
 		...f,
 		type: 'directory' as const,
 	}))
-	const curatedFeeds = listCuratedFeeds().map((f) => ({
+	const curatedFeeds = (await listCuratedFeeds()).map((f) => ({
 		...f,
 		type: 'curated' as const,
 	}))
@@ -207,11 +207,11 @@ function getAllFeeds(): Array<FeedWithType> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(id: string): FeedWithType | undefined {
-	const directoryFeed = getDirectoryFeedById(id)
+async function getFeedById(id: string): Promise<FeedWithType | undefined> {
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
 
 	return undefined
@@ -222,15 +222,19 @@ function getFeedById(id: string): FeedWithType | undefined {
  * Searches through all feeds to find one that has access to the file,
  * then returns the first active token for that feed.
  */
-function findTokenForMedia(
+async function findTokenForMedia(
 	rootName: string,
 	relativePath: string,
-): { token: string; feed: Feed; type: 'directory' | 'curated' } | null {
+): Promise<{
+	token: string
+	feed: Feed
+	type: 'directory' | 'curated'
+} | null> {
 	// Check directory feeds first
-	const directoryFeeds = listDirectoryFeeds()
+	const directoryFeeds = await listDirectoryFeeds()
 	for (const feed of directoryFeeds) {
-		if (isFileAllowed(feed, 'directory', rootName, relativePath)) {
-			const tokens = listActiveDirectoryFeedTokens(feed.id)
+		if (await isFileAllowed(feed, 'directory', rootName, relativePath)) {
+			const tokens = await listActiveDirectoryFeedTokens(feed.id)
 			if (tokens.length > 0) {
 				return {
 					token: tokens[0]!.token,
@@ -242,10 +246,10 @@ function findTokenForMedia(
 	}
 
 	// Then check curated feeds
-	const curatedFeeds = listCuratedFeeds()
+	const curatedFeeds = await listCuratedFeeds()
 	for (const feed of curatedFeeds) {
-		if (isFileAllowed(feed, 'curated', rootName, relativePath)) {
-			const tokens = listActiveCuratedFeedTokens(feed.id)
+		if (await isFileAllowed(feed, 'curated', rootName, relativePath)) {
+			const tokens = await listActiveCuratedFeedTokens(feed.id)
 			if (tokens.length > 0) {
 				return {
 					token: tokens[0]!.token,
@@ -410,7 +414,7 @@ export async function initializeTools(
 				},
 			},
 			async () => {
-				const feeds = getAllFeeds()
+				const feeds = await getAllFeeds()
 
 				// Format human-readable output
 				const lines: string[] = []
@@ -507,7 +511,7 @@ export async function initializeTools(
 				},
 			},
 			async ({ id }) => {
-				const feed = getFeedById(id)
+				const feed = await getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -523,7 +527,9 @@ export async function initializeTools(
 
 				// Get feed items (for curated feeds)
 				const items =
-					feed.type === 'curated' ? getItemsForFeed(id) : ([] as FeedItem[])
+					feed.type === 'curated'
+						? await getItemsForFeed(id)
+						: ([] as FeedItem[])
 
 				// Format human-readable output
 				const lines: string[] = []
@@ -823,7 +829,7 @@ export async function initializeTools(
 				},
 			},
 			async ({ feedId }) => {
-				const feed = getFeedById(feedId)
+				const feed = await getFeedById(feedId)
 
 				if (!feed) {
 					return {
@@ -839,8 +845,8 @@ export async function initializeTools(
 
 				const tokens: FeedToken[] =
 					feed.type === 'directory'
-						? listActiveDirectoryFeedTokens(feedId)
-						: listActiveCuratedFeedTokens(feedId)
+						? await listActiveDirectoryFeedTokens(feedId)
+						: await listActiveCuratedFeedTokens(feedId)
 
 				// Format human-readable output
 				const lines: string[] = []
@@ -920,7 +926,7 @@ export async function initializeTools(
 
 				if (token) {
 					// Validate provided token and get feed
-					const result = getFeedByToken(token)
+					const result = await getFeedByToken(token)
 					if (!result) {
 						return {
 							content: [
@@ -936,7 +942,7 @@ export async function initializeTools(
 					type = result.type
 				} else {
 					// Find a feed that has access to this file and get its first token
-					const autoResult = findTokenForMedia(mediaRoot, relativePath)
+					const autoResult = await findTokenForMedia(mediaRoot, relativePath)
 					if (!autoResult) {
 						return {
 							content: [
@@ -984,7 +990,14 @@ export async function initializeTools(
 				}
 
 				// Validate file is allowed for this feed (path traversal protection)
-				if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+				if (
+					!(await isFileAllowed(
+						feed,
+						type,
+						parsed.rootName,
+						parsed.relativePath,
+					))
+				) {
 					return {
 						content: [
 							{
@@ -1505,7 +1518,7 @@ export async function initializeTools(
 						`${mediaRoot}:${directoryPath}`,
 					])
 
-					const existing = findRecentMatchingDirectoryFeed({
+					const existing = await findRecentMatchingDirectoryFeed({
 						name,
 						description: normalizedDescription,
 						subtitle: normalizedSubtitle,
@@ -1530,7 +1543,7 @@ export async function initializeTools(
 
 					const feed = existing
 						? existing
-						: createDirectoryFeed({
+						: await createDirectoryFeed({
 								name,
 								description: normalizedDescription || undefined,
 								subtitle: normalizedSubtitle,
@@ -1554,8 +1567,8 @@ export async function initializeTools(
 
 					// Prefer re-using an existing active token when deduping.
 					const token =
-						listActiveDirectoryFeedTokens(feed.id)[0] ??
-						createDirectoryFeedToken({ feedId: feed.id })
+						(await listActiveDirectoryFeedTokens(feed.id))[0] ??
+						(await createDirectoryFeedToken({ feedId: feed.id }))
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -1757,7 +1770,7 @@ export async function initializeTools(
 					const normalizedFeedType = feedType ?? 'episodic'
 					const normalizedOverrides = overrides ?? null
 
-					const existing = findRecentMatchingCuratedFeed({
+					const existing = await findRecentMatchingCuratedFeed({
 						name,
 						description: normalizedDescription,
 						subtitle: normalizedSubtitle,
@@ -1779,7 +1792,7 @@ export async function initializeTools(
 
 					const feed = existing
 						? existing
-						: createCuratedFeed({
+						: await createCuratedFeed({
 								name,
 								description: normalizedDescription || undefined,
 								subtitle: normalizedSubtitle,
@@ -1800,8 +1813,8 @@ export async function initializeTools(
 
 					// Prefer re-using an existing active token when deduping.
 					const token =
-						listActiveCuratedFeedTokens(feed.id)[0] ??
-						createCuratedFeedToken({ feedId: feed.id })
+						(await listActiveCuratedFeedTokens(feed.id))[0] ??
+						(await createCuratedFeedToken({ feedId: feed.id }))
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -2015,7 +2028,7 @@ export async function initializeTools(
 				filterIn,
 				filterOut,
 			}) => {
-				const feed = getFeedById(id)
+				const feed = await getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -2084,7 +2097,7 @@ export async function initializeTools(
 							directoryPaths = validation.directoryPaths
 						}
 
-						updateDirectoryFeed(id, {
+						await updateDirectoryFeed(id, {
 							name,
 							description,
 							subtitle,
@@ -2106,7 +2119,7 @@ export async function initializeTools(
 							overrides,
 						})
 					} else {
-						updateCuratedFeed(id, {
+						await updateCuratedFeed(id, {
 							name,
 							description,
 							subtitle,
@@ -2126,7 +2139,10 @@ export async function initializeTools(
 						})
 					}
 
-					const updatedFeed = getFeedById(id)!
+					const updatedFeed = await getFeedById(id)
+					if (!updatedFeed) {
+						throw new Error(`Feed "${id}" not found after update`)
+					}
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -2207,7 +2223,7 @@ export async function initializeTools(
 				},
 			},
 			async ({ id }) => {
-				const feed = getFeedById(id)
+				const feed = await getFeedById(id)
 
 				if (!feed) {
 					return {
@@ -2224,9 +2240,9 @@ export async function initializeTools(
 				try {
 					const feedName = feed.name
 					if (feed.type === 'directory') {
-						deleteDirectoryFeed(id)
+						await deleteDirectoryFeed(id)
 					} else {
-						deleteCuratedFeed(id)
+						await deleteCuratedFeed(id)
 					}
 
 					// Format human-readable output
@@ -2275,7 +2291,7 @@ export async function initializeTools(
 				},
 			},
 			async ({ feedId }) => {
-				const feed = getFeedById(feedId)
+				const feed = await getFeedById(feedId)
 
 				if (!feed) {
 					return {
@@ -2292,8 +2308,8 @@ export async function initializeTools(
 				try {
 					const token =
 						feed.type === 'directory'
-							? createDirectoryFeedToken({ feedId })
-							: createCuratedFeedToken({ feedId })
+							? await createDirectoryFeedToken({ feedId })
+							: await createCuratedFeedToken({ feedId })
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -2348,8 +2364,8 @@ export async function initializeTools(
 			async ({ token }) => {
 				try {
 					// Try both token types
-					const dirDeleted = deleteDirectoryFeedToken(token)
-					const curDeleted = deleteCuratedFeedToken(token)
+					const dirDeleted = await deleteDirectoryFeedToken(token)
+					const curDeleted = await deleteCuratedFeedToken(token)
 
 					if (!dirDeleted && !curDeleted) {
 						return {
@@ -2433,9 +2449,9 @@ export async function initializeTools(
 				const validFeeds: Array<{ id: string; name: string }> = []
 
 				for (const feedId of feedIds) {
-					const feed = getCuratedFeedById(feedId)
+					const feed = await getCuratedFeedById(feedId)
 					if (!feed) {
-						const dirFeed = getDirectoryFeedById(feedId)
+						const dirFeed = await getDirectoryFeedById(feedId)
 						if (dirFeed) {
 							feedErrors.push(
 								`Feed \`${feedId}\` is a directory feed (only curated feeds supported)`,
@@ -2596,7 +2612,7 @@ export async function initializeTools(
 					}
 
 					// Get existing items to check for duplicates (normalize for consistent comparison)
-					const existingItems = getItemsForFeed(feed.id)
+					const existingItems = await getItemsForFeed(feed.id)
 					const existingSet = new Set(
 						existingItems.map((i) =>
 							createMediaKey(i.mediaRoot, i.relativePath),
@@ -2617,7 +2633,7 @@ export async function initializeTools(
 						}
 
 						try {
-							addItemToFeed(feed.id, item.mediaRoot, item.normalizedPath)
+							await addItemToFeed(feed.id, item.mediaRoot, item.normalizedPath)
 							feedResult.added.push({
 								mediaRoot: item.mediaRoot,
 								relativePath: item.normalizedPath,
@@ -2747,9 +2763,9 @@ export async function initializeTools(
 				const validFeeds: Array<{ id: string; name: string }> = []
 
 				for (const feedId of feedIds) {
-					const feed = getCuratedFeedById(feedId)
+					const feed = await getCuratedFeedById(feedId)
 					if (!feed) {
-						const dirFeed = getDirectoryFeedById(feedId)
+						const dirFeed = await getDirectoryFeedById(feedId)
 						if (dirFeed) {
 							feedErrors.push(
 								`Feed \`${feedId}\` is a directory feed (only curated feeds supported)`,
@@ -2797,7 +2813,7 @@ export async function initializeTools(
 					for (const item of items) {
 						// Normalize path for consistent matching with stored paths
 						const normalizedPath = normalizePath(item.relativePath)
-						const removed = removeItemFromFeed(
+						const removed = await removeItemFromFeed(
 							feed.id,
 							item.mediaRoot,
 							normalizedPath,

@@ -77,9 +77,9 @@ export default {
 	typeof routes.adminApiMediaAssignments.pattern
 >
 
-function handleGet(): Response {
-	const curatedFeeds = listCuratedFeeds()
-	const directoryFeeds = listDirectoryFeeds()
+async function handleGet(): Promise<Response> {
+	const curatedFeeds = await listCuratedFeeds()
+	const directoryFeeds = await listDirectoryFeeds()
 
 	// Get all feed items from the database
 	const allFeedItems = parseRows(
@@ -171,7 +171,7 @@ async function handlePut(request: Request): Promise<Response> {
 	}
 
 	// Validate all feed IDs are for curated feeds
-	const curatedFeeds = listCuratedFeeds()
+	const curatedFeeds = await listCuratedFeeds()
 	const curatedFeedIds = new Set(curatedFeeds.map((f) => f.id))
 	const requestedFeedIds = new Set(feedIds)
 
@@ -187,7 +187,7 @@ async function handlePut(request: Request): Promise<Response> {
 	// Get current assignments for this file
 	const currentAssignments = new Set<string>()
 	for (const feed of curatedFeeds) {
-		const items = getItemsForFeed(feed.id)
+		const items = await getItemsForFeed(feed.id)
 		if (
 			items.some(
 				(item) =>
@@ -207,16 +207,16 @@ async function handlePut(request: Request): Promise<Response> {
 	// Apply changes
 	for (const feedId of toAdd) {
 		// Get max position for the feed to add at the end
-		const items = getItemsForFeed(feedId)
+		const items = await getItemsForFeed(feedId)
 		const maxPosition = items.reduce(
 			(max, item) => Math.max(max, item.position ?? 0),
 			-1,
 		)
-		addItemToFeed(feedId, mediaRoot, relativePath, maxPosition + 1)
+		await addItemToFeed(feedId, mediaRoot, relativePath, maxPosition + 1)
 	}
 
 	for (const feedId of toRemove) {
-		removeItemFromFeed(feedId, mediaRoot, relativePath)
+		await removeItemFromFeed(feedId, mediaRoot, relativePath)
 	}
 
 	return Response.json({
@@ -257,7 +257,7 @@ async function handlePost(request: Request): Promise<Response> {
 	}
 
 	// Validate all feeds exist and are curated feeds
-	const curatedFeeds = listCuratedFeeds()
+	const curatedFeeds = await listCuratedFeeds()
 	const curatedFeedIds = new Set(curatedFeeds.map((f) => f.id))
 	for (const feedId of feedIds) {
 		if (!curatedFeedIds.has(feedId)) {
@@ -275,7 +275,7 @@ async function handlePost(request: Request): Promise<Response> {
 	// Process each feed
 	for (const feedId of feedIds) {
 		// Get current items in this feed
-		const currentItems = getItemsForFeed(feedId)
+		const currentItems = await getItemsForFeed(feedId)
 		let maxPosition = currentItems.reduce(
 			(max, item) => Math.max(max, item.position ?? 0),
 			-1,
@@ -306,13 +306,13 @@ async function handlePost(request: Request): Promise<Response> {
 						skipped++
 					} else {
 						maxPosition++
-						addItemToFeed(feedId, mediaRoot, relativePath, maxPosition)
+						await addItemToFeed(feedId, mediaRoot, relativePath, maxPosition)
 						processed++
 					}
 				} else {
 					// action === 'remove'
 					if (alreadyAssigned) {
-						removeItemFromFeed(feedId, mediaRoot, relativePath)
+						await removeItemFromFeed(feedId, mediaRoot, relativePath)
 						processed++
 					} else {
 						skipped++

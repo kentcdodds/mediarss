@@ -31,8 +31,8 @@ export default {
 		const { id } = context.params
 
 		// Verify feed exists
-		const directoryFeed = getDirectoryFeedById(id)
-		const curatedFeed = !directoryFeed ? getCuratedFeedById(id) : null
+		const directoryFeed = await getDirectoryFeedById(id)
+		const curatedFeed = !directoryFeed ? await getCuratedFeedById(id) : null
 		const feed = directoryFeed ?? curatedFeed
 
 		if (!feed) {
@@ -62,17 +62,17 @@ export default {
  * Touch the feed's updated_at timestamp.
  * This is needed when artwork changes since artwork is stored separately.
  */
-function touchFeedUpdatedAt(feedId: string): void {
+async function touchFeedUpdatedAt(feedId: string): Promise<void> {
 	// Try directory feed first
-	const directoryFeed = getDirectoryFeedById(feedId)
+	const directoryFeed = await getDirectoryFeedById(feedId)
 	if (directoryFeed) {
-		updateDirectoryFeed(feedId, {})
+		await updateDirectoryFeed(feedId, {})
 		return
 	}
 	// Try curated feed
-	const curatedFeed = getCuratedFeedById(feedId)
+	const curatedFeed = await getCuratedFeedById(feedId)
 	if (curatedFeed) {
-		updateCuratedFeed(feedId, {})
+		await updateCuratedFeed(feedId, {})
 	}
 }
 
@@ -109,7 +109,7 @@ async function handlePost(feedId: string, request: Request) {
 	}
 
 	// Update the feed's updated_at timestamp since artwork changed
-	touchFeedUpdatedAt(feedId)
+	await touchFeedUpdatedAt(feedId)
 
 	return Response.json({
 		success: true,
@@ -134,7 +134,7 @@ async function handleDelete(feedId: string) {
 	}
 
 	// Update the feed's updated_at timestamp since artwork changed
-	touchFeedUpdatedAt(feedId)
+	await touchFeedUpdatedAt(feedId)
 
 	return Response.json({
 		success: true,

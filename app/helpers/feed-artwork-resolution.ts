@@ -37,7 +37,7 @@ export async function resolveFeedArtwork(
 	}
 
 	// Priority 3: First item's embedded artwork
-	const feedItems = getItemsForFeed(feedId)
+	const feedItems = await getItemsForFeed(feedId)
 	if (feedItems.length > 0) {
 		const firstItem = feedItems[0]!
 		const filePath = toAbsolutePath(firstItem.mediaRoot, firstItem.relativePath)

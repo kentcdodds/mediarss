@@ -1,6 +1,6 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { db } from './index.ts'
-import { parseRow, parseRows, sql } from './sql.ts'
+import { dataTableDb, curatedFeedsTable } from './data-table.ts'
+import { parseRow, parseRows } from './sql.ts'
 import { type CuratedFeed, CuratedFeedSchema, type SortOrder } from './types.ts'
 
 export type CreateCuratedFeedData = {
@@ -22,65 +22,52 @@ export type CreateCuratedFeedData = {
 	overrides?: string | null
 }
 
-export function createCuratedFeed(data: CreateCuratedFeedData): CuratedFeed {
+export async function createCuratedFeed(
+	data: CreateCuratedFeedData,
+): Promise<CuratedFeed> {
 	const id = generateId()
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
-			INSERT INTO curated_feeds (
-				id, name, description, subtitle, sort_fields, sort_order,
-				image_url, author, owner_name, owner_email, language, explicit,
-				category, link, copyright, feed_type, overrides,
-				created_at, updated_at
-			)
-			VALUES (
-				$id, $name, $description, $subtitle, $sortFields, $sortOrder,
-				$imageUrl, $author, $ownerName, $ownerEmail, $language, $explicit,
-				$category, $link, $copyright, $feedType, $overrides,
-				$createdAt, $updatedAt
-			);
-		`,
-	).run({
-		$id: id,
-		$name: data.name,
-		$description: data.description ?? '',
-		$subtitle: data.subtitle ?? null,
-		$sortFields: data.sortFields ?? 'position',
-		$sortOrder: data.sortOrder ?? 'asc',
-		$imageUrl: data.imageUrl ?? null,
-		$author: data.author ?? null,
-		$ownerName: data.ownerName ?? null,
-		$ownerEmail: data.ownerEmail ?? null,
-		$language: data.language ?? 'en',
-		$explicit: data.explicit ?? 'no',
-		$category: data.category ?? null,
-		$link: data.link ?? null,
-		$copyright: data.copyright ?? null,
-		$feedType: data.feedType ?? 'episodic',
-		$overrides: data.overrides ?? null,
-		$createdAt: now,
-		$updatedAt: now,
+	await dataTableDb.create(curatedFeedsTable, {
+		id,
+		name: data.name,
+		description: data.description ?? '',
+		subtitle: data.subtitle ?? null,
+		sort_fields: data.sortFields ?? 'position',
+		sort_order: data.sortOrder ?? 'asc',
+		image_url: data.imageUrl ?? null,
+		author: data.author ?? null,
+		owner_name: data.ownerName ?? null,
+		owner_email: data.ownerEmail ?? null,
+		language: data.language ?? 'en',
+		explicit: data.explicit ?? 'no',
+		category: data.category ?? null,
+		link: data.link ?? null,
+		copyright: data.copyright ?? null,
+		feed_type: data.feedType ?? 'episodic',
+		overrides: data.overrides ?? null,
+		created_at: now,
+		updated_at: now,
 	})
 
-	return getCuratedFeedById(id)!
+	const created = await dataTableDb.find(curatedFeedsTable, id)
+	if (!created) {
+		throw new Error(`Failed to create curated feed "${id}"`)
+	}
+	return parseRow(CuratedFeedSchema, created)
 }
 
-export function getCuratedFeedById(id: string): CuratedFeed | undefined {
-	const row = db
-		.query<Record<string, unknown>, [string]>(
-			sql`SELECT * FROM curated_feeds WHERE id = ?;`,
-		)
-		.get(id)
+export async function getCuratedFeedById(
+	id: string,
+): Promise<CuratedFeed | undefined> {
+	const row = await dataTableDb.find(curatedFeedsTable, id)
 	return row ? parseRow(CuratedFeedSchema, row) : undefined
 }
 
-export function listCuratedFeeds(): Array<CuratedFeed> {
-	const rows = db
-		.query<Record<string, unknown>, []>(
-			sql`SELECT * FROM curated_feeds ORDER BY created_at DESC;`,
-		)
-		.all()
+export async function listCuratedFeeds(): Promise<Array<CuratedFeed>> {
+	const rows = await dataTableDb.findMany(curatedFeedsTable, {
+		orderBy: [['created_at', 'desc']],
+	})
 	return parseRows(CuratedFeedSchema, rows)
 }
 
@@ -103,55 +90,43 @@ export type UpdateCuratedFeedData = {
 	overrides?: string | null
 }
 
-export function updateCuratedFeed(
+export async function updateCuratedFeed(
 	id: string,
 	data: UpdateCuratedFeedData,
-): CuratedFeed | undefined {
-	const existing = getCuratedFeedById(id)
+): Promise<CuratedFeed | undefined> {
+	const existing = await getCuratedFeedById(id)
 	if (!existing) return undefined
 
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
-			UPDATE curated_feeds
-			SET name = $name, description = $description, subtitle = $subtitle,
-				sort_fields = $sortFields, sort_order = $sortOrder, image_url = $imageUrl,
-				author = $author, owner_name = $ownerName, owner_email = $ownerEmail,
-				language = $language, explicit = $explicit, category = $category,
-				link = $link, copyright = $copyright, feed_type = $feedType,
-				overrides = $overrides, updated_at = $updatedAt
-			WHERE id = $id;
-		`,
-	).run({
-		$id: id,
-		$name: data.name ?? existing.name,
-		$description: data.description ?? existing.description,
-		$subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
-		$sortFields: data.sortFields ?? existing.sortFields,
-		$sortOrder: data.sortOrder ?? existing.sortOrder,
-		$imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
-		$author: data.author !== undefined ? data.author : existing.author,
-		$ownerName:
+	await dataTableDb.update(curatedFeedsTable, id, {
+		name: data.name ?? existing.name,
+		description: data.description ?? existing.description,
+		subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
+		sort_fields: data.sortFields ?? existing.sortFields,
+		sort_order: data.sortOrder ?? existing.sortOrder,
+		image_url: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
+		author: data.author !== undefined ? data.author : existing.author,
+		owner_name:
 			data.ownerName !== undefined ? data.ownerName : existing.ownerName,
-		$ownerEmail:
+		owner_email:
 			data.ownerEmail !== undefined ? data.ownerEmail : existing.ownerEmail,
-		$language: data.language ?? existing.language,
-		$explicit: data.explicit ?? existing.explicit,
-		$category: data.category !== undefined ? data.category : existing.category,
-		$link: data.link !== undefined ? data.link : existing.link,
-		$copyright:
+		language: data.language ?? existing.language,
+		explicit: data.explicit ?? existing.explicit,
+		category: data.category !== undefined ? data.category : existing.category,
+		link: data.link !== undefined ? data.link : existing.link,
+		copyright:
 			data.copyright !== undefined ? data.copyright : existing.copyright,
-		$feedType: data.feedType ?? existing.feedType,
-		$overrides:
+		feed_type: data.feedType ?? existing.feedType,
+		overrides:
 			data.overrides !== undefined ? data.overrides : existing.overrides,
-		$updatedAt: now,
+		updated_at: now,
 	})
 
-	return getCuratedFeedById(id)
+	const updated = await dataTableDb.find(curatedFeedsTable, id)
+	return updated ? parseRow(CuratedFeedSchema, updated) : undefined
 }
 
-export function deleteCuratedFeed(id: string): boolean {
-	const result = db.query(sql`DELETE FROM curated_feeds WHERE id = ?;`).run(id)
-	return result.changes > 0
+export async function deleteCuratedFeed(id: string): Promise<boolean> {
+	return dataTableDb.delete(curatedFeedsTable, id)
 }

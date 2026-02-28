@@ -15,12 +15,12 @@ import analyticsHandler from './feeds.$id.analytics.ts'
 
 migrate(db)
 
-function createTestFeedContext() {
-	const feed = createDirectoryFeed({
+async function createTestFeedContext() {
+	const feed = await createDirectoryFeed({
 		name: `analytics-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['audio:test'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Test Token',
 	})
@@ -28,21 +28,21 @@ function createTestFeedContext() {
 	return {
 		feed,
 		token,
-		[Symbol.dispose]: () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteDirectoryFeed(feed.id)
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
 
-function createCuratedTestFeedContext() {
-	const feed = createCuratedFeed({
+async function createCuratedTestFeedContext() {
+	const feed = await createCuratedFeed({
 		name: `analytics-curated-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		description: 'Test curated feed',
 	})
-	const token = createCuratedFeedToken({
+	const token = await createCuratedFeedToken({
 		feedId: feed.id,
 		label: 'Curated Token',
 	})
@@ -50,11 +50,11 @@ function createCuratedTestFeedContext() {
 	return {
 		feed,
 		token,
-		[Symbol.dispose]: () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteCuratedFeed(feed.id)
+			await deleteCuratedFeed(feed.id)
 		},
 	}
 }
@@ -90,7 +90,7 @@ function createActionContext(
 }
 
 test('feed analytics endpoint returns summary, token breakdown, and top clients', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `deleted-token-${Date.now()}`
 
@@ -194,7 +194,7 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 })
 
 test('feed analytics endpoint groups missing client names under Unknown', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 
 	createFeedAnalyticsEvent({
@@ -229,7 +229,7 @@ test('feed analytics endpoint groups missing client names under Unknown', async 
 })
 
 test('feed analytics endpoint merges null and explicit Unknown client names', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 
 	createFeedAnalyticsEvent({
@@ -278,7 +278,7 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 })
 
 test('feed analytics endpoint returns more than default top-client limit when available', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 
 	for (let index = 0; index < 12; index += 1) {
@@ -308,7 +308,7 @@ test('feed analytics endpoint returns more than default top-client limit when av
 })
 
 test('feed analytics endpoint clamps analytics window days to max', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const response = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, 9999),
 	)
@@ -317,7 +317,7 @@ test('feed analytics endpoint clamps analytics window days to max', async () => 
 })
 
 test('feed analytics endpoint clamps huge integer window values', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 	const response = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, '999999999999999999999999999'),
 	)
@@ -326,7 +326,7 @@ test('feed analytics endpoint clamps huge integer window values', async () => {
 })
 
 test('feed analytics endpoint defaults analytics window for invalid values', async () => {
-	using ctx = createTestFeedContext()
+	await using ctx = await createTestFeedContext()
 
 	const invalidTextResponse = await analyticsHandler.action(
 		createActionContext(ctx.feed.id, 'abc'),
@@ -359,7 +359,7 @@ test('feed analytics endpoint defaults analytics window for invalid values', asy
 })
 
 test('feed analytics endpoint supports curated feeds', async () => {
-	using ctx = createCuratedTestFeedContext()
+	await using ctx = await createCuratedTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `curated-deleted-token-${Date.now()}`
 

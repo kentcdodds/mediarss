@@ -31,7 +31,7 @@ export default {
 		const { token } = context.params
 
 		// Look up feed by token
-		const result = getFeedByTokenAndTouch(token)
+		const result = await getFeedByTokenAndTouch(token)
 		if (!result) {
 			return new Response('Feed not found', { status: 404 })
 		}

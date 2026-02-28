@@ -32,18 +32,20 @@ When updating or adding code:
   - Reason: this now replaces app-level Zod usage for env parsing, DB row
     validation, cache metadata validation, media metadata validation, and client
     widget payload validation.
+- `remix/data-table` + `remix/data-table-sqlite`
+  - Reason: feed/feed-token/feed-item persistence now runs through
+    `remix/data-table` table definitions and CRUD APIs, with a Bun SQLite
+    compatibility bridge so we can keep using `bun:sqlite` instead of
+    `better-sqlite3`.
 
 ### Not adopted yet (intentional)
 
-- `remix/data-table` (+ mysql/postgres/sqlite)
 - `remix/file-storage-s3`
 - `remix/session-storage-memcache`
 - `remix/session-storage-redis`
 
-Reason: the current app already has stable, tested abstractions for validation,
-storage, and database access. We should only adopt these packages in targeted
-follow-up refactors where we can preserve behavior and test each migration in
-isolation.
+Reason: this app currently stores files locally and does not use Remix session
+storage adapters, so these packages do not map to active runtime needs yet.
 
 ## Remaining Zod usage
 

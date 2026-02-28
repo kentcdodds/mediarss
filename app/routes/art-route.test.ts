@@ -23,39 +23,46 @@ function asActionContext(context: MinimalArtActionContext): ArtActionContext {
 	return context as ArtActionContext
 }
 
-function createArtRouteTestContext() {
-	const feed = createDirectoryFeed({
+async function createArtRouteTestContext(): Promise<{
+	token: string
+	cleanup: () => Promise<void>
+}> {
+	const feed = await createDirectoryFeed({
 		name: `art-route-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['audio:test'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Art route token',
 	})
 
 	return {
 		token: token.token,
-		[Symbol.dispose]: () => {
-			deleteDirectoryFeed(feed.id)
+		cleanup: async () => {
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
 
 test('art route rejects malformed path encoding', async () => {
-	using ctx = createArtRouteTestContext()
-	const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
-	const response = await artHandler.action(
-		asActionContext({
-			request,
-			method: 'GET',
-			url: new URL(request.url),
-			params: {
-				token: ctx.token,
-				path: '%E0%A4%A',
-			},
-		}),
-	)
+	const ctx = await createArtRouteTestContext()
+	try {
+		const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
+		const response = await artHandler.action(
+			asActionContext({
+				request,
+				method: 'GET',
+				url: new URL(request.url),
+				params: {
+					token: ctx.token,
+					path: '%E0%A4%A',
+				},
+			}),
+		)
 
-	expect(response.status).toBe(400)
-	expect(await response.text()).toBe('Invalid path encoding')
+		expect(response.status).toBe(400)
+		expect(await response.text()).toBe('Invalid path encoding')
+	} finally {
+		await ctx.cleanup()
+	}
 })

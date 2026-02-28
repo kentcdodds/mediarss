@@ -156,18 +156,18 @@ function isMediaInDirectoryFeed(
 /**
  * Get all feed assignments for a media file.
  */
-function getAssignmentsForMedia(
+async function getAssignmentsForMedia(
 	rootName: string,
 	relativePath: string,
 	curatedFeeds: CuratedFeed[],
 	directoryFeeds: DirectoryFeed[],
-): FeedAssignment[] {
+): Promise<FeedAssignment[]> {
 	const assignments: FeedAssignment[] = []
 
 	// Check curated feed assignments
 	const normalizedRelativePath = normalizePath(relativePath)
 	for (const feed of curatedFeeds) {
-		const items = getItemsForFeed(feed.id)
+		const items = await getItemsForFeed(feed.id)
 		if (
 			items.some(
 				(item) =>
@@ -332,9 +332,9 @@ export default {
 		}
 
 		// Get feeds and assignments
-		const curatedFeeds = listCuratedFeeds()
-		const directoryFeeds = listDirectoryFeeds()
-		const assignments = getAssignmentsForMedia(
+		const curatedFeeds = await listCuratedFeeds()
+		const directoryFeeds = await listDirectoryFeeds()
+		const assignments = await getAssignmentsForMedia(
 			rootName,
 			relativePath,
 			curatedFeeds,

@@ -30,10 +30,10 @@ export default {
 	middleware: [],
 	async action() {
 		// Process directory feeds
-		const directoryFeedsList = listDirectoryFeeds()
+		const directoryFeedsList = await listDirectoryFeeds()
 		const directoryFeeds = await Promise.all(
 			directoryFeedsList.map(async (feed) => {
-				const tokens = listActiveDirectoryFeedTokens(feed.id)
+				const tokens = await listActiveDirectoryFeedTokens(feed.id)
 				const paths = parseDirectoryPaths(feed)
 
 				// Count files across all directories (uses cached scan)
@@ -58,19 +58,21 @@ export default {
 		)
 
 		// Process curated feeds
-		const curatedFeedsList = listCuratedFeeds()
-		const curatedFeeds = curatedFeedsList.map((feed) => {
-			const tokens = listActiveCuratedFeedTokens(feed.id)
-			const items = getItemsForFeed(feed.id)
+		const curatedFeedsList = await listCuratedFeeds()
+		const curatedFeeds = await Promise.all(
+			curatedFeedsList.map(async (feed) => {
+				const tokens = await listActiveCuratedFeedTokens(feed.id)
+				const items = await getItemsForFeed(feed.id)
 
-			return {
-				...feed,
-				type: 'curated' as const,
-				tokenCount: tokens.length,
-				itemCount: items.length,
-				lastAccessedAt: getLastAccessedAt(tokens),
-			}
-		})
+				return {
+					...feed,
+					type: 'curated' as const,
+					tokenCount: tokens.length,
+					itemCount: items.length,
+					lastAccessedAt: getLastAccessedAt(tokens),
+				}
+			}),
+		)
 
 		return Response.json({
 			directoryFeeds,

@@ -1,6 +1,6 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { db } from './index.ts'
-import { parseRow, parseRows, sql } from './sql.ts'
+import { dataTableDb, directoryFeedsTable } from './data-table.ts'
+import { parseRow, parseRows } from './sql.ts'
 import {
 	type DirectoryFeed,
 	DirectoryFeedSchema,
@@ -29,70 +29,55 @@ export type CreateDirectoryFeedData = {
 	overrides?: string | null
 }
 
-export function createDirectoryFeed(
+export async function createDirectoryFeed(
 	data: CreateDirectoryFeedData,
-): DirectoryFeed {
+): Promise<DirectoryFeed> {
 	const id = generateId()
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
-			INSERT INTO directory_feeds (
-				id, name, description, subtitle, directory_paths, sort_fields, sort_order,
-				image_url, author, owner_name, owner_email, language, explicit,
-				category, link, copyright, feed_type, filter_in, filter_out, overrides,
-				created_at, updated_at
-			)
-			VALUES (
-				$id, $name, $description, $subtitle, $directoryPaths, $sortFields, $sortOrder,
-				$imageUrl, $author, $ownerName, $ownerEmail, $language, $explicit,
-				$category, $link, $copyright, $feedType, $filterIn, $filterOut, $overrides,
-				$createdAt, $updatedAt
-			);
-		`,
-	).run({
-		$id: id,
-		$name: data.name,
-		$description: data.description ?? '',
-		$subtitle: data.subtitle ?? null,
-		$directoryPaths: JSON.stringify(data.directoryPaths),
-		$sortFields: data.sortFields ?? 'filename',
-		$sortOrder: data.sortOrder ?? 'asc',
-		$imageUrl: data.imageUrl ?? null,
-		$author: data.author ?? null,
-		$ownerName: data.ownerName ?? null,
-		$ownerEmail: data.ownerEmail ?? null,
-		$language: data.language ?? 'en',
-		$explicit: data.explicit ?? 'no',
-		$category: data.category ?? null,
-		$link: data.link ?? null,
-		$copyright: data.copyright ?? null,
-		$feedType: data.feedType ?? 'episodic',
-		$filterIn: data.filterIn ?? null,
-		$filterOut: data.filterOut ?? null,
-		$overrides: data.overrides ?? null,
-		$createdAt: now,
-		$updatedAt: now,
+	await dataTableDb.create(directoryFeedsTable, {
+		id,
+		name: data.name,
+		description: data.description ?? '',
+		subtitle: data.subtitle ?? null,
+		directory_paths: JSON.stringify(data.directoryPaths),
+		sort_fields: data.sortFields ?? 'filename',
+		sort_order: data.sortOrder ?? 'asc',
+		image_url: data.imageUrl ?? null,
+		author: data.author ?? null,
+		owner_name: data.ownerName ?? null,
+		owner_email: data.ownerEmail ?? null,
+		language: data.language ?? 'en',
+		explicit: data.explicit ?? 'no',
+		category: data.category ?? null,
+		link: data.link ?? null,
+		copyright: data.copyright ?? null,
+		feed_type: data.feedType ?? 'episodic',
+		filter_in: data.filterIn ?? null,
+		filter_out: data.filterOut ?? null,
+		overrides: data.overrides ?? null,
+		created_at: now,
+		updated_at: now,
 	})
 
-	return getDirectoryFeedById(id)!
+	const created = await dataTableDb.find(directoryFeedsTable, id)
+	if (!created) {
+		throw new Error(`Failed to create directory feed "${id}"`)
+	}
+	return parseRow(DirectoryFeedSchema, created)
 }
 
-export function getDirectoryFeedById(id: string): DirectoryFeed | undefined {
-	const row = db
-		.query<Record<string, unknown>, [string]>(
-			sql`SELECT * FROM directory_feeds WHERE id = ?;`,
-		)
-		.get(id)
+export async function getDirectoryFeedById(
+	id: string,
+): Promise<DirectoryFeed | undefined> {
+	const row = await dataTableDb.find(directoryFeedsTable, id)
 	return row ? parseRow(DirectoryFeedSchema, row) : undefined
 }
 
-export function listDirectoryFeeds(): Array<DirectoryFeed> {
-	const rows = db
-		.query<Record<string, unknown>, []>(
-			sql`SELECT * FROM directory_feeds ORDER BY created_at DESC;`,
-		)
-		.all()
+export async function listDirectoryFeeds(): Promise<Array<DirectoryFeed>> {
+	const rows = await dataTableDb.findMany(directoryFeedsTable, {
+		orderBy: [['created_at', 'desc']],
+	})
 	return parseRows(DirectoryFeedSchema, rows)
 }
 
@@ -118,66 +103,51 @@ export type UpdateDirectoryFeedData = {
 	overrides?: string | null
 }
 
-export function updateDirectoryFeed(
+export async function updateDirectoryFeed(
 	id: string,
 	data: UpdateDirectoryFeedData,
-): DirectoryFeed | undefined {
-	const existing = getDirectoryFeedById(id)
+): Promise<DirectoryFeed | undefined> {
+	const existing = await getDirectoryFeedById(id)
 	if (!existing) return undefined
 
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
-			UPDATE directory_feeds
-			SET name = $name, description = $description, subtitle = $subtitle,
-				directory_paths = $directoryPaths, sort_fields = $sortFields,
-				sort_order = $sortOrder, image_url = $imageUrl, author = $author,
-				owner_name = $ownerName, owner_email = $ownerEmail, language = $language,
-				explicit = $explicit, category = $category, link = $link,
-				copyright = $copyright, feed_type = $feedType, filter_in = $filterIn,
-				filter_out = $filterOut, overrides = $overrides, updated_at = $updatedAt
-			WHERE id = $id;
-		`,
-	).run({
-		$id: id,
-		$name: data.name ?? existing.name,
-		$description: data.description ?? existing.description,
-		$subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
-		$directoryPaths: data.directoryPaths
+	await dataTableDb.update(directoryFeedsTable, id, {
+		name: data.name ?? existing.name,
+		description: data.description ?? existing.description,
+		subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
+		directory_paths: data.directoryPaths
 			? JSON.stringify(data.directoryPaths)
 			: existing.directoryPaths,
-		$sortFields: data.sortFields ?? existing.sortFields,
-		$sortOrder: data.sortOrder ?? existing.sortOrder,
-		$imageUrl: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
-		$author: data.author !== undefined ? data.author : existing.author,
-		$ownerName:
+		sort_fields: data.sortFields ?? existing.sortFields,
+		sort_order: data.sortOrder ?? existing.sortOrder,
+		image_url: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
+		author: data.author !== undefined ? data.author : existing.author,
+		owner_name:
 			data.ownerName !== undefined ? data.ownerName : existing.ownerName,
-		$ownerEmail:
+		owner_email:
 			data.ownerEmail !== undefined ? data.ownerEmail : existing.ownerEmail,
-		$language: data.language ?? existing.language,
-		$explicit: data.explicit ?? existing.explicit,
-		$category: data.category !== undefined ? data.category : existing.category,
-		$link: data.link !== undefined ? data.link : existing.link,
-		$copyright:
+		language: data.language ?? existing.language,
+		explicit: data.explicit ?? existing.explicit,
+		category: data.category !== undefined ? data.category : existing.category,
+		link: data.link !== undefined ? data.link : existing.link,
+		copyright:
 			data.copyright !== undefined ? data.copyright : existing.copyright,
-		$feedType: data.feedType ?? existing.feedType,
-		$filterIn: data.filterIn !== undefined ? data.filterIn : existing.filterIn,
-		$filterOut:
+		feed_type: data.feedType ?? existing.feedType,
+		filter_in: data.filterIn !== undefined ? data.filterIn : existing.filterIn,
+		filter_out:
 			data.filterOut !== undefined ? data.filterOut : existing.filterOut,
-		$overrides:
+		overrides:
 			data.overrides !== undefined ? data.overrides : existing.overrides,
-		$updatedAt: now,
+		updated_at: now,
 	})
 
-	return getDirectoryFeedById(id)
+	const updated = await dataTableDb.find(directoryFeedsTable, id)
+	return updated ? parseRow(DirectoryFeedSchema, updated) : undefined
 }
 
-export function deleteDirectoryFeed(id: string): boolean {
-	const result = db
-		.query(sql`DELETE FROM directory_feeds WHERE id = ?;`)
-		.run(id)
-	return result.changes > 0
+export async function deleteDirectoryFeed(id: string): Promise<boolean> {
+	return dataTableDb.delete(directoryFeedsTable, id)
 }
 
 /**

@@ -39,7 +39,7 @@ export default {
 		}
 
 		// Look up feed by token
-		const result = getFeedByToken(token)
+		const result = await getFeedByToken(token)
 		if (!result) {
 			return new Response('Not found', { status: 404 })
 		}
@@ -67,7 +67,7 @@ export default {
 		}
 
 		// Validate file is allowed for this feed
-		if (!isFileAllowed(feed, type, rootName, relativePath)) {
+		if (!(await isFileAllowed(feed, type, rootName, relativePath))) {
 			return new Response('Not found', { status: 404 })
 		}
 

@@ -50,7 +50,7 @@ export async function getCuratedFeedItems(
 	feed: CuratedFeed,
 ): Promise<Array<MediaFile>> {
 	// Get feed items from database (already ordered by position)
-	const feedItems = getItemsForFeed(feed.id)
+	const feedItems = await getItemsForFeed(feed.id)
 
 	// Get metadata for each item
 	const items: Array<MediaFile> = []

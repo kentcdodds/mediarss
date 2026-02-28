@@ -19,12 +19,12 @@ import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
  * For directory feeds, the file must be within one of the feed's directories.
  * For curated feeds, the file must be in the feed's item list.
  */
-function isFileAllowed(
+async function isFileAllowed(
 	feed: Feed,
 	type: 'directory' | 'curated',
 	rootName: string,
 	relativePath: string,
-): boolean {
+): Promise<boolean> {
 	if (type === 'directory' && isDirectoryFeed(feed)) {
 		// File must be within one of the feed's directories
 		const paths = parseDirectoryPaths(feed)
@@ -47,7 +47,7 @@ function isFileAllowed(
 	}
 
 	// For curated feeds, check if the file is in the item list
-	const feedItems = getItemsForFeed(feed.id)
+	const feedItems = await getItemsForFeed(feed.id)
 	return feedItems.some(
 		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
 	)
@@ -59,7 +59,7 @@ export default {
 		const { token, path: splatParam } = context.params
 
 		// Look up feed by token
-		const result = getFeedByToken(token)
+		const result = await getFeedByToken(token)
 		if (!result) {
 			return new Response('Not found', { status: 404 })
 		}
@@ -95,7 +95,9 @@ export default {
 		}
 
 		// Validate file is allowed
-		if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+		if (
+			!(await isFileAllowed(feed, type, parsed.rootName, parsed.relativePath))
+		) {
 			return new Response('Not found', { status: 404 })
 		}
 

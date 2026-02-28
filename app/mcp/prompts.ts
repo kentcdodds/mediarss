@@ -31,12 +31,12 @@ function formatDate(timestamp: number): string {
 /**
  * Get all feeds (both directory and curated)
  */
-function getAllFeeds(): Array<FeedWithType> {
-	const directoryFeeds = listDirectoryFeeds().map((f) => ({
+async function getAllFeeds(): Promise<Array<FeedWithType>> {
+	const directoryFeeds = (await listDirectoryFeeds()).map((f) => ({
 		...f,
 		type: 'directory' as const,
 	}))
-	const curatedFeeds = listCuratedFeeds().map((f) => ({
+	const curatedFeeds = (await listCuratedFeeds()).map((f) => ({
 		...f,
 		type: 'curated' as const,
 	}))
@@ -48,11 +48,11 @@ function getAllFeeds(): Array<FeedWithType> {
 /**
  * Get a feed by ID (checks both directory and curated)
  */
-function getFeedById(id: string): FeedWithType | undefined {
-	const directoryFeed = getDirectoryFeedById(id)
+async function getFeedById(id: string): Promise<FeedWithType | undefined> {
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
 
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
 
 	return undefined
@@ -75,7 +75,7 @@ export async function initializePrompts(
 				description: promptsMetadata.summarize_library.description,
 			},
 			async () => {
-				const feeds = getAllFeeds()
+				const feeds = await getAllFeeds()
 				const mediaRoots = getMediaRoots()
 				const directoryFeeds = feeds.filter((f) => f.type === 'directory')
 				const curatedFeeds = feeds.filter((f) => f.type === 'curated')
@@ -142,10 +142,10 @@ You can use \`browse_media\` to explore the media directories and \`get_feed\` t
 				},
 			},
 			async ({ feedId }) => {
-				const feed = getFeedById(feedId)
+				const feed = await getFeedById(feedId)
 
 				if (!feed) {
-					const allFeeds = getAllFeeds()
+					const allFeeds = await getAllFeeds()
 					return {
 						messages: [
 							{
@@ -171,7 +171,9 @@ Please use one of the available feed IDs above, or use \`list_feeds\` to see all
 				}
 
 				const items =
-					feed.type === 'curated' ? getItemsForFeed(feedId) : ([] as FeedItem[])
+					feed.type === 'curated'
+						? await getItemsForFeed(feedId)
+						: ([] as FeedItem[])
 
 				return {
 					messages: [
@@ -349,7 +351,7 @@ What are you trying to create?`
 			},
 			async ({ mediaRoot }) => {
 				const mediaRoots = getMediaRoots()
-				const existingFeeds = getAllFeeds()
+				const existingFeeds = await getAllFeeds()
 
 				if (mediaRoot) {
 					const mr = mediaRoots.find((m) => m.name === mediaRoot)

@@ -133,7 +133,7 @@ export default {
 		}
 
 		// Create the feed
-		const feed = createCuratedFeed({
+		const feed = await createCuratedFeed({
 			name: body.name.trim(),
 			description: body.description?.trim(),
 			subtitle: body.subtitle,
@@ -154,12 +154,12 @@ export default {
 		for (let i = 0; i < validatedItems.length; i++) {
 			const item = validatedItems[i]
 			if (item) {
-				addItemToFeed(feed.id, item.mediaRoot, item.relativePath, i)
+				await addItemToFeed(feed.id, item.mediaRoot, item.relativePath, i)
 			}
 		}
 
 		// Automatically create an access token for the new feed
-		createCuratedFeedToken({
+		await createCuratedFeedToken({
 			feedId: feed.id,
 			label: 'Default',
 		})

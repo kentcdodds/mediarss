@@ -25,41 +25,48 @@ function asActionContext(
 	return context as WidgetActionContext
 }
 
-function createWidgetTestContext() {
-	const feed = createDirectoryFeed({
+async function createWidgetTestContext(): Promise<{
+	token: string
+	cleanup: () => Promise<void>
+}> {
+	const feed = await createDirectoryFeed({
 		name: `widget-route-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['audio:test'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Widget test token',
 	})
 
 	return {
 		token: token.token,
-		[Symbol.dispose]: () => {
-			deleteDirectoryFeed(feed.id)
+		cleanup: async () => {
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
 
 test('mcp widget route rejects malformed path encoding', async () => {
-	using ctx = createWidgetTestContext()
-	const request = new Request(
-		`http://localhost/mcp/widget/${ctx.token}/%E0%A4%A`,
-	)
-	const response = await widgetHandler.action(
-		asActionContext({
-			request,
-			method: 'GET',
-			url: new URL(request.url),
-			params: {
-				token: ctx.token,
-				path: '%E0%A4%A',
-			},
-		}),
-	)
+	const ctx = await createWidgetTestContext()
+	try {
+		const request = new Request(
+			`http://localhost/mcp/widget/${ctx.token}/%E0%A4%A`,
+		)
+		const response = await widgetHandler.action(
+			asActionContext({
+				request,
+				method: 'GET',
+				url: new URL(request.url),
+				params: {
+					token: ctx.token,
+					path: '%E0%A4%A',
+				},
+			}),
+		)
 
-	expect(response.status).toBe(400)
-	expect(await response.text()).toBe('Invalid URL encoding')
+		expect(response.status).toBe(400)
+		expect(await response.text()).toBe('Invalid URL encoding')
+	} finally {
+		await ctx.cleanup()
+	}
 })

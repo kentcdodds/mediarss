@@ -39,6 +39,7 @@ export class BunSqliteDatabaseAdapter implements DatabaseAdapter {
 
 	#database: BunSqliteDatabaseConnection
 	#transactions = new Set<string>()
+	#readUncommittedTransactions = new Set<string>()
 	#transactionCounter = 0
 
 	constructor(
@@ -100,26 +101,46 @@ export class BunSqliteDatabaseAdapter implements DatabaseAdapter {
 	async beginTransaction(
 		options?: TransactionOptions,
 	): Promise<TransactionToken> {
-		if (options?.isolationLevel === 'read uncommitted') {
+		const useReadUncommitted = options?.isolationLevel === 'read uncommitted'
+		if (useReadUncommitted) {
 			this.#database.exec('pragma read_uncommitted = true')
 		}
 
-		this.#database.exec('begin')
+		try {
+			this.#database.exec('begin')
+		} catch (error) {
+			if (useReadUncommitted) {
+				this.#database.exec('pragma read_uncommitted = false')
+			}
+			throw error
+		}
+
 		this.#transactionCounter += 1
 		const token = { id: `tx_${String(this.#transactionCounter)}` }
 		this.#transactions.add(token.id)
+		if (useReadUncommitted) {
+			this.#readUncommittedTransactions.add(token.id)
+		}
 		return token
 	}
 
 	async commitTransaction(token: TransactionToken): Promise<void> {
 		this.#assertTransaction(token)
 		this.#database.exec('commit')
+		if (this.#readUncommittedTransactions.has(token.id)) {
+			this.#database.exec('pragma read_uncommitted = false')
+			this.#readUncommittedTransactions.delete(token.id)
+		}
 		this.#transactions.delete(token.id)
 	}
 
 	async rollbackTransaction(token: TransactionToken): Promise<void> {
 		this.#assertTransaction(token)
 		this.#database.exec('rollback')
+		if (this.#readUncommittedTransactions.has(token.id)) {
+			this.#database.exec('pragma read_uncommitted = false')
+			this.#readUncommittedTransactions.delete(token.id)
+		}
 		this.#transactions.delete(token.id)
 	}
 

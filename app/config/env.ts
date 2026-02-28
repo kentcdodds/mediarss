@@ -298,6 +298,6 @@ export function getRateLimitConfig() {
 /**
  * Get the GitHub repository URL for linking to commits.
  */
-export function getGitHubRepo(): string | undefined {
+export function getGitHubRepo(): string {
 	return getEnv().GITHUB_REPO
 }

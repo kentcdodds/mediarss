@@ -57,6 +57,7 @@ import {
 	parseMediaPathStrict,
 } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { getAllFeeds, getFeedById, type FeedWithType } from './feed-helpers.ts'
 import { toolsMetadata } from './metadata.ts'
 import {
 	createMediaWidgetResource,
@@ -66,10 +67,6 @@ import {
 
 type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
-
-type FeedWithType =
-	| (DirectoryFeed & { type: 'directory' })
-	| (CuratedFeed & { type: 'curated' })
 
 /**
  * ChatGPT / MCP clients may retry tool calls if the connection drops or a response
@@ -184,36 +181,6 @@ async function findRecentMatchingDirectoryFeed(params: {
 			return feed
 		}
 	}
-	return undefined
-}
-
-/**
- * Get all feeds (both directory and curated)
- */
-async function getAllFeeds(): Promise<Array<FeedWithType>> {
-	const directoryFeeds = (await listDirectoryFeeds()).map((f) => ({
-		...f,
-		type: 'directory' as const,
-	}))
-	const curatedFeeds = (await listCuratedFeeds()).map((f) => ({
-		...f,
-		type: 'curated' as const,
-	}))
-	return [...directoryFeeds, ...curatedFeeds].sort(
-		(a, b) => b.createdAt - a.createdAt,
-	)
-}
-
-/**
- * Get a feed by ID (checks both directory and curated)
- */
-async function getFeedById(id: string): Promise<FeedWithType | undefined> {
-	const directoryFeed = await getDirectoryFeedById(id)
-	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
-
-	const curatedFeed = await getCuratedFeedById(id)
-	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
-
 	return undefined
 }
 
@@ -2239,10 +2206,20 @@ export async function initializeTools(
 
 				try {
 					const feedName = feed.name
-					if (feed.type === 'directory') {
-						await deleteDirectoryFeed(id)
-					} else {
-						await deleteCuratedFeed(id)
+					const deleted =
+						feed.type === 'directory'
+							? await deleteDirectoryFeed(id)
+							: await deleteCuratedFeed(id)
+					if (!deleted) {
+						return {
+							content: [
+								{
+									type: 'text',
+									text: `❌ Feed "${feedName}" (${id}) could not be deleted because it no longer exists.`,
+								},
+							],
+							isError: true,
+						}
 					}
 
 					// Format human-readable output

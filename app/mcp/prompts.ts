@@ -6,19 +6,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
-import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import {
-	getDirectoryFeedById,
-	listDirectoryFeeds,
-} from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import type { FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { promptsMetadata } from './metadata.ts'
-
-type FeedWithType =
-	| (DirectoryFeed & { type: 'directory' })
-	| (CuratedFeed & { type: 'curated' })
 
 /**
  * Format a date timestamp for human-readable output.
@@ -26,36 +18,6 @@ type FeedWithType =
 function formatDate(timestamp: number): string {
 	const isoString = new Date(timestamp * 1000).toISOString()
 	return isoString.split('T')[0] ?? isoString
-}
-
-/**
- * Get all feeds (both directory and curated)
- */
-async function getAllFeeds(): Promise<Array<FeedWithType>> {
-	const directoryFeeds = (await listDirectoryFeeds()).map((f) => ({
-		...f,
-		type: 'directory' as const,
-	}))
-	const curatedFeeds = (await listCuratedFeeds()).map((f) => ({
-		...f,
-		type: 'curated' as const,
-	}))
-	return [...directoryFeeds, ...curatedFeeds].sort(
-		(a, b) => b.createdAt - a.createdAt,
-	)
-}
-
-/**
- * Get a feed by ID (checks both directory and curated)
- */
-async function getFeedById(id: string): Promise<FeedWithType | undefined> {
-	const directoryFeed = await getDirectoryFeedById(id)
-	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
-
-	const curatedFeed = await getCuratedFeedById(id)
-	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
-
-	return undefined
 }
 
 /**

@@ -8,7 +8,7 @@ This project is upgraded to `remix@3.0.0-alpha.3`.
 
 - removal of root `remix` exports (subpath imports only)
 - a decoupled route utility export (`remix/fetch-router/routes`)
-- updated `@remix-run/component` and `@remix-run/fetch-router` packages
+- updated `remix/component` and `remix/fetch-router` packages
 
 ## Project-level migration rules
 

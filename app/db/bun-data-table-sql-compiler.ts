@@ -86,6 +86,9 @@ export function compileBunSqliteStatement(
 
 	if (statement.kind === 'update') {
 		const columns = Object.keys(statement.changes)
+		if (columns.length === 0) {
+			throw new Error('update requires at least one changed column')
+		}
 		return {
 			text:
 				`update ${quotePath(getTableName(statement.table))} set ` +
@@ -161,6 +164,11 @@ function compileInsertManyStatement(
 
 	const columns = collectColumns(rows)
 	if (columns.length === 0) {
+		if (rows.length > 1) {
+			throw new Error(
+				'insertMany requires at least one column across rows to preserve row count',
+			)
+		}
 		return {
 			text:
 				`insert into ${quotePath(getTableName(table))} default values` +

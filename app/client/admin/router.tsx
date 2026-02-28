@@ -17,6 +17,8 @@ type Route = {
 	component: RouteComponent
 }
 
+const ROUTER_BASE_PATH = '/admin'
+
 /**
  * Simple client-side router using the History API.
  * Emits 'navigate' events when the route changes.
@@ -127,6 +129,12 @@ function shouldIgnoreRouterNavigation(element: Element): boolean {
 	return element.closest('[data-router-ignore]') !== null
 }
 
+function isRouterOwnedPath(pathname: string): boolean {
+	return (
+		pathname === ROUTER_BASE_PATH || pathname.startsWith(`${ROUTER_BASE_PATH}/`)
+	)
+}
+
 function handleDocumentClick(event: MouseEvent) {
 	if (event.defaultPrevented) return
 	if (event.button !== 0) return
@@ -151,6 +159,7 @@ function handleDocumentClick(event: MouseEvent) {
 		return
 	}
 	if (url.origin !== window.location.origin) return
+	if (!isRouterOwnedPath(url.pathname)) return
 
 	event.preventDefault()
 	router.navigate(`${url.pathname}${url.search}${url.hash}`)
@@ -203,6 +212,7 @@ function handleDocumentSubmit(event: SubmitEvent) {
 		return
 	}
 	if (url.origin !== window.location.origin) return
+	if (!isRouterOwnedPath(url.pathname)) return
 
 	const formData = new FormData(form)
 	if (submitter?.name) {

@@ -9,55 +9,17 @@ import {
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
-import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import {
-	getDirectoryFeedById,
-	listDirectoryFeeds,
-	parseDirectoryPaths,
-} from '#app/db/directory-feeds.ts'
+import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import type { FeedItem } from '#app/db/types.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { serverMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
-
-type FeedWithType =
-	| (DirectoryFeed & { type: 'directory' })
-	| (CuratedFeed & { type: 'curated' })
-
-/**
- * Get all feeds (both directory and curated)
- */
-async function getAllFeeds(): Promise<Array<FeedWithType>> {
-	const directoryFeeds = (await listDirectoryFeeds()).map((f) => ({
-		...f,
-		type: 'directory' as const,
-	}))
-	const curatedFeeds = (await listCuratedFeeds()).map((f) => ({
-		...f,
-		type: 'curated' as const,
-	}))
-	return [...directoryFeeds, ...curatedFeeds].sort(
-		(a, b) => b.createdAt - a.createdAt,
-	)
-}
-
-/**
- * Get a feed by ID (checks both directory and curated)
- */
-async function getFeedById(id: string): Promise<FeedWithType | undefined> {
-	const directoryFeed = await getDirectoryFeedById(id)
-	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
-
-	const curatedFeed = await getCuratedFeedById(id)
-	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
-
-	return undefined
-}
 
 /**
  * Initialize MCP resources based on authorized scopes.

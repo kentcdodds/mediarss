@@ -53,12 +53,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Navigate to a new path using the History API.
 	 */
 	navigate(path: string) {
-		if (path === this.#currentPath) return
-		history.pushState(null, '', path)
-		this.#currentPath = path
+		const normalizedPath = normalizePath(path)
+		if (normalizedPath === this.#currentPath) return
+		history.pushState(null, '', normalizedPath)
+		this.#currentPath = normalizedPath
 		this.dispatchEvent(new Event('navigate'))
-		// TODO: force refresh because there's a bug in Remix
-		window.location.reload()
 	}
 
 	/**
@@ -97,13 +96,57 @@ export const router = new RouterState()
 // Listen for browser navigation
 window.addEventListener('popstate', router.handlePopState)
 
+function normalizePath(path: string): string {
+	try {
+		return new URL(path, window.location.origin).pathname
+	} catch {
+		return path
+	}
+}
+
 /**
  * Link component for navigation.
- * Currently uses full page refreshes to work around a Remix DOM bug.
- * TODO: Re-enable client-side navigation once the bug is fixed.
  */
 export function Link() {
-	return (props: { href: string } & Record<string, unknown>) => <a {...props} />
+	return (
+		props: {
+			href: string
+			target?: string
+			download?: string | boolean
+			on?: Record<string, (event: Event) => void>
+		} & Record<string, unknown>,
+	) => {
+		const { href, target, download, on, ...rest } = props
+
+		return (
+			<a
+				{...rest}
+				href={href}
+				target={target}
+				download={download}
+				on={{
+					...on,
+					click: (event) => {
+						on?.click?.(event)
+						if (event.defaultPrevented) return
+						if (!(event instanceof MouseEvent)) return
+						if (event.button !== 0) return
+						if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+							return
+						if (target && target !== '_self') return
+						if (download !== undefined && download !== false) return
+						if (href.startsWith('#')) return
+
+						const url = new URL(href, window.location.href)
+						if (url.origin !== window.location.origin) return
+
+						event.preventDefault()
+						router.navigate(url.pathname)
+					},
+				}}
+			/>
+		)
+	}
 }
 
 /**

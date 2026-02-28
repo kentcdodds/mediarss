@@ -210,6 +210,9 @@ function compileUpsertStatement(
 	if (insertColumns.length === 0) {
 		throw new Error('upsert requires at least one value')
 	}
+	if (conflictTarget.length === 0) {
+		throw new Error('upsert requires a non-empty conflictTarget')
+	}
 
 	const updateValues = statement.update ?? statement.values
 	const updateColumns = Object.keys(updateValues)
@@ -310,6 +313,7 @@ function compileReturningClause(
 	returning: '*' | Array<string> | undefined,
 ): string {
 	if (!returning) return ''
+	if (Array.isArray(returning) && returning.length === 0) return ''
 	if (returning === '*') return ' returning *'
 	return ` returning ${returning.map((column) => quotePath(column)).join(', ')}`
 }

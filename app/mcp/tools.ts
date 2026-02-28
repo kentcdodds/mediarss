@@ -197,35 +197,42 @@ async function findTokenForMedia(
 	feed: Feed
 	type: 'directory' | 'curated'
 } | null> {
-	// Check directory feeds first
-	const directoryFeeds = await listDirectoryFeeds()
-	for (const feed of directoryFeeds) {
-		if (await isFileAllowed(feed, 'directory', rootName, relativePath)) {
-			const tokens = await listActiveDirectoryFeedTokens(feed.id)
-			if (tokens.length > 0) {
-				return {
-					token: tokens[0]!.token,
-					feed,
-					type: 'directory',
-				}
-			}
-		}
+	const findTokenInFeeds = async <TFeed extends Feed>(
+		feeds: Array<TFeed>,
+		type: 'directory' | 'curated',
+		listTokens: (feedId: string) => Promise<Array<{ token: string }>>,
+	): Promise<{
+		token: string
+		feed: TFeed
+		type: 'directory' | 'curated'
+	} | null> => {
+		const tokenChecks = feeds.map(async (feed) => {
+			const allowed = await isFileAllowed(feed, type, rootName, relativePath)
+			if (!allowed) return null
+
+			const token = (await listTokens(feed.id))[0]
+			if (!token) return null
+
+			return { token: token.token, feed, type } as const
+		})
+
+		const tokenResults = await Promise.all(tokenChecks)
+		return tokenResults.find((result) => result !== null) ?? null
 	}
 
-	// Then check curated feeds
-	const curatedFeeds = await listCuratedFeeds()
-	for (const feed of curatedFeeds) {
-		if (await isFileAllowed(feed, 'curated', rootName, relativePath)) {
-			const tokens = await listActiveCuratedFeedTokens(feed.id)
-			if (tokens.length > 0) {
-				return {
-					token: tokens[0]!.token,
-					feed,
-					type: 'curated',
-				}
-			}
-		}
-	}
+	const directoryMatch = await findTokenInFeeds(
+		await listDirectoryFeeds(),
+		'directory',
+		listActiveDirectoryFeedTokens,
+	)
+	if (directoryMatch) return directoryMatch
+
+	const curatedMatch = await findTokenInFeeds(
+		await listCuratedFeeds(),
+		'curated',
+		listActiveCuratedFeedTokens,
+	)
+	if (curatedMatch) return curatedMatch
 
 	return null
 }

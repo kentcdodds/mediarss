@@ -13,11 +13,15 @@ export type FeedWithType =
  * Get all feeds (both directory and curated).
  */
 export async function getAllFeeds(): Promise<Array<FeedWithType>> {
-	const directoryFeeds = (await listDirectoryFeeds()).map((feed) => ({
+	const [directoryRows, curatedRows] = await Promise.all([
+		listDirectoryFeeds(),
+		listCuratedFeeds(),
+	])
+	const directoryFeeds = directoryRows.map((feed) => ({
 		...feed,
 		type: 'directory' as const,
 	}))
-	const curatedFeeds = (await listCuratedFeeds()).map((feed) => ({
+	const curatedFeeds = curatedRows.map((feed) => ({
 		...feed,
 		type: 'curated' as const,
 	}))

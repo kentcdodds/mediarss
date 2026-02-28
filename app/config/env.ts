@@ -119,11 +119,16 @@ function optionalInt(defaultValue: number) {
 		.refine((num) => Number.isInteger(num), 'Expected an integer value')
 
 	return createSchema<unknown, number>((value, context) => {
-		if (value === undefined || value === '') {
+		if (value === undefined) {
 			return { value: defaultValue }
 		}
 
-		const parsed = parseSafe(intSchema, value)
+		const normalizedValue = typeof value === 'string' ? value.trim() : value
+		if (normalizedValue === '') {
+			return { value: defaultValue }
+		}
+
+		const parsed = parseSafe(intSchema, normalizedValue)
 		if (parsed.success) {
 			return { value: parsed.value }
 		}

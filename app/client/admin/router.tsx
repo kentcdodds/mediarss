@@ -222,6 +222,16 @@ function handleDocumentSubmit(event: SubmitEvent) {
 	}
 	const search = new URLSearchParams()
 	for (const [key, value] of formData.entries()) {
+		if (value instanceof Blob) {
+			const blobWithName = value as Blob & { name?: string }
+			search.append(
+				key,
+				typeof blobWithName.name === 'string' && blobWithName.name.length > 0
+					? blobWithName.name
+					: String(value),
+			)
+			continue
+		}
 		search.append(key, String(value))
 	}
 

@@ -198,10 +198,11 @@ function shouldExecuteAsReader(
 function hasReturningClause(
 	statement: AdapterExecuteRequest['statement'],
 ): boolean {
-	if ('returning' in statement) {
-		return statement.returning !== undefined
+	if (!('returning' in statement)) return false
+	if (Array.isArray(statement.returning)) {
+		return statement.returning.length > 0
 	}
-	return false
+	return statement.returning !== undefined && statement.returning !== null
 }
 
 function isReaderSql(sqlText: string): boolean {

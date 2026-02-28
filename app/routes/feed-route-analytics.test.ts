@@ -40,12 +40,18 @@ function asActionContext(context: MinimalFeedActionContext): FeedActionContext {
 	return context as FeedActionContext
 }
 
-function createCuratedFeedRouteTestContext() {
-	const feed = createCuratedFeed({
+type FeedRouteTestContext = {
+	feed: { id: string }
+	token: string
+	[Symbol.asyncDispose]: () => Promise<void>
+}
+
+async function createCuratedFeedRouteTestContext(): Promise<FeedRouteTestContext> {
+	const feed = await createCuratedFeed({
 		name: `feed-route-analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		description: 'Feed route analytics test',
 	})
-	const token = createCuratedFeedToken({
+	const token = await createCuratedFeedToken({
 		feedId: feed.id,
 		label: 'Feed route token',
 	})
@@ -53,21 +59,21 @@ function createCuratedFeedRouteTestContext() {
 	return {
 		feed,
 		token: token.token,
-		[Symbol.dispose]: () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteCuratedFeed(feed.id)
+			await deleteCuratedFeed(feed.id)
 		},
 	}
 }
 
-function createDirectoryFeedRouteTestContext() {
-	const feed = createDirectoryFeed({
+async function createDirectoryFeedRouteTestContext(): Promise<FeedRouteTestContext> {
+	const feed = await createDirectoryFeed({
 		name: `directory-feed-route-analytics-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['missing-root'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Directory feed route token',
 	})
@@ -75,11 +81,11 @@ function createDirectoryFeedRouteTestContext() {
 	return {
 		feed,
 		token: token.token,
-		[Symbol.dispose]: () => {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteDirectoryFeed(feed.id)
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
@@ -162,16 +168,16 @@ async function withAnalyticsTableUnavailable(
 		.toString(36)
 		.slice(2)}`
 	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
-	try {
-		await run()
-	} finally {
-		db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+	using _restoreAnalyticsTable = {
+		[Symbol.dispose]: () => {
+			db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+		},
 	}
+	await run()
 }
 
 test('feed route logs rss_fetch analytics for successful responses', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-
+	await using ctx = await createCuratedFeedRouteTestContext()
 	const response = await feedHandler.action(
 		createFeedActionContext(ctx.token, {
 			'User-Agent': 'Pocket Casts/7.0',
@@ -192,31 +198,31 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 })
 
 test('feed route still returns rss when analytics writes fail', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
+	await using ctx = await createCuratedFeedRouteTestContext()
 	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
-	try {
-		await withAnalyticsTableUnavailable(async () => {
-			const response = await feedHandler.action(
-				createFeedActionContext(ctx.token, {
-					'User-Agent': 'Pocket Casts/7.0',
-					'X-Forwarded-For': '203.0.113.25',
-				}),
-			)
-			expect(response.status).toBe(200)
-			expect(response.headers.get('Content-Type')).toContain(
-				'application/rss+xml',
-			)
-		})
-	} finally {
-		consoleErrorSpy.mockRestore()
+	using _restoreConsoleErrorSpy = {
+		[Symbol.dispose]: () => {
+			consoleErrorSpy.mockRestore()
+		},
 	}
 
+	await withAnalyticsTableUnavailable(async () => {
+		const response = await feedHandler.action(
+			createFeedActionContext(ctx.token, {
+				'User-Agent': 'Pocket Casts/7.0',
+				'X-Forwarded-For': '203.0.113.25',
+			}),
+		)
+		expect(response.status).toBe(200)
+		expect(response.headers.get('Content-Type')).toContain(
+			'application/rss+xml',
+		)
+	})
 	expect(countEventsForToken(ctx.token)).toBe(0)
 })
 
 test('feed route stores null client metadata when request lacks client traits', async () => {
-	using ctx = createCuratedFeedRouteTestContext()
-
+	await using ctx = await createCuratedFeedRouteTestContext()
 	const response = await feedHandler.action(createFeedActionContext(ctx.token))
 	expect(response.status).toBe(200)
 
@@ -249,8 +255,8 @@ test('feed route does not log analytics for revoked tokens', async () => {
 	] as const
 
 	for (const testCase of cases) {
-		using ctx = testCase.createContext()
-		expect(testCase.revokeToken(ctx.token)).toBe(true)
+		await using ctx = await testCase.createContext()
+		expect(await testCase.revokeToken(ctx.token)).toBe(true)
 
 		const response = await feedHandler.action(
 			createFeedActionContext(ctx.token),
@@ -275,7 +281,7 @@ test('feed route touches token last_used_at on successful fetch', async () => {
 	] as const
 
 	for (const testCase of cases) {
-		using ctx = testCase.createContext()
+		await using ctx = await testCase.createContext()
 		expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
 
 		const response = await feedHandler.action(

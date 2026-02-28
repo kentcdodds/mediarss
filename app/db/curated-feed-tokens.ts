@@ -1,6 +1,10 @@
 import { generateToken } from '#app/helpers/crypto.ts'
-import { db } from './index.ts'
-import { parseRow, parseRows, sql } from './sql.ts'
+import {
+	curatedFeedsTable,
+	curatedFeedTokensTable,
+	dataTableDb,
+} from './data-table.ts'
+import { parseRow, parseRows } from './sql.ts'
 import {
 	type CuratedFeed,
 	CuratedFeedSchema,
@@ -16,33 +20,37 @@ export type CreateCuratedFeedTokenData = {
 /**
  * Create a new token for a curated feed.
  */
-export function createCuratedFeedToken(
+export async function createCuratedFeedToken(
 	data: CreateCuratedFeedTokenData,
-): CuratedFeedToken {
+): Promise<CuratedFeedToken> {
 	const token = generateToken()
 	const now = Math.floor(Date.now() / 1000)
 
-	db.query(
-		sql`
-			INSERT INTO curated_feed_tokens (token, feed_id, label, created_at)
-			VALUES (?, ?, ?, ?);
-		`,
-	).run(token, data.feedId, data.label ?? '', now)
+	await dataTableDb.create(curatedFeedTokensTable, {
+		token,
+		feed_id: data.feedId,
+		label: data.label ?? '',
+		created_at: now,
+		last_used_at: null,
+		revoked_at: null,
+	})
 
-	return getCuratedFeedToken(token)!
+	const created = await getCuratedFeedToken(token)
+	if (!created) {
+		throw new Error(`Failed to create curated feed token "${token}"`)
+	}
+	return created
 }
 
 /**
  * Get a token by its value.
  */
-export function getCuratedFeedToken(
+export async function getCuratedFeedToken(
 	token: string,
-): CuratedFeedToken | undefined {
-	const row = db
-		.query<Record<string, unknown>, [string]>(
-			sql`SELECT * FROM curated_feed_tokens WHERE token = ? AND revoked_at IS NULL;`,
-		)
-		.get(token)
+): Promise<CuratedFeedToken | undefined> {
+	const row = await dataTableDb.findOne(curatedFeedTokensTable, {
+		where: { token, revoked_at: null },
+	})
 	return row ? parseRow(CuratedFeedTokenSchema, row) : undefined
 }
 
@@ -51,102 +59,103 @@ export function getCuratedFeedToken(
  * This is the primary way to resolve a feed from a URL token.
  * Returns undefined if the token is invalid, revoked, or doesn't exist.
  */
-export function getCuratedFeedByToken(token: string): CuratedFeed | undefined {
-	const row = db
-		.query<Record<string, unknown>, [string]>(
-			sql`
-				SELECT cf.*
-				FROM curated_feeds cf
-				INNER JOIN curated_feed_tokens cft ON cf.id = cft.feed_id
-				WHERE cft.token = ? AND cft.revoked_at IS NULL;
-			`,
-		)
-		.get(token)
-	return row ? parseRow(CuratedFeedSchema, row) : undefined
+export async function getCuratedFeedByToken(
+	token: string,
+): Promise<CuratedFeed | undefined> {
+	const tokenRow = await dataTableDb.findOne(curatedFeedTokensTable, {
+		where: { token, revoked_at: null },
+	})
+	if (!tokenRow) return undefined
+
+	const feedRow = await dataTableDb.find(curatedFeedsTable, tokenRow.feed_id)
+	return feedRow ? parseRow(CuratedFeedSchema, feedRow) : undefined
 }
 
 /**
  * List all tokens for a curated feed.
  */
-export function listCuratedFeedTokens(feedId: string): Array<CuratedFeedToken> {
-	const rows = db
-		.query<Record<string, unknown>, [string]>(
-			sql`SELECT * FROM curated_feed_tokens WHERE feed_id = ? ORDER BY created_at DESC;`,
-		)
-		.all(feedId)
+export async function listCuratedFeedTokens(
+	feedId: string,
+): Promise<Array<CuratedFeedToken>> {
+	const rows = await dataTableDb.findMany(curatedFeedTokensTable, {
+		where: { feed_id: feedId },
+		orderBy: [['created_at', 'desc']],
+	})
 	return parseRows(CuratedFeedTokenSchema, rows)
 }
 
 /**
  * List active (non-revoked) tokens for a curated feed.
  */
-export function listActiveCuratedFeedTokens(
+export async function listActiveCuratedFeedTokens(
 	feedId: string,
-): Array<CuratedFeedToken> {
-	const rows = db
-		.query<Record<string, unknown>, [string]>(
-			sql`SELECT * FROM curated_feed_tokens WHERE feed_id = ? AND revoked_at IS NULL ORDER BY created_at DESC;`,
-		)
-		.all(feedId)
+): Promise<Array<CuratedFeedToken>> {
+	const rows = await dataTableDb.findMany(curatedFeedTokensTable, {
+		where: { feed_id: feedId, revoked_at: null },
+		orderBy: [['created_at', 'desc']],
+	})
 	return parseRows(CuratedFeedTokenSchema, rows)
 }
 
 /**
  * Revoke a token (soft delete).
  */
-export function revokeCuratedFeedToken(token: string): boolean {
+export async function revokeCuratedFeedToken(token: string): Promise<boolean> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = db
-		.query(
-			sql`UPDATE curated_feed_tokens SET revoked_at = ? WHERE token = ? AND revoked_at IS NULL;`,
-		)
-		.run(now, token)
-	return result.changes > 0
+	const result = await dataTableDb.updateMany(
+		curatedFeedTokensTable,
+		{ revoked_at: now },
+		{ where: { token, revoked_at: null } },
+	)
+	return result.affectedRows > 0
 }
 
 /**
  * Update the last_used_at timestamp for a token.
  * Call this when a token is used to access a feed.
  */
-export function touchCuratedFeedToken(token: string): void {
+export async function touchCuratedFeedToken(token: string): Promise<void> {
 	const now = Math.floor(Date.now() / 1000)
-	db.query(
-		sql`UPDATE curated_feed_tokens SET last_used_at = ? WHERE token = ?;`,
-	).run(now, token)
+	await dataTableDb.updateMany(
+		curatedFeedTokensTable,
+		{ last_used_at: now },
+		{ where: { token } },
+	)
 }
 
 /**
  * Update a token's label.
  */
-export function updateCuratedFeedTokenLabel(
+export async function updateCuratedFeedTokenLabel(
 	token: string,
 	label: string,
-): boolean {
-	const result = db
-		.query(sql`UPDATE curated_feed_tokens SET label = ? WHERE token = ?;`)
-		.run(label, token)
-	return result.changes > 0
+): Promise<boolean> {
+	const result = await dataTableDb.updateMany(
+		curatedFeedTokensTable,
+		{ label },
+		{ where: { token } },
+	)
+	return result.affectedRows > 0
 }
 
 /**
  * Permanently delete a token.
  */
-export function deleteCuratedFeedToken(token: string): boolean {
-	const result = db
-		.query(sql`DELETE FROM curated_feed_tokens WHERE token = ?;`)
-		.run(token)
-	return result.changes > 0
+export async function deleteCuratedFeedToken(token: string): Promise<boolean> {
+	return dataTableDb.delete(curatedFeedTokensTable, token)
 }
 
 /**
  * Revoke all tokens for a feed.
  */
-export function revokeAllCuratedFeedTokens(feedId: string): number {
+export async function revokeAllCuratedFeedTokens(
+	feedId: string,
+): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = db
-		.query(
-			sql`UPDATE curated_feed_tokens SET revoked_at = ? WHERE feed_id = ? AND revoked_at IS NULL;`,
-		)
-		.run(now, feedId)
-	return result.changes
+	const result = await dataTableDb.updateMany(
+		curatedFeedTokensTable,
+		{ revoked_at: now },
+		{ where: { feed_id: feedId, revoked_at: null } },
+	)
+	return result.affectedRows
 }

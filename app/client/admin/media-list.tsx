@@ -19,7 +19,6 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
 
 type MediaRoot = {
 	name: string
@@ -715,7 +714,7 @@ export function MediaList(handle: Handle) {
 							</svg>
 							Upload
 						</button>
-						<Link
+						<a
 							href="/admin"
 							css={{
 								color: colors.textMuted,
@@ -725,7 +724,7 @@ export function MediaList(handle: Handle) {
 							}}
 						>
 							← Back to Feeds
-						</Link>
+						</a>
 					</div>
 				</div>
 
@@ -982,7 +981,7 @@ export function MediaList(handle: Handle) {
 													}}
 													title={item.title}
 												>
-													<Link
+													<a
 														href={detailHref}
 														css={{
 															color: 'inherit',
@@ -996,7 +995,7 @@ export function MediaList(handle: Handle) {
 														}}
 													>
 														{item.title}
-													</Link>
+													</a>
 												</td>
 												<td
 													css={{
@@ -1399,7 +1398,7 @@ function ErrorMessage() {
 			>
 				Failed to load media: {message}
 			</p>
-			<Link
+			<a
 				href="/admin"
 				css={{
 					display: 'inline-block',
@@ -1410,7 +1409,7 @@ function ErrorMessage() {
 				}}
 			>
 				← Back to feeds
-			</Link>
+			</a>
 		</div>
 	)
 }

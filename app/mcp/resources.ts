@@ -9,55 +9,17 @@ import {
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
-import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import {
-	getDirectoryFeedById,
-	listDirectoryFeeds,
-	parseDirectoryPaths,
-} from '#app/db/directory-feeds.ts'
+import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed, FeedItem } from '#app/db/types.ts'
+import type { FeedItem } from '#app/db/types.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
+import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { serverMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
-
-type FeedWithType =
-	| (DirectoryFeed & { type: 'directory' })
-	| (CuratedFeed & { type: 'curated' })
-
-/**
- * Get all feeds (both directory and curated)
- */
-function getAllFeeds(): Array<FeedWithType> {
-	const directoryFeeds = listDirectoryFeeds().map((f) => ({
-		...f,
-		type: 'directory' as const,
-	}))
-	const curatedFeeds = listCuratedFeeds().map((f) => ({
-		...f,
-		type: 'curated' as const,
-	}))
-	return [...directoryFeeds, ...curatedFeeds].sort(
-		(a, b) => b.createdAt - a.createdAt,
-	)
-}
-
-/**
- * Get a feed by ID (checks both directory and curated)
- */
-function getFeedById(id: string): FeedWithType | undefined {
-	const directoryFeed = getDirectoryFeedById(id)
-	if (directoryFeed) return { ...directoryFeed, type: 'directory' }
-
-	const curatedFeed = getCuratedFeedById(id)
-	if (curatedFeed) return { ...curatedFeed, type: 'curated' }
-
-	return undefined
-}
 
 /**
  * Initialize MCP resources based on authorized scopes.
@@ -83,7 +45,7 @@ export async function initializeResources(
 				mimeType: 'application/json',
 			},
 			async (uri) => {
-				const feeds = getAllFeeds()
+				const feeds = await getAllFeeds()
 
 				return {
 					contents: [
@@ -141,7 +103,7 @@ export async function initializeResources(
 			'feed',
 			new ResourceTemplate('media://feeds/{id}', {
 				list: async () => {
-					const feeds = getAllFeeds()
+					const feeds = await getAllFeeds()
 					return {
 						resources: feeds.map((feed) => ({
 							name: feed.name,
@@ -161,7 +123,7 @@ export async function initializeResources(
 			},
 			async (uri, { id }) => {
 				const feedId = String(id)
-				const feed = getFeedById(feedId)
+				const feed = await getFeedById(feedId)
 
 				if (!feed) {
 					throw new Error(
@@ -170,7 +132,9 @@ export async function initializeResources(
 				}
 
 				const items =
-					feed.type === 'curated' ? getItemsForFeed(feedId) : ([] as FeedItem[])
+					feed.type === 'curated'
+						? await getItemsForFeed(feedId)
+						: ([] as FeedItem[])
 
 				return {
 					contents: [
@@ -275,7 +239,7 @@ export async function initializeResources(
 				mimeType: 'application/json',
 			},
 			async (uri) => {
-				const feeds = getAllFeeds()
+				const feeds = await getAllFeeds()
 				const mediaRoots = getMediaRoots()
 
 				return {
@@ -370,7 +334,7 @@ export async function initializeResources(
 				}
 
 				// Validate token and get feed
-				const result = getFeedByToken(token)
+				const result = await getFeedByToken(token)
 				if (!result) {
 					throw new Error(
 						'Invalid or expired token. Use get_feed_tokens to obtain a valid token.',
@@ -392,7 +356,14 @@ export async function initializeResources(
 				}
 
 				// Validate file is allowed for this feed (path traversal protection)
-				if (!isFileAllowed(feed, type, parsed.rootName, parsed.relativePath)) {
+				if (
+					!(await isFileAllowed(
+						feed,
+						type,
+						parsed.rootName,
+						parsed.relativePath,
+					))
+				) {
 					throw new Error('File not found or not accessible with this token.')
 				}
 

@@ -30,9 +30,9 @@ export default {
 		}
 
 		// Try directory feed first
-		const directoryFeed = getDirectoryFeedById(id)
+		const directoryFeed = await getDirectoryFeedById(id)
 		if (directoryFeed) {
-			const token = createDirectoryFeedToken({
+			const token = await createDirectoryFeedToken({
 				feedId: directoryFeed.id,
 				label: body.label,
 			})
@@ -40,9 +40,9 @@ export default {
 		}
 
 		// Try curated feed
-		const curatedFeed = getCuratedFeedById(id)
+		const curatedFeed = await getCuratedFeedById(id)
 		if (curatedFeed) {
-			const token = createCuratedFeedToken({
+			const token = await createCuratedFeedToken({
 				feedId: curatedFeed.id,
 				label: body.label,
 			})

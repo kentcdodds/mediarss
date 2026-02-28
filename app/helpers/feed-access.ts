@@ -20,12 +20,12 @@ import { isDirectoryFeed } from '#app/db/types.ts'
  * This function provides path traversal protection by resolving paths
  * and checking that the file is within the allowed directories.
  */
-export function isFileAllowed(
+export async function isFileAllowed(
 	feed: Feed,
 	type: 'directory' | 'curated',
 	rootName: string,
 	relativePath: string,
-): boolean {
+): Promise<boolean> {
 	if (type === 'directory' && isDirectoryFeed(feed)) {
 		const paths = parseDirectoryPaths(feed)
 		const filePath = toAbsolutePath(rootName, relativePath)
@@ -46,7 +46,7 @@ export function isFileAllowed(
 		return false
 	}
 
-	const feedItems = getItemsForFeed(feed.id)
+	const feedItems = await getItemsForFeed(feed.id)
 	return feedItems.some(
 		(item) => item.mediaRoot === rootName && item.relativePath === relativePath,
 	)

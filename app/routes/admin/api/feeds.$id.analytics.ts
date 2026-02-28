@@ -105,17 +105,19 @@ function buildTokenAnalytics(
 	return byToken
 }
 
-function resolveFeedAnalyticsContext(id: string): FeedAnalyticsContext | null {
-	const directoryFeed = getDirectoryFeedById(id)
+async function resolveFeedAnalyticsContext(
+	id: string,
+): Promise<FeedAnalyticsContext | null> {
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) {
 		return {
 			feedType: 'directory',
 			feed: directoryFeed,
-			tokens: listDirectoryFeedTokens(id),
+			tokens: await listDirectoryFeedTokens(id),
 		}
 	}
 
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (!curatedFeed) {
 		return null
 	}
@@ -123,7 +125,7 @@ function resolveFeedAnalyticsContext(id: string): FeedAnalyticsContext | null {
 	return {
 		feedType: 'curated',
 		feed: curatedFeed,
-		tokens: listCuratedFeedTokens(id),
+		tokens: await listCuratedFeedTokens(id),
 	}
 }
 
@@ -132,7 +134,7 @@ function resolveFeedAnalyticsContext(id: string): FeedAnalyticsContext | null {
  */
 export default {
 	middleware: [],
-	action(context) {
+	async action(context) {
 		const { id } = context.params
 		if (!id) {
 			return Response.json({ error: 'Feed id required' }, { status: 400 })
@@ -141,7 +143,7 @@ export default {
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60
 
-		const feedContext = resolveFeedAnalyticsContext(id)
+		const feedContext = await resolveFeedAnalyticsContext(id)
 		if (!feedContext) {
 			return Response.json({ error: 'Feed not found' }, { status: 404 })
 		}

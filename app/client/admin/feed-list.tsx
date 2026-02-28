@@ -13,7 +13,6 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -225,7 +224,7 @@ export function FeedList(handle: Handle) {
 							},
 						}}
 					>
-						<Link
+						<a
 							href="/admin/media"
 							css={{
 								display: 'inline-flex',
@@ -248,8 +247,8 @@ export function FeedList(handle: Handle) {
 							}}
 						>
 							Manage Access
-						</Link>
-						<Link
+						</a>
+						<a
 							href="/admin/feeds/new"
 							css={{
 								display: 'inline-flex',
@@ -272,7 +271,7 @@ export function FeedList(handle: Handle) {
 							}}
 						>
 							+ New Feed
-						</Link>
+						</a>
 					</div>
 				</div>
 
@@ -582,7 +581,7 @@ function FeedCard() {
 								marginBottom: spacing.xs,
 							}}
 						>
-							<Link
+							<a
 								href={`/admin/feeds/${feed.id}`}
 								css={{
 									fontSize: typography.fontSize.base,
@@ -598,7 +597,7 @@ function FeedCard() {
 								}}
 							>
 								{feed.name}
-							</Link>
+							</a>
 							<span
 								css={{
 									fontSize: typography.fontSize.xs,

@@ -11,7 +11,7 @@ import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
 import { MediaDetail } from './media-detail.tsx'
 import { MediaList } from './media-list.tsx'
-import { Link, RouterOutlet, router } from './router.tsx'
+import { RouterOutlet, router } from './router.tsx'
 import { VersionPage } from './version.tsx'
 
 // Register routes
@@ -57,7 +57,7 @@ function AppFooter(handle: Handle) {
 				alignItems: 'center',
 			}}
 		>
-			<Link
+			<a
 				href="/admin/version"
 				css={{
 					fontSize: typography.fontSize.xs,
@@ -69,7 +69,7 @@ function AppFooter(handle: Handle) {
 				}}
 			>
 				{displayVersion ? `v${displayVersion}` : '...'}
-			</Link>
+			</a>
 		</footer>
 	)
 }
@@ -97,7 +97,7 @@ function AdminApp() {
 					},
 				}}
 			>
-				<Link
+				<a
 					href="/admin"
 					css={{
 						display: 'flex',
@@ -135,7 +135,7 @@ function AdminApp() {
 					>
 						Admin
 					</span>
-				</Link>
+				</a>
 			</header>
 			<main
 				css={{

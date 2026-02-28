@@ -20,7 +20,6 @@ import {
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
-import { Link } from './router.tsx'
 
 type MediaInfo = {
 	path: string
@@ -582,7 +581,7 @@ export function MediaDetail(handle: Handle) {
 						marginBottom: spacing.xl,
 					}}
 				>
-					<Link
+					<a
 						href="/admin/media"
 						css={{
 							color: colors.textMuted,
@@ -592,7 +591,7 @@ export function MediaDetail(handle: Handle) {
 						}}
 					>
 						← Back to Media
-					</Link>
+					</a>
 				</div>
 
 				{/* Main Content Grid */}
@@ -1665,7 +1664,7 @@ function ErrorMessage() {
 			>
 				Failed to load media: {message}
 			</p>
-			<Link
+			<a
 				href="/admin/media"
 				css={{
 					display: 'inline-block',
@@ -1676,7 +1675,7 @@ function ErrorMessage() {
 				}}
 			>
 				← Back to media library
-			</Link>
+			</a>
 		</div>
 	)
 }
@@ -1825,7 +1824,7 @@ function MediaAnalyticsSection() {
 											backgroundColor: colors.background,
 										}}
 									>
-										<Link
+										<a
 											href={`/admin/feeds/${feed.feedId}`}
 											css={{
 												color: colors.primary,
@@ -1835,7 +1834,7 @@ function MediaAnalyticsSection() {
 											}}
 										>
 											{feed.feedName}
-										</Link>
+										</a>
 										<div
 											css={{
 												fontSize: typography.fontSize.xs,

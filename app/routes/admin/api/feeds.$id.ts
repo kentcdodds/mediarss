@@ -98,9 +98,9 @@ export default {
 
 async function handleGet(id: string) {
 	// Try directory feed first
-	const directoryFeed = getDirectoryFeedById(id)
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) {
-		const tokens = listDirectoryFeedTokens(directoryFeed.id)
+		const tokens = await listDirectoryFeedTokens(directoryFeed.id)
 		const mediaFiles = await getDirectoryFeedItems(directoryFeed)
 		const items: Array<MediaItemResponse> = []
 		for (const file of mediaFiles) {
@@ -132,9 +132,9 @@ async function handleGet(id: string) {
 	}
 
 	// Try curated feed
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (curatedFeed) {
-		const tokens = listActiveCuratedFeedTokens(curatedFeed.id)
+		const tokens = await listActiveCuratedFeedTokens(curatedFeed.id)
 		const mediaFiles = await getCuratedFeedItems(curatedFeed)
 		const items: Array<MediaItemResponse> = []
 		for (const file of mediaFiles) {
@@ -193,7 +193,7 @@ async function handlePut(id: string, request: Request) {
 	}
 
 	// Try directory feed first
-	const directoryFeed = getDirectoryFeedById(id)
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) {
 		// Validate directoryPaths if provided
 		let validatedPaths: Array<string> | undefined
@@ -257,7 +257,7 @@ async function handlePut(id: string, request: Request) {
 			}
 		}
 
-		const updated = updateDirectoryFeed(id, {
+		const updated = await updateDirectoryFeed(id, {
 			name: body.name,
 			description: body.description,
 			subtitle: body.subtitle,
@@ -284,7 +284,7 @@ async function handlePut(id: string, request: Request) {
 	}
 
 	// Try curated feed
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (curatedFeed) {
 		// Curated feeds don't have directoryPaths
 		if (body.directoryPaths !== undefined) {
@@ -318,10 +318,10 @@ async function handlePut(id: string, request: Request) {
 						item !== null,
 				)
 
-			reorderFeedItems(curatedFeed.id, reorderItems)
+			await reorderFeedItems(curatedFeed.id, reorderItems)
 		}
 
-		const updated = updateCuratedFeed(id, {
+		const updated = await updateCuratedFeed(id, {
 			name: body.name,
 			description: body.description,
 			subtitle: body.subtitle,
@@ -351,11 +351,11 @@ async function handlePut(id: string, request: Request) {
 
 async function handleDelete(id: string) {
 	// Try directory feed first
-	const directoryFeed = getDirectoryFeedById(id)
+	const directoryFeed = await getDirectoryFeedById(id)
 	if (directoryFeed) {
 		// Delete uploaded artwork first
 		await deleteFeedArtwork(id)
-		const deleted = deleteDirectoryFeed(id)
+		const deleted = await deleteDirectoryFeed(id)
 		if (!deleted) {
 			return Response.json({ error: 'Failed to delete feed' }, { status: 500 })
 		}
@@ -363,11 +363,11 @@ async function handleDelete(id: string) {
 	}
 
 	// Try curated feed
-	const curatedFeed = getCuratedFeedById(id)
+	const curatedFeed = await getCuratedFeedById(id)
 	if (curatedFeed) {
 		// Delete uploaded artwork first
 		await deleteFeedArtwork(id)
-		const deleted = deleteCuratedFeed(id)
+		const deleted = await deleteCuratedFeed(id)
 		if (!deleted) {
 			return Response.json({ error: 'Failed to delete feed' }, { status: 500 })
 		}

@@ -311,15 +311,14 @@ function UserBadge(handle: Handle) {
 }
 ```
 
-#### Known Bug: DOM insertBefore Error
+#### Router Stability Note
 
-There's a known bug in Remix components where navigating with the client-side router can sometimes cause this console error:
+The historical client-router `insertBefore` instability that required manual
+refreshes should be treated as fixed for this project after upgrading to
+`remix@3.0.0-alpha.3`.
 
-```
-Uncaught NotFoundError: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.
-```
-
-**Workaround:** If you see this error while testing, simply refresh the page. This is a framework-level issue that doesn't indicate a problem with your code.
+If navigation regressions appear, debug the app code first (Link handling,
+route registration, and state updates) before assuming a framework bug.
 
 ## Bun
 

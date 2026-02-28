@@ -60,11 +60,11 @@ async function createDirectoryMediaAnalyticsTestContext() {
 	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
 	initEnv()
 
-	const feed = createDirectoryFeed({
+	const feed = await createDirectoryFeed({
 		name: `media-route-feed-${Date.now()}`,
 		directoryPaths: [rootName],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Media route token',
 	})
@@ -78,7 +78,7 @@ async function createDirectoryMediaAnalyticsTestContext() {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteDirectoryFeed(feed.id)
+			await deleteDirectoryFeed(feed.id)
 
 			if (previousMediaPaths === undefined) {
 				delete Bun.env.MEDIA_PATHS
@@ -108,15 +108,15 @@ async function createCuratedMediaAnalyticsTestContext() {
 	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
 	initEnv()
 
-	const feed = createCuratedFeed({
+	const feed = await createCuratedFeed({
 		name: `media-route-curated-feed-${Date.now()}`,
 		description: 'Curated media route analytics feed',
 	})
-	const token = createCuratedFeedToken({
+	const token = await createCuratedFeedToken({
 		feedId: feed.id,
 		label: 'Curated media route token',
 	})
-	addItemToFeed(feed.id, rootName, relativePath)
+	await addItemToFeed(feed.id, rootName, relativePath)
 
 	return {
 		rootName,
@@ -128,7 +128,7 @@ async function createCuratedMediaAnalyticsTestContext() {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				feed.id,
 			)
-			deleteCuratedFeed(feed.id)
+			await deleteCuratedFeed(feed.id)
 
 			if (previousMediaPaths === undefined) {
 				delete Bun.env.MEDIA_PATHS
@@ -369,7 +369,7 @@ test('media route rejects invalid access cases without logging analytics', async
 	expect(missingTokenResponse.status).toBe(404)
 	expect(countEventsForToken(missingToken)).toBe(0)
 
-	expect(revokeDirectoryFeedToken(ctx.token)).toBe(true)
+	expect(await revokeDirectoryFeedToken(ctx.token)).toBe(true)
 	const revokedTokenResponse = await mediaHandler.action(
 		createMediaActionContext(ctx.token, pathParam),
 	)

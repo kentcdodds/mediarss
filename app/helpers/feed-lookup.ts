@@ -17,13 +17,15 @@ export type FeedLookupResult = {
  * Look up a feed by token without touching last_used_at.
  * Use this for media/artwork requests where we don't want excessive DB writes.
  */
-export function getFeedByToken(token: string): FeedLookupResult | null {
-	const directoryFeed = getDirectoryFeedByToken(token)
+export async function getFeedByToken(
+	token: string,
+): Promise<FeedLookupResult | null> {
+	const directoryFeed = await getDirectoryFeedByToken(token)
 	if (directoryFeed) {
 		return { feed: directoryFeed, type: 'directory' }
 	}
 
-	const curatedFeed = getCuratedFeedByToken(token)
+	const curatedFeed = await getCuratedFeedByToken(token)
 	if (curatedFeed) {
 		return { feed: curatedFeed, type: 'curated' }
 	}
@@ -35,16 +37,18 @@ export function getFeedByToken(token: string): FeedLookupResult | null {
  * Look up a feed by token and touch last_used_at.
  * Use this for RSS feed requests where we want to track usage.
  */
-export function getFeedByTokenAndTouch(token: string): FeedLookupResult | null {
-	const directoryFeed = getDirectoryFeedByToken(token)
+export async function getFeedByTokenAndTouch(
+	token: string,
+): Promise<FeedLookupResult | null> {
+	const directoryFeed = await getDirectoryFeedByToken(token)
 	if (directoryFeed) {
-		touchDirectoryFeedToken(token)
+		await touchDirectoryFeedToken(token)
 		return { feed: directoryFeed, type: 'directory' }
 	}
 
-	const curatedFeed = getCuratedFeedByToken(token)
+	const curatedFeed = await getCuratedFeedByToken(token)
 	if (curatedFeed) {
-		touchCuratedFeedToken(token)
+		await touchCuratedFeedToken(token)
 		return { feed: curatedFeed, type: 'curated' }
 	}
 

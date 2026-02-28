@@ -1,5 +1,5 @@
+import { number, object, optional, parseSafe, string } from 'remix/data-schema'
 import type { BuildAction } from 'remix/fetch-router'
-import { z } from 'zod'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
@@ -18,50 +18,61 @@ import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
 /**
  * Request body schema for metadata updates.
  */
-const MetadataUpdateSchema = z.object({
-	title: z.string().optional(),
-	author: z.string().optional(),
-	description: z.string().optional(),
-	date: z
-		.string()
-		.regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, {
-			message: 'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
-		})
-		.refine(
-			(val) => {
-				const parts = val.split('-')
-				if (parts.length === 1) return true // YYYY only
-				const month = parseInt(parts[1]!, 10)
-				if (month < 1 || month > 12) return false
-				if (parts.length === 2) return true // YYYY-MM
-				// Validate full date using Date constructor (handles month lengths and leap years)
-				const year = parseInt(parts[0]!, 10)
-				const day = parseInt(parts[2]!, 10)
-				const testDate = new Date(year, month - 1, day)
-				return (
-					testDate.getFullYear() === year &&
-					testDate.getMonth() === month - 1 &&
-					testDate.getDate() === day
-				)
-			},
-			{ message: 'Date contains invalid month or day values' },
-		)
-		.optional(),
-	genre: z.string().optional(),
-	trackNumber: z.number().int().min(0).optional(),
-	copyright: z.string().optional(),
+const DATE_PATTERN = /^\d{4}(-\d{2}(-\d{2})?)?$/
+
+function isValidYearMonthOrDate(value: string): boolean {
+	const parts = value.split('-')
+	if (parts.length === 1) return true // YYYY only
+
+	const month = parseInt(parts[1]!, 10)
+	if (month < 1 || month > 12) return false
+	if (parts.length === 2) return true // YYYY-MM
+
+	// Validate full date using Date constructor (handles month lengths and leap years)
+	const year = parseInt(parts[0]!, 10)
+	const day = parseInt(parts[2]!, 10)
+	const testDate = new Date(year, month - 1, day)
+	return (
+		testDate.getFullYear() === year &&
+		testDate.getMonth() === month - 1 &&
+		testDate.getDate() === day
+	)
+}
+
+const NonNegativeIntegerSchema = number()
+	.refine((value) => Number.isInteger(value), 'Expected an integer')
+	.refine((value) => value >= 0, 'Expected a non-negative integer')
+
+const MetadataUpdateSchema = object({
+	title: optional(string()),
+	author: optional(string()),
+	description: optional(string()),
+	date: optional(
+		string()
+			.refine(
+				(value) => DATE_PATTERN.test(value),
+				'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
+			)
+			.refine(
+				(value) => isValidYearMonthOrDate(value),
+				'Date contains invalid month or day values',
+			),
+	),
+	genre: optional(string()),
+	trackNumber: optional(NonNegativeIntegerSchema),
+	copyright: optional(string()),
 	// Additional fields
-	narrator: z.string().optional(),
-	album: z.string().optional(),
-	albumArtist: z.string().optional(),
-	composer: z.string().optional(),
-	publisher: z.string().optional(),
-	discNumber: z.number().int().min(0).optional(),
-	language: z.string().optional(),
-	series: z.string().optional(),
-	seriesPosition: z.string().optional(),
-	encodedBy: z.string().optional(),
-	subtitle: z.string().optional(),
+	narrator: optional(string()),
+	album: optional(string()),
+	albumArtist: optional(string()),
+	composer: optional(string()),
+	publisher: optional(string()),
+	discNumber: optional(NonNegativeIntegerSchema),
+	language: optional(string()),
+	series: optional(string()),
+	seriesPosition: optional(string()),
+	encodedBy: optional(string()),
+	subtitle: optional(string()),
 })
 
 type FeedAssignment = {
@@ -145,18 +156,18 @@ function isMediaInDirectoryFeed(
 /**
  * Get all feed assignments for a media file.
  */
-function getAssignmentsForMedia(
+async function getAssignmentsForMedia(
 	rootName: string,
 	relativePath: string,
 	curatedFeeds: CuratedFeed[],
 	directoryFeeds: DirectoryFeed[],
-): FeedAssignment[] {
+): Promise<FeedAssignment[]> {
 	const assignments: FeedAssignment[] = []
 
 	// Check curated feed assignments
 	const normalizedRelativePath = normalizePath(relativePath)
 	for (const feed of curatedFeeds) {
-		const items = getItemsForFeed(feed.id)
+		const items = await getItemsForFeed(feed.id)
 		if (
 			items.some(
 				(item) =>
@@ -249,18 +260,18 @@ export default {
 		}
 
 		// Validate request body
-		const parseResult = MetadataUpdateSchema.safeParse(body)
+		const parseResult = parseSafe(MetadataUpdateSchema, body)
 		if (!parseResult.success) {
 			return Response.json(
 				{
 					error: 'Invalid metadata',
-					details: parseResult.error.issues.map((i) => i.message),
+					details: parseResult.issues.map((issue) => issue.message),
 				},
 				{ status: 400 },
 			)
 		}
 
-		const metadataUpdate = parseResult.data
+		const metadataUpdate = parseResult.value
 
 		// Check if there's anything to update
 		if (Object.keys(metadataUpdate).length === 0) {
@@ -321,9 +332,9 @@ export default {
 		}
 
 		// Get feeds and assignments
-		const curatedFeeds = listCuratedFeeds()
-		const directoryFeeds = listDirectoryFeeds()
-		const assignments = getAssignmentsForMedia(
+		const curatedFeeds = await listCuratedFeeds()
+		const directoryFeeds = await listDirectoryFeeds()
+		const assignments = await getAssignmentsForMedia(
 			rootName,
 			relativePath,
 			curatedFeeds,

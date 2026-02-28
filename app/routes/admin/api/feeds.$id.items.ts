@@ -38,7 +38,7 @@ export default {
 		const { id } = context.params
 
 		// Only curated feeds support item management
-		const feed = getCuratedFeedById(id)
+		const feed = await getCuratedFeedById(id)
 		if (!feed) {
 			return Response.json({ error: 'Curated feed not found' }, { status: 404 })
 		}
@@ -133,7 +133,7 @@ async function handleAddItems(feedId: string, request: Request) {
 	}
 
 	// Get current items to determine position for new items
-	const currentItems = getItemsForFeed(feedId)
+	const currentItems = await getItemsForFeed(feedId)
 	const maxPosition = currentItems.reduce(
 		(max, item) => Math.max(max, item.position ?? 0),
 		-1,
@@ -144,7 +144,7 @@ async function handleAddItems(feedId: string, request: Request) {
 	for (let i = 0; i < validatedItems.length; i++) {
 		const item = validatedItems[i]
 		if (item) {
-			const feedItem = addItemToFeed(
+			const feedItem = await addItemToFeed(
 				feedId,
 				item.mediaRoot,
 				item.relativePath,
@@ -187,7 +187,7 @@ async function handleRemoveItems(feedId: string, request: Request) {
 		const root = getMediaRootByName(mediaRoot)
 		if (!root) continue
 
-		const removed = removeItemFromFeed(feedId, mediaRoot, relativePath)
+		const removed = await removeItemFromFeed(feedId, mediaRoot, relativePath)
 		if (removed) removedCount++
 	}
 
@@ -210,7 +210,7 @@ async function handleReorderItems(feedId: string, request: Request) {
 	}
 
 	// Validate that all items in the order exist in the feed
-	const currentItems = getItemsForFeed(feedId)
+	const currentItems = await getItemsForFeed(feedId)
 	const currentItemSet = new Set(
 		currentItems.map((item) => `${item.mediaRoot}:${item.relativePath}`),
 	)
@@ -249,7 +249,7 @@ async function handleReorderItems(feedId: string, request: Request) {
 		orderItems.push({ mediaRoot, relativePath })
 	}
 
-	reorderFeedItems(feedId, orderItems)
+	await reorderFeedItems(feedId, orderItems)
 
 	return Response.json({ reordered: orderItems.length })
 }

@@ -9,7 +9,7 @@ import { revokeDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
  */
 export default {
 	middleware: [],
-	action(context) {
+	async action(context) {
 		if (context.method !== 'DELETE') {
 			return Response.json({ error: 'Method not allowed' }, { status: 405 })
 		}
@@ -17,13 +17,13 @@ export default {
 		const { token } = context.params
 
 		// Try directory feed token first
-		const directoryRevoked = revokeDirectoryFeedToken(token)
+		const directoryRevoked = await revokeDirectoryFeedToken(token)
 		if (directoryRevoked) {
 			return Response.json({ success: true })
 		}
 
 		// Try curated feed token
-		const curatedRevoked = revokeCuratedFeedToken(token)
+		const curatedRevoked = await revokeCuratedFeedToken(token)
 		if (curatedRevoked) {
 			return Response.json({ success: true })
 		}

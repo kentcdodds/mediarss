@@ -5,7 +5,6 @@ import {
 	formatUptime,
 } from '#app/helpers/format.ts'
 import { colors, mq, radius, spacing, typography } from '#app/styles/tokens.ts'
-import { Link } from './router.tsx'
 
 type CommitInfo = {
 	hash: string
@@ -113,7 +112,7 @@ export function VersionPage(handle: Handle) {
 						marginBottom: spacing.xl,
 					}}
 				>
-					<Link
+					<a
 						href="/admin"
 						css={{
 							color: colors.textMuted,
@@ -125,7 +124,7 @@ export function VersionPage(handle: Handle) {
 						}}
 					>
 						← Back
-					</Link>
+					</a>
 				</div>
 
 				<h2

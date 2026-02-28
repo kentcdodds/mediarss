@@ -25,7 +25,6 @@ import {
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
-import { Link } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -1009,7 +1008,7 @@ export function FeedDetail(handle: Handle) {
 							},
 						}}
 					>
-						<Link
+						<a
 							href="/admin"
 							css={{
 								color: colors.textMuted,
@@ -1020,7 +1019,7 @@ export function FeedDetail(handle: Handle) {
 							}}
 						>
 							← Back
-						</Link>
+						</a>
 						<h2
 							css={{
 								fontSize: typography.fontSize.xl,
@@ -2040,7 +2039,7 @@ export function FeedDetail(handle: Handle) {
 													textAlign: 'center',
 												}}
 											>
-												<Link
+												<a
 													href={`/admin/media/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
 													css={{
 														display: 'inline-block',
@@ -2057,7 +2056,7 @@ export function FeedDetail(handle: Handle) {
 													}}
 												>
 													View
-												</Link>
+												</a>
 											</td>
 										</tr>
 									))}
@@ -2402,7 +2401,7 @@ function ErrorMessage() {
 			>
 				Failed to load feed: {message}
 			</p>
-			<Link
+			<a
 				href="/admin"
 				css={{
 					display: 'inline-block',
@@ -2413,7 +2412,7 @@ function ErrorMessage() {
 				}}
 			>
 				← Back to feeds
-			</Link>
+			</a>
 		</div>
 	)
 }
@@ -4270,7 +4269,7 @@ function FeedAnalyticsSection() {
 											backgroundColor: colors.background,
 										}}
 									>
-										<Link
+										<a
 											href={`/admin/media/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
 											css={{
 												color: colors.primary,
@@ -4280,7 +4279,7 @@ function FeedAnalyticsSection() {
 											}}
 										>
 											{item.relativePath.split('/').at(-1) ?? item.relativePath}
-										</Link>
+										</a>
 										<div
 											css={{
 												marginTop: spacing.xs,

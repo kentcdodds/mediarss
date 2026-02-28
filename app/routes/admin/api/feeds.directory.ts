@@ -130,7 +130,7 @@ export default {
 		}
 
 		// Create the feed
-		const feed = createDirectoryFeed({
+		const feed = await createDirectoryFeed({
 			name: body.name.trim(),
 			description: body.description?.trim(),
 			subtitle: body.subtitle,
@@ -149,7 +149,7 @@ export default {
 		})
 
 		// Automatically create an access token for the new feed
-		createDirectoryFeedToken({
+		await createDirectoryFeedToken({
 			feedId: feed.id,
 			label: 'Default',
 		})

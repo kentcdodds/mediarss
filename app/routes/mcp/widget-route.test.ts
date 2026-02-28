@@ -25,26 +25,29 @@ function asActionContext(
 	return context as WidgetActionContext
 }
 
-function createWidgetTestContext() {
-	const feed = createDirectoryFeed({
+async function createWidgetTestContext(): Promise<{
+	token: string
+	[Symbol.asyncDispose]: () => Promise<void>
+}> {
+	const feed = await createDirectoryFeed({
 		name: `widget-route-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['audio:test'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Widget test token',
 	})
 
 	return {
 		token: token.token,
-		[Symbol.dispose]: () => {
-			deleteDirectoryFeed(feed.id)
+		[Symbol.asyncDispose]: async () => {
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
 
 test('mcp widget route rejects malformed path encoding', async () => {
-	using ctx = createWidgetTestContext()
+	await using ctx = await createWidgetTestContext()
 	const request = new Request(
 		`http://localhost/mcp/widget/${ctx.token}/%E0%A4%A`,
 	)

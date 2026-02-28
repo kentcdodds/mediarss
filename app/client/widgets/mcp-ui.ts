@@ -9,7 +9,7 @@
  * - Sending messages back to the parent
  */
 
-import { z } from 'zod'
+import { parseSafe, type Schema } from 'remix/data-schema'
 
 /**
  * Signal to the parent frame that the widget is ready.
@@ -29,11 +29,9 @@ export function updateMcpUiSize(height: number, width: number): void {
 	)
 }
 
-type MessageOptions = { schema?: z.ZodSchema }
-
-type McpMessageReturnType<Options> = Promise<
-	Options extends { schema: z.ZodSchema } ? z.infer<Options['schema']> : unknown
->
+type MessageOptions<TOutput = unknown> = {
+	schema?: Schema<unknown, TOutput>
+}
 
 type McpMessageTypes = {
 	tool: { toolName: string; params: Record<string, unknown> }
@@ -43,30 +41,30 @@ type McpMessageTypes = {
 
 type McpMessageType = keyof McpMessageTypes
 
-function sendMcpMessage<Options extends MessageOptions>(
+function sendMcpMessage<TOutput = unknown>(
 	type: 'tool',
 	payload: McpMessageTypes['tool'],
-	options?: Options,
-): McpMessageReturnType<Options>
+	options?: MessageOptions<TOutput>,
+): Promise<TOutput>
 
-function sendMcpMessage<Options extends MessageOptions>(
+function sendMcpMessage<TOutput = unknown>(
 	type: 'prompt',
 	payload: McpMessageTypes['prompt'],
-	options?: Options,
-): McpMessageReturnType<Options>
+	options?: MessageOptions<TOutput>,
+): Promise<TOutput>
 
-function sendMcpMessage<Options extends MessageOptions>(
+function sendMcpMessage<TOutput = unknown>(
 	type: 'link',
 	payload: McpMessageTypes['link'],
-	options?: Options,
-): McpMessageReturnType<Options>
+	options?: MessageOptions<TOutput>,
+): Promise<TOutput>
 
-function sendMcpMessage(
+function sendMcpMessage<TOutput = unknown>(
 	type: McpMessageType,
 	payload: McpMessageTypes[McpMessageType],
-	options: MessageOptions = {},
+	options: MessageOptions<TOutput> = {},
 	timeoutMs = 30000,
-): McpMessageReturnType<typeof options> {
+): Promise<TOutput> {
 	const { schema } = options
 	const messageId = crypto.randomUUID()
 
@@ -103,12 +101,17 @@ function sendMcpMessage(
 			const { response, error } = eventPayload
 
 			if (error) return reject(error)
-			if (!schema) return resolve(response)
+			if (!schema) return resolve(response as TOutput)
 
-			const parseResult = schema.safeParse(response)
-			if (!parseResult.success) return reject(parseResult.error)
+			const parsed = parseSafe(schema, response)
+			if (!parsed.success) {
+				const firstIssue = parsed.issues[0]
+				return reject(
+					new Error(firstIssue?.message ?? 'Response validation failed'),
+				)
+			}
 
-			return resolve(parseResult.data)
+			return resolve(parsed.value)
 		}
 
 		window.addEventListener('message', handleMessage)
@@ -124,12 +127,12 @@ export { sendMcpMessage }
  * the `ui-lifecycle-iframe-render-data` message containing the
  * `initial-render-data` that was passed in `uiMetadata`.
  *
- * @param schema - Optional Zod schema to validate the render data
+ * @param schema - Optional data schema to validate the render data
  * @param timeoutMs - Timeout in milliseconds (default: 10000)
  * @returns Promise that resolves with the render data
  */
-export function waitForRenderData<RenderData>(
-	schema?: z.ZodSchema<RenderData>,
+export function waitForRenderData<RenderData = unknown>(
+	schema?: Schema<unknown, RenderData>,
 	timeoutMs = 10000,
 ): Promise<RenderData> {
 	return new Promise((resolve, reject) => {
@@ -162,10 +165,15 @@ export function waitForRenderData<RenderData>(
 			if (error) return reject(error)
 			if (!schema) return resolve(renderData)
 
-			const parseResult = schema.safeParse(renderData)
-			if (!parseResult.success) return reject(parseResult.error)
+			const parsed = parseSafe(schema, renderData)
+			if (!parsed.success) {
+				const firstIssue = parsed.issues[0]
+				return reject(
+					new Error(firstIssue?.message ?? 'Render data validation failed'),
+				)
+			}
 
-			return resolve(parseResult.data)
+			return resolve(parsed.value)
 		}
 
 		window.addEventListener('message', handleMessage)

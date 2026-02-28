@@ -23,26 +23,29 @@ function asActionContext(context: MinimalArtActionContext): ArtActionContext {
 	return context as ArtActionContext
 }
 
-function createArtRouteTestContext() {
-	const feed = createDirectoryFeed({
+async function createArtRouteTestContext(): Promise<{
+	token: string
+	[Symbol.asyncDispose]: () => Promise<void>
+}> {
+	const feed = await createDirectoryFeed({
 		name: `art-route-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 		directoryPaths: ['audio:test'],
 	})
-	const token = createDirectoryFeedToken({
+	const token = await createDirectoryFeedToken({
 		feedId: feed.id,
 		label: 'Art route token',
 	})
 
 	return {
 		token: token.token,
-		[Symbol.dispose]: () => {
-			deleteDirectoryFeed(feed.id)
+		[Symbol.asyncDispose]: async () => {
+			await deleteDirectoryFeed(feed.id)
 		},
 	}
 }
 
 test('art route rejects malformed path encoding', async () => {
-	using ctx = createArtRouteTestContext()
+	await using ctx = await createArtRouteTestContext()
 	const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
 	const response = await artHandler.action(
 		asActionContext({

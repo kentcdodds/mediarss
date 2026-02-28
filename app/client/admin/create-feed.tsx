@@ -9,7 +9,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { Link, router } from './router.tsx'
+import { router } from './router.tsx'
 
 type FeedType = 'directory' | 'curated'
 
@@ -417,7 +417,7 @@ export function CreateFeed(handle: Handle) {
 						flexWrap: 'wrap',
 					}}
 				>
-					<Link
+					<a
 						href="/admin"
 						css={{
 							color: colors.textMuted,
@@ -427,7 +427,7 @@ export function CreateFeed(handle: Handle) {
 						}}
 					>
 						← Back
-					</Link>
+					</a>
 					<h2
 						css={{
 							fontSize: typography.fontSize.xl,
@@ -1183,7 +1183,7 @@ function FormActions() {
 				},
 			}}
 		>
-			<Link
+			<a
 				href="/admin"
 				css={{
 					padding: `${spacing.sm} ${spacing.lg}`,
@@ -1203,7 +1203,7 @@ function FormActions() {
 				}}
 			>
 				Cancel
-			</Link>
+			</a>
 			<button
 				type="button"
 				disabled={!canSubmit}

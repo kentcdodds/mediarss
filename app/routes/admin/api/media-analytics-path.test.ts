@@ -37,19 +37,19 @@ async function createMediaApiTestContext() {
 	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
 	initEnv()
 
-	const feedOne = createDirectoryFeed({
+	const feedOne = await createDirectoryFeed({
 		name: `media analytics feed one ${Date.now()}`,
 		directoryPaths: [`${rootName}:${rootPath}`],
 	})
-	const feedTwo = createDirectoryFeed({
+	const feedTwo = await createDirectoryFeed({
 		name: `media analytics feed two ${Date.now()}`,
 		directoryPaths: [`${rootName}:${rootPath}`],
 	})
-	const tokenOne = createDirectoryFeedToken({
+	const tokenOne = await createDirectoryFeedToken({
 		feedId: feedOne.id,
 		label: 'Token One',
 	})
-	const tokenTwo = createDirectoryFeedToken({
+	const tokenTwo = await createDirectoryFeedToken({
 		feedId: feedTwo.id,
 		label: 'Token Two',
 	})
@@ -66,8 +66,8 @@ async function createMediaApiTestContext() {
 			db.query(
 				sql`DELETE FROM feed_analytics_events WHERE feed_id IN (?, ?);`,
 			).run(feedOne.id, feedTwo.id)
-			deleteDirectoryFeed(feedOne.id)
-			deleteDirectoryFeed(feedTwo.id)
+			await deleteDirectoryFeed(feedOne.id)
+			await deleteDirectoryFeed(feedTwo.id)
 
 			if (previousMediaPaths === undefined) {
 				delete Bun.env.MEDIA_PATHS
@@ -365,7 +365,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 	const previousLimit = Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
-	const tokenThree = createDirectoryFeedToken({
+	const tokenThree = await createDirectoryFeedToken({
 		feedId: ctx.feedOne.id,
 		label: 'Token Three',
 	})
@@ -640,21 +640,21 @@ test('media analytics endpoint resolves curated token metadata', async () => {
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	const curatedFeed = createCuratedFeed({
+	const curatedFeed = await createCuratedFeed({
 		name: `curated media analytics feed ${Date.now()}`,
 		description: 'Curated media analytics test feed',
 	})
-	const curatedToken = createCuratedFeedToken({
+	const curatedToken = await createCuratedFeedToken({
 		feedId: curatedFeed.id,
 		label: 'Curated Token',
 	})
 
-	using _cleanupCurated = {
-		[Symbol.dispose]: () => {
+	await using _cleanupCurated = {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				curatedFeed.id,
 			)
-			deleteCuratedFeed(curatedFeed.id)
+			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 
@@ -706,21 +706,21 @@ test('media analytics endpoint resolves feed names across feed types', async () 
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	const curatedFeed = createCuratedFeed({
+	const curatedFeed = await createCuratedFeed({
 		name: `mixed feed-type analytics ${Date.now()}`,
 		description: 'Mixed feed-type name resolution test',
 	})
-	const curatedToken = createCuratedFeedToken({
+	const curatedToken = await createCuratedFeedToken({
 		feedId: curatedFeed.id,
 		label: 'Mixed Curated Token',
 	})
 
-	using _cleanupCurated = {
-		[Symbol.dispose]: () => {
+	await using _cleanupCurated = {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				curatedFeed.id,
 			)
-			deleteCuratedFeed(curatedFeed.id)
+			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 
@@ -799,11 +799,11 @@ test('media analytics endpoint labels missing feed metadata as deleted feed', as
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	const deletedFeed = createDirectoryFeed({
+	const deletedFeed = await createDirectoryFeed({
 		name: `deleted media analytics feed ${Date.now()}`,
 		directoryPaths: [`${ctx.rootName}:${ctx.rootPath}`],
 	})
-	const deletedFeedToken = createDirectoryFeedToken({
+	const deletedFeedToken = await createDirectoryFeedToken({
 		feedId: deletedFeed.id,
 		label: 'Soon deleted token',
 	})
@@ -831,7 +831,7 @@ test('media analytics endpoint labels missing feed metadata as deleted feed', as
 		createdAt: now - 30,
 	})
 
-	deleteDirectoryFeed(deletedFeed.id)
+	await deleteDirectoryFeed(deletedFeed.id)
 
 	const response = await analyticsHandler.action(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
@@ -974,21 +974,21 @@ test('media analytics endpoint requires curated token metadata to match feed id'
 	const now = Math.floor(Date.now() / 1000)
 	const mismatchedFeedId = `mismatched-curated-feed-${Date.now()}`
 
-	const curatedFeed = createCuratedFeed({
+	const curatedFeed = await createCuratedFeed({
 		name: `curated mismatch feed ${Date.now()}`,
 		description: 'Curated mismatch metadata test',
 	})
-	const curatedToken = createCuratedFeedToken({
+	const curatedToken = await createCuratedFeedToken({
 		feedId: curatedFeed.id,
 		label: 'Curated mismatch token',
 	})
 
-	using _cleanupCuratedAndEvents = {
-		[Symbol.dispose]: () => {
+	await using _cleanupCuratedAndEvents = {
+		[Symbol.asyncDispose]: async () => {
 			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
 				mismatchedFeedId,
 			)
-			deleteCuratedFeed(curatedFeed.id)
+			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 

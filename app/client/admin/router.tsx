@@ -130,6 +130,8 @@ function shouldIgnoreRouterNavigation(element: Element): boolean {
 }
 
 function isRouterOwnedPath(pathname: string): boolean {
+	// Intentionally scope SPA interception to admin routes only.
+	// Non-admin links/forms should perform normal browser navigation.
 	return (
 		pathname === ROUTER_BASE_PATH || pathname.startsWith(`${ROUTER_BASE_PATH}/`)
 	)

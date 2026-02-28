@@ -1,63 +1,9 @@
-import type { Database as BunDatabase } from 'bun:sqlite'
 import { createDatabase, createTable } from 'remix/data-table'
-import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
 import { enum_, nullable, number, string } from 'remix/data-schema'
+import { createBunSqliteDatabaseAdapter } from './bun-data-table-adapter.ts'
 import { db as sqliteDb } from './index.ts'
 
-type BunStatementResult = {
-	changes: number
-	lastInsertRowid?: number | bigint
-}
-
-type BunPreparedStatement = {
-	all: (...values: Array<unknown>) => Array<Record<string, unknown>>
-	run: (...values: Array<unknown>) => BunStatementResult
-}
-
-type SqliteCompatPreparedStatement = BunPreparedStatement & { reader: boolean }
-
-type SqliteCompatDatabase = {
-	prepare: (text: string) => SqliteCompatPreparedStatement
-	exec: (text: string) => void
-	pragma: (text: string) => unknown
-}
-
-function isReaderStatement(text: string): boolean {
-	const normalized = text.trim().toLowerCase()
-	if (normalized.startsWith('with')) {
-		return !/\b(insert|update|delete|replace)\b/.test(normalized)
-	}
-	return /^(select|pragma|explain)\b/.test(normalized)
-}
-
-function toSqliteCompatDatabase(database: BunDatabase): SqliteCompatDatabase {
-	return {
-		prepare(text) {
-			const statement = database.prepare(
-				text,
-			) as unknown as BunPreparedStatement
-			return {
-				reader: isReaderStatement(text),
-				all: (...values) => statement.all(...values),
-				run: (...values) => statement.run(...values),
-			}
-		},
-		exec(text) {
-			database.exec(text)
-		},
-		pragma(text) {
-			return (
-				database as unknown as { pragma: (sql: string) => unknown }
-			).pragma(text)
-		},
-	}
-}
-
-const sqliteCompat = toSqliteCompatDatabase(sqliteDb)
-
-const sqliteAdapter = createSqliteDatabaseAdapter(
-	sqliteCompat as unknown as Parameters<typeof createSqliteDatabaseAdapter>[0],
-)
+const sqliteAdapter = createBunSqliteDatabaseAdapter(sqliteDb)
 
 export const dataTableDb = createDatabase(sqliteAdapter)
 

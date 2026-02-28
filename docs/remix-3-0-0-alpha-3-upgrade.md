@@ -32,11 +32,10 @@ When updating or adding code:
   - Reason: this now replaces app-level Zod usage for env parsing, DB row
     validation, cache metadata validation, media metadata validation, and client
     widget payload validation.
-- `remix/data-table` + `remix/data-table-sqlite`
+- `remix/data-table`
   - Reason: feed/feed-token/feed-item persistence now runs through
-    `remix/data-table` table definitions and CRUD APIs, with a Bun SQLite
-    compatibility bridge so we can keep using `bun:sqlite` instead of
-    `better-sqlite3`.
+    `remix/data-table` table definitions and CRUD APIs, with an in-repo Bun
+    adapter so we can keep using `bun:sqlite`.
 
 ### Not adopted yet (intentional)
 

@@ -6,6 +6,11 @@ import {
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
+	getMediaDetailPath,
+	getMediaEditPath,
+	parseMediaDetailRoutePath,
+} from './edit-route-paths.ts'
+import {
 	artworkLayout,
 	breakpoints,
 	colors,
@@ -436,7 +441,7 @@ export function MediaDetail(handle: Handle) {
 		isEditingMetadata = false
 		metadataMessage = null
 		if (currentPath) {
-			router.navigate(`/admin/media/${currentPath}`)
+			router.navigate(getMediaDetailPath(currentPath))
 		} else {
 			router.navigate('/admin/media')
 		}
@@ -538,7 +543,7 @@ export function MediaDetail(handle: Handle) {
 
 			metadataMessage = { type: 'success', text: 'Metadata saved successfully' }
 			isEditingMetadata = false
-			router.navigate(`/admin/media/${savePath}`)
+			router.navigate(getMediaDetailPath(savePath))
 
 			// Clear success message after 3 seconds
 			setTimeout(() => {
@@ -570,12 +575,9 @@ export function MediaDetail(handle: Handle) {
 		const rawPath = urlPath.startsWith(prefix)
 			? urlPath.slice(prefix.length)
 			: ''
-		const editSuffix = '/edit'
-		const hasEditSuffix =
-			rawPath.endsWith(editSuffix) && rawPath.length > editSuffix.length
-		const editBasePath = hasEditSuffix
-			? rawPath.slice(0, -editSuffix.length)
-			: ''
+		const { isEditRoute: hasEditSuffix, paramPath: parsedPath } =
+			parseMediaDetailRoutePath(urlPath)
+		const editBasePath = hasEditSuffix ? parsedPath : ''
 		const isEditRoute = hasEditSuffix && currentPath === editBasePath
 		const paramPath = isEditRoute ? editBasePath : rawPath
 
@@ -597,8 +599,12 @@ export function MediaDetail(handle: Handle) {
 			(a) => a.feedType === 'directory',
 		)
 		const isVideoFile = isVideo(media.mimeType)
-		const detailHref = `/admin/media/${paramPath}`
-		const editMetadataHref = `${detailHref}/edit`
+		const detailHref = paramPath
+			? getMediaDetailPath(paramPath)
+			: '/admin/media'
+		const editMetadataHref = paramPath
+			? getMediaEditPath(paramPath)
+			: '/admin/media'
 
 		const expectedEditFormSeed = getEditFormSeed(media)
 

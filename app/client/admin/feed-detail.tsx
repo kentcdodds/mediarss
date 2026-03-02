@@ -12,6 +12,11 @@ import {
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
+	getFeedDetailPath,
+	getFeedEditPath,
+	isFeedEditPath,
+} from './edit-route-paths.ts'
+import {
 	artworkLayout,
 	colors,
 	mq,
@@ -593,7 +598,7 @@ export function FeedDetail(handle: Handle) {
 
 	const cancelEditing = () => {
 		editError = null
-		router.navigate(`/admin/feeds/${feedId}`)
+		router.navigate(getFeedDetailPath(feedId))
 	}
 
 	const saveEdit = async (isDirectory: boolean) => {
@@ -645,7 +650,7 @@ export function FeedDetail(handle: Handle) {
 			}
 
 			fetchFeed(feedId)
-			router.navigate(`/admin/feeds/${feedId}`)
+			router.navigate(getFeedDetailPath(feedId))
 		} catch (err) {
 			editError = err instanceof Error ? err.message : 'Failed to update feed'
 			handle.update()
@@ -942,9 +947,9 @@ export function FeedDetail(handle: Handle) {
 		const activeTokens = tokens.filter((t) => !t.revokedAt)
 		const revokedTokens = tokens.filter((t) => t.revokedAt)
 		const extraSortColumn = getExtraSortColumn(feed.sortFields)
-		const detailHref = `/admin/feeds/${feed.id}`
-		const editHref = `${detailHref}/edit`
-		const isEditRoute = window.location.pathname === editHref
+		const detailHref = getFeedDetailPath(feed.id)
+		const editHref = getFeedEditPath(feed.id)
+		const isEditRoute = isFeedEditPath(window.location.pathname, feed.id)
 		const expectedEditFormSeed = `${feed.id}:${feed.updatedAt}`
 
 		if (!isEditRoute && editFormSeed) {
@@ -1262,6 +1267,7 @@ export function FeedDetail(handle: Handle) {
 									label="Website"
 									value={feed.link ?? '—'}
 									mono={Boolean(feed.link)}
+									href={feed.link ?? undefined}
 								/>
 								<InfoItem label="Copyright" value={feed.copyright ?? '—'} />
 								<InfoItem
@@ -2452,10 +2458,12 @@ function InfoItem() {
 		label,
 		value,
 		mono,
+		href,
 	}: {
 		label: string
 		value: string
 		mono?: boolean
+		href?: string
 	}) => (
 		<div>
 			<dt
@@ -2478,7 +2486,24 @@ function InfoItem() {
 					wordBreak: mono ? 'break-all' : 'normal',
 				}}
 			>
-				{value}
+				{href ? (
+					<a
+						href={href}
+						target="_blank"
+						rel="noreferrer"
+						css={{
+							color: colors.primary,
+							textDecoration: 'none',
+							fontFamily: mono ? 'monospace' : 'inherit',
+							wordBreak: mono ? 'break-all' : 'normal',
+							'&:hover': { textDecoration: 'underline' },
+						}}
+					>
+						{value}
+					</a>
+				) : (
+					value
+				)}
 			</dd>
 		</div>
 	)

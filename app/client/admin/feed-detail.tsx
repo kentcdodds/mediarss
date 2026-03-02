@@ -956,6 +956,7 @@ export function FeedDetail(handle: Handle) {
 			editFormSeed = ''
 		}
 		if (isEditRoute && editFormSeed !== expectedEditFormSeed) {
+			editFormSeed = expectedEditFormSeed
 			setTimeout(() => {
 				syncEditFormWithFeed(feed)
 				handle.update()

@@ -20,6 +20,12 @@ import {
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
+import {
+	getMediaDetailPath,
+	getMediaEditPath,
+	parseMediaDetailRoutePath,
+} from './edit-route-paths.ts'
+import { router } from './router.tsx'
 
 type MediaInfo = {
 	path: string
@@ -191,6 +197,7 @@ export function MediaDetail(handle: Handle) {
 	let isEditingMetadata = false
 	let savingMetadata = false
 	let metadataMessage: { type: 'success' | 'error'; text: string } | null = null
+	let editFormSeed = ''
 	let editedMetadata: EditableMetadata = {
 		title: '',
 		author: '',
@@ -249,7 +256,7 @@ export function MediaDetail(handle: Handle) {
 		}
 	}
 
-	const fetchMedia = async (encodedPath: string) => {
+	const fetchMedia = async (encodedPath: string, fallbackPath?: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
 		analyticsState = { status: 'loading' }
@@ -261,6 +268,13 @@ export function MediaDetail(handle: Handle) {
 			})
 
 			if (!res.ok) {
+				if (
+					fallbackPath &&
+					res.status === 404 &&
+					fallbackPath !== encodedPath
+				) {
+					return fetchMedia(fallbackPath)
+				}
 				const data = await res.json().catch(() => ({}))
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
@@ -374,6 +388,10 @@ export function MediaDetail(handle: Handle) {
 		return false
 	}
 
+	const getEditFormSeed = (media: MediaInfo) => {
+		return `${media.rootName}:${media.relativePath}:${media.fileModifiedAt}`
+	}
+
 	// Initialize edit form with current metadata
 	const startEditingMetadata = () => {
 		if (state.status !== 'success') return
@@ -413,6 +431,7 @@ export function MediaDetail(handle: Handle) {
 			encodedBy: media.encodedBy || '',
 			subtitle: media.subtitle || '',
 		}
+		editFormSeed = getEditFormSeed(media)
 		isEditingMetadata = true
 		metadataMessage = null
 		handle.update()
@@ -421,7 +440,11 @@ export function MediaDetail(handle: Handle) {
 	const cancelEditingMetadata = () => {
 		isEditingMetadata = false
 		metadataMessage = null
-		handle.update()
+		if (currentPath) {
+			router.navigate(getMediaDetailPath(currentPath))
+		} else {
+			router.navigate('/admin/media')
+		}
 	}
 
 	const saveMetadata = async () => {
@@ -520,6 +543,7 @@ export function MediaDetail(handle: Handle) {
 
 			metadataMessage = { type: 'success', text: 'Metadata saved successfully' }
 			isEditingMetadata = false
+			router.navigate(getMediaDetailPath(savePath))
 
 			// Clear success message after 3 seconds
 			setTimeout(() => {
@@ -545,15 +569,22 @@ export function MediaDetail(handle: Handle) {
 	}
 
 	return () => {
-		// Extract path from URL: /admin/media/* -> everything after /admin/media/
+		// Extract path from URL and determine if this is the routed edit page.
 		const urlPath = window.location.pathname
 		const prefix = '/admin/media/'
-		const paramPath = urlPath.startsWith(prefix)
+		const rawPath = urlPath.startsWith(prefix)
 			? urlPath.slice(prefix.length)
 			: ''
+		const { isEditRoute: hasEditSuffix, paramPath: parsedPath } =
+			parseMediaDetailRoutePath(urlPath)
+		const editBasePath = hasEditSuffix ? parsedPath : ''
+		const isEditRoute = hasEditSuffix && currentPath === editBasePath
+		const paramPath = isEditRoute ? editBasePath : rawPath
 
 		if (paramPath && paramPath !== currentPath) {
-			setTimeout(() => fetchMedia(paramPath), 0)
+			const fetchPath = hasEditSuffix ? editBasePath : rawPath
+			const fallbackPath = hasEditSuffix ? editBasePath : undefined
+			setTimeout(() => fetchMedia(fetchPath, fallbackPath), 0)
 		}
 
 		if (state.status === 'loading') {
@@ -569,6 +600,29 @@ export function MediaDetail(handle: Handle) {
 			(a) => a.feedType === 'directory',
 		)
 		const isVideoFile = isVideo(media.mimeType)
+		const detailHref = paramPath
+			? getMediaDetailPath(paramPath)
+			: '/admin/media'
+		const editMetadataHref = paramPath
+			? getMediaEditPath(paramPath)
+			: '/admin/media'
+
+		const expectedEditFormSeed = getEditFormSeed(media)
+
+		if (!isEditRoute && editFormSeed) {
+			editFormSeed = ''
+		}
+		if (isEditRoute && editFormSeed !== expectedEditFormSeed) {
+			editFormSeed = expectedEditFormSeed
+			setTimeout(startEditingMetadata, 0)
+			return <LoadingSpinner />
+		}
+		if (!isEditRoute && isEditingMetadata) {
+			isEditingMetadata = false
+		}
+		if (isEditRoute && !isEditingMetadata) {
+			return <LoadingSpinner />
+		}
 
 		return (
 			<div>
@@ -582,7 +636,7 @@ export function MediaDetail(handle: Handle) {
 					}}
 				>
 					<a
-						href="/admin/media"
+						href={isEditRoute ? detailHref : '/admin/media'}
 						css={{
 							color: colors.textMuted,
 							textDecoration: 'none',
@@ -590,7 +644,7 @@ export function MediaDetail(handle: Handle) {
 							'&:hover': { color: colors.text },
 						}}
 					>
-						← Back to Media
+						{isEditRoute ? '← Back to Media Item' : '← Back to Media'}
 					</a>
 				</div>
 
@@ -973,10 +1027,13 @@ export function MediaDetail(handle: Handle) {
 								>
 									Edit Metadata
 								</h3>
-								{!isEditingMetadata && (
-									<button
-										type="button"
+								{!isEditRoute && (
+									<a
+										href={editMetadataHref}
 										css={{
+											display: 'inline-flex',
+											alignItems: 'center',
+											justifyContent: 'center',
 											padding: `${spacing.xs} ${spacing.md}`,
 											fontSize: typography.fontSize.sm,
 											fontWeight: typography.fontWeight.medium,
@@ -984,14 +1041,13 @@ export function MediaDetail(handle: Handle) {
 											backgroundColor: colors.primary,
 											border: 'none',
 											borderRadius: radius.md,
-											cursor: 'pointer',
+											textDecoration: 'none',
 											transition: `all ${transitions.fast}`,
 											'&:hover': { backgroundColor: colors.primaryHover },
 										}}
-										on={{ click: startEditingMetadata }}
 									>
 										Edit
-									</button>
+									</a>
 								)}
 							</div>
 

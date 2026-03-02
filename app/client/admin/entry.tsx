@@ -17,8 +17,10 @@ import { VersionPage } from './version.tsx'
 // Register routes
 router.register('/admin', FeedList)
 router.register('/admin/feeds/new', CreateFeed)
+router.register('/admin/feeds/:id/edit', FeedDetail)
 router.register('/admin/feeds/:id', FeedDetail)
 router.register('/admin/media', MediaList)
+router.register('/admin/media/*/edit', MediaDetail)
 router.register('/admin/media/*', MediaDetail)
 router.register('/admin/version', VersionPage)
 

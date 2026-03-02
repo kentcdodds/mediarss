@@ -25,6 +25,12 @@ import {
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
+import {
+	getFeedDetailPath,
+	getFeedEditPath,
+	isFeedEditPath,
+} from './edit-route-paths.ts'
+import { router } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -305,8 +311,7 @@ export function FeedDetail(handle: Handle) {
 			})
 	}
 
-	// Edit mode state
-	let isEditing = false
+	// Feed edit form state
 	let editForm: EditFormState = {
 		name: '',
 		description: '',
@@ -323,6 +328,7 @@ export function FeedDetail(handle: Handle) {
 	}
 	let editLoading = false
 	let editError: string | null = null
+	let editFormSeed = ''
 
 	// Delete confirmation state
 	let showDeleteConfirm = false
@@ -563,7 +569,7 @@ export function FeedDetail(handle: Handle) {
 		}
 	}
 
-	const startEditing = (feed: Feed) => {
+	const syncEditFormWithFeed = (feed: Feed) => {
 		let directoryPaths: Array<string> = []
 		if ('directoryPaths' in feed) {
 			try {
@@ -587,14 +593,12 @@ export function FeedDetail(handle: Handle) {
 			directoryPaths,
 		}
 		editError = null
-		isEditing = true
-		handle.update()
+		editFormSeed = `${feed.id}:${feed.updatedAt}`
 	}
 
 	const cancelEditing = () => {
-		isEditing = false
 		editError = null
-		handle.update()
+		router.navigate(getFeedDetailPath(feedId))
 	}
 
 	const saveEdit = async (isDirectory: boolean) => {
@@ -645,8 +649,8 @@ export function FeedDetail(handle: Handle) {
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			isEditing = false
 			fetchFeed(feedId)
+			router.navigate(getFeedDetailPath(feedId))
 		} catch (err) {
 			editError = err instanceof Error ? err.message : 'Failed to update feed'
 			handle.update()
@@ -943,6 +947,22 @@ export function FeedDetail(handle: Handle) {
 		const activeTokens = tokens.filter((t) => !t.revokedAt)
 		const revokedTokens = tokens.filter((t) => t.revokedAt)
 		const extraSortColumn = getExtraSortColumn(feed.sortFields)
+		const detailHref = getFeedDetailPath(feed.id)
+		const editHref = getFeedEditPath(feed.id)
+		const isEditRoute = isFeedEditPath(window.location.pathname, feed.id)
+		const expectedEditFormSeed = `${feed.id}:${feed.updatedAt}`
+
+		if (!isEditRoute && editFormSeed) {
+			editFormSeed = ''
+		}
+		if (isEditRoute && editFormSeed !== expectedEditFormSeed) {
+			editFormSeed = expectedEditFormSeed
+			setTimeout(() => {
+				syncEditFormWithFeed(feed)
+				handle.update()
+			}, 0)
+			return <LoadingSpinner />
+		}
 
 		return (
 			<div>
@@ -1009,7 +1029,7 @@ export function FeedDetail(handle: Handle) {
 						}}
 					>
 						<a
-							href="/admin"
+							href={isEditRoute ? detailHref : '/admin'}
 							css={{
 								color: colors.textMuted,
 								textDecoration: 'none',
@@ -1018,7 +1038,7 @@ export function FeedDetail(handle: Handle) {
 								flexShrink: 0,
 							}}
 						>
-							← Back
+							{isEditRoute ? '← Back to Feed' : '← Back'}
 						</a>
 						<h2
 							css={{
@@ -1058,7 +1078,7 @@ export function FeedDetail(handle: Handle) {
 							{feed.type}
 						</span>
 					</div>
-					{!isEditing && (
+					{!isEditRoute && (
 						<div
 							css={{
 								display: 'flex',
@@ -1068,9 +1088,12 @@ export function FeedDetail(handle: Handle) {
 								},
 							}}
 						>
-							<button
-								type="button"
+							<a
+								href={editHref}
 								css={{
+									display: 'inline-flex',
+									alignItems: 'center',
+									justifyContent: 'center',
 									padding: `${spacing.xs} ${spacing.md}`,
 									fontSize: typography.fontSize.sm,
 									fontWeight: typography.fontWeight.medium,
@@ -1078,7 +1101,7 @@ export function FeedDetail(handle: Handle) {
 									backgroundColor: 'transparent',
 									border: `1px solid ${colors.primary}`,
 									borderRadius: radius.md,
-									cursor: 'pointer',
+									textDecoration: 'none',
 									transition: `all ${transitions.fast}`,
 									'&:hover': {
 										backgroundColor: colors.primarySoft,
@@ -1087,10 +1110,9 @@ export function FeedDetail(handle: Handle) {
 										flex: 1,
 									},
 								}}
-								on={{ click: () => startEditing(feed) }}
 							>
-								Edit
-							</button>
+								Edit Feed
+							</a>
 							<button
 								type="button"
 								css={{
@@ -1150,11 +1172,11 @@ export function FeedDetail(handle: Handle) {
 								margin: 0,
 							}}
 						>
-							Feed Details
+							{isEditRoute ? 'Edit Feed Metadata' : 'Feed Details'}
 						</h3>
 					</div>
 
-					{isEditing ? (
+					{isEditRoute ? (
 						<EditForm
 							form={editForm}
 							isDirectory={isDirectory}
@@ -1234,6 +1256,21 @@ export function FeedDetail(handle: Handle) {
 										directoryPaths={(feed as DirectoryFeed).directoryPaths}
 									/>
 								)}
+								<InfoItem
+									label="Feed Type"
+									value={feed.feedType === 'serial' ? 'Serial' : 'Episodic'}
+								/>
+								<InfoItem label="Subtitle" value={feed.subtitle ?? '—'} />
+								<InfoItem label="Author" value={feed.author ?? '—'} />
+								<InfoItem label="Owner Name" value={feed.ownerName ?? '—'} />
+								<InfoItem label="Owner Email" value={feed.ownerEmail ?? '—'} />
+								<InfoItem
+									label="Website"
+									value={feed.link ?? '—'}
+									mono={Boolean(feed.link)}
+									href={feed.link ?? undefined}
+								/>
+								<InfoItem label="Copyright" value={feed.copyright ?? '—'} />
 								<InfoItem
 									label="Sort"
 									value={
@@ -2422,10 +2459,12 @@ function InfoItem() {
 		label,
 		value,
 		mono,
+		href,
 	}: {
 		label: string
 		value: string
 		mono?: boolean
+		href?: string
 	}) => (
 		<div>
 			<dt
@@ -2448,7 +2487,24 @@ function InfoItem() {
 					wordBreak: mono ? 'break-all' : 'normal',
 				}}
 			>
-				{value}
+				{href ? (
+					<a
+						href={href}
+						target="_blank"
+						rel="noreferrer"
+						css={{
+							color: colors.primary,
+							textDecoration: 'none',
+							fontFamily: mono ? 'monospace' : 'inherit',
+							wordBreak: mono ? 'break-all' : 'normal',
+							'&:hover': { textDecoration: 'underline' },
+						}}
+					>
+						{value}
+					</a>
+				) : (
+					value
+				)}
 			</dd>
 		</div>
 	)

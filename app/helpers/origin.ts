@@ -23,7 +23,8 @@
  */
 export function getOrigin(request: Request, url: URL): string {
 	const proto = getProtocol(request, url)
-	return `${proto}//${url.host}`
+	const host = getHost(request, url)
+	return `${proto}//${host}`
 }
 
 /**
@@ -47,9 +48,12 @@ export function getProtocol(request: Request, url: URL): string {
 	// Check Forwarded header (RFC 7239)
 	const forwarded = request.headers.get('Forwarded')
 	if (forwarded) {
-		const forwardedProtoValue = getForwardedProto(forwarded)
+		const forwardedProtoValue = getForwardedParameter(forwarded, 'proto')
 		if (forwardedProtoValue) {
-			return `${forwardedProtoValue}:`
+			const normalizedProto = forwardedProtoValue.toLowerCase()
+			if (normalizedProto === 'https' || normalizedProto === 'http') {
+				return `${normalizedProto}:`
+			}
 		}
 	}
 
@@ -70,7 +74,26 @@ export function getProtocol(request: Request, url: URL): string {
 	return url.protocol
 }
 
-function getForwardedProto(headerValue: string): 'https' | 'http' | null {
+function getHost(request: Request, url: URL): string {
+	const xForwardedHost = request.headers
+		.get('X-Forwarded-Host')
+		?.split(',')[0]
+		?.trim()
+	if (xForwardedHost) {
+		return xForwardedHost
+	}
+
+	const forwarded = request.headers.get('Forwarded')
+	const forwardedHost = forwarded
+		? getForwardedParameter(forwarded, 'host')
+		: null
+	return forwardedHost ?? url.host
+}
+
+function getForwardedParameter(
+	headerValue: string,
+	key: 'proto' | 'host',
+): string | null {
 	const forwardedEntries = headerValue
 		.split(',')
 		.map((entry) => entry.trim())
@@ -86,12 +109,12 @@ function getForwardedProto(headerValue: string): 'https' | 'http' | null {
 			if (!rawKey || rawValueParts.length === 0) {
 				continue
 			}
-			if (rawKey.toLowerCase() !== 'proto') {
+			if (rawKey.toLowerCase() !== key) {
 				continue
 			}
 			const rawValue = rawValueParts.join('=').trim()
-			const normalized = rawValue.replace(/^"(.+)"$/, '$1').toLowerCase()
-			if (normalized === 'https' || normalized === 'http') {
+			const normalized = rawValue.replace(/^"(.+)"$/, '$1').trim()
+			if (normalized) {
 				return normalized
 			}
 		}

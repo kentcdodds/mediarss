@@ -40,3 +40,24 @@ test('getOrigin falls back to request protocol without proxy headers', () => {
 	const origin = getOrigin(request, new URL(request.url))
 	expect(origin).toBe('http://localhost:22050')
 })
+
+test('getOrigin prefers Forwarded host when proxy rewrites request host', () => {
+	const request = new Request('http://internal-service:3000/mcp', {
+		headers: {
+			Forwarded: 'for=198.51.100.1;host=mediarss.doddsfamily.us;proto=https',
+		},
+	})
+	const origin = getOrigin(request, new URL(request.url))
+	expect(origin).toBe('https://mediarss.doddsfamily.us')
+})
+
+test('getOrigin prefers X-Forwarded-Host over request URL host', () => {
+	const request = new Request('http://internal-service:3000/mcp', {
+		headers: {
+			'X-Forwarded-Proto': 'https',
+			'X-Forwarded-Host': 'mediarss.doddsfamily.us',
+		},
+	})
+	const origin = getOrigin(request, new URL(request.url))
+	expect(origin).toBe('https://mediarss.doddsfamily.us')
+})

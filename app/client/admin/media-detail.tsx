@@ -6,11 +6,6 @@ import {
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
-	getMediaDetailPath,
-	getMediaEditPath,
-	parseMediaDetailRoutePath,
-} from './edit-route-paths.ts'
-import {
 	artworkLayout,
 	breakpoints,
 	colors,
@@ -25,6 +20,11 @@ import {
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
+import {
+	getMediaDetailPath,
+	getMediaEditPath,
+	parseMediaDetailRoutePath,
+} from './edit-route-paths.ts'
 import { router } from './router.tsx'
 
 type MediaInfo = {

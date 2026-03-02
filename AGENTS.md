@@ -8,6 +8,14 @@ Always run `bun run lint` before you're done working to fix any lint issues.
 
 Always run `bun run format` before you're done working to fix any formatting issues.
 
+## Commit Gate
+
+Always run the full gate before committing:
+
+`bun run validate`
+
+Do not commit if any part of the gate fails.
+
 ## No React
 
 This application does NOT use React. We use `remix/component` for UI components. Do not introduce React, Preact, or any other UI framework.

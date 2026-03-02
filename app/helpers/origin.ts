@@ -13,8 +13,9 @@
  *
  * Checks headers in order of precedence:
  * 1. X-Forwarded-Proto - Standard header set by most proxies
- * 2. CF-Visitor - Cloudflare-specific header (contains JSON with scheme)
- * 3. Falls back to request URL protocol
+ * 2. Forwarded - RFC 7239 standard header with proto parameter
+ * 3. CF-Visitor - Cloudflare-specific header (contains JSON with scheme)
+ * 4. Falls back to request URL protocol
  *
  * @param request - The incoming request
  * @param url - The parsed URL from the request
@@ -22,7 +23,8 @@
  */
 export function getOrigin(request: Request, url: URL): string {
 	const proto = getProtocol(request, url)
-	return `${proto}//${url.host}`
+	const host = getHost(request, url)
+	return `${proto}//${host}`
 }
 
 /**
@@ -37,9 +39,21 @@ export function getProtocol(request: Request, url: URL): string {
 	const forwardedProto = request.headers.get('X-Forwarded-Proto')
 	if (forwardedProto) {
 		// Can contain multiple values separated by comma, use the first (original client)
-		const proto = forwardedProto.split(',')[0]?.trim()
+		const proto = forwardedProto.split(',')[0]?.trim().toLowerCase()
 		if (proto === 'https' || proto === 'http') {
 			return `${proto}:`
+		}
+	}
+
+	// Check Forwarded header (RFC 7239)
+	const forwarded = request.headers.get('Forwarded')
+	if (forwarded) {
+		const forwardedProtoValue = getForwardedParameter(forwarded, 'proto')
+		if (forwardedProtoValue) {
+			const normalizedProto = forwardedProtoValue.toLowerCase()
+			if (normalizedProto === 'https' || normalizedProto === 'http') {
+				return `${normalizedProto}:`
+			}
 		}
 	}
 
@@ -58,4 +72,53 @@ export function getProtocol(request: Request, url: URL): string {
 
 	// Fall back to URL protocol
 	return url.protocol
+}
+
+function getHost(request: Request, url: URL): string {
+	const xForwardedHost = request.headers
+		.get('X-Forwarded-Host')
+		?.split(',')[0]
+		?.trim()
+	if (xForwardedHost) {
+		return xForwardedHost
+	}
+
+	const forwarded = request.headers.get('Forwarded')
+	const forwardedHost = forwarded
+		? getForwardedParameter(forwarded, 'host')
+		: null
+	return forwardedHost ?? url.host
+}
+
+function getForwardedParameter(
+	headerValue: string,
+	key: 'proto' | 'host',
+): string | null {
+	const forwardedEntries = headerValue
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean)
+
+	for (const entry of forwardedEntries) {
+		const parameters = entry
+			.split(';')
+			.map((part) => part.trim())
+			.filter(Boolean)
+		for (const parameter of parameters) {
+			const [rawKey, ...rawValueParts] = parameter.split('=')
+			if (!rawKey || rawValueParts.length === 0) {
+				continue
+			}
+			if (rawKey.toLowerCase() !== key) {
+				continue
+			}
+			const rawValue = rawValueParts.join('=').trim()
+			const normalized = rawValue.replace(/^"(.+)"$/, '$1').trim()
+			if (normalized) {
+				return normalized
+			}
+		}
+	}
+
+	return null
 }

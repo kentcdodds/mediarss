@@ -4,6 +4,7 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import type { BuildAction, RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
@@ -15,7 +16,6 @@ import {
 } from '#app/mcp/auth.ts'
 import { MCP_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createMcpServer, initializeMcpServer } from '#app/mcp/server.ts'
-import { WebStandardStreamableHTTPServerTransport } from '#app/mcp/transport.ts'
 
 /**
  * Session storage for active MCP sessions.

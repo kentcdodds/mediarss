@@ -36,7 +36,7 @@
     "@epic-web/cachified": "^5.6.1",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "^6.0.0",
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "close-with-grace": "^2.4.0",
     "fast-sort": "^3.4.1",
     "get-port": "^7.1.0",

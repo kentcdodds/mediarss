@@ -1,12 +1,12 @@
 import { matchSorter, rankings } from 'match-sorter'
 import type { Handle } from 'remix/component'
 import { SearchInput } from '#app/components/search-input.tsx'
-import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
 	FEED_SORT_OPTIONS,
 	type FeedSortBy,
 	sortFeeds,
 } from '#app/helpers/feed-list-sort.ts'
+import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
 	artworkLayout,
 	colors,

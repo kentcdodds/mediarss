@@ -30,6 +30,7 @@ function compareByName(a: SortableFeed, b: SortableFeed): number {
 }
 
 function compareNullableNumberDesc(a: number | null, b: number | null): number {
+	if (a === null && b === null) return 0
 	const normalizedA = a ?? Number.NEGATIVE_INFINITY
 	const normalizedB = b ?? Number.NEGATIVE_INFINITY
 	return normalizedB - normalizedA

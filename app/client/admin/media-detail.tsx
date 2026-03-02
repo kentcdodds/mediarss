@@ -192,6 +192,7 @@ export function MediaDetail(handle: Handle) {
 	let isEditingMetadata = false
 	let savingMetadata = false
 	let metadataMessage: { type: 'success' | 'error'; text: string } | null = null
+	let editFormSeed = ''
 	let editedMetadata: EditableMetadata = {
 		title: '',
 		author: '',
@@ -250,7 +251,7 @@ export function MediaDetail(handle: Handle) {
 		}
 	}
 
-	const fetchMedia = async (encodedPath: string) => {
+	const fetchMedia = async (encodedPath: string, fallbackPath?: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
 		analyticsState = { status: 'loading' }
@@ -262,6 +263,13 @@ export function MediaDetail(handle: Handle) {
 			})
 
 			if (!res.ok) {
+				if (
+					fallbackPath &&
+					res.status === 404 &&
+					fallbackPath !== encodedPath
+				) {
+					return fetchMedia(fallbackPath)
+				}
 				const data = await res.json().catch(() => ({}))
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
@@ -375,6 +383,10 @@ export function MediaDetail(handle: Handle) {
 		return false
 	}
 
+	const getEditFormSeed = (media: MediaInfo) => {
+		return `${media.rootName}:${media.relativePath}:${media.fileModifiedAt}`
+	}
+
 	// Initialize edit form with current metadata
 	const startEditingMetadata = () => {
 		if (state.status !== 'success') return
@@ -414,6 +426,7 @@ export function MediaDetail(handle: Handle) {
 			encodedBy: media.encodedBy || '',
 			subtitle: media.subtitle || '',
 		}
+		editFormSeed = getEditFormSeed(media)
 		isEditingMetadata = true
 		metadataMessage = null
 		handle.update()
@@ -558,14 +571,17 @@ export function MediaDetail(handle: Handle) {
 			? urlPath.slice(prefix.length)
 			: ''
 		const editSuffix = '/edit'
-		const isEditRoute =
+		const hasEditSuffix =
 			rawPath.endsWith(editSuffix) && rawPath.length > editSuffix.length
-		const paramPath = isEditRoute
+		const editBasePath = hasEditSuffix
 			? rawPath.slice(0, -editSuffix.length)
-			: rawPath
+			: ''
+		const isEditRoute = hasEditSuffix && currentPath === editBasePath
+		const paramPath = isEditRoute ? editBasePath : rawPath
 
-		if (paramPath && paramPath !== currentPath) {
-			setTimeout(() => fetchMedia(paramPath), 0)
+		if (rawPath && rawPath !== currentPath) {
+			const fallbackPath = hasEditSuffix ? editBasePath : undefined
+			setTimeout(() => fetchMedia(rawPath, fallbackPath), 0)
 		}
 
 		if (state.status === 'loading') {
@@ -584,8 +600,15 @@ export function MediaDetail(handle: Handle) {
 		const detailHref = `/admin/media/${paramPath}`
 		const editMetadataHref = `${detailHref}/edit`
 
-		if (isEditRoute && !isEditingMetadata) {
+		const expectedEditFormSeed = getEditFormSeed(media)
+
+		if (!isEditRoute && editFormSeed) {
+			editFormSeed = ''
+		}
+		if (isEditRoute && editFormSeed !== expectedEditFormSeed) {
+			editFormSeed = expectedEditFormSeed
 			setTimeout(startEditingMetadata, 0)
+			return <LoadingSpinner />
 		}
 		if (!isEditRoute && isEditingMetadata) {
 			isEditingMetadata = false

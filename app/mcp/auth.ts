@@ -4,6 +4,7 @@
  */
 
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
+import { getOrigin } from '#app/helpers/origin.ts'
 import {
 	type AccessTokenPayload,
 	verifyAccessToken,
@@ -85,7 +86,9 @@ export function hasScope(
  */
 export function handleUnauthorized(request: Request): Response {
 	const hasAuthHeader = request.headers.has('authorization')
-	const url = new URL('/.well-known/oauth-protected-resource/mcp', request.url)
+	const requestUrl = new URL(request.url)
+	const origin = getOrigin(request, requestUrl)
+	const url = new URL('/.well-known/oauth-protected-resource/mcp', origin)
 
 	const wwwAuthenticateParts = [
 		`Bearer realm="MediaServer"`,

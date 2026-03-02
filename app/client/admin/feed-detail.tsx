@@ -1133,8 +1133,6 @@ export function FeedDetail(handle: Handle) {
 			)
 		}
 
-		const isEditRouteView = isFeedEditPath(window.location.pathname, feed.id)
-
 		return (
 			<div>
 				{/* Delete Confirmation Modal */}
@@ -1200,7 +1198,7 @@ export function FeedDetail(handle: Handle) {
 						}}
 					>
 						<a
-							href={isEditRouteView ? detailHref : '/admin'}
+							href="/admin"
 							css={{
 								color: colors.textMuted,
 								textDecoration: 'none',
@@ -1209,7 +1207,7 @@ export function FeedDetail(handle: Handle) {
 								flexShrink: 0,
 							}}
 						>
-							{isEditRouteView ? '← Back to Feed' : '← Back'}
+							← Back
 						</a>
 						<h2
 							css={{
@@ -1249,71 +1247,69 @@ export function FeedDetail(handle: Handle) {
 							{feed.type}
 						</span>
 					</div>
-					{!isEditRouteView && (
-						<div
+					<div
+						css={{
+							display: 'flex',
+							gap: spacing.sm,
+							[mq.mobile]: {
+								width: '100%',
+							},
+						}}
+					>
+						<a
+							href={editHref}
 							css={{
-								display: 'flex',
-								gap: spacing.sm,
+								display: 'inline-flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								padding: `${spacing.xs} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.primary,
+								backgroundColor: 'transparent',
+								border: `1px solid ${colors.primary}`,
+								borderRadius: radius.md,
+								textDecoration: 'none',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: colors.primarySoft,
+								},
 								[mq.mobile]: {
-									width: '100%',
+									flex: 1,
 								},
 							}}
 						>
-							<a
-								href={editHref}
-								css={{
-									display: 'inline-flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									padding: `${spacing.xs} ${spacing.md}`,
-									fontSize: typography.fontSize.sm,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.primary,
-									backgroundColor: 'transparent',
-									border: `1px solid ${colors.primary}`,
-									borderRadius: radius.md,
-									textDecoration: 'none',
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										backgroundColor: colors.primarySoft,
-									},
-									[mq.mobile]: {
-										flex: 1,
-									},
-								}}
-							>
-								Edit Feed
-							</a>
-							<button
-								type="button"
-								css={{
-									padding: `${spacing.xs} ${spacing.md}`,
-									fontSize: typography.fontSize.sm,
-									fontWeight: typography.fontWeight.medium,
-									color: '#ef4444',
-									backgroundColor: 'transparent',
-									border: '1px solid #ef4444',
-									borderRadius: radius.md,
-									cursor: 'pointer',
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										backgroundColor: 'rgba(239, 68, 68, 0.1)',
-									},
-									[mq.mobile]: {
-										flex: 1,
-									},
-								}}
-								on={{
-									click: () => {
-										showDeleteConfirm = true
-										handle.update()
-									},
-								}}
-							>
-								Delete
-							</button>
-						</div>
-					)}
+							Edit Feed
+						</a>
+						<button
+							type="button"
+							css={{
+								padding: `${spacing.xs} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: '#ef4444',
+								backgroundColor: 'transparent',
+								border: '1px solid #ef4444',
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								},
+								[mq.mobile]: {
+									flex: 1,
+								},
+							}}
+							on={{
+								click: () => {
+									showDeleteConfirm = true
+									handle.update()
+								},
+							}}
+						>
+							Delete
+						</button>
+					</div>
 				</div>
 
 				{/* Feed Info Card */}
@@ -1343,124 +1339,66 @@ export function FeedDetail(handle: Handle) {
 								margin: 0,
 							}}
 						>
-							{isEditRouteView ? 'Edit Feed Metadata' : 'Feed Details'}
+							Feed Details
 						</h3>
 					</div>
 
-					{isEditRouteView ? (
-						<EditForm
-							form={editForm}
-							isDirectory={isDirectory}
-							isLoading={editLoading}
-							error={editError}
-							onNameChange={(value) => {
-								editForm.name = value
-								handle.update()
+					{feed.description && (
+						<p
+							css={{
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.md} 0`,
 							}}
-							onDescriptionChange={(value) => {
-								editForm.description = value
-								handle.update()
-							}}
-							onSubtitleChange={(value) => {
-								editForm.subtitle = value
-								handle.update()
-							}}
-							onMetadataChange={(field, value) => {
-								editForm[field] = value
-								handle.update()
-							}}
-							onSortFieldsChange={(value) => {
-								editForm.sortFields = value
-								handle.update()
-							}}
-							onSortOrderChange={(value) => {
-								editForm.sortOrder = value
-								handle.update()
-							}}
-							onFeedTypeChange={(value) => {
-								editForm.feedType = value
-								handle.update()
-							}}
-							onLinkChange={(value) => {
-								editForm.link = value
-								handle.update()
-							}}
-							onCopyrightChange={(value) => {
-								editForm.copyright = value
-								handle.update()
-							}}
-							onSave={() => saveEdit(isDirectory)}
-							onDirectoryPathsChange={
-								isDirectory
-									? (paths) => {
-											editForm.directoryPaths = paths
-											handle.update()
-										}
-									: undefined
-							}
-							rootsState={rootsState}
-							onCancel={cancelEditing}
-						/>
-					) : (
-						<>
-							{feed.description && (
-								<p
-									css={{
-										fontSize: typography.fontSize.sm,
-										color: colors.textMuted,
-										margin: `0 0 ${spacing.md} 0`,
-									}}
-								>
-									{feed.description}
-								</p>
-							)}
-
-							<div
-								css={{
-									display: 'grid',
-									gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-									gap: spacing.md,
-								}}
-							>
-								{isDirectory && (
-									<DirectoriesInfo
-										directoryPaths={(feed as DirectoryFeed).directoryPaths}
-									/>
-								)}
-								<InfoItem
-									label="Feed Type"
-									value={feed.feedType === 'serial' ? 'Serial' : 'Episodic'}
-								/>
-								<InfoItem label="Subtitle" value={feed.subtitle ?? '—'} />
-								<InfoItem label="Author" value={feed.author ?? '—'} />
-								<InfoItem label="Owner Name" value={feed.ownerName ?? '—'} />
-								<InfoItem label="Owner Email" value={feed.ownerEmail ?? '—'} />
-								<InfoItem
-									label="Website"
-									value={feed.link ?? '—'}
-									mono={Boolean(feed.link)}
-									href={feed.link ?? undefined}
-								/>
-								<InfoItem label="Copyright" value={feed.copyright ?? '—'} />
-								<InfoItem
-									label="Sort"
-									value={
-										feed.sortFields === 'position'
-											? 'position (manual)'
-											: `${feed.sortFields} (${feed.sortOrder})`
-									}
-								/>
-								<InfoItem
-									label="Created"
-									value={formatDate(feed.createdAt, { style: 'short' })}
-								/>
-								<InfoItem
-									label="Updated"
-									value={formatDate(feed.updatedAt, { style: 'short' })}
-								/>
-							</div>
-						</>
+						>
+							{feed.description}
+						</p>
 					)}
+
+					<div
+						css={{
+							display: 'grid',
+							gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+							gap: spacing.md,
+						}}
+					>
+						{isDirectory && (
+							<DirectoriesInfo
+								directoryPaths={(feed as DirectoryFeed).directoryPaths}
+							/>
+						)}
+						<InfoItem
+							label="Feed Type"
+							value={feed.feedType === 'serial' ? 'Serial' : 'Episodic'}
+						/>
+						<InfoItem label="Subtitle" value={feed.subtitle ?? '—'} />
+						<InfoItem label="Author" value={feed.author ?? '—'} />
+						<InfoItem label="Owner Name" value={feed.ownerName ?? '—'} />
+						<InfoItem label="Owner Email" value={feed.ownerEmail ?? '—'} />
+						<InfoItem
+							label="Website"
+							value={feed.link ?? '—'}
+							mono={Boolean(feed.link)}
+							href={feed.link ?? undefined}
+						/>
+						<InfoItem label="Copyright" value={feed.copyright ?? '—'} />
+						<InfoItem
+							label="Sort"
+							value={
+								feed.sortFields === 'position'
+									? 'position (manual)'
+									: `${feed.sortFields} (${feed.sortOrder})`
+							}
+						/>
+						<InfoItem
+							label="Created"
+							value={formatDate(feed.createdAt, { style: 'short' })}
+						/>
+						<InfoItem
+							label="Updated"
+							value={formatDate(feed.updatedAt, { style: 'short' })}
+						/>
+					</div>
 				</div>
 
 				{/* Feed Artwork Section */}

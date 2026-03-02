@@ -3,6 +3,11 @@ import type { Handle } from 'remix/component'
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatRelativeTime } from '#app/helpers/format.ts'
 import {
+	FEED_SORT_OPTIONS,
+	type FeedSortBy,
+	sortFeeds,
+} from '#app/helpers/feed-list-sort.ts'
+import {
 	artworkLayout,
 	colors,
 	mq,
@@ -24,6 +29,7 @@ type DirectoryFeed = {
 	lastAccessedAt: number | null
 	type: 'directory'
 	createdAt: number
+	updatedAt: number
 	imageUrl: string | null
 }
 
@@ -36,6 +42,7 @@ type CuratedFeed = {
 	lastAccessedAt: number | null
 	type: 'curated'
 	createdAt: number
+	updatedAt: number
 	imageUrl: string | null
 }
 
@@ -60,6 +67,7 @@ export function FeedList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let filterType: FilterType = 'all'
+	let sortBy: FeedSortBy = 'most-popular'
 
 	// Fetch feeds on mount
 	fetch('/admin/api/feeds', { signal: handle.signal })
@@ -68,11 +76,10 @@ export function FeedList(handle: Handle) {
 			return res.json() as Promise<FeedsResponse>
 		})
 		.then((data) => {
-			// Combine and sort by creation date (newest first)
 			const allFeeds: Array<Feed> = [
 				...data.directoryFeeds,
 				...data.curatedFeeds,
-			].sort((a, b) => b.createdAt - a.createdAt)
+			]
 
 			state = { status: 'success', feeds: allFeeds }
 			handle.update()
@@ -127,6 +134,8 @@ export function FeedList(handle: Handle) {
 				})
 			: typeFilteredFeeds
 
+		const sortedFeeds = sortFeeds(filteredFeeds, sortBy)
+
 		return (
 			<div>
 				<div
@@ -172,47 +181,112 @@ export function FeedList(handle: Handle) {
 						)}
 					</div>
 
-					{/* Type Filter */}
+					{/* Feed controls */}
 					{feeds.length > 0 && (
 						<div
 							css={{
 								display: 'flex',
-								gap: spacing.xs,
+								alignItems: 'center',
+								gap: spacing.sm,
+								flexWrap: 'wrap',
 								[mq.mobile]: {
 									width: '100%',
 									justifyContent: 'center',
 								},
 							}}
 						>
-							<FilterButton
-								active={filterType === 'all'}
-								onClick={() => {
-									filterType = 'all'
-									handle.update()
+							<div
+								css={{
+									display: 'flex',
+									gap: spacing.xs,
+									[mq.mobile]: {
+										width: '100%',
+										justifyContent: 'center',
+									},
 								}}
 							>
-								All
-							</FilterButton>
-							<FilterButton
-								active={filterType === 'directory'}
-								onClick={() => {
-									filterType = 'directory'
-									handle.update()
+								<FilterButton
+									active={filterType === 'all'}
+									onClick={() => {
+										filterType = 'all'
+										handle.update()
+									}}
+								>
+									All
+								</FilterButton>
+								<FilterButton
+									active={filterType === 'directory'}
+									onClick={() => {
+										filterType = 'directory'
+										handle.update()
+									}}
+									color="#3b82f6"
+								>
+									Directory
+								</FilterButton>
+								<FilterButton
+									active={filterType === 'curated'}
+									onClick={() => {
+										filterType = 'curated'
+										handle.update()
+									}}
+									color="#8b5cf6"
+								>
+									Curated
+								</FilterButton>
+							</div>
+							<div
+								css={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.xs,
 								}}
-								color="#3b82f6"
 							>
-								Directory
-							</FilterButton>
-							<FilterButton
-								active={filterType === 'curated'}
-								onClick={() => {
-									filterType = 'curated'
-									handle.update()
-								}}
-								color="#8b5cf6"
-							>
-								Curated
-							</FilterButton>
+								<label
+									for="feed-sort"
+									css={{
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}}
+								>
+									Sort
+								</label>
+								<select
+									id="feed-sort"
+									value={sortBy}
+									css={{
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}}
+									on={{
+										change: (e: Event) => {
+											const nextSortBy = (e.target as HTMLSelectElement)
+												.value as FeedSortBy
+											sortBy = nextSortBy
+											handle.update()
+										},
+									}}
+								>
+									{FEED_SORT_OPTIONS.map((option) => (
+										<option key={option.value} value={option.value}>
+											{option.label}
+										</option>
+									))}
+								</select>
+							</div>
 						</div>
 					)}
 					<div
@@ -308,7 +382,7 @@ export function FeedList(handle: Handle) {
 							},
 						}}
 					>
-						{filteredFeeds.map((feed) => (
+						{sortedFeeds.map((feed) => (
 							<FeedCard key={feed.id} feed={feed} />
 						))}
 					</div>
@@ -685,6 +759,8 @@ function FeedCard() {
 								{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
 							</>
 						)}
+						{' · '}
+						{feed.tokenCount} token{feed.tokenCount !== 1 ? 's' : ''}
 					</span>
 					<span
 						css={{

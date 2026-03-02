@@ -4,6 +4,7 @@ import {
 	getFeedEditPath,
 	getMediaDetailPath,
 	getMediaEditPath,
+	getMediaFetchPaths,
 	isFeedEditPath,
 	parseMediaDetailRoutePath,
 } from './edit-route-paths.ts'
@@ -48,5 +49,27 @@ test('parseMediaDetailRoutePath ignores non-media routes', () => {
 	expect(parseMediaDetailRoutePath('/admin/feeds/feed-123/edit')).toEqual({
 		paramPath: '',
 		isEditRoute: false,
+	})
+})
+
+test('getMediaFetchPaths uses raw edit path with stripped fallback', () => {
+	expect(getMediaFetchPaths('/admin/media/audio/sample-tone.mp3/edit')).toEqual(
+		{
+			rawPath: 'audio/sample-tone.mp3/edit',
+			paramPath: 'audio/sample-tone.mp3',
+			hasEditSuffix: true,
+			fetchPath: 'audio/sample-tone.mp3/edit',
+			fallbackPath: 'audio/sample-tone.mp3',
+		},
+	)
+})
+
+test('getMediaFetchPaths omits fallback for non-edit routes', () => {
+	expect(getMediaFetchPaths('/admin/media/audio/sample-tone.mp3')).toEqual({
+		rawPath: 'audio/sample-tone.mp3',
+		paramPath: 'audio/sample-tone.mp3',
+		hasEditSuffix: false,
+		fetchPath: 'audio/sample-tone.mp3',
+		fallbackPath: undefined,
 	})
 })

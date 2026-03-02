@@ -23,7 +23,7 @@ import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
 import {
 	getMediaDetailPath,
 	getMediaEditPath,
-	parseMediaDetailRoutePath,
+	getMediaFetchPaths,
 } from './edit-route-paths.ts'
 import { router } from './router.tsx'
 
@@ -571,19 +571,18 @@ export function MediaDetail(handle: Handle) {
 	return () => {
 		// Extract path from URL and determine if this is the routed edit page.
 		const urlPath = window.location.pathname
-		const prefix = '/admin/media/'
-		const rawPath = urlPath.startsWith(prefix)
-			? urlPath.slice(prefix.length)
-			: ''
-		const { isEditRoute: hasEditSuffix, paramPath: parsedPath } =
-			parseMediaDetailRoutePath(urlPath)
+		const {
+			rawPath,
+			paramPath: parsedPath,
+			hasEditSuffix,
+			fetchPath,
+			fallbackPath,
+		} = getMediaFetchPaths(urlPath)
 		const editBasePath = hasEditSuffix ? parsedPath : ''
 		const isEditRoute = hasEditSuffix && currentPath === editBasePath
 		const paramPath = isEditRoute ? editBasePath : rawPath
 
 		if (paramPath && paramPath !== currentPath) {
-			const fetchPath = hasEditSuffix ? editBasePath : rawPath
-			const fallbackPath = hasEditSuffix ? editBasePath : undefined
 			setTimeout(() => fetchMedia(fetchPath, fallbackPath), 0)
 		}
 

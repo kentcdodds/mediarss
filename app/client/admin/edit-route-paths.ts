@@ -39,3 +39,25 @@ export function parseMediaDetailRoutePath(pathname: string): {
 
 	return { paramPath, isEditRoute }
 }
+
+export function getMediaFetchPaths(pathname: string): {
+	rawPath: string
+	paramPath: string
+	hasEditSuffix: boolean
+	fetchPath: string
+	fallbackPath?: string
+} {
+	const rawPath = pathname.startsWith(MEDIA_PREFIX)
+		? pathname.slice(MEDIA_PREFIX.length)
+		: ''
+	const { paramPath, isEditRoute: hasEditSuffix } =
+		parseMediaDetailRoutePath(pathname)
+
+	return {
+		rawPath,
+		paramPath,
+		hasEditSuffix,
+		fetchPath: rawPath,
+		fallbackPath: hasEditSuffix ? paramPath : undefined,
+	}
+}

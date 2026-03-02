@@ -581,7 +581,7 @@ export function MediaDetail(handle: Handle) {
 		const isEditRoute = hasEditSuffix && currentPath === editBasePath
 		const paramPath = isEditRoute ? editBasePath : rawPath
 
-		if (rawPath && rawPath !== currentPath) {
+		if (paramPath && paramPath !== currentPath) {
 			const fallbackPath = hasEditSuffix ? editBasePath : undefined
 			setTimeout(() => fetchMedia(rawPath, fallbackPath), 0)
 		}

@@ -60,6 +60,27 @@ type LoadingState =
 	| { status: 'error'; message: string }
 	| { status: 'success'; feeds: Array<Feed> }
 
+const FEED_FILTER_TYPE_VALUES: Array<FilterType> = [
+	'all',
+	'directory',
+	'curated',
+]
+const FEED_FILTER_TYPE_SET = new Set<FilterType>(FEED_FILTER_TYPE_VALUES)
+
+function parseFilterTypeParam(value: string | null): FilterType {
+	if (!value) return 'all'
+	if (FEED_FILTER_TYPE_SET.has(value as FilterType)) return value as FilterType
+	return 'all'
+}
+
+function parseSortByParam(value: string | null): FeedSortBy {
+	if (!value) return 'most-popular'
+	const option = FEED_SORT_OPTIONS.find(
+		(sortOption) => sortOption.value === value,
+	)
+	return option?.value ?? 'most-popular'
+}
+
 /**
  * FeedList component - displays all feeds in a card grid.
  */
@@ -68,6 +89,65 @@ export function FeedList(handle: Handle) {
 	let searchQuery = ''
 	let filterType: FilterType = 'all'
 	let sortBy: FeedSortBy = 'most-popular'
+	let lastSyncedSearch = ''
+
+	const syncStateFromUrl = () => {
+		const currentSearch = window.location.search
+		if (currentSearch === lastSyncedSearch) return
+
+		const params = new URLSearchParams(currentSearch)
+		const nextSearchQuery = params.get('q') ?? ''
+		const nextFilterType = parseFilterTypeParam(params.get('type'))
+		const nextSortBy = parseSortByParam(params.get('sort'))
+
+		searchQuery = nextSearchQuery
+		filterType = nextFilterType
+		sortBy = nextSortBy
+		lastSyncedSearch = currentSearch
+	}
+
+	const syncUrlFromState = () => {
+		const params = new URLSearchParams()
+		const trimmedSearchQuery = searchQuery.trim()
+		if (trimmedSearchQuery) params.set('q', trimmedSearchQuery)
+		if (filterType !== 'all') params.set('type', filterType)
+		if (sortBy !== 'most-popular') params.set('sort', sortBy)
+
+		const nextSearch = params.toString()
+		const nextHref = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
+		const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`
+
+		if (nextHref === currentHref) {
+			lastSyncedSearch = window.location.search
+			return
+		}
+
+		history.replaceState(null, '', nextHref)
+		lastSyncedSearch = window.location.search
+	}
+
+	const setFilterType = (nextFilterType: FilterType) => {
+		if (filterType === nextFilterType) return
+		filterType = nextFilterType
+		syncUrlFromState()
+		handle.update()
+	}
+
+	const setSortBy = (nextSortBy: FeedSortBy) => {
+		if (sortBy === nextSortBy) return
+		sortBy = nextSortBy
+		syncUrlFromState()
+		handle.update()
+	}
+
+	const setSearchQuery = (nextSearchQuery: string) => {
+		if (searchQuery === nextSearchQuery) return
+		searchQuery = nextSearchQuery
+		syncUrlFromState()
+		handle.update()
+	}
+
+	syncStateFromUrl()
 
 	// Fetch feeds on mount
 	fetch('/admin/api/feeds', { signal: handle.signal })
@@ -91,6 +171,8 @@ export function FeedList(handle: Handle) {
 		})
 
 	return () => {
+		syncStateFromUrl()
+
 		if (state.status === 'loading') {
 			return <LoadingSpinner />
 		}
@@ -207,29 +289,20 @@ export function FeedList(handle: Handle) {
 							>
 								<FilterButton
 									active={filterType === 'all'}
-									onClick={() => {
-										filterType = 'all'
-										handle.update()
-									}}
+									onClick={() => setFilterType('all')}
 								>
 									All
 								</FilterButton>
 								<FilterButton
 									active={filterType === 'directory'}
-									onClick={() => {
-										filterType = 'directory'
-										handle.update()
-									}}
+									onClick={() => setFilterType('directory')}
 									color="#3b82f6"
 								>
 									Directory
 								</FilterButton>
 								<FilterButton
 									active={filterType === 'curated'}
-									onClick={() => {
-										filterType = 'curated'
-										handle.update()
-									}}
+									onClick={() => setFilterType('curated')}
 									color="#8b5cf6"
 								>
 									Curated
@@ -256,7 +329,6 @@ export function FeedList(handle: Handle) {
 								</label>
 								<select
 									id="feed-sort"
-									value={sortBy}
 									css={{
 										padding: `${spacing.xs} ${spacing.sm}`,
 										fontSize: typography.fontSize.sm,
@@ -275,13 +347,16 @@ export function FeedList(handle: Handle) {
 										change: (e: Event) => {
 											const nextSortBy = (e.target as HTMLSelectElement)
 												.value as FeedSortBy
-											sortBy = nextSortBy
-											handle.update()
+											setSortBy(nextSortBy)
 										},
 									}}
 								>
 									{FEED_SORT_OPTIONS.map((option) => (
-										<option key={option.value} value={option.value}>
+										<option
+											key={option.value}
+											value={option.value}
+											selected={option.value === sortBy}
+										>
 											{option.label}
 										</option>
 									))}
@@ -355,14 +430,8 @@ export function FeedList(handle: Handle) {
 						<SearchInput
 							placeholder="Search by name, description, path..."
 							value={searchQuery}
-							onInput={(value) => {
-								searchQuery = value
-								handle.update()
-							}}
-							onClear={() => {
-								searchQuery = ''
-								handle.update()
-							}}
+							onInput={setSearchQuery}
+							onClear={() => setSearchQuery('')}
 						/>
 					</div>
 				)}

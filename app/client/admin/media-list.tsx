@@ -156,6 +156,13 @@ function getMediaFeeds(
 
 const ITEMS_PER_PAGE = 100
 
+function parsePositivePageParam(value: string | null): number {
+	if (!value) return 1
+	const parsed = Number.parseInt(value, 10)
+	if (!Number.isFinite(parsed) || parsed < 1) return 1
+	return parsed
+}
+
 type UploadState =
 	| { status: 'idle' }
 	| { status: 'uploading'; progress: number; filename: string }
@@ -169,6 +176,57 @@ export function MediaList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
 	let currentPage = 1
+	let lastSyncedSearch = ''
+
+	const syncStateFromUrl = () => {
+		const currentSearch = window.location.search
+		if (currentSearch === lastSyncedSearch) return
+
+		const params = new URLSearchParams(currentSearch)
+		searchQuery = params.get('q') ?? ''
+		currentPage = parsePositivePageParam(params.get('page'))
+		lastSyncedSearch = currentSearch
+	}
+
+	const syncUrlFromState = () => {
+		const params = new URLSearchParams()
+		const trimmedSearchQuery = searchQuery.trim()
+		if (trimmedSearchQuery) params.set('q', trimmedSearchQuery)
+		if (currentPage > 1) params.set('page', String(currentPage))
+
+		const nextSearch = params.toString()
+		const nextHref = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
+		const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`
+
+		if (nextHref === currentHref) {
+			lastSyncedSearch = window.location.search
+			return
+		}
+
+		history.replaceState(null, '', nextHref)
+		lastSyncedSearch = window.location.search
+	}
+
+	const setSearchQuery = (nextSearchQuery: string) => {
+		const shouldUpdate = searchQuery !== nextSearchQuery || currentPage !== 1
+		if (!shouldUpdate) return
+
+		searchQuery = nextSearchQuery
+		currentPage = 1
+		syncUrlFromState()
+		handle.update()
+	}
+
+	const setCurrentPage = (nextPage: number) => {
+		const normalizedPage = parsePositivePageParam(String(nextPage))
+		if (currentPage === normalizedPage) return
+
+		currentPage = normalizedPage
+		syncUrlFromState()
+		handle.update()
+	}
+
+	syncStateFromUrl()
 
 	// Bulk selection state
 	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
@@ -548,6 +606,8 @@ export function MediaList(handle: Handle) {
 	}
 
 	return () => {
+		syncStateFromUrl()
+
 		if (state.status === 'loading') {
 			return <LoadingSpinner />
 		}
@@ -593,7 +653,14 @@ export function MediaList(handle: Handle) {
 			: media
 
 		// Paginate filtered results
-		const totalPages = Math.ceil(filteredMedia.length / ITEMS_PER_PAGE)
+		const totalPages = Math.max(
+			1,
+			Math.ceil(filteredMedia.length / ITEMS_PER_PAGE),
+		)
+		if (currentPage > totalPages) {
+			currentPage = totalPages
+			syncUrlFromState()
+		}
 		const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
 		const paginatedMedia = filteredMedia.slice(
 			startIndex,
@@ -733,16 +800,8 @@ export function MediaList(handle: Handle) {
 					<SearchInput
 						placeholder="Search by title, author, narrator, genre..."
 						value={searchQuery}
-						onInput={(value) => {
-							searchQuery = value
-							currentPage = 1 // Reset to first page on search
-							handle.update()
-						}}
-						onClear={() => {
-							searchQuery = ''
-							currentPage = 1
-							handle.update()
-						}}
+						onInput={setSearchQuery}
+						onClear={() => setSearchQuery('')}
 					/>
 				</div>
 
@@ -1086,10 +1145,7 @@ export function MediaList(handle: Handle) {
 					<Pagination
 						currentPage={currentPage}
 						totalPages={totalPages}
-						onPageChange={(page) => {
-							currentPage = page
-							handle.update()
-						}}
+						onPageChange={setCurrentPage}
 					/>
 				)}
 

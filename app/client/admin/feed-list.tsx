@@ -92,11 +92,23 @@ export function FeedList(handle: Handle) {
 	let lastSyncedSearch = ''
 
 	const syncUrlFromState = () => {
-		const params = new URLSearchParams()
+		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
-		if (trimmedSearchQuery) params.set('q', trimmedSearchQuery)
-		if (filterType !== 'all') params.set('type', filterType)
-		if (sortBy !== 'most-popular') params.set('sort', sortBy)
+		if (trimmedSearchQuery) {
+			params.set('q', trimmedSearchQuery)
+		} else {
+			params.delete('q')
+		}
+		if (filterType !== 'all') {
+			params.set('type', filterType)
+		} else {
+			params.delete('type')
+		}
+		if (sortBy !== 'most-popular') {
+			params.set('sort', sortBy)
+		} else {
+			params.delete('sort')
+		}
 
 		const nextSearch = params.toString()
 		const nextHref = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`

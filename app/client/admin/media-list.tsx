@@ -158,7 +158,9 @@ const ITEMS_PER_PAGE = 100
 
 function parsePositivePageParam(value: string | null): number {
 	if (!value) return 1
-	const parsed = Number.parseInt(value, 10)
+	const trimmed = value.trim()
+	if (!/^\d+$/.test(trimmed)) return 1
+	const parsed = Number.parseInt(trimmed, 10)
 	if (!Number.isFinite(parsed) || parsed < 1) return 1
 	return parsed
 }
@@ -179,10 +181,18 @@ export function MediaList(handle: Handle) {
 	let lastSyncedSearch = ''
 
 	const syncUrlFromState = () => {
-		const params = new URLSearchParams()
+		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
-		if (trimmedSearchQuery) params.set('q', trimmedSearchQuery)
-		if (currentPage > 1) params.set('page', String(currentPage))
+		if (trimmedSearchQuery) {
+			params.set('q', trimmedSearchQuery)
+		} else {
+			params.delete('q')
+		}
+		if (currentPage > 1) {
+			params.set('page', String(currentPage))
+		} else {
+			params.delete('page')
+		}
 
 		const nextSearch = params.toString()
 		const nextHref = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`

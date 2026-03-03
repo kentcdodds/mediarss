@@ -654,173 +654,203 @@ export function MediaDetail(handle: Handle) {
 						gridTemplateColumns: '1fr',
 						gap: responsive.spacingSection,
 						[`@media (min-width: ${breakpoints.mobile})` as const]: {
-							gridTemplateColumns: '250px 1fr',
+							gridTemplateColumns: isEditRoute ? '1fr' : '250px 1fr',
 						},
 						[`@media (min-width: ${breakpoints.tablet})` as const]: {
-							gridTemplateColumns: '300px 1fr',
+							gridTemplateColumns: isEditRoute ? '1fr' : '300px 1fr',
 						},
 					}}
 				>
 					{/* Left Column - Artwork & Metadata */}
-					<div
-						css={{
-							// On mobile, show after the title/player section
-							order: 1,
-							[`@media (min-width: ${breakpoints.mobile})` as const]: {
-								order: 0,
-							},
-						}}
-					>
-						{/* Artwork */}
+					{!isEditRoute && (
 						<div
 							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								overflow: 'hidden',
-								boxShadow: shadows.md,
+								// On mobile, show after the title/player section
+								order: 1,
+								[`@media (min-width: ${breakpoints.mobile})` as const]: {
+									order: 0,
+								},
 							}}
 						>
-							<img
-								src={getArtworkUrl(media)}
-								alt={media.title}
-								css={{
-									width: '100%',
-									...artworkLayout.centeredContain,
-									display: 'block',
-								}}
-							/>
-						</div>
-
-						{/* Metadata Card - Below artwork on desktop */}
-						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: spacing.md,
-								marginTop: spacing.md,
-								boxShadow: shadows.sm,
-							}}
-						>
-							<h3
-								css={{
-									fontSize: typography.fontSize.sm,
-									fontWeight: typography.fontWeight.semibold,
-									color: colors.text,
-									margin: `0 0 ${spacing.sm} 0`,
-								}}
-							>
-								Details
-							</h3>
-
+							{/* Artwork */}
 							<div
 								css={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
+									backgroundColor: colors.surface,
+									borderRadius: radius.lg,
+									border: `1px solid ${colors.border}`,
+									overflow: 'hidden',
+									boxShadow: shadows.md,
 								}}
 							>
-								<MetadataItem
-									label="Duration"
-									value={formatDuration(media.duration, { showSeconds: true })}
+								<img
+									src={getArtworkUrl(media)}
+									alt={media.title}
+									css={{
+										width: '100%',
+										...artworkLayout.centeredContain,
+										display: 'block',
+									}}
 								/>
-								<MetadataItem
-									label="Size"
-									value={formatFileSize(media.sizeBytes)}
-								/>
-								<MetadataItem label="Format" value={media.mimeType} />
-								<MetadataItem
-									label="Published"
-									value={formatDate(media.publicationDate, { style: 'date' })}
-								/>
-								{media.album && (
-									<MetadataItem label="Album" value={media.album} />
-								)}
-								{media.albumArtist && (
-									<MetadataItem
-										label="Album Artist"
-										value={media.albumArtist}
-									/>
-								)}
-								{media.trackNumber && (
-									<MetadataItem
-										label="Track"
-										value={
-											media.totalTracks
-												? `${media.trackNumber} of ${media.totalTracks}`
-												: `#${media.trackNumber}`
-										}
-									/>
-								)}
-								{media.discNumber && (
-									<MetadataItem
-										label="Disc"
-										value={
-											media.totalDiscs
-												? `${media.discNumber} of ${media.totalDiscs}`
-												: `#${media.discNumber}`
-										}
-									/>
-								)}
-								<MetadataItem
-									label="Modified"
-									value={new Date(
-										media.fileModifiedAt * 1000,
-									).toLocaleDateString()}
-								/>
-								{media.narrators && media.narrators.length > 0 && (
-									<MetadataItem
-										label="Narrators"
-										value={media.narrators.join(', ')}
-									/>
-								)}
-								{media.composer && (
-									<MetadataItem label="Composer" value={media.composer} />
-								)}
-								{media.genres && media.genres.length > 0 && (
-									<MetadataItem
-										label="Genres"
-										value={media.genres.join(', ')}
-									/>
-								)}
-								{media.series && (
-									<MetadataItem
-										label="Series"
-										value={
-											media.seriesPosition
-												? `${media.series} (${media.seriesPosition})`
-												: media.series
-										}
-									/>
-								)}
-								{media.publisher && (
-									<MetadataItem label="Publisher" value={media.publisher} />
-								)}
-								{media.language && (
-									<MetadataItem label="Language" value={media.language} />
-								)}
-								{media.copyright && (
-									<MetadataItem label="Copyright" value={media.copyright} />
-								)}
-								{media.encodedBy && (
-									<MetadataItem label="Encoded By" value={media.encodedBy} />
-								)}
-								{media.subtitle && (
-									<MetadataItem label="Subtitle" value={media.subtitle} />
-								)}
 							</div>
 
-							{/* Description - Only shown on mobile */}
-							{media.description && (
-								<div
+							{/* Metadata Card - Below artwork on desktop */}
+							<div
+								css={{
+									backgroundColor: colors.surface,
+									borderRadius: radius.lg,
+									border: `1px solid ${colors.border}`,
+									padding: spacing.md,
+									marginTop: spacing.md,
+									boxShadow: shadows.sm,
+								}}
+							>
+								<h3
 									css={{
-										marginTop: spacing.md,
-										[`@media (min-width: ${breakpoints.mobile})` as const]: {
-											display: 'none',
-										},
+										fontSize: typography.fontSize.sm,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										margin: `0 0 ${spacing.sm} 0`,
 									}}
 								>
+									Details
+								</h3>
+
+								<div
+									css={{
+										display: 'flex',
+										flexDirection: 'column',
+										gap: spacing.sm,
+									}}
+								>
+									<MetadataItem
+										label="Duration"
+										value={formatDuration(media.duration, {
+											showSeconds: true,
+										})}
+									/>
+									<MetadataItem
+										label="Size"
+										value={formatFileSize(media.sizeBytes)}
+									/>
+									<MetadataItem label="Format" value={media.mimeType} />
+									<MetadataItem
+										label="Published"
+										value={formatDate(media.publicationDate, { style: 'date' })}
+									/>
+									{media.album && (
+										<MetadataItem label="Album" value={media.album} />
+									)}
+									{media.albumArtist && (
+										<MetadataItem
+											label="Album Artist"
+											value={media.albumArtist}
+										/>
+									)}
+									{media.trackNumber && (
+										<MetadataItem
+											label="Track"
+											value={
+												media.totalTracks
+													? `${media.trackNumber} of ${media.totalTracks}`
+													: `#${media.trackNumber}`
+											}
+										/>
+									)}
+									{media.discNumber && (
+										<MetadataItem
+											label="Disc"
+											value={
+												media.totalDiscs
+													? `${media.discNumber} of ${media.totalDiscs}`
+													: `#${media.discNumber}`
+											}
+										/>
+									)}
+									<MetadataItem
+										label="Modified"
+										value={new Date(
+											media.fileModifiedAt * 1000,
+										).toLocaleDateString()}
+									/>
+									{media.narrators && media.narrators.length > 0 && (
+										<MetadataItem
+											label="Narrators"
+											value={media.narrators.join(', ')}
+										/>
+									)}
+									{media.composer && (
+										<MetadataItem label="Composer" value={media.composer} />
+									)}
+									{media.genres && media.genres.length > 0 && (
+										<MetadataItem
+											label="Genres"
+											value={media.genres.join(', ')}
+										/>
+									)}
+									{media.series && (
+										<MetadataItem
+											label="Series"
+											value={
+												media.seriesPosition
+													? `${media.series} (${media.seriesPosition})`
+													: media.series
+											}
+										/>
+									)}
+									{media.publisher && (
+										<MetadataItem label="Publisher" value={media.publisher} />
+									)}
+									{media.language && (
+										<MetadataItem label="Language" value={media.language} />
+									)}
+									{media.copyright && (
+										<MetadataItem label="Copyright" value={media.copyright} />
+									)}
+									{media.encodedBy && (
+										<MetadataItem label="Encoded By" value={media.encodedBy} />
+									)}
+									{media.subtitle && (
+										<MetadataItem label="Subtitle" value={media.subtitle} />
+									)}
+								</div>
+
+								{/* Description - Only shown on mobile */}
+								{media.description && (
+									<div
+										css={{
+											marginTop: spacing.md,
+											[`@media (min-width: ${breakpoints.mobile})` as const]: {
+												display: 'none',
+											},
+										}}
+									>
+										<dt
+											css={{
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												marginBottom: spacing.xs,
+											}}
+										>
+											Description
+										</dt>
+										<dd
+											css={{
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												margin: 0,
+												lineHeight: 1.6,
+												whiteSpace: 'pre-wrap',
+											}}
+										>
+											{media.description}
+										</dd>
+									</div>
+								)}
+
+								{/* File Path */}
+								<div css={{ marginTop: spacing.md }}>
 									<dt
 										css={{
 											fontSize: typography.fontSize.xs,
@@ -830,52 +860,26 @@ export function MediaDetail(handle: Handle) {
 											marginBottom: spacing.xs,
 										}}
 									>
-										Description
+										File Path
 									</dt>
 									<dd
 										css={{
-											fontSize: typography.fontSize.sm,
+											fontSize: typography.fontSize.xs,
 											color: colors.text,
 											margin: 0,
-											lineHeight: 1.6,
-											whiteSpace: 'pre-wrap',
+											fontFamily: 'monospace',
+											backgroundColor: colors.background,
+											padding: spacing.xs,
+											borderRadius: radius.sm,
+											wordBreak: 'break-all',
 										}}
 									>
-										{media.description}
+										{media.rootName}:{media.relativePath}
 									</dd>
 								</div>
-							)}
-
-							{/* File Path */}
-							<div css={{ marginTop: spacing.md }}>
-								<dt
-									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
-										marginBottom: spacing.xs,
-									}}
-								>
-									File Path
-								</dt>
-								<dd
-									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.text,
-										margin: 0,
-										fontFamily: 'monospace',
-										backgroundColor: colors.background,
-										padding: spacing.xs,
-										borderRadius: radius.sm,
-										wordBreak: 'break-all',
-									}}
-								>
-									{media.rootName}:{media.relativePath}
-								</dd>
 							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Right Column - Title, Player, Description & Feeds */}
 					<div
@@ -884,117 +888,121 @@ export function MediaDetail(handle: Handle) {
 							order: 0,
 						}}
 					>
-						{/* Title & Author */}
-						<div css={{ marginBottom: spacing.lg }}>
-							<h1
-								css={{
-									fontSize: typography.fontSize['2xl'],
-									fontWeight: typography.fontWeight.bold,
-									color: colors.text,
-									margin: 0,
-									lineHeight: 1.2,
-									[mq.mobile]: {
-										fontSize: typography.fontSize.xl,
-									},
-								}}
-							>
-								{media.title}
-							</h1>
-							{media.author && (
-								<p
-									css={{
-										fontSize: typography.fontSize.lg,
-										color: colors.textMuted,
-										margin: `${spacing.xs} 0 0 0`,
-										[mq.mobile]: {
-											fontSize: typography.fontSize.base,
-										},
-									}}
-								>
-									by {media.author}
-								</p>
-							)}
-						</div>
+						{!isEditRoute && (
+							<>
+								{/* Title & Author */}
+								<div css={{ marginBottom: spacing.lg }}>
+									<h1
+										css={{
+											fontSize: typography.fontSize['2xl'],
+											fontWeight: typography.fontWeight.bold,
+											color: colors.text,
+											margin: 0,
+											lineHeight: 1.2,
+											[mq.mobile]: {
+												fontSize: typography.fontSize.xl,
+											},
+										}}
+									>
+										{media.title}
+									</h1>
+									{media.author && (
+										<p
+											css={{
+												fontSize: typography.fontSize.lg,
+												color: colors.textMuted,
+												margin: `${spacing.xs} 0 0 0`,
+												[mq.mobile]: {
+													fontSize: typography.fontSize.base,
+												},
+											}}
+										>
+											by {media.author}
+										</p>
+									)}
+								</div>
 
-						{/* Media Player */}
-						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: spacing.md,
-								marginBottom: spacing.xl,
-								boxShadow: shadows.sm,
-							}}
-						>
-							{isVideoFile ? (
-								<video
-									src={getStreamUrl(media)}
-									controls
-									preload="metadata"
+								{/* Media Player */}
+								<div
 									css={{
-										width: '100%',
-										borderRadius: radius.md,
-										backgroundColor: '#000',
+										backgroundColor: colors.surface,
+										borderRadius: radius.lg,
+										border: `1px solid ${colors.border}`,
+										padding: spacing.md,
+										marginBottom: spacing.xl,
+										boxShadow: shadows.sm,
 									}}
 								>
-									<track kind="captions" />
-									Your browser does not support video playback.
-								</video>
-							) : (
-								<audio
-									src={getStreamUrl(media)}
-									controls
-									preload="metadata"
-									css={{
-										width: '100%',
-									}}
-								>
-									<track kind="captions" />
-									Your browser does not support audio playback.
-								</audio>
-							)}
-						</div>
+									{isVideoFile ? (
+										<video
+											src={getStreamUrl(media)}
+											controls
+											preload="metadata"
+											css={{
+												width: '100%',
+												borderRadius: radius.md,
+												backgroundColor: '#000',
+											}}
+										>
+											<track kind="captions" />
+											Your browser does not support video playback.
+										</video>
+									) : (
+										<audio
+											src={getStreamUrl(media)}
+											controls
+											preload="metadata"
+											css={{
+												width: '100%',
+											}}
+										>
+											<track kind="captions" />
+											Your browser does not support audio playback.
+										</audio>
+									)}
+								</div>
 
-						{/* Description Card - Hidden on mobile (shown in metadata card instead) */}
-						{media.description && (
-							<div
-								css={{
-									display: 'none',
-									[`@media (min-width: ${breakpoints.mobile})` as const]: {
-										display: 'block',
-									},
-									backgroundColor: colors.surface,
-									borderRadius: radius.lg,
-									border: `1px solid ${colors.border}`,
-									padding: responsive.spacingSection,
-									marginBottom: spacing.xl,
-									boxShadow: shadows.sm,
-								}}
-							>
-								<h3
-									css={{
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: `0 0 ${spacing.md} 0`,
-									}}
-								>
-									Description
-								</h3>
-								{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
-								<p
-									css={{
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
-										margin: 0,
-										lineHeight: 1.6,
-										whiteSpace: 'pre-wrap',
-									}}
-								>
-									{media.description}
-								</p>
-							</div>
+								{/* Description Card - Hidden on mobile (shown in metadata card instead) */}
+								{media.description && (
+									<div
+										css={{
+											display: 'none',
+											[`@media (min-width: ${breakpoints.mobile})` as const]: {
+												display: 'block',
+											},
+											backgroundColor: colors.surface,
+											borderRadius: radius.lg,
+											border: `1px solid ${colors.border}`,
+											padding: responsive.spacingSection,
+											marginBottom: spacing.xl,
+											boxShadow: shadows.sm,
+										}}
+									>
+										<h3
+											css={{
+												fontSize: typography.fontSize.base,
+												fontWeight: typography.fontWeight.semibold,
+												color: colors.text,
+												margin: `0 0 ${spacing.md} 0`,
+											}}
+										>
+											Description
+										</h3>
+										{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
+										<p
+											css={{
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												margin: 0,
+												lineHeight: 1.6,
+												whiteSpace: 'pre-wrap',
+											}}
+										>
+											{media.description}
+										</p>
+									</div>
+								)}
+							</>
 						)}
 
 						{/* Metadata Editing Card */}
@@ -1315,357 +1323,365 @@ export function MediaDetail(handle: Handle) {
 							)}
 						</div>
 
-						{/* Feed Assignments Card */}
-						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: responsive.spacingSection,
-								boxShadow: shadows.sm,
-							}}
-						>
-							<div
-								css={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'center',
-									marginBottom: spacing.md,
-								}}
-							>
-								<h3
-									css={{
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: 0,
-									}}
-								>
-									Feed Assignments
-								</h3>
-								{hasUnsavedChanges() && (
-									<button
-										type="button"
-										disabled={saving}
-										css={{
-											padding: `${spacing.xs} ${spacing.md}`,
-											fontSize: typography.fontSize.sm,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.background,
-											backgroundColor: saving ? colors.border : colors.primary,
-											border: 'none',
-											borderRadius: radius.md,
-											cursor: saving ? 'not-allowed' : 'pointer',
-											transition: `all ${transitions.fast}`,
-											'&:hover': saving
-												? {}
-												: { backgroundColor: colors.primaryHover },
-										}}
-										on={{ click: saveAssignments }}
-									>
-										{saving ? 'Saving...' : 'Save Changes'}
-									</button>
-								)}
-							</div>
-
-							{saveMessage && (
+						{!isEditRoute && (
+							<>
+								{/* Feed Assignments Card */}
 								<div
 									css={{
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										marginBottom: spacing.md,
-										backgroundColor:
-											saveMessage.type === 'success'
-												? 'rgba(16, 185, 129, 0.1)'
-												: 'rgba(239, 68, 68, 0.1)',
-										border: `1px solid ${saveMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+										backgroundColor: colors.surface,
+										borderRadius: radius.lg,
+										border: `1px solid ${colors.border}`,
+										padding: responsive.spacingSection,
+										boxShadow: shadows.sm,
 									}}
 								>
-									<p
-										css={{
-											margin: 0,
-											fontSize: typography.fontSize.sm,
-											color:
-												saveMessage.type === 'success' ? '#10b981' : '#ef4444',
-										}}
-									>
-										{saveMessage.text}
-									</p>
-								</div>
-							)}
-
-							{/* Curated Feeds */}
-							{curatedFeeds.length > 0 && (
-								<div css={{ marginBottom: spacing.lg }}>
-									<h4
-										css={{
-											fontSize: typography.fontSize.xs,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.textMuted,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-											margin: `0 0 ${spacing.sm} 0`,
-										}}
-									>
-										Curated Feeds
-									</h4>
 									<div
 										css={{
 											display: 'flex',
-											flexDirection: 'column',
-											gap: spacing.sm,
+											justifyContent: 'space-between',
+											alignItems: 'center',
+											marginBottom: spacing.md,
 										}}
 									>
-										{curatedFeeds.map((feed) => {
-											const isEnabled = selectedFeedIds.has(feed.id)
-											return (
-												<div
-													key={feed.id}
-													css={{
-														display: 'flex',
-														alignItems: 'center',
-														gap: spacing.md,
-														padding: spacing.sm,
-														backgroundColor: colors.background,
-														borderRadius: radius.md,
-													}}
-												>
-													<img
-														src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
-														alt=""
-														css={{
-															width: '32px',
-															height: '32px',
-															borderRadius: radius.sm,
-															...artworkLayout.centeredContain,
-														}}
-													/>
-													<span
-														css={{
-															flex: 1,
-															fontSize: typography.fontSize.sm,
-															color: colors.text,
-														}}
-													>
-														{feed.name}
-													</span>
-													<button
-														type="button"
-														role="switch"
-														aria-checked={isEnabled}
-														css={{
-															width: '44px',
-															height: '24px',
-															borderRadius: '12px',
-															border: 'none',
-															backgroundColor: isEnabled
-																? colors.primary
-																: colors.border,
-															cursor: 'pointer',
-															padding: '2px',
-															transition: `background-color ${transitions.fast}`,
-															display: 'flex',
-															alignItems: 'center',
-															'&:focus': {
-																outline: `2px solid ${colors.primary}`,
-																outlineOffset: '2px',
-															},
-														}}
-														on={{ click: () => toggleFeed(feed.id) }}
-													>
-														<div
-															css={{
-																width: '20px',
-																height: '20px',
-																borderRadius: '50%',
-																backgroundColor: '#fff',
-																boxShadow: shadows.sm,
-																transition: `transform ${transitions.fast}`,
-																transform: isEnabled
-																	? 'translateX(20px)'
-																	: 'translateX(0)',
-															}}
-														/>
-													</button>
-												</div>
-											)
-										})}
-									</div>
-								</div>
-							)}
-
-							{/* Directory Feeds */}
-							{directoryAssignments.length > 0 && (
-								<div>
-									<h4
-										css={{
-											fontSize: typography.fontSize.xs,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.textMuted,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-											margin: `0 0 ${spacing.sm} 0`,
-										}}
-									>
-										Directory Feeds
-									</h4>
-									<div
-										css={{
-											display: 'flex',
-											flexDirection: 'column',
-											gap: spacing.sm,
-										}}
-									>
-										{directoryAssignments.map((assignment) => {
-											const feed = directoryFeeds.find(
-												(f) => f.id === assignment.feedId,
-											)
-											return (
-												<div
-													key={assignment.feedId}
-													css={{
-														display: 'flex',
-														alignItems: 'center',
-														gap: spacing.md,
-														padding: spacing.sm,
-														backgroundColor: colors.background,
-														borderRadius: radius.md,
-														opacity: 0.7,
-													}}
-												>
-													<img
-														src={`/admin/api/feeds/${assignment.feedId}/artwork?t=${feed?.updatedAt ?? 0}`}
-														alt=""
-														css={{
-															width: '32px',
-															height: '32px',
-															borderRadius: radius.sm,
-															...artworkLayout.centeredContain,
-														}}
-													/>
-													<span
-														css={{
-															flex: 1,
-															fontSize: typography.fontSize.sm,
-															color: colors.text,
-														}}
-													>
-														{assignment.feedName}
-													</span>
-													<span
-														css={{
-															fontSize: typography.fontSize.xs,
-															color: colors.textMuted,
-															fontStyle: 'italic',
-														}}
-													>
-														via directory
-													</span>
-												</div>
-											)
-										})}
-									</div>
-								</div>
-							)}
-
-							{curatedFeeds.length === 0 &&
-								directoryAssignments.length === 0 && (
-									<p
-										css={{
-											textAlign: 'center',
-											color: colors.textMuted,
-											fontSize: typography.fontSize.sm,
-										}}
-									>
-										No feeds available.
-									</p>
-								)}
-						</div>
-
-						{/* Media Analytics Card */}
-						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: responsive.spacingSection,
-								marginTop: spacing.xl,
-								boxShadow: shadows.sm,
-							}}
-						>
-							<div
-								css={{
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'space-between',
-									gap: spacing.sm,
-									marginBottom: spacing.md,
-									flexWrap: 'wrap',
-								}}
-							>
-								<h3
-									css={{
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: 0,
-									}}
-								>
-									Analytics (last {analyticsWindowDays} days)
-								</h3>
-								<div css={{ display: 'flex', gap: spacing.xs }}>
-									{[7, 30, 90].map((days) => (
-										<button
-											key={days}
-											type="button"
+										<h3
 											css={{
-												padding: `${spacing.xs} ${spacing.sm}`,
-												fontSize: typography.fontSize.xs,
-												fontWeight: typography.fontWeight.medium,
-												color:
-													days === analyticsWindowDays
-														? colors.background
-														: colors.textMuted,
-												backgroundColor:
-													days === analyticsWindowDays
-														? colors.primary
-														: 'transparent',
-												border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
-												borderRadius: radius.sm,
-												cursor: 'pointer',
-												transition: `all ${transitions.fast}`,
-												'&:hover': {
-													borderColor: colors.primary,
-													color:
-														days === analyticsWindowDays
-															? colors.background
-															: colors.text,
-												},
-											}}
-											on={{
-												click: () => {
-													if (
-														days === analyticsWindowDays ||
-														state.status !== 'success'
-													) {
-														return
-													}
-													analyticsWindowDays = days
-													fetchAnalytics(
-														state.data.media.rootName,
-														state.data.media.relativePath,
-														days,
-													)
-												},
+												fontSize: typography.fontSize.base,
+												fontWeight: typography.fontWeight.semibold,
+												color: colors.text,
+												margin: 0,
 											}}
 										>
-											{days}d
-										</button>
-									))}
+											Feed Assignments
+										</h3>
+										{hasUnsavedChanges() && (
+											<button
+												type="button"
+												disabled={saving}
+												css={{
+													padding: `${spacing.xs} ${spacing.md}`,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.background,
+													backgroundColor: saving
+														? colors.border
+														: colors.primary,
+													border: 'none',
+													borderRadius: radius.md,
+													cursor: saving ? 'not-allowed' : 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': saving
+														? {}
+														: { backgroundColor: colors.primaryHover },
+												}}
+												on={{ click: saveAssignments }}
+											>
+												{saving ? 'Saving...' : 'Save Changes'}
+											</button>
+										)}
+									</div>
+
+									{saveMessage && (
+										<div
+											css={{
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												marginBottom: spacing.md,
+												backgroundColor:
+													saveMessage.type === 'success'
+														? 'rgba(16, 185, 129, 0.1)'
+														: 'rgba(239, 68, 68, 0.1)',
+												border: `1px solid ${saveMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+											}}
+										>
+											<p
+												css={{
+													margin: 0,
+													fontSize: typography.fontSize.sm,
+													color:
+														saveMessage.type === 'success'
+															? '#10b981'
+															: '#ef4444',
+												}}
+											>
+												{saveMessage.text}
+											</p>
+										</div>
+									)}
+
+									{/* Curated Feeds */}
+									{curatedFeeds.length > 0 && (
+										<div css={{ marginBottom: spacing.lg }}>
+											<h4
+												css={{
+													fontSize: typography.fontSize.xs,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.textMuted,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													margin: `0 0 ${spacing.sm} 0`,
+												}}
+											>
+												Curated Feeds
+											</h4>
+											<div
+												css={{
+													display: 'flex',
+													flexDirection: 'column',
+													gap: spacing.sm,
+												}}
+											>
+												{curatedFeeds.map((feed) => {
+													const isEnabled = selectedFeedIds.has(feed.id)
+													return (
+														<div
+															key={feed.id}
+															css={{
+																display: 'flex',
+																alignItems: 'center',
+																gap: spacing.md,
+																padding: spacing.sm,
+																backgroundColor: colors.background,
+																borderRadius: radius.md,
+															}}
+														>
+															<img
+																src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
+																alt=""
+																css={{
+																	width: '32px',
+																	height: '32px',
+																	borderRadius: radius.sm,
+																	...artworkLayout.centeredContain,
+																}}
+															/>
+															<span
+																css={{
+																	flex: 1,
+																	fontSize: typography.fontSize.sm,
+																	color: colors.text,
+																}}
+															>
+																{feed.name}
+															</span>
+															<button
+																type="button"
+																role="switch"
+																aria-checked={isEnabled}
+																css={{
+																	width: '44px',
+																	height: '24px',
+																	borderRadius: '12px',
+																	border: 'none',
+																	backgroundColor: isEnabled
+																		? colors.primary
+																		: colors.border,
+																	cursor: 'pointer',
+																	padding: '2px',
+																	transition: `background-color ${transitions.fast}`,
+																	display: 'flex',
+																	alignItems: 'center',
+																	'&:focus': {
+																		outline: `2px solid ${colors.primary}`,
+																		outlineOffset: '2px',
+																	},
+																}}
+																on={{ click: () => toggleFeed(feed.id) }}
+															>
+																<div
+																	css={{
+																		width: '20px',
+																		height: '20px',
+																		borderRadius: '50%',
+																		backgroundColor: '#fff',
+																		boxShadow: shadows.sm,
+																		transition: `transform ${transitions.fast}`,
+																		transform: isEnabled
+																			? 'translateX(20px)'
+																			: 'translateX(0)',
+																	}}
+																/>
+															</button>
+														</div>
+													)
+												})}
+											</div>
+										</div>
+									)}
+
+									{/* Directory Feeds */}
+									{directoryAssignments.length > 0 && (
+										<div>
+											<h4
+												css={{
+													fontSize: typography.fontSize.xs,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.textMuted,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													margin: `0 0 ${spacing.sm} 0`,
+												}}
+											>
+												Directory Feeds
+											</h4>
+											<div
+												css={{
+													display: 'flex',
+													flexDirection: 'column',
+													gap: spacing.sm,
+												}}
+											>
+												{directoryAssignments.map((assignment) => {
+													const feed = directoryFeeds.find(
+														(f) => f.id === assignment.feedId,
+													)
+													return (
+														<div
+															key={assignment.feedId}
+															css={{
+																display: 'flex',
+																alignItems: 'center',
+																gap: spacing.md,
+																padding: spacing.sm,
+																backgroundColor: colors.background,
+																borderRadius: radius.md,
+																opacity: 0.7,
+															}}
+														>
+															<img
+																src={`/admin/api/feeds/${assignment.feedId}/artwork?t=${feed?.updatedAt ?? 0}`}
+																alt=""
+																css={{
+																	width: '32px',
+																	height: '32px',
+																	borderRadius: radius.sm,
+																	...artworkLayout.centeredContain,
+																}}
+															/>
+															<span
+																css={{
+																	flex: 1,
+																	fontSize: typography.fontSize.sm,
+																	color: colors.text,
+																}}
+															>
+																{assignment.feedName}
+															</span>
+															<span
+																css={{
+																	fontSize: typography.fontSize.xs,
+																	color: colors.textMuted,
+																	fontStyle: 'italic',
+																}}
+															>
+																via directory
+															</span>
+														</div>
+													)
+												})}
+											</div>
+										</div>
+									)}
+
+									{curatedFeeds.length === 0 &&
+										directoryAssignments.length === 0 && (
+											<p
+												css={{
+													textAlign: 'center',
+													color: colors.textMuted,
+													fontSize: typography.fontSize.sm,
+												}}
+											>
+												No feeds available.
+											</p>
+										)}
 								</div>
-							</div>
-							<MediaAnalyticsSection analyticsState={analyticsState} />
-						</div>
+
+								{/* Media Analytics Card */}
+								<div
+									css={{
+										backgroundColor: colors.surface,
+										borderRadius: radius.lg,
+										border: `1px solid ${colors.border}`,
+										padding: responsive.spacingSection,
+										marginTop: spacing.xl,
+										boxShadow: shadows.sm,
+									}}
+								>
+									<div
+										css={{
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'space-between',
+											gap: spacing.sm,
+											marginBottom: spacing.md,
+											flexWrap: 'wrap',
+										}}
+									>
+										<h3
+											css={{
+												fontSize: typography.fontSize.base,
+												fontWeight: typography.fontWeight.semibold,
+												color: colors.text,
+												margin: 0,
+											}}
+										>
+											Analytics (last {analyticsWindowDays} days)
+										</h3>
+										<div css={{ display: 'flex', gap: spacing.xs }}>
+											{[7, 30, 90].map((days) => (
+												<button
+													key={days}
+													type="button"
+													css={{
+														padding: `${spacing.xs} ${spacing.sm}`,
+														fontSize: typography.fontSize.xs,
+														fontWeight: typography.fontWeight.medium,
+														color:
+															days === analyticsWindowDays
+																? colors.background
+																: colors.textMuted,
+														backgroundColor:
+															days === analyticsWindowDays
+																? colors.primary
+																: 'transparent',
+														border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
+														borderRadius: radius.sm,
+														cursor: 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': {
+															borderColor: colors.primary,
+															color:
+																days === analyticsWindowDays
+																	? colors.background
+																	: colors.text,
+														},
+													}}
+													on={{
+														click: () => {
+															if (
+																days === analyticsWindowDays ||
+																state.status !== 'success'
+															) {
+																return
+															}
+															analyticsWindowDays = days
+															fetchAnalytics(
+																state.data.media.rootName,
+																state.data.media.relativePath,
+																days,
+															)
+														},
+													}}
+												>
+													{days}d
+												</button>
+											))}
+										</div>
+									</div>
+									<MediaAnalyticsSection analyticsState={analyticsState} />
+								</div>
+							</>
+						)}
 					</div>
 				</div>
 			</div>

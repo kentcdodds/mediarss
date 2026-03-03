@@ -332,6 +332,7 @@ export function FeedList(handle: Handle) {
 								</label>
 								<select
 									id="feed-sort"
+									value={sortBy}
 									css={{
 										padding: `${spacing.xs} ${spacing.sm}`,
 										fontSize: typography.fontSize.sm,
@@ -355,11 +356,7 @@ export function FeedList(handle: Handle) {
 									}}
 								>
 									{FEED_SORT_OPTIONS.map((option) => (
-										<option
-											key={option.value}
-											value={option.value}
-											selected={option.value === sortBy}
-										>
+										<option key={option.value} value={option.value}>
 											{option.label}
 										</option>
 									))}

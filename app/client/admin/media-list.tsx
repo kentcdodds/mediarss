@@ -178,16 +178,6 @@ export function MediaList(handle: Handle) {
 	let currentPage = 1
 	let lastSyncedSearch = ''
 
-	const syncStateFromUrl = () => {
-		const currentSearch = window.location.search
-		if (currentSearch === lastSyncedSearch) return
-
-		const params = new URLSearchParams(currentSearch)
-		searchQuery = params.get('q') ?? ''
-		currentPage = parsePositivePageParam(params.get('page'))
-		lastSyncedSearch = currentSearch
-	}
-
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams()
 		const trimmedSearchQuery = searchQuery.trim()
@@ -205,6 +195,19 @@ export function MediaList(handle: Handle) {
 
 		history.replaceState(null, '', nextHref)
 		lastSyncedSearch = window.location.search
+	}
+
+	const syncStateFromUrl = () => {
+		const currentSearch = window.location.search
+		if (currentSearch === lastSyncedSearch) return
+
+		const params = new URLSearchParams(currentSearch)
+		searchQuery = (params.get('q') ?? '').trim()
+		currentPage = parsePositivePageParam(params.get('page'))
+		lastSyncedSearch = currentSearch
+
+		// Canonicalize URL by dropping empty/default/unknown query params.
+		syncUrlFromState()
 	}
 
 	const setSearchQuery = (nextSearchQuery: string) => {

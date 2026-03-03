@@ -91,21 +91,6 @@ export function FeedList(handle: Handle) {
 	let sortBy: FeedSortBy = 'most-popular'
 	let lastSyncedSearch = ''
 
-	const syncStateFromUrl = () => {
-		const currentSearch = window.location.search
-		if (currentSearch === lastSyncedSearch) return
-
-		const params = new URLSearchParams(currentSearch)
-		const nextSearchQuery = params.get('q') ?? ''
-		const nextFilterType = parseFilterTypeParam(params.get('type'))
-		const nextSortBy = parseSortByParam(params.get('sort'))
-
-		searchQuery = nextSearchQuery
-		filterType = nextFilterType
-		sortBy = nextSortBy
-		lastSyncedSearch = currentSearch
-	}
-
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams()
 		const trimmedSearchQuery = searchQuery.trim()
@@ -124,6 +109,24 @@ export function FeedList(handle: Handle) {
 
 		history.replaceState(null, '', nextHref)
 		lastSyncedSearch = window.location.search
+	}
+
+	const syncStateFromUrl = () => {
+		const currentSearch = window.location.search
+		if (currentSearch === lastSyncedSearch) return
+
+		const params = new URLSearchParams(currentSearch)
+		const nextSearchQuery = (params.get('q') ?? '').trim()
+		const nextFilterType = parseFilterTypeParam(params.get('type'))
+		const nextSortBy = parseSortByParam(params.get('sort'))
+
+		searchQuery = nextSearchQuery
+		filterType = nextFilterType
+		sortBy = nextSortBy
+		lastSyncedSearch = currentSearch
+
+		// Canonicalize URL by dropping empty/default/unknown query params.
+		syncUrlFromState()
 	}
 
 	const setFilterType = (nextFilterType: FilterType) => {

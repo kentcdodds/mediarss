@@ -10,6 +10,11 @@ import {
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
 import {
+	MEDIA_SORT_OPTIONS,
+	type MediaSortBy,
+	sortMediaItems,
+} from '#app/helpers/media-list-sort.ts'
+import {
 	artworkLayout,
 	colors,
 	mq,
@@ -35,6 +40,7 @@ type MediaItem = {
 	sizeBytes: number
 	filename: string
 	publicationDate: string | null
+	fileModifiedAt: number
 	narrators: string[] | null
 	genres: string[] | null
 	description: string | null
@@ -165,6 +171,14 @@ function parsePositivePageParam(value: string | null): number {
 	return parsed
 }
 
+function parseMediaSortByParam(value: string | null): MediaSortBy {
+	if (!value) return 'recently-modified'
+	const option = MEDIA_SORT_OPTIONS.find(
+		(sortOption) => sortOption.value === value,
+	)
+	return option?.value ?? 'recently-modified'
+}
+
 type UploadState =
 	| { status: 'idle' }
 	| { status: 'uploading'; progress: number; filename: string }
@@ -177,6 +191,8 @@ type UploadState =
 export function MediaList(handle: Handle) {
 	let state: LoadingState = { status: 'loading' }
 	let searchQuery = ''
+	let selectedDirectory = 'all'
+	let sortBy: MediaSortBy = 'recently-modified'
 	let currentPage = 1
 	let lastSyncedSearch = ''
 
@@ -187,6 +203,16 @@ export function MediaList(handle: Handle) {
 			params.set('q', trimmedSearchQuery)
 		} else {
 			params.delete('q')
+		}
+		if (selectedDirectory !== 'all') {
+			params.set('directory', selectedDirectory)
+		} else {
+			params.delete('directory')
+		}
+		if (sortBy !== 'recently-modified') {
+			params.set('sort', sortBy)
+		} else {
+			params.delete('sort')
 		}
 		if (currentPage > 1) {
 			params.set('page', String(currentPage))
@@ -213,6 +239,8 @@ export function MediaList(handle: Handle) {
 
 		const params = new URLSearchParams(currentSearch)
 		searchQuery = (params.get('q') ?? '').trim()
+		selectedDirectory = (params.get('directory') ?? 'all').trim() || 'all'
+		sortBy = parseMediaSortByParam(params.get('sort'))
 		currentPage = parsePositivePageParam(params.get('page'))
 		lastSyncedSearch = currentSearch
 
@@ -225,6 +253,28 @@ export function MediaList(handle: Handle) {
 		if (!shouldUpdate) return
 
 		searchQuery = nextSearchQuery
+		currentPage = 1
+		syncUrlFromState()
+		handle.update()
+	}
+
+	const setSelectedDirectory = (nextDirectory: string) => {
+		const normalizedDirectory = nextDirectory.trim() || 'all'
+		const shouldUpdate =
+			selectedDirectory !== normalizedDirectory || currentPage !== 1
+		if (!shouldUpdate) return
+
+		selectedDirectory = normalizedDirectory
+		currentPage = 1
+		syncUrlFromState()
+		handle.update()
+	}
+
+	const setSortBy = (nextSortBy: MediaSortBy) => {
+		const shouldUpdate = sortBy !== nextSortBy || currentPage !== 1
+		if (!shouldUpdate) return
+
+		sortBy = nextSortBy
 		currentPage = 1
 		syncUrlFromState()
 		handle.update()
@@ -630,12 +680,29 @@ export function MediaList(handle: Handle) {
 		}
 
 		const { media, assignments, curatedFeeds, directoryFeeds } = state
+		const availableDirectories = [
+			...new Set(media.map((item) => item.rootName)),
+		].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+
+		if (
+			selectedDirectory !== 'all' &&
+			!availableDirectories.includes(selectedDirectory)
+		) {
+			selectedDirectory = 'all'
+			currentPage = 1
+			syncUrlFromState()
+		}
+
+		const directoryFilteredMedia =
+			selectedDirectory === 'all'
+				? media
+				: media.filter((item) => item.rootName === selectedDirectory)
 
 		// Filter media by search query using match-sorter
 		// Keys are ordered by relevance - most important fields first
 		// Rankings are configured to prioritize meaningful matches and avoid over-matching
 		const filteredMedia = searchQuery.trim()
-			? matchSorter(media, searchQuery.trim(), {
+			? matchSorter(directoryFilteredMedia, searchQuery.trim(), {
 					keys: [
 						// Title is the primary search field - allow word starts and contains
 						{ key: 'title', threshold: rankings.CONTAINS },
@@ -663,24 +730,28 @@ export function MediaList(handle: Handle) {
 					// No global threshold - let each key's threshold control matching
 					// Match-sorter will rank results by relevance (best matches first)
 				})
-			: media
+			: directoryFilteredMedia
+
+		const sortedMedia = searchQuery.trim()
+			? filteredMedia
+			: sortMediaItems(filteredMedia, sortBy)
 
 		// Paginate filtered results
 		const totalPages = Math.max(
 			1,
-			Math.ceil(filteredMedia.length / ITEMS_PER_PAGE),
+			Math.ceil(sortedMedia.length / ITEMS_PER_PAGE),
 		)
 		if (currentPage > totalPages) {
 			currentPage = totalPages
 			syncUrlFromState()
 		}
 		const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-		const paginatedMedia = filteredMedia.slice(
+		const paginatedMedia = sortedMedia.slice(
 			startIndex,
 			startIndex + ITEMS_PER_PAGE,
 		)
-		const startItem = filteredMedia.length > 0 ? startIndex + 1 : 0
-		const endItem = Math.min(startIndex + ITEMS_PER_PAGE, filteredMedia.length)
+		const startItem = sortedMedia.length > 0 ? startIndex + 1 : 0
+		const endItem = Math.min(startIndex + ITEMS_PER_PAGE, sortedMedia.length)
 
 		return (
 			<div
@@ -809,13 +880,156 @@ export function MediaList(handle: Handle) {
 				</div>
 
 				{/* Search */}
-				<div css={{ marginBottom: spacing.lg }}>
-					<SearchInput
-						placeholder="Search by title, author, narrator, genre..."
-						value={searchQuery}
-						onInput={setSearchQuery}
-						onClear={() => setSearchQuery('')}
-					/>
+				<div
+					css={{
+						display: 'flex',
+						gap: spacing.md,
+						alignItems: 'flex-end',
+						marginBottom: spacing.lg,
+						flexWrap: 'wrap',
+						[mq.mobile]: {
+							flexDirection: 'column',
+							alignItems: 'stretch',
+						},
+					}}
+				>
+					<div
+						css={{
+							flex: '1 1 320px',
+							minWidth: 0,
+							[mq.mobile]: {
+								width: '100%',
+							},
+						}}
+					>
+						<SearchInput
+							placeholder="Search by title, author, narrator, genre..."
+							value={searchQuery}
+							onInput={setSearchQuery}
+							onClear={() => setSearchQuery('')}
+						/>
+					</div>
+					<div
+						css={{
+							display: 'flex',
+							gap: spacing.md,
+							flexWrap: 'wrap',
+							[mq.mobile]: {
+								width: '100%',
+							},
+						}}
+					>
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+								minWidth: '180px',
+								[mq.mobile]: {
+									flex: 1,
+								},
+							}}
+						>
+							<label
+								for="media-directory-filter"
+								css={{
+									fontSize: typography.fontSize.xs,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.textMuted,
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em',
+								}}
+							>
+								Directory
+							</label>
+							<select
+								id="media-directory-filter"
+								value={selectedDirectory}
+								css={{
+									padding: `${spacing.xs} ${spacing.sm}`,
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+									backgroundColor: colors.background,
+									border: `1px solid ${colors.border}`,
+									borderRadius: radius.sm,
+									cursor: 'pointer',
+									'&:focus': {
+										outline: 'none',
+										borderColor: colors.primary,
+										boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+									},
+								}}
+								on={{
+									change: (e: Event) => {
+										const nextDirectory = (e.target as HTMLSelectElement).value
+										setSelectedDirectory(nextDirectory)
+									},
+								}}
+							>
+								<option value="all">All directories</option>
+								{availableDirectories.map((directory) => (
+									<option key={directory} value={directory}>
+										{directory}
+									</option>
+								))}
+							</select>
+						</div>
+						<div
+							css={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+								minWidth: '220px',
+								[mq.mobile]: {
+									flex: 1,
+								},
+							}}
+						>
+							<label
+								for="media-sort"
+								css={{
+									fontSize: typography.fontSize.xs,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.textMuted,
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em',
+								}}
+							>
+								Sort
+							</label>
+							<select
+								id="media-sort"
+								value={sortBy}
+								css={{
+									padding: `${spacing.xs} ${spacing.sm}`,
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+									backgroundColor: colors.background,
+									border: `1px solid ${colors.border}`,
+									borderRadius: radius.sm,
+									cursor: 'pointer',
+									'&:focus': {
+										outline: 'none',
+										borderColor: colors.primary,
+										boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+									},
+								}}
+								on={{
+									change: (e: Event) => {
+										const nextSortBy = (e.target as HTMLSelectElement)
+											.value as MediaSortBy
+										setSortBy(nextSortBy)
+									},
+								}}
+							>
+								{MEDIA_SORT_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
+						</div>
+					</div>
 				</div>
 
 				{/* Media Table */}
@@ -838,7 +1052,9 @@ export function MediaList(handle: Handle) {
 						>
 							{searchQuery
 								? 'No media matches your search.'
-								: 'No media files found.'}
+								: selectedDirectory !== 'all'
+									? `No media files found in ${selectedDirectory}.`
+									: 'No media files found.'}
 						</div>
 					) : (
 						<div css={{ overflowX: 'auto' }}>

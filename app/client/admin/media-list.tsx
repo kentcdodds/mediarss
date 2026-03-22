@@ -732,7 +732,9 @@ export function MediaList(handle: Handle) {
 				})
 			: directoryFilteredMedia
 
-		const sortedMedia = sortMediaItems(filteredMedia, sortBy)
+		const sortedMedia = searchQuery.trim()
+			? filteredMedia
+			: sortMediaItems(filteredMedia, sortBy)
 
 		// Paginate filtered results
 		const totalPages = Math.max(

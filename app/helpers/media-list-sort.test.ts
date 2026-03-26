@@ -12,6 +12,9 @@ type MockMediaItem = {
 	duration: number | null
 	publicationDate: string | null
 	fileModifiedAt: number
+	downloadStarts?: number
+	mediaRequests?: number
+	uniqueClients?: number
 }
 
 const mediaItems: Array<MockMediaItem> = [
@@ -90,5 +93,37 @@ test('largest-first sorts by file size descending', () => {
 		'Bravo',
 		'charlie',
 		'Alpha',
+	])
+})
+
+test('most-popular sorts by analytics activity before stable fallback', () => {
+	const sorted = sortMediaItems(
+		[
+			{
+				...mediaItems[0],
+				downloadStarts: 4,
+				mediaRequests: 8,
+				uniqueClients: 2,
+			},
+			{
+				...mediaItems[1],
+				downloadStarts: 2,
+				mediaRequests: 5,
+				uniqueClients: 3,
+			},
+			{
+				...mediaItems[2],
+				downloadStarts: 4,
+				mediaRequests: 9,
+				uniqueClients: 1,
+			},
+		],
+		'most-popular',
+	)
+
+	expect(sorted.map((item) => item.title)).toEqual([
+		'charlie',
+		'Alpha',
+		'Bravo',
 	])
 })

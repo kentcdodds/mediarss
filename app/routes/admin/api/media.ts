@@ -1,7 +1,9 @@
 import type { BuildAction } from 'remix/fetch-router'
 import { resolveMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
+import { listMediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
 import { type MediaFile, scanAllMediaRoots } from '#app/helpers/media.ts'
+import { createMediaKey } from '#app/helpers/path-parsing.ts'
 
 type MediaItem = {
 	path: string
@@ -17,6 +19,10 @@ type MediaItem = {
 	narrators: string[] | null
 	genres: string[] | null
 	description: string | null
+	popularityScore: number
+	downloadStarts: number
+	mediaRequests: number
+	lastPlayedAt: number | null
 }
 
 /**
@@ -40,6 +46,10 @@ function toMediaItem(file: MediaFile): MediaItem | null {
 		narrators: file.narrators,
 		genres: file.genres,
 		description: file.description,
+		popularityScore: 0,
+		downloadStarts: 0,
+		mediaRequests: 0,
+		lastPlayedAt: null,
 	}
 }
 
@@ -51,10 +61,25 @@ export default {
 	middleware: [],
 	async handler() {
 		const files = await scanAllMediaRoots()
+		const popularityByMediaKey = listMediaPopularityMetrics()
 
 		const items = files
 			.map(toMediaItem)
 			.filter((item): item is MediaItem => item !== null)
+			.map((item) => {
+				const popularity = popularityByMediaKey.get(
+					createMediaKey(item.rootName, item.relativePath),
+				)
+				return {
+					...item,
+					popularityScore:
+						(popularity?.downloadStarts ?? 0) * 100 +
+						(popularity?.mediaRequests ?? 0),
+					downloadStarts: popularity?.downloadStarts ?? 0,
+					mediaRequests: popularity?.mediaRequests ?? 0,
+					lastPlayedAt: popularity?.lastSeenAt ?? null,
+				}
+			})
 
 		// Sort by publication date (newest first), items without date go to end
 		items.sort((a, b) => {

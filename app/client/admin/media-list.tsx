@@ -42,6 +42,9 @@ type MediaItem = {
 	filename: string
 	publicationDate: string | null
 	fileModifiedAt: number
+	mediaRequests: number
+	downloadStarts: number
+	uniqueClients: number
 	narrators: string[] | null
 	genres: string[] | null
 	description: string | null
@@ -987,9 +990,10 @@ export function MediaList(handle: Handle) {
 											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
 										},
 									}),
-									rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
-										const nextDirectory = (e.target as HTMLSelectElement).value
-										setSelectedDirectory(nextDirectory)
+									rmxOn('change', (e) => {
+										setSelectedDirectory(
+											(e.target as HTMLSelectElement).value,
+										)
 									}),
 								]}
 							>
@@ -1046,10 +1050,8 @@ export function MediaList(handle: Handle) {
 											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
 										},
 									}),
-									rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
-										const nextSortBy = (e.target as HTMLSelectElement)
-											.value as MediaSortBy
-										setSortBy(nextSortBy)
+									rmxOn('change', (e) => {
+										setSortBy((e.target as HTMLSelectElement).value as MediaSortBy)
 									}),
 								]}
 							>

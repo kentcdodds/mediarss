@@ -1,10 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
-import {
-	addEventListeners,
-	type Handle,
-	css as rmxCss,
-	on as rmxOn,
-} from 'remix/component'
+import type { Handle } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	Modal,
 	ModalButton,
@@ -94,8 +90,6 @@ type LoadingState =
 			curatedFeeds: Array<CuratedFeed>
 			directoryFeeds: Array<DirectoryFeed>
 	  }
-
-type FilterMenu = 'directory' | 'sort' | null
 
 /**
  * Check if a media item is within any of the directory paths.
@@ -205,7 +199,6 @@ export function MediaList(handle: Handle) {
 	let sortBy: MediaSortBy = 'recently-modified'
 	let currentPage = 1
 	let lastSyncedSearch = ''
-	let openFilterMenu: FilterMenu = null
 
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
@@ -269,17 +262,11 @@ export function MediaList(handle: Handle) {
 		handle.update()
 	}
 
-	const setSelectedDirectory = (
-		nextDirectory: string,
-		options?: { forceRender?: boolean },
-	) => {
+	const setSelectedDirectory = (nextDirectory: string) => {
 		const normalizedDirectory = nextDirectory.trim() || 'all'
 		const shouldUpdate =
 			selectedDirectory !== normalizedDirectory || currentPage !== 1
-		if (!shouldUpdate) {
-			if (options?.forceRender) handle.update()
-			return
-		}
+		if (!shouldUpdate) return
 
 		selectedDirectory = normalizedDirectory
 		currentPage = 1
@@ -287,15 +274,9 @@ export function MediaList(handle: Handle) {
 		handle.update()
 	}
 
-	const setSortBy = (
-		nextSortBy: MediaSortBy,
-		options?: { forceRender?: boolean },
-	) => {
+	const setSortBy = (nextSortBy: MediaSortBy) => {
 		const shouldUpdate = sortBy !== nextSortBy || currentPage !== 1
-		if (!shouldUpdate) {
-			if (options?.forceRender) handle.update()
-			return
-		}
+		if (!shouldUpdate) return
 
 		sortBy = nextSortBy
 		currentPage = 1
@@ -313,25 +294,6 @@ export function MediaList(handle: Handle) {
 	}
 
 	syncStateFromUrl()
-
-	addEventListeners(document, handle.signal, {
-		click(event) {
-			if (openFilterMenu === null) return
-			if (!(event.target instanceof Element)) {
-				openFilterMenu = null
-				handle.update()
-				return
-			}
-			if (event.target.closest('[data-media-filter-menu]')) return
-			openFilterMenu = null
-			handle.update()
-		},
-		keydown(event) {
-			if (event.key !== 'Escape' || openFilterMenu === null) return
-			openFilterMenu = null
-			handle.update()
-		},
-	})
 
 	// Bulk selection state
 	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
@@ -725,19 +687,6 @@ export function MediaList(handle: Handle) {
 		const availableDirectories = [
 			...new Set(media.map((item) => item.rootName)),
 		].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-		const directoryOptions = [
-			{ value: 'all', label: 'All directories' },
-			...availableDirectories.map((directory) => ({
-				value: directory,
-				label: directory,
-			})),
-		]
-		const selectedDirectoryLabel =
-			directoryOptions.find((option) => option.value === selectedDirectory)
-				?.label ?? 'All directories'
-		const selectedSortLabel =
-			MEDIA_SORT_OPTIONS.find((option) => option.value === sortBy)?.label ??
-			'Recently added/modified'
 
 		if (
 			selectedDirectory !== 'all' &&
@@ -996,42 +945,126 @@ export function MediaList(handle: Handle) {
 							}),
 						]}
 					>
-						<FilterDropdown
-							id="media-directory-filter"
-							label="Directory"
-							valueLabel={selectedDirectoryLabel}
-							options={directoryOptions}
-							isOpen={openFilterMenu === 'directory'}
-							minWidth="180px"
-							onToggle={() => {
-								openFilterMenu =
-									openFilterMenu === 'directory' ? null : 'directory'
-								handle.update()
-							}}
-							onSelect={(value) => {
-								openFilterMenu = null
-								setSelectedDirectory(value, { forceRender: true })
-							}}
-						/>
-						<FilterDropdown
-							id="media-sort"
-							label="Sort"
-							valueLabel={selectedSortLabel}
-							options={MEDIA_SORT_OPTIONS.map((option) => ({
-								value: option.value,
-								label: option.label,
-							}))}
-							isOpen={openFilterMenu === 'sort'}
-							minWidth="220px"
-							onToggle={() => {
-								openFilterMenu = openFilterMenu === 'sort' ? null : 'sort'
-								handle.update()
-							}}
-							onSelect={(value) => {
-								openFilterMenu = null
-								setSortBy(value as MediaSortBy, { forceRender: true })
-							}}
-						/>
+						<div
+							mix={[
+								rmxCss({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.xs,
+									minWidth: '180px',
+									[mq.mobile]: {
+										flex: 1,
+									},
+								}),
+							]}
+						>
+							<label
+								for="media-directory-filter"
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}),
+								]}
+							>
+								Directory
+							</label>
+							<select
+								id="media-directory-filter"
+								value={selectedDirectory}
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}),
+									rmxOn('change', (e) => {
+										setSelectedDirectory(
+											(e.currentTarget as HTMLSelectElement).value,
+										)
+									}),
+								]}
+							>
+								<option value="all">All directories</option>
+								{availableDirectories.map((directory) => (
+									<option key={directory} value={directory}>
+										{directory}
+									</option>
+								))}
+							</select>
+						</div>
+						<div
+							mix={[
+								rmxCss({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.xs,
+									minWidth: '220px',
+									[mq.mobile]: {
+										flex: 1,
+									},
+								}),
+							]}
+						>
+							<label
+								for="media-sort"
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}),
+								]}
+							>
+								Sort
+							</label>
+							<select
+								id="media-sort"
+								value={sortBy}
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}),
+									rmxOn('change', (e) => {
+										setSortBy(
+											(e.currentTarget as HTMLSelectElement)
+												.value as MediaSortBy,
+										)
+									}),
+								]}
+							>
+								{MEDIA_SORT_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
 				</div>
 
@@ -1708,160 +1741,6 @@ function Pagination() {
 			</div>
 		)
 	}
-}
-
-function FilterDropdown() {
-	return ({
-		id,
-		label,
-		valueLabel,
-		options,
-		isOpen,
-		minWidth,
-		onToggle,
-		onSelect,
-	}: {
-		id: string
-		label: string
-		valueLabel: string
-		options: Array<{ value: string; label: string }>
-		isOpen: boolean
-		minWidth: string
-		onToggle: () => void
-		onSelect: (value: string) => void
-	}) => (
-		<div
-			data-media-filter-menu
-			mix={[
-				rmxCss({
-					display: 'flex',
-					flexDirection: 'column',
-					gap: spacing.xs,
-					minWidth,
-					position: 'relative',
-					[mq.mobile]: {
-						flex: 1,
-					},
-				}),
-			]}
-		>
-			<span
-				id={`${id}-label`}
-				mix={[
-					rmxCss({
-						fontSize: typography.fontSize.xs,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.textMuted,
-						textTransform: 'uppercase',
-						letterSpacing: '0.05em',
-					}),
-				]}
-			>
-				{label}
-			</span>
-			<button
-				type="button"
-				aria-labelledby={`${id}-label`}
-				aria-haspopup="menu"
-				aria-expanded={isOpen ? 'true' : 'false'}
-				mix={[
-					rmxCss({
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						gap: spacing.sm,
-						width: '100%',
-						padding: `${spacing.xs} ${spacing.sm}`,
-						fontSize: typography.fontSize.sm,
-						color: colors.text,
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.sm,
-						cursor: 'pointer',
-						'&:focus-visible': {
-							outline: 'none',
-							borderColor: colors.primary,
-							boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-						},
-					}),
-					rmxOn('click', onToggle),
-				]}
-			>
-				<span>{valueLabel}</span>
-				<span
-					aria-hidden="true"
-					mix={[
-						rmxCss({
-							color: colors.textMuted,
-							transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-							transition: `transform ${transitions.fast}`,
-						}),
-					]}
-				>
-					▾
-				</span>
-			</button>
-			{isOpen && (
-				<div
-					role="menu"
-					aria-labelledby={`${id}-label`}
-					mix={[
-						rmxCss({
-							position: 'absolute',
-							top: '100%',
-							left: 0,
-							right: 0,
-							marginTop: spacing.xs,
-							padding: spacing.xs,
-							display: 'flex',
-							flexDirection: 'column',
-							gap: spacing.xs,
-							backgroundColor: colors.surface,
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							boxShadow: shadows.md,
-							zIndex: 20,
-						}),
-					]}
-				>
-					{options.map((option) => {
-						const isSelected = option.label === valueLabel
-						return (
-							<button
-								key={option.value}
-								type="button"
-								role="menuitemradio"
-								aria-checked={isSelected ? 'true' : 'false'}
-								mix={[
-									rmxCss({
-										padding: `${spacing.sm} ${spacing.md}`,
-										fontSize: typography.fontSize.sm,
-										textAlign: 'left',
-										color: isSelected ? colors.primary : colors.text,
-										backgroundColor: isSelected
-											? colors.primarySoft
-											: 'transparent',
-										border: 'none',
-										borderRadius: radius.sm,
-										cursor: 'pointer',
-										transition: `background-color ${transitions.fast}`,
-										'&:hover': {
-											backgroundColor: isSelected
-												? colors.primarySoftStrong
-												: colors.background,
-										},
-									}),
-									rmxOn('click', () => onSelect(option.value)),
-								]}
-							>
-								{option.label}
-							</button>
-						)
-					})}
-				</div>
-			)}
-		</div>
-	)
 }
 
 function LoadingSpinner() {

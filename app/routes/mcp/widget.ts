@@ -31,7 +31,7 @@ import { generateMediaWidgetHtml } from '#app/mcp/widgets.ts'
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { token, path: splatParam } = context.params
 
 		if (!splatParam) {

@@ -14,7 +14,7 @@ import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { path: splatParam } = context.params
 
 		if (!splatParam) {

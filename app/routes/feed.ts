@@ -27,7 +27,7 @@ function getBaseUrl(request: Request): string {
 
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { token } = context.params
 
 		// Look up feed by token

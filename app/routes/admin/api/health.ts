@@ -8,7 +8,7 @@ import { db } from '#app/db/index.ts'
  */
 export default {
 	middleware: [],
-	action() {
+	handler() {
 		try {
 			// Verify database connectivity with a simple query
 			db.query('SELECT 1').get()

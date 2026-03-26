@@ -52,7 +52,7 @@ function handleGet(context: RequestContext): Response {
 
 export default {
 	middleware: [],
-	action: withCors({
+	handler: withCors({
 		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
 		handler: (context: RequestContext) => {
 			if (context.method !== 'GET' && context.method !== 'HEAD') {

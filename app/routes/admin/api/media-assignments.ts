@@ -57,7 +57,7 @@ type BulkAssignRequest = {
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		if (context.method === 'GET') {
 			return handleGet()
 		}

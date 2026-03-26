@@ -204,7 +204,7 @@ async function getAssignmentsForMedia(
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		// Only allow PUT requests
 		if (context.request.method !== 'PUT') {
 			return Response.json(

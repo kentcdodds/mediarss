@@ -8,7 +8,7 @@ import type routes from '#app/config/routes.ts'
  */
 export default {
 	middleware: [],
-	action() {
+	handler() {
 		const roots = getMediaRoots()
 
 		return Response.json({

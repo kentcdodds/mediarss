@@ -8,7 +8,7 @@
  * Data is received via the MCP-UI initial-render-data protocol,
  * not embedded inline in the HTML.
  */
-import { createRoot, type Handle } from 'remix/component'
+import { createRoot, type Handle, css as rmxCss } from 'remix/component'
 import {
 	array,
 	type InferOutput,
@@ -156,27 +156,33 @@ function isVideo(mimeType: string): boolean {
 function MetadataItem() {
 	return ({ label, value }: { label: string; value: string }) => (
 		<div
-			css={{
-				display: 'flex',
-				flexDirection: 'column',
-				gap: spacing.xs,
-			}}
+			mix={[
+				rmxCss({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: spacing.xs,
+				}),
+			]}
 		>
 			<span
-				css={{
-					fontSize: typography.xs,
-					color: colors.textMuted,
-					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.xs,
+						color: colors.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+					}),
+				]}
 			>
 				{label}
 			</span>
 			<span
-				css={{
-					fontSize: typography.sm,
-					color: colors.text,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.sm,
+						color: colors.text,
+					}),
+				]}
 			>
 				{value}
 			</span>
@@ -190,24 +196,28 @@ function MetadataItem() {
 function LoadingState() {
 	return () => (
 		<div
-			css={{
-				fontFamily: typography.fontFamily,
-				backgroundColor: colors.background,
-				color: colors.text,
-				minHeight: '100vh',
-				display: 'flex',
-				flexDirection: 'column',
-				alignItems: 'center',
-				justifyContent: 'center',
-				padding: spacing.xl,
-			}}
+			mix={[
+				rmxCss({
+					fontFamily: typography.fontFamily,
+					backgroundColor: colors.background,
+					color: colors.text,
+					minHeight: '100vh',
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					padding: spacing.xl,
+				}),
+			]}
 		>
 			<div
-				css={{
-					fontSize: typography.lg,
-					color: colors.textMuted,
-					marginBottom: spacing.md,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.lg,
+						color: colors.textMuted,
+						marginBottom: spacing.md,
+					}),
+				]}
 			>
 				Loading media player...
 			</div>
@@ -221,33 +231,39 @@ function LoadingState() {
 function ErrorState() {
 	return ({ message }: { message: string }) => (
 		<div
-			css={{
-				fontFamily: typography.fontFamily,
-				backgroundColor: colors.background,
-				color: colors.text,
-				minHeight: '100vh',
-				display: 'flex',
-				flexDirection: 'column',
-				alignItems: 'center',
-				justifyContent: 'center',
-				padding: spacing.xl,
-				textAlign: 'center',
-			}}
+			mix={[
+				rmxCss({
+					fontFamily: typography.fontFamily,
+					backgroundColor: colors.background,
+					color: colors.text,
+					minHeight: '100vh',
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					padding: spacing.xl,
+					textAlign: 'center',
+				}),
+			]}
 		>
 			<div
-				css={{
-					fontSize: typography.lg,
-					color: '#ef4444',
-					marginBottom: spacing.md,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.lg,
+						color: '#ef4444',
+						marginBottom: spacing.md,
+					}),
+				]}
 			>
 				Error loading media
 			</div>
 			<div
-				css={{
-					fontSize: typography.sm,
-					color: colors.textMuted,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.sm,
+						color: colors.textMuted,
+					}),
+				]}
 			>
 				{message}
 			</div>
@@ -264,101 +280,119 @@ function MediaPlayerContent() {
 
 		return (
 			<div
-				css={{
-					fontFamily: typography.fontFamily,
-					backgroundColor: colors.background,
-					color: colors.text,
-					minHeight: '100vh',
-					padding: spacing.lg,
-				}}
+				mix={[
+					rmxCss({
+						fontFamily: typography.fontFamily,
+						backgroundColor: colors.background,
+						color: colors.text,
+						minHeight: '100vh',
+						padding: spacing.lg,
+					}),
+				]}
 			>
 				{/* Main container */}
 				<div
-					css={{
-						maxWidth: '800px',
-						margin: '0 auto',
-					}}
+					mix={[
+						rmxCss({
+							maxWidth: '800px',
+							margin: '0 auto',
+						}),
+					]}
 				>
 					{/* Header with artwork and title */}
 					<div
-						css={{
-							display: 'flex',
-							gap: spacing.lg,
-							marginBottom: spacing.xl,
-							'@media (max-width: 640px)': {
-								flexDirection: 'column',
-								alignItems: 'center',
-								textAlign: 'center',
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.lg,
+								marginBottom: spacing.xl,
+								'@media (max-width: 640px)': {
+									flexDirection: 'column',
+									alignItems: 'center',
+									textAlign: 'center',
+								},
+							}),
+						]}
 					>
 						{/* Artwork */}
 						<div
-							css={{
-								width: '200px',
-								height: '200px',
-								flexShrink: 0,
-								borderRadius: radius.lg,
-								overflow: 'hidden',
-								backgroundColor: colors.surface,
-								border: `1px solid ${colors.border}`,
-								boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-							}}
+							mix={[
+								rmxCss({
+									width: '200px',
+									height: '200px',
+									flexShrink: 0,
+									borderRadius: radius.lg,
+									overflow: 'hidden',
+									backgroundColor: colors.surface,
+									border: `1px solid ${colors.border}`,
+									boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+								}),
+							]}
 						>
 							<img
 								src={media.artworkUrl}
 								alt={media.title}
-								css={{
-									width: '100%',
-									height: '100%',
-									...artworkLayout.centeredContain,
-								}}
+								mix={[
+									rmxCss({
+										width: '100%',
+										height: '100%',
+										...artworkLayout.centeredContain,
+									}),
+								]}
 							/>
 						</div>
 
 						{/* Title and author */}
 						<div
-							css={{
-								flex: 1,
-								display: 'flex',
-								flexDirection: 'column',
-								justifyContent: 'center',
-								minWidth: 0,
-							}}
+							mix={[
+								rmxCss({
+									flex: 1,
+									display: 'flex',
+									flexDirection: 'column',
+									justifyContent: 'center',
+									minWidth: 0,
+								}),
+							]}
 						>
 							<h1
-								css={{
-									fontSize: typography['2xl'],
-									fontWeight: 700,
-									color: colors.text,
-									margin: 0,
-									lineHeight: 1.2,
-									wordBreak: 'break-word',
-									'@media (max-width: 640px)': {
-										fontSize: typography.xl,
-									},
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography['2xl'],
+										fontWeight: 700,
+										color: colors.text,
+										margin: 0,
+										lineHeight: 1.2,
+										wordBreak: 'break-word',
+										'@media (max-width: 640px)': {
+											fontSize: typography.xl,
+										},
+									}),
+								]}
 							>
 								{media.title}
 							</h1>
 							{media.author && (
 								<p
-									css={{
-										fontSize: typography.lg,
-										color: colors.textMuted,
-										margin: `${spacing.sm} 0 0 0`,
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.lg,
+											color: colors.textMuted,
+											margin: `${spacing.sm} 0 0 0`,
+										}),
+									]}
 								>
 									by {media.author}
 								</p>
 							)}
 							{media.narrators && media.narrators.length > 0 && (
 								<p
-									css={{
-										fontSize: typography.sm,
-										color: colors.textMuted,
-										margin: `${spacing.xs} 0 0 0`,
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.sm,
+											color: colors.textMuted,
+											margin: `${spacing.xs} 0 0 0`,
+										}),
+									]}
 								>
 									Narrated by {media.narrators.join(', ')}
 								</p>
@@ -368,13 +402,15 @@ function MediaPlayerContent() {
 
 					{/* Media Player */}
 					<div
-						css={{
-							backgroundColor: colors.surface,
-							borderRadius: radius.lg,
-							border: `1px solid ${colors.border}`,
-							padding: spacing.md,
-							marginBottom: spacing.xl,
-						}}
+						mix={[
+							rmxCss({
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: spacing.md,
+								marginBottom: spacing.xl,
+							}),
+						]}
 					>
 						{isVideoFile ? (
 							// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
@@ -382,11 +418,13 @@ function MediaPlayerContent() {
 								src={media.streamUrl}
 								controls
 								preload="metadata"
-								css={{
-									width: '100%',
-									borderRadius: radius.md,
-									backgroundColor: '#000',
-								}}
+								mix={[
+									rmxCss({
+										width: '100%',
+										borderRadius: radius.md,
+										backgroundColor: '#000',
+									}),
+								]}
 							>
 								Your browser does not support video playback.
 							</video>
@@ -396,9 +434,11 @@ function MediaPlayerContent() {
 								src={media.streamUrl}
 								controls
 								preload="metadata"
-								css={{
-									width: '100%',
-								}}
+								mix={[
+									rmxCss({
+										width: '100%',
+									}),
+								]}
 							>
 								Your browser does not support audio playback.
 							</audio>
@@ -408,32 +448,38 @@ function MediaPlayerContent() {
 					{/* Description */}
 					{media.description && (
 						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: spacing.lg,
-								marginBottom: spacing.xl,
-							}}
+							mix={[
+								rmxCss({
+									backgroundColor: colors.surface,
+									borderRadius: radius.lg,
+									border: `1px solid ${colors.border}`,
+									padding: spacing.lg,
+									marginBottom: spacing.xl,
+								}),
+							]}
 						>
 							<h2
-								css={{
-									fontSize: typography.base,
-									fontWeight: 600,
-									color: colors.text,
-									margin: `0 0 ${spacing.md} 0`,
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.base,
+										fontWeight: 600,
+										color: colors.text,
+										margin: `0 0 ${spacing.md} 0`,
+									}),
+								]}
 							>
 								Description
 							</h2>
 							<p
-								css={{
-									fontSize: typography.sm,
-									color: colors.text,
-									margin: 0,
-									lineHeight: 1.7,
-									whiteSpace: 'pre-wrap',
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.sm,
+										color: colors.text,
+										margin: 0,
+										lineHeight: 1.7,
+										whiteSpace: 'pre-wrap',
+									}),
+								]}
 							>
 								{media.description}
 							</p>
@@ -442,29 +488,35 @@ function MediaPlayerContent() {
 
 					{/* Metadata Grid */}
 					<div
-						css={{
-							backgroundColor: colors.surface,
-							borderRadius: radius.lg,
-							border: `1px solid ${colors.border}`,
-							padding: spacing.lg,
-						}}
+						mix={[
+							rmxCss({
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: spacing.lg,
+							}),
+						]}
 					>
 						<h2
-							css={{
-								fontSize: typography.base,
-								fontWeight: 600,
-								color: colors.text,
-								margin: `0 0 ${spacing.md} 0`,
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.base,
+									fontWeight: 600,
+									color: colors.text,
+									margin: `0 0 ${spacing.md} 0`,
+								}),
+							]}
 						>
 							Details
 						</h2>
 						<div
-							css={{
-								display: 'grid',
-								gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-								gap: spacing.lg,
-							}}
+							mix={[
+								rmxCss({
+									display: 'grid',
+									gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+									gap: spacing.lg,
+								}),
+							]}
 						>
 							<MetadataItem
 								label="Duration"

@@ -1,3 +1,4 @@
+import { css as rmxCss } from 'remix/component'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'
 
 type DailyActivityPoint = {
@@ -16,74 +17,90 @@ export function AnalyticsDailyActivityChart() {
 		return (
 			<div>
 				<h4
-					css={{
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.semibold,
-						margin: `0 0 ${spacing.sm} 0`,
-						color: colors.text,
-					}}
+					mix={[
+						rmxCss({
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.semibold,
+							margin: `0 0 ${spacing.sm} 0`,
+							color: colors.text,
+						}),
+					]}
 				>
 					Daily Activity
 				</h4>
 				{daily.length === 0 ? (
 					<p
-						css={{
-							margin: 0,
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-						}}
+						mix={[
+							rmxCss({
+								margin: 0,
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}),
+						]}
 					>
 						No daily activity yet.
 					</p>
 				) : (
 					<div
-						css={{
-							display: 'flex',
-							flexDirection: 'column',
-							gap: spacing.xs,
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+							}),
+						]}
 					>
 						{visibleDaily.map((point) => (
 							<div
 								key={point.day}
-								css={{
-									display: 'grid',
-									gridTemplateColumns: '68px 1fr 52px',
-									alignItems: 'center',
-									gap: spacing.sm,
-								}}
+								mix={[
+									rmxCss({
+										display: 'grid',
+										gridTemplateColumns: '68px 1fr 52px',
+										alignItems: 'center',
+										gap: spacing.sm,
+									}),
+								]}
 							>
 								<span
-									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										fontFamily: 'monospace',
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											fontFamily: 'monospace',
+										}),
+									]}
 								>
 									{point.day.slice(5)}
 								</span>
 								<div
-									css={{
-										height: '8px',
-										borderRadius: radius.sm,
-										backgroundColor: colors.background,
-										overflow: 'hidden',
-									}}
+									mix={[
+										rmxCss({
+											height: '8px',
+											borderRadius: radius.sm,
+											backgroundColor: colors.background,
+											overflow: 'hidden',
+										}),
+									]}
 								>
 									<div
-										css={{
-											height: '100%',
-											width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
-											backgroundColor: colors.primary,
-										}}
+										mix={[
+											rmxCss({
+												height: '100%',
+												width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
+												backgroundColor: colors.primary,
+											}),
+										]}
 									/>
 								</div>
 								<span
-									css={{
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										textAlign: 'right',
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											textAlign: 'right',
+										}),
+									]}
 								>
 									{point.mediaRequests}
 								</span>

@@ -59,7 +59,7 @@ async function createCuratedTestFeedContext() {
 	}
 }
 
-type AnalyticsActionContext = Parameters<typeof analyticsHandler.action>[0]
+type AnalyticsActionContext = Parameters<typeof analyticsHandler.handler>[0]
 type MinimalFeedActionContext = {
 	request: Request
 	method: string
@@ -133,7 +133,7 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 		createdAt: now - 20,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id),
 	)
 	expect(response.status).toBe(200)
@@ -212,7 +212,7 @@ test('feed analytics endpoint groups missing client names under Unknown', async 
 		createdAt: now - 10,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id),
 	)
 	expect(response.status).toBe(200)
@@ -261,7 +261,7 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 		createdAt: now - 10,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id),
 	)
 	expect(response.status).toBe(200)
@@ -298,7 +298,7 @@ test('feed analytics endpoint returns more than default top-client limit when av
 		})
 	}
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id),
 	)
 	expect(response.status).toBe(200)
@@ -309,7 +309,7 @@ test('feed analytics endpoint returns more than default top-client limit when av
 
 test('feed analytics endpoint clamps analytics window days to max', async () => {
 	await using ctx = await createTestFeedContext()
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, 9999),
 	)
 	expect(response.status).toBe(200)
@@ -318,7 +318,7 @@ test('feed analytics endpoint clamps analytics window days to max', async () => 
 
 test('feed analytics endpoint clamps huge integer window values', async () => {
 	await using ctx = await createTestFeedContext()
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, '999999999999999999999999999'),
 	)
 	expect(response.status).toBe(200)
@@ -328,22 +328,22 @@ test('feed analytics endpoint clamps huge integer window values', async () => {
 test('feed analytics endpoint defaults analytics window for invalid values', async () => {
 	await using ctx = await createTestFeedContext()
 
-	const invalidTextResponse = await analyticsHandler.action(
+	const invalidTextResponse = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, 'abc'),
 	)
 	expect(invalidTextResponse.status).toBe(200)
 
-	const decimalResponse = await analyticsHandler.action(
+	const decimalResponse = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, '7.5'),
 	)
 	expect(decimalResponse.status).toBe(200)
 
-	const mixedResponse = await analyticsHandler.action(
+	const mixedResponse = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, '30abc'),
 	)
 	expect(mixedResponse.status).toBe(200)
 
-	const negativeResponse = await analyticsHandler.action(
+	const negativeResponse = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id, -5),
 	)
 	expect(negativeResponse.status).toBe(200)
@@ -392,7 +392,7 @@ test('feed analytics endpoint supports curated feeds', async () => {
 		createdAt: now - 20,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(ctx.feed.id),
 	)
 	expect(response.status).toBe(200)
@@ -429,7 +429,7 @@ test('feed analytics endpoint supports curated feeds', async () => {
 })
 
 test('feed analytics endpoint returns not found for unknown feed id', async () => {
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext('missing-feed-id'),
 	)
 	expect(response.status).toBe(404)
@@ -440,7 +440,7 @@ test('feed analytics endpoint validates required feed id param', async () => {
 	const request = new Request(
 		'http://localhost/admin/api/feeds//analytics?days=30',
 	)
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		asActionContext({
 			request,
 			method: 'GET',

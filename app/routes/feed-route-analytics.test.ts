@@ -20,7 +20,7 @@ import feedHandler from './feed.ts'
 
 migrate(db)
 
-type FeedActionContext = Parameters<typeof feedHandler.action>[0]
+type FeedActionContext = Parameters<typeof feedHandler.handler>[0]
 type MinimalFeedActionContext = {
 	request: Request
 	method: string
@@ -178,7 +178,7 @@ async function withAnalyticsTableUnavailable(
 
 test('feed route logs rss_fetch analytics for successful responses', async () => {
 	await using ctx = await createCuratedFeedRouteTestContext()
-	const response = await feedHandler.action(
+	const response = await feedHandler.handler(
 		createFeedActionContext(ctx.token, {
 			'User-Agent': 'Pocket Casts/7.0',
 			'X-Forwarded-For': '203.0.113.25',
@@ -207,7 +207,7 @@ test('feed route still returns rss when analytics writes fail', async () => {
 	}
 
 	await withAnalyticsTableUnavailable(async () => {
-		const response = await feedHandler.action(
+		const response = await feedHandler.handler(
 			createFeedActionContext(ctx.token, {
 				'User-Agent': 'Pocket Casts/7.0',
 				'X-Forwarded-For': '203.0.113.25',
@@ -223,7 +223,7 @@ test('feed route still returns rss when analytics writes fail', async () => {
 
 test('feed route stores null client metadata when request lacks client traits', async () => {
 	await using ctx = await createCuratedFeedRouteTestContext()
-	const response = await feedHandler.action(createFeedActionContext(ctx.token))
+	const response = await feedHandler.handler(createFeedActionContext(ctx.token))
 	expect(response.status).toBe(200)
 
 	expect(readLatestRssEvent(ctx.feed.id)).toMatchObject({
@@ -234,7 +234,7 @@ test('feed route stores null client metadata when request lacks client traits', 
 
 test('feed route does not log analytics for missing tokens', async () => {
 	const missingToken = `missing-token-${Date.now()}`
-	const response = await feedHandler.action(
+	const response = await feedHandler.handler(
 		createFeedActionContext(missingToken),
 	)
 
@@ -258,7 +258,7 @@ test('feed route does not log analytics for revoked tokens', async () => {
 		await using ctx = await testCase.createContext()
 		expect(await testCase.revokeToken(ctx.token)).toBe(true)
 
-		const response = await feedHandler.action(
+		const response = await feedHandler.handler(
 			createFeedActionContext(ctx.token),
 		)
 		expect(response.status).toBe(404)
@@ -284,7 +284,7 @@ test('feed route touches token last_used_at on successful fetch', async () => {
 		await using ctx = await testCase.createContext()
 		expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
 
-		const response = await feedHandler.action(
+		const response = await feedHandler.handler(
 			createFeedActionContext(ctx.token),
 		)
 		expect(response.status).toBe(200)

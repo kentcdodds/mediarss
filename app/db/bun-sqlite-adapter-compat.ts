@@ -1,9 +1,13 @@
 import type { Database as BunDatabase } from 'bun:sqlite'
 import type {
 	AdapterCapabilityOverrides,
-	AdapterExecuteRequest,
-	AdapterResult,
 	DatabaseAdapter,
+	DataManipulationOperation,
+	DataManipulationRequest,
+	DataManipulationResult,
+	DataMigrationRequest,
+	DataMigrationResult,
+	TableRef,
 	TransactionOptions,
 	TransactionToken,
 } from 'remix/data-table'
@@ -35,6 +39,8 @@ export class BunSqliteDatabaseAdapter implements DatabaseAdapter {
 		returning: true,
 		savepoints: true,
 		upsert: true,
+		transactionalDdl: true,
+		migrationLock: false,
 	}
 
 	#database: BunSqliteDatabaseConnection
@@ -51,32 +57,47 @@ export class BunSqliteDatabaseAdapter implements DatabaseAdapter {
 			returning: options?.capabilities?.returning ?? true,
 			savepoints: options?.capabilities?.savepoints ?? true,
 			upsert: options?.capabilities?.upsert ?? true,
+			transactionalDdl: options?.capabilities?.transactionalDdl ?? true,
+			migrationLock: options?.capabilities?.migrationLock ?? false,
 		}
 	}
 
-	async execute(request: AdapterExecuteRequest): Promise<AdapterResult> {
+	compileSql(
+		operation:
+			| DataManipulationRequest['operation']
+			| DataMigrationRequest['operation'],
+	) {
+		const compiled = compileBunSqliteStatement(
+			operation as DataManipulationOperation,
+		)
+		return [{ text: compiled.text, values: compiled.values }]
+	}
+
+	async execute(
+		request: DataManipulationRequest,
+	): Promise<DataManipulationResult> {
 		if (
-			request.statement.kind === 'insertMany' &&
-			request.statement.values.length === 0
+			request.operation.kind === 'insertMany' &&
+			request.operation.values.length === 0
 		) {
 			return {
 				affectedRows: 0,
 				insertId: undefined,
-				rows: request.statement.returning ? [] : undefined,
+				rows: request.operation.returning ? [] : undefined,
 			}
 		}
 
-		const compiled = compileBunSqliteStatement(request.statement)
+		const compiled = compileBunSqliteStatement(request.operation)
 		const prepared = this.#database.prepare(
 			compiled.text,
 		) as unknown as BunPreparedStatement
-		const readWithAll = shouldExecuteAsReader(request.statement, compiled.text)
+		const readWithAll = shouldExecuteAsReader(request.operation, compiled.text)
 
 		if (readWithAll) {
 			let rows = normalizeRows(prepared.all(...compiled.values))
 			if (
-				request.statement.kind === 'count' ||
-				request.statement.kind === 'exists'
+				request.operation.kind === 'count' ||
+				request.operation.kind === 'exists'
 			) {
 				rows = normalizeCountRows(rows)
 			}
@@ -84,18 +105,57 @@ export class BunSqliteDatabaseAdapter implements DatabaseAdapter {
 			return {
 				rows,
 				affectedRows: normalizeAffectedRowsForReader(
-					request.statement.kind,
+					request.operation.kind,
 					rows,
 				),
-				insertId: normalizeInsertIdForReader(request.statement, rows),
+				insertId: normalizeInsertIdForReader(request.operation, rows),
 			}
 		}
 
 		const result = prepared.run(...compiled.values)
 		return {
-			affectedRows: normalizeAffectedRowsForRun(request.statement.kind, result),
-			insertId: normalizeInsertIdForRun(request.statement, result),
+			affectedRows: normalizeAffectedRowsForRun(request.operation.kind, result),
+			insertId: normalizeInsertIdForRun(request.operation, result),
 		}
+	}
+
+	async migrate(request: DataMigrationRequest): Promise<DataMigrationResult> {
+		const statements = this.compileSql(request.operation)
+		for (const statement of statements) {
+			;(
+				this.#database.prepare(statement.text).run as (
+					...params: Array<unknown>
+				) => unknown
+			)(...statement.values)
+		}
+		return { affectedOperations: statements.length }
+	}
+
+	async hasTable(
+		table: TableRef,
+		_transaction?: TransactionToken,
+	): Promise<boolean> {
+		const schemaPrefix = table.schema ? `${quoteIdentifier(table.schema)}.` : ''
+		const rows = this.#database
+			.prepare(
+				`select 1 as exists_flag from ${schemaPrefix}sqlite_master where type = ? and name = ? limit 1`,
+			)
+			.all('table', table.name) as Array<Record<string, unknown>>
+		return rows.length > 0
+	}
+
+	async hasColumn(
+		table: TableRef,
+		column: string,
+		_transaction?: TransactionToken,
+	): Promise<boolean> {
+		const schemaPrefix = table.schema ? `${quoteIdentifier(table.schema)}.` : ''
+		const rows = this.#database
+			.prepare(
+				`pragma ${schemaPrefix}table_info(${quoteIdentifier(table.name)})`,
+			)
+			.all() as Array<Record<string, unknown>>
+		return rows.some((row) => row.name === column)
 	}
 
 	async beginTransaction(
@@ -177,7 +237,7 @@ export function createBunSqliteDatabaseAdapter(
 }
 
 function shouldExecuteAsReader(
-	statement: AdapterExecuteRequest['statement'],
+	statement: DataManipulationRequest['operation'],
 	compiledText: string,
 ): boolean {
 	if (
@@ -196,7 +256,7 @@ function shouldExecuteAsReader(
 }
 
 function hasReturningClause(
-	statement: AdapterExecuteRequest['statement'],
+	statement: DataManipulationRequest['operation'],
 ): boolean {
 	if (!('returning' in statement)) return false
 	if (Array.isArray(statement.returning)) {
@@ -240,7 +300,7 @@ function normalizeCountRows(
 }
 
 function normalizeAffectedRowsForReader(
-	kind: AdapterExecuteRequest['statement']['kind'],
+	kind: DataManipulationRequest['operation']['kind'],
 	rows: Array<Record<string, unknown>>,
 ): number | undefined {
 	if (isWriteStatementKind(kind)) {
@@ -250,7 +310,7 @@ function normalizeAffectedRowsForReader(
 }
 
 function normalizeInsertIdForReader(
-	statement: AdapterExecuteRequest['statement'],
+	statement: DataManipulationRequest['operation'],
 	rows: Array<Record<string, unknown>>,
 ): unknown {
 	if (!isInsertStatementKind(statement.kind) || !('table' in statement)) {
@@ -263,15 +323,13 @@ function normalizeInsertIdForReader(
 	}
 
 	const key = primaryKey[0]
-	if (!key) {
-		return undefined
-	}
+	if (!key) return undefined
 	const row = rows[rows.length - 1]
 	return row ? row[key] : undefined
 }
 
 function normalizeAffectedRowsForRun(
-	kind: AdapterExecuteRequest['statement']['kind'],
+	kind: DataManipulationRequest['operation']['kind'],
 	result: BunStatementResult,
 ): number | undefined {
 	if (kind === 'select' || kind === 'count' || kind === 'exists') {
@@ -281,7 +339,7 @@ function normalizeAffectedRowsForRun(
 }
 
 function normalizeInsertIdForRun(
-	statement: AdapterExecuteRequest['statement'],
+	statement: DataManipulationRequest['operation'],
 	result: BunStatementResult,
 ): unknown {
 	if (!isInsertStatementKind(statement.kind) || !('table' in statement)) {
@@ -295,7 +353,7 @@ function normalizeInsertIdForRun(
 }
 
 function isWriteStatementKind(
-	kind: AdapterExecuteRequest['statement']['kind'],
+	kind: DataManipulationRequest['operation']['kind'],
 ): boolean {
 	return (
 		kind === 'insert' ||
@@ -307,7 +365,7 @@ function isWriteStatementKind(
 }
 
 function isInsertStatementKind(
-	kind: AdapterExecuteRequest['statement']['kind'],
+	kind: DataManipulationRequest['operation']['kind'],
 ): boolean {
 	return kind === 'insert' || kind === 'insertMany' || kind === 'upsert'
 }

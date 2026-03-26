@@ -150,7 +150,7 @@ async function countFilesInSubdirectories(
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const url = context.url
 		const rootName = url.searchParams.get('root')
 		const relativePath = url.searchParams.get('path') ?? ''

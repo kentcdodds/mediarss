@@ -60,7 +60,7 @@ async function isFileAllowed(
 
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { token, path: splatParam } = context.params
 		if (!splatParam) {
 			return new Response('File path required', { status: 400 })

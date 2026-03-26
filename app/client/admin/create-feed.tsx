@@ -1,4 +1,5 @@
 import type { Handle, RemixNode } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	colors,
 	mq,
@@ -409,35 +410,41 @@ export function CreateFeed(handle: Handle) {
 		return (
 			<div>
 				<div
-					css={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: spacing.md,
-						marginBottom: spacing.xl,
-						flexWrap: 'wrap',
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
+							marginBottom: spacing.xl,
+							flexWrap: 'wrap',
+						}),
+					]}
 				>
 					<a
 						href="/admin"
-						css={{
-							color: colors.textMuted,
-							textDecoration: 'none',
-							fontSize: typography.fontSize.sm,
-							'&:hover': { color: colors.text },
-						}}
+						mix={[
+							rmxCss({
+								color: colors.textMuted,
+								textDecoration: 'none',
+								fontSize: typography.fontSize.sm,
+								'&:hover': { color: colors.text },
+							}),
+						]}
 					>
 						← Back
 					</a>
 					<h2
-						css={{
-							fontSize: typography.fontSize.xl,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
-							[mq.mobile]: {
-								fontSize: typography.fontSize.lg,
-							},
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xl,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+								[mq.mobile]: {
+									fontSize: typography.fontSize.lg,
+								},
+							}),
+						]}
 					>
 						Create New Feed
 					</h2>
@@ -445,34 +452,40 @@ export function CreateFeed(handle: Handle) {
 
 				{/* Feed Type Selector */}
 				<div
-					css={{
-						backgroundColor: colors.surface,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
-						padding: responsive.spacingSection,
-						marginBottom: spacing.xl,
-						boxShadow: shadows.sm,
-					}}
+					mix={[
+						rmxCss({
+							backgroundColor: colors.surface,
+							borderRadius: radius.lg,
+							border: `1px solid ${colors.border}`,
+							padding: responsive.spacingSection,
+							marginBottom: spacing.xl,
+							boxShadow: shadows.sm,
+						}),
+					]}
 				>
 					<span
-						css={{
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.md,
-						}}
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.md,
+							}),
+						]}
 					>
 						Feed Type
 					</span>
 					<div
-						css={{
-							display: 'flex',
-							gap: spacing.md,
-							[mq.mobile]: {
-								flexDirection: 'column',
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.md,
+								[mq.mobile]: {
+									flexDirection: 'column',
+								},
+							}),
+						]}
 					>
 						<FeedTypeButton
 							selected={feedType === 'directory'}
@@ -502,13 +515,15 @@ export function CreateFeed(handle: Handle) {
 				{/* Directory Feed Form */}
 				{feedType === 'directory' && (
 					<div
-						css={{
-							backgroundColor: colors.surface,
-							borderRadius: radius.lg,
-							border: `1px solid ${colors.border}`,
-							padding: responsive.spacingSection,
-							boxShadow: shadows.sm,
-						}}
+						mix={[
+							rmxCss({
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: responsive.spacingSection,
+								boxShadow: shadows.sm,
+							}),
+						]}
 					>
 						<FormField id="directory-feed-name" label="Name" required>
 							<input
@@ -516,13 +531,13 @@ export function CreateFeed(handle: Handle) {
 								type="text"
 								value={directoryForm.name}
 								placeholder="My Audiobooks"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										directoryForm.name = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -536,15 +551,19 @@ export function CreateFeed(handle: Handle) {
 								value={directoryForm.description}
 								placeholder="Optional description for this feed"
 								rows={3}
-								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss({
+										...inputStyles,
+										resize: 'vertical',
+										minHeight: '80px',
+									}),
+									rmxOn('input', (e) => {
 										directoryForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -559,15 +578,15 @@ export function CreateFeed(handle: Handle) {
 								value={directoryForm.subtitle}
 								placeholder="Optional short tagline"
 								maxLength={255}
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										directoryForm.subtitle = (
 											e.target as HTMLInputElement
 										).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -579,14 +598,14 @@ export function CreateFeed(handle: Handle) {
 							<select
 								id="directory-feed-type"
 								value={directoryForm.feedType}
-								css={inputStyles}
-								on={{
-									change: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('change', (e) => {
 										directoryForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							>
 								<option value="episodic">Episodic</option>
 								<option value="serial">Serial</option>
@@ -603,13 +622,13 @@ export function CreateFeed(handle: Handle) {
 								type="url"
 								value={directoryForm.link}
 								placeholder="https://example.com"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										directoryForm.link = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -623,63 +642,67 @@ export function CreateFeed(handle: Handle) {
 								type="text"
 								value={directoryForm.copyright}
 								placeholder="© 2024 Your Name"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										directoryForm.copyright = (
 											e.target as HTMLInputElement
 										).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
 						<FormField label="Select Directories" required>
 							{rootsState.status === 'loading' && (
-								<p css={{ color: colors.textMuted, margin: 0 }}>
+								<p mix={[rmxCss({ color: colors.textMuted, margin: 0 })]}>
 									Loading media roots...
 								</p>
 							)}
 							{rootsState.status === 'error' && (
-								<p css={{ color: '#ef4444', margin: 0 }}>
+								<p mix={[rmxCss({ color: '#ef4444', margin: 0 })]}>
 									Error: {rootsState.message}
 								</p>
 							)}
 							{rootsState.status === 'success' && (
 								<div>
 									<div
-										css={{
-											display: 'flex',
-											gap: spacing.sm,
-											flexWrap: 'wrap',
-											marginBottom: spacing.md,
-										}}
+										mix={[
+											rmxCss({
+												display: 'flex',
+												gap: spacing.sm,
+												flexWrap: 'wrap',
+												marginBottom: spacing.md,
+											}),
+										]}
 									>
 										{rootsState.roots.map((root) => (
 											<button
 												key={root.name}
 												type="button"
-												css={{
-													padding: `${spacing.sm} ${spacing.md}`,
-													fontSize: typography.fontSize.sm,
-													borderRadius: radius.md,
-													border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
-													backgroundColor:
-														directoryForm.selectedRoot === root.name
-															? colors.primary
-															: colors.background,
-													color:
-														directoryForm.selectedRoot === root.name
-															? colors.background
-															: colors.text,
-													cursor: 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': {
-														borderColor: colors.primary,
-													},
-												}}
-												on={{ click: () => selectDirectoryRoot(root.name) }}
+												mix={[
+													rmxCss({
+														padding: `${spacing.sm} ${spacing.md}`,
+														fontSize: typography.fontSize.sm,
+														borderRadius: radius.md,
+														border: `1px solid ${directoryForm.selectedRoot === root.name ? colors.primary : colors.border}`,
+														backgroundColor:
+															directoryForm.selectedRoot === root.name
+																? colors.primary
+																: colors.background,
+														color:
+															directoryForm.selectedRoot === root.name
+																? colors.background
+																: colors.text,
+														cursor: 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': {
+															borderColor: colors.primary,
+														},
+													}),
+													rmxOn('click', () => selectDirectoryRoot(root.name)),
+												]}
 											>
 												{root.name}
 											</button>
@@ -713,28 +736,30 @@ export function CreateFeed(handle: Handle) {
 						)}
 
 						<div
-							css={{
-								display: 'grid',
-								gridTemplateColumns: '1fr 1fr',
-								gap: spacing.lg,
-								[mq.mobile]: {
-									gridTemplateColumns: '1fr',
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'grid',
+									gridTemplateColumns: '1fr 1fr',
+									gap: spacing.lg,
+									[mq.mobile]: {
+										gridTemplateColumns: '1fr',
+									},
+								}),
+							]}
 						>
 							<FormField id="directory-feed-sort-fields" label="Sort By">
 								<select
 									id="directory-feed-sort-fields"
 									value={directoryForm.sortFields}
-									css={inputStyles}
-									on={{
-										change: (e) => {
+									mix={[
+										rmxCss(inputStyles),
+										rmxOn('change', (e) => {
 											directoryForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
 											handle.update()
-										},
-									}}
+										}),
+									]}
 								>
 									<option value="publicationDate">Publication Date</option>
 									<option value="title">Title</option>
@@ -751,14 +776,14 @@ export function CreateFeed(handle: Handle) {
 								<select
 									id="directory-feed-sort-order"
 									value={directoryForm.sortOrder}
-									css={inputStyles}
-									on={{
-										change: (e) => {
+									mix={[
+										rmxCss(inputStyles),
+										rmxOn('change', (e) => {
 											directoryForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											handle.update()
-										},
-									}}
+										}),
+									]}
 								>
 									<option value="desc">Descending</option>
 									<option value="asc">Ascending</option>
@@ -781,13 +806,15 @@ export function CreateFeed(handle: Handle) {
 				{/* Curated Feed Form */}
 				{feedType === 'curated' && (
 					<div
-						css={{
-							backgroundColor: colors.surface,
-							borderRadius: radius.lg,
-							border: `1px solid ${colors.border}`,
-							padding: responsive.spacingSection,
-							boxShadow: shadows.sm,
-						}}
+						mix={[
+							rmxCss({
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								padding: responsive.spacingSection,
+								boxShadow: shadows.sm,
+							}),
+						]}
 					>
 						<FormField id="curated-feed-name" label="Name" required>
 							<input
@@ -795,13 +822,13 @@ export function CreateFeed(handle: Handle) {
 								type="text"
 								value={curatedForm.name}
 								placeholder="My Custom Playlist"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										curatedForm.name = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -815,15 +842,19 @@ export function CreateFeed(handle: Handle) {
 								value={curatedForm.description}
 								placeholder="Optional description for this feed"
 								rows={3}
-								css={{ ...inputStyles, resize: 'vertical', minHeight: '80px' }}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss({
+										...inputStyles,
+										resize: 'vertical',
+										minHeight: '80px',
+									}),
+									rmxOn('input', (e) => {
 										curatedForm.description = (
 											e.target as HTMLTextAreaElement
 										).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -838,13 +869,13 @@ export function CreateFeed(handle: Handle) {
 								value={curatedForm.subtitle}
 								placeholder="Optional short tagline"
 								maxLength={255}
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										curatedForm.subtitle = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -856,14 +887,14 @@ export function CreateFeed(handle: Handle) {
 							<select
 								id="curated-feed-type"
 								value={curatedForm.feedType}
-								css={inputStyles}
-								on={{
-									change: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('change', (e) => {
 										curatedForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							>
 								<option value="episodic">Episodic</option>
 								<option value="serial">Serial</option>
@@ -880,13 +911,13 @@ export function CreateFeed(handle: Handle) {
 								type="url"
 								value={curatedForm.link}
 								placeholder="https://example.com"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										curatedForm.link = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
@@ -900,24 +931,24 @@ export function CreateFeed(handle: Handle) {
 								type="text"
 								value={curatedForm.copyright}
 								placeholder="© 2024 Your Name"
-								css={inputStyles}
-								on={{
-									input: (e) => {
+								mix={[
+									rmxCss(inputStyles),
+									rmxOn('input', (e) => {
 										curatedForm.copyright = (e.target as HTMLInputElement).value
 										handle.update()
-									},
-								}}
+									}),
+								]}
 							/>
 						</FormField>
 
 						<FormField label="Select Files">
 							{rootsState.status === 'loading' && (
-								<p css={{ color: colors.textMuted, margin: 0 }}>
+								<p mix={[rmxCss({ color: colors.textMuted, margin: 0 })]}>
 									Loading media roots...
 								</p>
 							)}
 							{rootsState.status === 'error' && (
-								<p css={{ color: '#ef4444', margin: 0 }}>
+								<p mix={[rmxCss({ color: '#ef4444', margin: 0 })]}>
 									Error: {rootsState.message}
 								</p>
 							)}
@@ -953,28 +984,30 @@ export function CreateFeed(handle: Handle) {
 						)}
 
 						<div
-							css={{
-								display: 'grid',
-								gridTemplateColumns: '1fr 1fr',
-								gap: spacing.lg,
-								[mq.mobile]: {
-									gridTemplateColumns: '1fr',
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'grid',
+									gridTemplateColumns: '1fr 1fr',
+									gap: spacing.lg,
+									[mq.mobile]: {
+										gridTemplateColumns: '1fr',
+									},
+								}),
+							]}
 						>
 							<FormField id="curated-feed-sort-fields" label="Sort By">
 								<select
 									id="curated-feed-sort-fields"
 									value={curatedForm.sortFields}
-									css={inputStyles}
-									on={{
-										change: (e) => {
+									mix={[
+										rmxCss(inputStyles),
+										rmxOn('change', (e) => {
 											curatedForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
 											handle.update()
-										},
-									}}
+										}),
+									]}
 								>
 									<option value="publicationDate">Publication Date</option>
 									<option value="title">Title</option>
@@ -992,14 +1025,14 @@ export function CreateFeed(handle: Handle) {
 								<select
 									id="curated-feed-sort-order"
 									value={curatedForm.sortOrder}
-									css={inputStyles}
-									on={{
-										change: (e) => {
+									mix={[
+										rmxCss(inputStyles),
+										rmxOn('change', (e) => {
 											curatedForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											handle.update()
-										},
-									}}
+										}),
+									]}
 								>
 									<option value="desc">Descending</option>
 									<option value="asc">Ascending</option>
@@ -1059,36 +1092,42 @@ function FeedTypeButton() {
 	}) => (
 		<button
 			type="button"
-			css={{
-				flex: 1,
-				padding: spacing.lg,
-				textAlign: 'left',
-				borderRadius: radius.md,
-				border: `2px solid ${selected ? colors.primary : colors.border}`,
-				backgroundColor: selected ? colors.primarySoftest : colors.background,
-				cursor: 'pointer',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					borderColor: colors.primary,
-				},
-			}}
-			on={{ click: onClick }}
+			mix={[
+				rmxCss({
+					flex: 1,
+					padding: spacing.lg,
+					textAlign: 'left',
+					borderRadius: radius.md,
+					border: `2px solid ${selected ? colors.primary : colors.border}`,
+					backgroundColor: selected ? colors.primarySoftest : colors.background,
+					cursor: 'pointer',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						borderColor: colors.primary,
+					},
+				}),
+				rmxOn('click', onClick),
+			]}
 		>
 			<div
-				css={{
-					fontSize: typography.fontSize.base,
-					fontWeight: typography.fontWeight.semibold,
-					color: colors.text,
-					marginBottom: spacing.xs,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.fontSize.base,
+						fontWeight: typography.fontWeight.semibold,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}),
+				]}
 			>
 				{title}
 			</div>
 			<div
-				css={{
-					fontSize: typography.fontSize.sm,
-					color: colors.textMuted,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.fontSize.sm,
+						color: colors.textMuted,
+					}),
+				]}
 			>
 				{description}
 			</div>
@@ -1110,30 +1149,34 @@ function FormField() {
 		description?: string
 		children: RemixNode
 	}) => (
-		<div css={{ marginBottom: spacing.lg }}>
+		<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
 			<label
 				for={id}
-				css={{
-					display: 'block',
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.text,
-					marginBottom: spacing.xs,
-				}}
+				mix={[
+					rmxCss({
+						display: 'block',
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						marginBottom: spacing.xs,
+					}),
+				]}
 			>
 				{label}
 				{required && (
-					<span css={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
+					<span mix={[rmxCss({ color: '#ef4444', marginLeft: '4px' })]}>*</span>
 				)}
 			</label>
 			{description && (
 				<p
-					css={{
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-						margin: `0 0 ${spacing.sm} 0`,
-						lineHeight: 1.5,
-					}}
+					mix={[
+						rmxCss({
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							margin: `0 0 ${spacing.sm} 0`,
+							lineHeight: 1.5,
+						}),
+					]}
 				>
 					{description}
 				</p>
@@ -1146,15 +1189,17 @@ function FormField() {
 function ErrorBox() {
 	return ({ message }: { message: string }) => (
 		<div
-			css={{
-				padding: spacing.md,
-				backgroundColor: 'rgba(239, 68, 68, 0.1)',
-				borderRadius: radius.md,
-				border: '1px solid rgba(239, 68, 68, 0.3)',
-				marginTop: spacing.lg,
-			}}
+			mix={[
+				rmxCss({
+					padding: spacing.md,
+					backgroundColor: 'rgba(239, 68, 68, 0.1)',
+					borderRadius: radius.md,
+					border: '1px solid rgba(239, 68, 68, 0.3)',
+					marginTop: spacing.lg,
+				}),
+			]}
 		>
-			<p css={{ color: '#ef4444', margin: 0 }}>{message}</p>
+			<p mix={[rmxCss({ color: '#ef4444', margin: 0 })]}>{message}</p>
 		</div>
 	)
 }
@@ -1170,56 +1215,64 @@ function FormActions() {
 		onSubmit: () => void
 	}) => (
 		<div
-			css={{
-				display: 'flex',
-				gap: spacing.md,
-				justifyContent: 'flex-end',
-				marginTop: spacing.xl,
-				paddingTop: spacing.lg,
-				borderTop: `1px solid ${colors.border}`,
-				flexWrap: 'wrap',
-				[mq.mobile]: {
-					flexDirection: 'column-reverse',
-				},
-			}}
+			mix={[
+				rmxCss({
+					display: 'flex',
+					gap: spacing.md,
+					justifyContent: 'flex-end',
+					marginTop: spacing.xl,
+					paddingTop: spacing.lg,
+					borderTop: `1px solid ${colors.border}`,
+					flexWrap: 'wrap',
+					[mq.mobile]: {
+						flexDirection: 'column-reverse',
+					},
+				}),
+			]}
 		>
 			<a
 				href="/admin"
-				css={{
-					padding: `${spacing.sm} ${spacing.lg}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.text,
-					backgroundColor: colors.background,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					textDecoration: 'none',
-					textAlign: 'center',
-					cursor: 'pointer',
-					transition: `all ${transitions.fast}`,
-					'&:hover': {
-						backgroundColor: colors.surface,
-					},
-				}}
+				mix={[
+					rmxCss({
+						padding: `${spacing.sm} ${spacing.lg}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.text,
+						backgroundColor: colors.background,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						textDecoration: 'none',
+						textAlign: 'center',
+						cursor: 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: colors.surface,
+						},
+					}),
+				]}
 			>
 				Cancel
 			</a>
 			<button
 				type="button"
 				disabled={!canSubmit}
-				css={{
-					padding: `${spacing.sm} ${spacing.lg}`,
-					fontSize: typography.fontSize.sm,
-					fontWeight: typography.fontWeight.medium,
-					color: colors.background,
-					backgroundColor: canSubmit ? colors.primary : colors.border,
-					border: 'none',
-					borderRadius: radius.md,
-					cursor: canSubmit ? 'pointer' : 'not-allowed',
-					transition: `all ${transitions.fast}`,
-					'&:hover': canSubmit ? { backgroundColor: colors.primaryHover } : {},
-				}}
-				on={{ click: onSubmit }}
+				mix={[
+					rmxCss({
+						padding: `${spacing.sm} ${spacing.lg}`,
+						fontSize: typography.fontSize.sm,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.background,
+						backgroundColor: canSubmit ? colors.primary : colors.border,
+						border: 'none',
+						borderRadius: radius.md,
+						cursor: canSubmit ? 'pointer' : 'not-allowed',
+						transition: `all ${transitions.fast}`,
+						'&:hover': canSubmit
+							? { backgroundColor: colors.primaryHover }
+							: {},
+					}),
+					rmxOn('click', onSubmit),
+				]}
 			>
 				{isSubmitting ? 'Creating...' : 'Create Feed'}
 			</button>
@@ -1249,76 +1302,98 @@ function DirectoryBrowserWithAdd() {
 
 		return (
 			<div
-				css={{
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					overflow: 'hidden',
-				}}
+				mix={[
+					rmxCss({
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						overflow: 'hidden',
+					}),
+				]}
 			>
 				<div
-					css={{
-						padding: spacing.sm,
-						backgroundColor: colors.background,
-						borderBottom: `1px solid ${colors.border}`,
-						fontSize: typography.fontSize.sm,
-						fontFamily: 'monospace',
-						color: colors.textMuted,
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-					}}
+					mix={[
+						rmxCss({
+							padding: spacing.sm,
+							backgroundColor: colors.background,
+							borderBottom: `1px solid ${colors.border}`,
+							fontSize: typography.fontSize.sm,
+							fontFamily: 'monospace',
+							color: colors.textMuted,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+						}),
+					]}
 				>
-					<div css={{ display: 'flex', alignItems: 'center', gap: spacing.xs }}>
-						<span css={{ color: colors.primary }}>{rootName}</span>
+					<div
+						mix={[
+							rmxCss({
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.xs,
+							}),
+						]}
+					>
+						<span mix={[rmxCss({ color: colors.primary })]}>{rootName}</span>
 						{pathParts.map((part, i) => (
 							<span key={i}>
-								<span css={{ color: colors.textMuted }}>/</span>
+								<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
 								<span>{part}</span>
 							</span>
 						))}
-						{!currentPath && <span css={{ color: colors.textMuted }}>/</span>}
+						{!currentPath && (
+							<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
+						)}
 					</div>
 					<button
 						type="button"
 						disabled={isCurrentSelected}
-						css={{
-							padding: `${spacing.xs} ${spacing.sm}`,
-							fontSize: typography.fontSize.xs,
-							fontWeight: typography.fontWeight.medium,
-							borderRadius: radius.sm,
-							border: 'none',
-							backgroundColor: isCurrentSelected
-								? colors.border
-								: colors.primary,
-							color: colors.background,
-							cursor: isCurrentSelected ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': isCurrentSelected
-								? {}
-								: { backgroundColor: colors.primaryHover },
-						}}
-						on={{ click: onAddDirectory }}
+						mix={[
+							rmxCss({
+								padding: `${spacing.xs} ${spacing.sm}`,
+								fontSize: typography.fontSize.xs,
+								fontWeight: typography.fontWeight.medium,
+								borderRadius: radius.sm,
+								border: 'none',
+								backgroundColor: isCurrentSelected
+									? colors.border
+									: colors.primary,
+								color: colors.background,
+								cursor: isCurrentSelected ? 'not-allowed' : 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': isCurrentSelected
+									? {}
+									: { backgroundColor: colors.primaryHover },
+							}),
+							rmxOn('click', onAddDirectory),
+						]}
 					>
 						{isCurrentSelected ? 'Added' : '+ Add This Directory'}
 					</button>
 				</div>
 
 				<div
-					css={{
-						maxHeight: '300px',
-						overflowY: 'auto',
-						backgroundColor: colors.surface,
-					}}
+					mix={[
+						rmxCss({
+							maxHeight: '300px',
+							overflowY: 'auto',
+							backgroundColor: colors.surface,
+						}),
+					]}
 				>
 					{browseState.status === 'loading' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: colors.textMuted }}>Loading...</span>
+						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+							<span mix={[rmxCss({ color: colors.textMuted })]}>
+								Loading...
+							</span>
 						</div>
 					)}
 
 					{browseState.status === 'error' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: '#ef4444' }}>{browseState.message}</span>
+						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+							<span mix={[rmxCss({ color: '#ef4444' })]}>
+								{browseState.message}
+							</span>
 						</div>
 					)}
 
@@ -1327,21 +1402,25 @@ function DirectoryBrowserWithAdd() {
 							{currentPath && (
 								<button
 									type="button"
-									css={directoryItemStyles}
-									on={{ click: onNavigateUp }}
+									mix={[
+										rmxCss(directoryItemStyles),
+										rmxOn('click', onNavigateUp),
+									]}
 								>
-									<span css={{ marginRight: spacing.sm }}>📁</span>
+									<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
 									<span>..</span>
 								</button>
 							)}
 
 							{browseState.entries.length === 0 && !currentPath && (
 								<div
-									css={{
-										padding: spacing.lg,
-										textAlign: 'center',
-										color: colors.textMuted,
-									}}
+									mix={[
+										rmxCss({
+											padding: spacing.lg,
+											textAlign: 'center',
+											color: colors.textMuted,
+										}),
+									]}
 								>
 									Empty directory
 								</div>
@@ -1353,22 +1432,26 @@ function DirectoryBrowserWithAdd() {
 									<button
 										key={entry.name}
 										type="button"
-										css={directoryItemStyles}
-										on={{ click: () => onNavigateToDir(entry.name) }}
+										mix={[
+											rmxCss(directoryItemStyles),
+											rmxOn('click', () => onNavigateToDir(entry.name)),
+										]}
 									>
-										<span css={{ marginRight: spacing.sm }}>📁</span>
+										<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
 										<span>{entry.name}</span>
 									</button>
 								))}
 
 							{browseState.stats.totalFiles > 0 && (
 								<div
-									css={{
-										padding: `${spacing.sm} ${spacing.md}`,
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										borderTop: `1px solid ${colors.border}`,
-									}}
+									mix={[
+										rmxCss({
+											padding: `${spacing.sm} ${spacing.md}`,
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											borderTop: `1px solid ${colors.border}`,
+										}),
+									]}
 								>
 									{browseState.stats.filesInDirectory > 0 &&
 									browseState.stats.filesInSubdirectories > 0 ? (
@@ -1408,69 +1491,83 @@ function SelectedDirectoriesList() {
 		onRemove: (index: number) => void
 	}) => (
 		<div
-			css={{
-				border: `1px solid ${colors.border}`,
-				borderRadius: radius.md,
-				maxHeight: '200px',
-				overflowY: 'auto',
-			}}
+			mix={[
+				rmxCss({
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					maxHeight: '200px',
+					overflowY: 'auto',
+				}),
+			]}
 		>
 			{directories.map((dir, index) => (
 				<div
 					key={dir.displayPath}
-					css={{
-						display: 'flex',
-						alignItems: 'center',
-						padding: `${spacing.sm} ${spacing.md}`,
-						borderBottom:
-							index < directories.length - 1
-								? `1px solid ${colors.border}`
-								: 'none',
-						backgroundColor: colors.background,
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							padding: `${spacing.sm} ${spacing.md}`,
+							borderBottom:
+								index < directories.length - 1
+									? `1px solid ${colors.border}`
+									: 'none',
+							backgroundColor: colors.background,
+						}),
+					]}
 				>
 					<span
-						css={{
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							marginRight: spacing.sm,
-							minWidth: '24px',
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								marginRight: spacing.sm,
+								minWidth: '24px',
+							}),
+						]}
 					>
 						{index + 1}.
 					</span>
 					<span
-						css={{
-							flex: 1,
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap',
-							fontFamily: 'monospace',
-						}}
+						mix={[
+							rmxCss({
+								flex: 1,
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								fontFamily: 'monospace',
+							}),
+						]}
 					>
-						<span css={{ color: colors.primary }}>{dir.mediaRoot}</span>
+						<span mix={[rmxCss({ color: colors.primary })]}>
+							{dir.mediaRoot}
+						</span>
 						{dir.relativePath && (
-							<span css={{ color: colors.textMuted }}>:{dir.relativePath}</span>
+							<span mix={[rmxCss({ color: colors.textMuted })]}>
+								:{dir.relativePath}
+							</span>
 						)}
 					</span>
 					<button
 						type="button"
-						css={{
-							padding: `${spacing.xs} ${spacing.sm}`,
-							fontSize: typography.fontSize.xs,
-							color: '#ef4444',
-							backgroundColor: 'transparent',
-							border: 'none',
-							borderRadius: radius.sm,
-							cursor: 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							},
-						}}
-						on={{ click: () => onRemove(index) }}
+						mix={[
+							rmxCss({
+								padding: `${spacing.xs} ${spacing.sm}`,
+								fontSize: typography.fontSize.xs,
+								color: '#ef4444',
+								backgroundColor: 'transparent',
+								border: 'none',
+								borderRadius: radius.sm,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								},
+							}),
+							rmxOn('click', () => onRemove(index)),
+						]}
 					>
 						Remove
 					</button>
@@ -1511,43 +1608,49 @@ function FilePicker() {
 
 		return (
 			<div
-				css={{
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					overflow: 'hidden',
-				}}
+				mix={[
+					rmxCss({
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						overflow: 'hidden',
+					}),
+				]}
 			>
 				{/* Root selector */}
 				<div
-					css={{
-						padding: spacing.sm,
-						backgroundColor: colors.background,
-						borderBottom: `1px solid ${colors.border}`,
-						display: 'flex',
-						gap: spacing.sm,
-						flexWrap: 'wrap',
-					}}
+					mix={[
+						rmxCss({
+							padding: spacing.sm,
+							backgroundColor: colors.background,
+							borderBottom: `1px solid ${colors.border}`,
+							display: 'flex',
+							gap: spacing.sm,
+							flexWrap: 'wrap',
+						}),
+					]}
 				>
 					{roots.map((root) => (
 						<button
 							key={root.name}
 							type="button"
-							css={{
-								padding: `${spacing.xs} ${spacing.sm}`,
-								fontSize: typography.fontSize.xs,
-								borderRadius: radius.sm,
-								border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-								backgroundColor:
-									pickerRoot === root.name ? colors.primary : 'transparent',
-								color:
-									pickerRoot === root.name ? colors.background : colors.text,
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									borderColor: colors.primary,
-								},
-							}}
-							on={{ click: () => onSelectRoot(root.name) }}
+							mix={[
+								rmxCss({
+									padding: `${spacing.xs} ${spacing.sm}`,
+									fontSize: typography.fontSize.xs,
+									borderRadius: radius.sm,
+									border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+									backgroundColor:
+										pickerRoot === root.name ? colors.primary : 'transparent',
+									color:
+										pickerRoot === root.name ? colors.background : colors.text,
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										borderColor: colors.primary,
+									},
+								}),
+								rmxOn('click', () => onSelectRoot(root.name)),
+							]}
 						>
 							{root.name}
 						</button>
@@ -1557,96 +1660,111 @@ function FilePicker() {
 				{/* Path breadcrumb */}
 				{pickerRoot && (
 					<div
-						css={{
-							padding: spacing.sm,
-							backgroundColor: colors.background,
-							borderBottom: `1px solid ${colors.border}`,
-							fontSize: typography.fontSize.sm,
-							fontFamily: 'monospace',
-							color: colors.textMuted,
-							display: 'flex',
-							alignItems: 'center',
-							gap: spacing.xs,
-						}}
+						mix={[
+							rmxCss({
+								padding: spacing.sm,
+								backgroundColor: colors.background,
+								borderBottom: `1px solid ${colors.border}`,
+								fontSize: typography.fontSize.sm,
+								fontFamily: 'monospace',
+								color: colors.textMuted,
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.xs,
+							}),
+						]}
 					>
-						<span css={{ color: colors.primary }}>{pickerRoot}</span>
+						<span mix={[rmxCss({ color: colors.primary })]}>{pickerRoot}</span>
 						{pathParts.map((part, i) => (
 							<span key={i}>
-								<span css={{ color: colors.textMuted }}>/</span>
+								<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
 								<span>{part}</span>
 							</span>
 						))}
-						{!pickerPath && <span css={{ color: colors.textMuted }}>/</span>}
+						{!pickerPath && (
+							<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
+						)}
 					</div>
 				)}
 
 				{/* Search input */}
 				{pickerRoot && browseState.status === 'success' && (
 					<div
-						css={{
-							padding: spacing.sm,
-							backgroundColor: colors.background,
-							borderBottom: `1px solid ${colors.border}`,
-						}}
+						mix={[
+							rmxCss({
+								padding: spacing.sm,
+								backgroundColor: colors.background,
+								borderBottom: `1px solid ${colors.border}`,
+							}),
+						]}
 					>
 						<input
 							type="text"
 							placeholder="Search files..."
 							value={searchFilter}
-							css={{
-								width: '100%',
-								padding: spacing.sm,
-								fontSize: typography.fontSize.sm,
-								color: colors.text,
-								backgroundColor: colors.surface,
-								border: `1px solid ${colors.border}`,
-								borderRadius: radius.md,
-								outline: 'none',
-								transition: `border-color ${transitions.fast}`,
-								'&:focus': {
-									borderColor: colors.primary,
-								},
-								'&::placeholder': {
-									color: colors.textMuted,
-								},
-							}}
-							on={{
-								input: (e) =>
+							mix={[
+								rmxCss({
+									width: '100%',
+									padding: spacing.sm,
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+									backgroundColor: colors.surface,
+									border: `1px solid ${colors.border}`,
+									borderRadius: radius.md,
+									outline: 'none',
+									transition: `border-color ${transitions.fast}`,
+									'&:focus': {
+										borderColor: colors.primary,
+									},
+									'&::placeholder': {
+										color: colors.textMuted,
+									},
+								}),
+								rmxOn('input', (e) =>
 									onSearchChange((e.target as HTMLInputElement).value),
-							}}
+								),
+							]}
 						/>
 					</div>
 				)}
 
 				{/* File listing */}
 				<div
-					css={{
-						maxHeight: '300px',
-						overflowY: 'auto',
-						backgroundColor: colors.surface,
-					}}
+					mix={[
+						rmxCss({
+							maxHeight: '300px',
+							overflowY: 'auto',
+							backgroundColor: colors.surface,
+						}),
+					]}
 				>
 					{!pickerRoot && (
 						<div
-							css={{
-								padding: spacing.lg,
-								textAlign: 'center',
-								color: colors.textMuted,
-							}}
+							mix={[
+								rmxCss({
+									padding: spacing.lg,
+									textAlign: 'center',
+									color: colors.textMuted,
+								}),
+							]}
 						>
 							Select a media root to browse files
 						</div>
 					)}
 
 					{pickerRoot && browseState.status === 'loading' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: colors.textMuted }}>Loading...</span>
+						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+							<span mix={[rmxCss({ color: colors.textMuted })]}>
+								Loading...
+							</span>
 						</div>
 					)}
 
 					{pickerRoot && browseState.status === 'error' && (
-						<div css={{ padding: spacing.lg, textAlign: 'center' }}>
-							<span css={{ color: '#ef4444' }}>{browseState.message}</span>
+						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+							<span mix={[rmxCss({ color: '#ef4444' })]}>
+								{browseState.message}
+							</span>
 						</div>
 					)}
 
@@ -1655,21 +1773,25 @@ function FilePicker() {
 							{pickerPath && (
 								<button
 									type="button"
-									css={directoryItemStyles}
-									on={{ click: onNavigateUp }}
+									mix={[
+										rmxCss(directoryItemStyles),
+										rmxOn('click', onNavigateUp),
+									]}
 								>
-									<span css={{ marginRight: spacing.sm }}>📁</span>
+									<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
 									<span>..</span>
 								</button>
 							)}
 
 							{browseState.entries.length === 0 && !pickerPath && (
 								<div
-									css={{
-										padding: spacing.lg,
-										textAlign: 'center',
-										color: colors.textMuted,
-									}}
+									mix={[
+										rmxCss({
+											padding: spacing.lg,
+											textAlign: 'center',
+											color: colors.textMuted,
+										}),
+									]}
 								>
 									Empty directory
 								</div>
@@ -1686,10 +1808,12 @@ function FilePicker() {
 									<button
 										key={entry.name}
 										type="button"
-										css={directoryItemStyles}
-										on={{ click: () => onNavigateToDir(entry.name) }}
+										mix={[
+											rmxCss(directoryItemStyles),
+											rmxOn('click', () => onNavigateToDir(entry.name)),
+										]}
 									>
-										<span css={{ marginRight: spacing.sm }}>📁</span>
+										<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
 										<span>{entry.name}</span>
 									</button>
 								))}
@@ -1707,34 +1831,40 @@ function FilePicker() {
 										<button
 											key={entry.name}
 											type="button"
-											css={{
-												...directoryItemStyles,
-												backgroundColor: selected
-													? colors.primarySoft
-													: 'transparent',
-											}}
-											on={{ click: () => onToggleFile(entry.name) }}
+											mix={[
+												rmxCss({
+													...directoryItemStyles,
+													backgroundColor: selected
+														? colors.primarySoft
+														: 'transparent',
+												}),
+												rmxOn('click', () => onToggleFile(entry.name)),
+											]}
 										>
 											<span
-												css={{
-													marginRight: spacing.sm,
-													width: '16px',
-													height: '16px',
-													border: `1px solid ${selected ? colors.primary : colors.border}`,
-													borderRadius: radius.sm,
-													backgroundColor: selected
-														? colors.primary
-														: 'transparent',
-													display: 'inline-flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-													fontSize: '12px',
-													color: colors.background,
-												}}
+												mix={[
+													rmxCss({
+														marginRight: spacing.sm,
+														width: '16px',
+														height: '16px',
+														border: `1px solid ${selected ? colors.primary : colors.border}`,
+														borderRadius: radius.sm,
+														backgroundColor: selected
+															? colors.primary
+															: 'transparent',
+														display: 'inline-flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontSize: '12px',
+														color: colors.background,
+													}),
+												]}
 											>
 												{selected && '✓'}
 											</span>
-											<span css={{ marginRight: spacing.sm }}>📄</span>
+											<span mix={[rmxCss({ marginRight: spacing.sm })]}>
+												📄
+											</span>
 											<span>{entry.name}</span>
 										</button>
 									)
@@ -1743,12 +1873,14 @@ function FilePicker() {
 							{/* File count stats */}
 							{browseState.stats.totalFiles > 0 && (
 								<div
-									css={{
-										padding: `${spacing.sm} ${spacing.md}`,
-										fontSize: typography.fontSize.xs,
-										color: colors.textMuted,
-										borderTop: `1px solid ${colors.border}`,
-									}}
+									mix={[
+										rmxCss({
+											padding: `${spacing.sm} ${spacing.md}`,
+											fontSize: typography.fontSize.xs,
+											color: colors.textMuted,
+											borderTop: `1px solid ${colors.border}`,
+										}),
+									]}
 								>
 									{browseState.stats.filesInDirectory > 0 &&
 									browseState.stats.filesInSubdirectories > 0 ? (
@@ -1793,69 +1925,83 @@ function SelectedFilesList() {
 		onRemove: (mediaPath: string) => void
 	}) => (
 		<div
-			css={{
-				border: `1px solid ${colors.border}`,
-				borderRadius: radius.md,
-				maxHeight: '200px',
-				overflowY: 'auto',
-			}}
+			mix={[
+				rmxCss({
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					maxHeight: '200px',
+					overflowY: 'auto',
+				}),
+			]}
 		>
 			{files.map((file, index) => (
 				<div
 					key={file.mediaPath}
-					css={{
-						display: 'flex',
-						alignItems: 'center',
-						padding: `${spacing.sm} ${spacing.md}`,
-						borderBottom:
-							index < files.length - 1 ? `1px solid ${colors.border}` : 'none',
-						backgroundColor: colors.background,
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							padding: `${spacing.sm} ${spacing.md}`,
+							borderBottom:
+								index < files.length - 1
+									? `1px solid ${colors.border}`
+									: 'none',
+							backgroundColor: colors.background,
+						}),
+					]}
 				>
 					<span
-						css={{
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							marginRight: spacing.sm,
-							minWidth: '24px',
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								marginRight: spacing.sm,
+								minWidth: '24px',
+							}),
+						]}
 					>
 						{index + 1}.
 					</span>
 					<span
-						css={{
-							flex: 1,
-							fontSize: typography.fontSize.sm,
-							color: colors.text,
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap',
-							fontFamily: 'monospace',
-						}}
+						mix={[
+							rmxCss({
+								flex: 1,
+								fontSize: typography.fontSize.sm,
+								color: colors.text,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+								fontFamily: 'monospace',
+							}),
+						]}
 					>
-						<span css={{ color: colors.primary }}>{file.rootName}</span>
+						<span mix={[rmxCss({ color: colors.primary })]}>
+							{file.rootName}
+						</span>
 						{file.relativePath && (
-							<span css={{ color: colors.textMuted }}>
+							<span mix={[rmxCss({ color: colors.textMuted })]}>
 								:{file.relativePath}
 							</span>
 						)}
 					</span>
 					<button
 						type="button"
-						css={{
-							padding: `${spacing.xs} ${spacing.sm}`,
-							fontSize: typography.fontSize.xs,
-							color: '#ef4444',
-							backgroundColor: 'transparent',
-							border: 'none',
-							borderRadius: radius.sm,
-							cursor: 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							},
-						}}
-						on={{ click: () => onRemove(file.mediaPath) }}
+						mix={[
+							rmxCss({
+								padding: `${spacing.xs} ${spacing.sm}`,
+								fontSize: typography.fontSize.xs,
+								color: '#ef4444',
+								backgroundColor: 'transparent',
+								border: 'none',
+								borderRadius: radius.sm,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								},
+							}),
+							rmxOn('click', () => onRemove(file.mediaPath)),
+						]}
 					>
 						Remove
 					</button>

@@ -3,7 +3,7 @@ import '#app/config/init-env.ts'
 import protectedResourceHandler from './oauth-protected-resource.ts'
 
 type ProtectedResourceActionContext = Parameters<
-	typeof protectedResourceHandler.action
+	typeof protectedResourceHandler.handler
 >[0]
 
 type MinimalProtectedResourceActionContext = {
@@ -28,7 +28,7 @@ test('oauth protected resource metadata uses forwarded https origin', async () =
 			},
 		},
 	)
-	const response = await protectedResourceHandler.action(
+	const response = await protectedResourceHandler.handler(
 		asActionContext({
 			request,
 			method: 'GET',

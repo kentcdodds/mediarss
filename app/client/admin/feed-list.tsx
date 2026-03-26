@@ -1,5 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
 import type { Handle } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import { SearchInput } from '#app/components/search-input.tsx'
 import {
 	FEED_SORT_OPTIONS,
@@ -236,40 +237,46 @@ export function FeedList(handle: Handle) {
 		return (
 			<div>
 				<div
-					css={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						marginBottom: spacing.xl,
-						flexWrap: 'wrap',
-						gap: spacing.md,
-						[mq.mobile]: {
-							flexDirection: 'column',
-							alignItems: 'stretch',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							marginBottom: spacing.xl,
+							flexWrap: 'wrap',
+							gap: spacing.md,
+							[mq.mobile]: {
+								flexDirection: 'column',
+								alignItems: 'stretch',
+							},
+						}),
+					]}
 				>
 					<div>
 						<h2
-							css={{
-								fontSize: typography.fontSize.xl,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-								[mq.mobile]: {
-									fontSize: typography.fontSize.lg,
-								},
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: 0,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.lg,
+									},
+								}),
+							]}
 						>
 							Your Feeds
 						</h2>
 						{feeds.length > 0 && (
 							<p
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-									margin: `${spacing.xs} 0 0 0`,
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+										margin: `${spacing.xs} 0 0 0`,
+									}),
+								]}
 							>
 								{filteredFeeds.length === feeds.length
 									? `${feeds.length} feed${feeds.length !== 1 ? 's' : ''}`
@@ -281,26 +288,30 @@ export function FeedList(handle: Handle) {
 					{/* Feed controls */}
 					{feeds.length > 0 && (
 						<div
-							css={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: spacing.sm,
-								flexWrap: 'wrap',
-								[mq.mobile]: {
-									width: '100%',
-									justifyContent: 'center',
-								},
-							}}
-						>
-							<div
-								css={{
+							mix={[
+								rmxCss({
 									display: 'flex',
-									gap: spacing.xs,
+									alignItems: 'center',
+									gap: spacing.sm,
+									flexWrap: 'wrap',
 									[mq.mobile]: {
 										width: '100%',
 										justifyContent: 'center',
 									},
-								}}
+								}),
+							]}
+						>
+							<div
+								mix={[
+									rmxCss({
+										display: 'flex',
+										gap: spacing.xs,
+										[mq.mobile]: {
+											width: '100%',
+											justifyContent: 'center',
+										},
+									}),
+								]}
 							>
 								<FilterButton
 									active={filterType === 'all'}
@@ -324,48 +335,52 @@ export function FeedList(handle: Handle) {
 								</FilterButton>
 							</div>
 							<div
-								css={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.xs,
-								}}
+								mix={[
+									rmxCss({
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.xs,
+									}),
+								]}
 							>
 								<label
 									for="feed-sort"
-									css={{
-										fontSize: typography.fontSize.xs,
-										fontWeight: typography.fontWeight.medium,
-										color: colors.textMuted,
-										textTransform: 'uppercase',
-										letterSpacing: '0.05em',
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.xs,
+											fontWeight: typography.fontWeight.medium,
+											color: colors.textMuted,
+											textTransform: 'uppercase',
+											letterSpacing: '0.05em',
+										}),
+									]}
 								>
 									Sort
 								</label>
 								<select
 									id="feed-sort"
 									value={sortBy}
-									css={{
-										padding: `${spacing.xs} ${spacing.sm}`,
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
-										backgroundColor: colors.background,
-										border: `1px solid ${colors.border}`,
-										borderRadius: radius.sm,
-										cursor: 'pointer',
-										'&:focus': {
-											outline: 'none',
-											borderColor: colors.primary,
-											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-										},
-									}}
-									on={{
-										change: (e: Event) => {
+									mix={[
+										rmxCss({
+											padding: `${spacing.xs} ${spacing.sm}`,
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+											backgroundColor: colors.background,
+											border: `1px solid ${colors.border}`,
+											borderRadius: radius.sm,
+											cursor: 'pointer',
+											'&:focus': {
+												outline: 'none',
+												borderColor: colors.primary,
+												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+											},
+										}),
+										rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
 											const nextSortBy = (e.target as HTMLSelectElement)
 												.value as FeedSortBy
 											setSortBy(nextSortBy)
-										},
-									}}
+										}),
+									]}
 								>
 									{FEED_SORT_OPTIONS.map((option) => (
 										<option key={option.value} value={option.value}>
@@ -377,59 +392,65 @@ export function FeedList(handle: Handle) {
 						</div>
 					)}
 					<div
-						css={{
-							display: 'flex',
-							gap: spacing.sm,
-							[mq.mobile]: {
-								flexDirection: 'column',
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.sm,
+								[mq.mobile]: {
+									flexDirection: 'column',
+								},
+							}),
+						]}
 					>
 						<a
 							href="/admin/media"
-							css={{
-								display: 'inline-flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: spacing.sm,
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.primary,
-								backgroundColor: 'transparent',
-								border: `1px solid ${colors.primary}`,
-								borderRadius: radius.md,
-								textDecoration: 'none',
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: colors.primarySoft,
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'inline-flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									gap: spacing.sm,
+									padding: `${spacing.sm} ${spacing.lg}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.primary,
+									backgroundColor: 'transparent',
+									border: `1px solid ${colors.primary}`,
+									borderRadius: radius.md,
+									textDecoration: 'none',
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: colors.primarySoft,
+									},
+								}),
+							]}
 						>
 							Manage Access
 						</a>
 						<a
 							href="/admin/feeds/new"
-							css={{
-								display: 'inline-flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: spacing.sm,
-								padding: `${spacing.sm} ${spacing.lg}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.background,
-								backgroundColor: colors.primary,
-								border: 'none',
-								borderRadius: radius.md,
-								textDecoration: 'none',
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: colors.primaryHover,
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'inline-flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									gap: spacing.sm,
+									padding: `${spacing.sm} ${spacing.lg}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.background,
+									backgroundColor: colors.primary,
+									border: 'none',
+									borderRadius: radius.md,
+									textDecoration: 'none',
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: colors.primaryHover,
+									},
+								}),
+							]}
 						>
 							+ New Feed
 						</a>
@@ -438,7 +459,7 @@ export function FeedList(handle: Handle) {
 
 				{/* Search */}
 				{feeds.length > 0 && (
-					<div css={{ marginBottom: spacing.lg }}>
+					<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
 						<SearchInput
 							placeholder="Search by name, description, path..."
 							value={searchQuery}
@@ -454,14 +475,16 @@ export function FeedList(handle: Handle) {
 					<NoResults searchQuery={searchQuery} filterType={filterType} />
 				) : (
 					<div
-						css={{
-							display: 'grid',
-							gridTemplateColumns: `repeat(auto-fill, minmax(${responsive.cardMinWidth}, 1fr))`,
-							gap: spacing.lg,
-							[mq.mobile]: {
-								gap: spacing.md,
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'grid',
+								gridTemplateColumns: `repeat(auto-fill, minmax(${responsive.cardMinWidth}, 1fr))`,
+								gap: spacing.lg,
+								[mq.mobile]: {
+									gap: spacing.md,
+								},
+							}),
+						]}
 					>
 						{sortedFeeds.map((feed) => (
 							<FeedCard key={feed.id} feed={feed} />
@@ -476,25 +499,29 @@ export function FeedList(handle: Handle) {
 function LoadingSpinner() {
 	return () => (
 		<div
-			css={{
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-				padding: spacing['2xl'],
-			}}
+			mix={[
+				rmxCss({
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					padding: spacing['2xl'],
+				}),
+			]}
 		>
 			<div
-				css={{
-					width: '40px',
-					height: '40px',
-					border: `3px solid ${colors.border}`,
-					borderTopColor: colors.primary,
-					borderRadius: '50%',
-					animation: 'spin 1s linear infinite',
-					'@keyframes spin': {
-						to: { transform: 'rotate(360deg)' },
-					},
-				}}
+				mix={[
+					rmxCss({
+						width: '40px',
+						height: '40px',
+						border: `3px solid ${colors.border}`,
+						borderTopColor: colors.primary,
+						borderRadius: '50%',
+						animation: 'spin 1s linear infinite',
+						'@keyframes spin': {
+							to: { transform: 'rotate(360deg)' },
+						},
+					}),
+				]}
 			/>
 		</div>
 	)
@@ -503,19 +530,23 @@ function LoadingSpinner() {
 function ErrorMessage() {
 	return ({ message }: { message: string }) => (
 		<div
-			css={{
-				padding: spacing.xl,
-				backgroundColor: 'rgba(239, 68, 68, 0.1)',
-				borderRadius: radius.md,
-				border: '1px solid rgba(239, 68, 68, 0.3)',
-			}}
+			mix={[
+				rmxCss({
+					padding: spacing.xl,
+					backgroundColor: 'rgba(239, 68, 68, 0.1)',
+					borderRadius: radius.md,
+					border: '1px solid rgba(239, 68, 68, 0.3)',
+				}),
+			]}
 		>
 			<p
-				css={{
-					color: '#ef4444',
-					margin: 0,
-					fontSize: typography.fontSize.base,
-				}}
+				mix={[
+					rmxCss({
+						color: '#ef4444',
+						margin: 0,
+						fontSize: typography.fontSize.base,
+					}),
+				]}
 			>
 				Failed to load feeds: {message}
 			</p>
@@ -526,30 +557,36 @@ function ErrorMessage() {
 function EmptyState() {
 	return () => (
 		<div
-			css={{
-				textAlign: 'center',
-				padding: spacing['2xl'],
-				backgroundColor: colors.surface,
-				borderRadius: radius.lg,
-				border: `1px dashed ${colors.border}`,
-			}}
+			mix={[
+				rmxCss({
+					textAlign: 'center',
+					padding: spacing['2xl'],
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px dashed ${colors.border}`,
+				}),
+			]}
 		>
 			<p
-				css={{
-					color: colors.textMuted,
-					fontSize: typography.fontSize.lg,
-					margin: 0,
-					marginBottom: spacing.md,
-				}}
+				mix={[
+					rmxCss({
+						color: colors.textMuted,
+						fontSize: typography.fontSize.lg,
+						margin: 0,
+						marginBottom: spacing.md,
+					}),
+				]}
 			>
 				No feeds yet
 			</p>
 			<p
-				css={{
-					color: colors.textMuted,
-					fontSize: typography.fontSize.sm,
-					margin: 0,
-				}}
+				mix={[
+					rmxCss({
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+						margin: 0,
+					}),
+				]}
 			>
 				Create your first feed to get started
 			</p>
@@ -570,32 +607,38 @@ function NoResults() {
 
 		return (
 			<div
-				css={{
-					textAlign: 'center',
-					padding: spacing['2xl'],
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-				}}
+				mix={[
+					rmxCss({
+						textAlign: 'center',
+						padding: spacing['2xl'],
+						backgroundColor: colors.surface,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+					}),
+				]}
 			>
 				<p
-					css={{
-						color: colors.textMuted,
-						fontSize: typography.fontSize.lg,
-						margin: 0,
-						marginBottom: spacing.md,
-					}}
+					mix={[
+						rmxCss({
+							color: colors.textMuted,
+							fontSize: typography.fontSize.lg,
+							margin: 0,
+							marginBottom: spacing.md,
+						}),
+					]}
 				>
 					{hasSearch
 						? `No${filterLabel} feeds match "${searchQuery}"`
 						: `No${filterLabel} feeds found`}
 				</p>
 				<p
-					css={{
-						color: colors.textMuted,
-						fontSize: typography.fontSize.sm,
-						margin: 0,
-					}}
+					mix={[
+						rmxCss({
+							color: colors.textMuted,
+							fontSize: typography.fontSize.sm,
+							margin: 0,
+						}),
+					]}
 				>
 					{hasSearch
 						? 'Try a different search term'
@@ -636,22 +679,24 @@ function FilterButton() {
 			<button
 				type="button"
 				aria-pressed={active}
-				css={{
-					padding: `${spacing.xs} ${spacing.sm}`,
-					fontSize: typography.fontSize.xs,
-					fontWeight: typography.fontWeight.medium,
-					color: active ? colors.background : colors.textMuted,
-					backgroundColor: active ? activeColor : 'transparent',
-					border: `1px solid ${active ? activeColor : colors.border}`,
-					borderRadius: radius.sm,
-					cursor: 'pointer',
-					transition: `all ${transitions.fast}`,
-					'&:hover': {
-						borderColor: activeColor,
-						color: active ? colors.background : colors.text,
-					},
-				}}
-				on={{ click: onClick }}
+				mix={[
+					rmxCss({
+						padding: `${spacing.xs} ${spacing.sm}`,
+						fontSize: typography.fontSize.xs,
+						fontWeight: typography.fontWeight.medium,
+						color: active ? colors.background : colors.textMuted,
+						backgroundColor: active ? activeColor : 'transparent',
+						border: `1px solid ${active ? activeColor : colors.border}`,
+						borderRadius: radius.sm,
+						cursor: 'pointer',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							borderColor: activeColor,
+							color: active ? colors.background : colors.text,
+						},
+					}),
+					rmxOn('click', onClick),
+				]}
 			>
 				{children}
 			</button>
@@ -668,45 +713,49 @@ function FeedCard() {
 
 		return (
 			<div
-				css={{
-					backgroundColor: colors.surface,
-					borderRadius: radius.lg,
-					border: `1px solid ${colors.border}`,
-					padding: spacing.lg,
-					display: 'flex',
-					flexDirection: 'column',
-					gap: spacing.md,
-					transition: `all ${transitions.fast}`,
-					boxShadow: shadows.sm,
-					'&:hover': {
-						boxShadow: shadows.md,
-						borderColor: colors.primary,
-					},
-				}}
+				mix={[
+					rmxCss({
+						backgroundColor: colors.surface,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						padding: spacing.lg,
+						display: 'flex',
+						flexDirection: 'column',
+						gap: spacing.md,
+						transition: `all ${transitions.fast}`,
+						boxShadow: shadows.sm,
+						'&:hover': {
+							boxShadow: shadows.md,
+							borderColor: colors.primary,
+						},
+					}),
+				]}
 			>
 				{/* Artwork and Header Row */}
 				<div
-					css={{
-						display: 'flex',
-						gap: spacing.md,
-						alignItems: 'flex-start',
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							gap: spacing.md,
+							alignItems: 'flex-start',
+						}),
+					]}
 				>
 					{/* Artwork */}
 					<img
 						src={`/admin/api/feeds/${feed.id}/artwork`}
 						alt=""
-						css={{
-							width: '64px',
-							height: '64px',
-							borderRadius: radius.md,
-							...artworkLayout.centeredContain,
-							backgroundColor: colors.background,
-							border: `1px solid ${colors.border}`,
-							flexShrink: 0,
-						}}
-						on={{
-							error: (e: Event) => {
+						mix={[
+							rmxCss({
+								width: '64px',
+								height: '64px',
+								borderRadius: radius.md,
+								...artworkLayout.centeredContain,
+								backgroundColor: colors.background,
+								border: `1px solid ${colors.border}`,
+								flexShrink: 0,
+							}),
+							rmxOn<HTMLImageElement, 'error'>('error', (e: Event) => {
 								// Fallback to placeholder if no artwork
 								const img = e.target as HTMLImageElement
 								// Guard against repeated error events
@@ -721,67 +770,75 @@ function FeedCard() {
 								img.src = `data:image/svg+xml,${encodeURIComponent(
 									`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1a1a2e"/><text x="32" y="40" font-family="system-ui" font-size="24" font-weight="bold" fill="#e94560" text-anchor="middle">${escapedChar}</text></svg>`,
 								)}`
-							},
-						}}
+							}),
+						]}
 					/>
 
 					{/* Name and Badge */}
-					<div css={{ flex: 1, minWidth: 0 }}>
+					<div mix={[rmxCss({ flex: 1, minWidth: 0 })]}>
 						<div
-							css={{
-								display: 'flex',
-								alignItems: 'flex-start',
-								justifyContent: 'space-between',
-								gap: spacing.sm,
-								marginBottom: spacing.xs,
-							}}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									alignItems: 'flex-start',
+									justifyContent: 'space-between',
+									gap: spacing.sm,
+									marginBottom: spacing.xs,
+								}),
+							]}
 						>
 							<a
 								href={`/admin/feeds/${feed.id}`}
-								css={{
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.semibold,
-									color: colors.text,
-									textDecoration: 'none',
-									overflow: 'hidden',
-									textOverflow: 'ellipsis',
-									whiteSpace: 'nowrap',
-									'&:hover': {
-										color: colors.primary,
-									},
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.base,
+										fontWeight: typography.fontWeight.semibold,
+										color: colors.text,
+										textDecoration: 'none',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap',
+										'&:hover': {
+											color: colors.primary,
+										},
+									}),
+								]}
 							>
 								{feed.name}
 							</a>
 							<span
-								css={{
-									fontSize: typography.fontSize.xs,
-									fontWeight: typography.fontWeight.medium,
-									color: isDirectory ? '#3b82f6' : '#8b5cf6',
-									backgroundColor: isDirectory
-										? 'rgba(59, 130, 246, 0.1)'
-										: 'rgba(139, 92, 246, 0.1)',
-									padding: `${spacing.xs} ${spacing.sm}`,
-									borderRadius: radius.sm,
-									textTransform: 'uppercase',
-									letterSpacing: '0.05em',
-									flexShrink: 0,
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: isDirectory ? '#3b82f6' : '#8b5cf6',
+										backgroundColor: isDirectory
+											? 'rgba(59, 130, 246, 0.1)'
+											: 'rgba(139, 92, 246, 0.1)',
+										padding: `${spacing.xs} ${spacing.sm}`,
+										borderRadius: radius.sm,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+										flexShrink: 0,
+									}),
+								]}
 							>
 								{feed.type}
 							</span>
 						</div>
 						{feed.description && (
 							<p
-								css={{
-									fontSize: typography.fontSize.xs,
-									color: colors.textMuted,
-									margin: 0,
-									display: '-webkit-box',
-									WebkitLineClamp: 2,
-									WebkitBoxOrient: 'vertical',
-									overflow: 'hidden',
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										margin: 0,
+										display: '-webkit-box',
+										WebkitLineClamp: 2,
+										WebkitBoxOrient: 'vertical',
+										overflow: 'hidden',
+									}),
+								]}
 							>
 								{feed.description}
 							</p>
@@ -791,23 +848,27 @@ function FeedCard() {
 
 				{isDirectory && directoryPaths.length > 0 && (
 					<div
-						css={{
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							fontFamily: 'monospace',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: spacing.xs,
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								fontFamily: 'monospace',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: spacing.xs,
+							}),
+						]}
 					>
 						{directoryPaths.map((path) => (
 							<span
 								key={path}
-								css={{
-									overflow: 'hidden',
-									textOverflow: 'ellipsis',
-									whiteSpace: 'nowrap',
-								}}
+								mix={[
+									rmxCss({
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap',
+									}),
+								]}
 							>
 								{path}
 							</span>
@@ -816,25 +877,29 @@ function FeedCard() {
 				)}
 
 				<div
-					css={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						marginTop: 'auto',
-						paddingTop: spacing.sm,
-						borderTop: `1px solid ${colors.border}`,
-						gap: spacing.md,
-						flexWrap: 'wrap',
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							marginTop: 'auto',
+							paddingTop: spacing.sm,
+							borderTop: `1px solid ${colors.border}`,
+							gap: spacing.md,
+							flexWrap: 'wrap',
+						}),
+					]}
 				>
 					<span
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+							}),
+						]}
 					>
 						{feed.itemCount === 0 ? (
-							<span css={{ color: '#f59e0b' }}>No files</span>
+							<span mix={[rmxCss({ color: '#f59e0b' })]}>No files</span>
 						) : (
 							<>
 								{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
@@ -844,15 +909,19 @@ function FeedCard() {
 						{feed.tokenCount} token{feed.tokenCount !== 1 ? 's' : ''}
 					</span>
 					<span
-						css={{
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+							}),
+						]}
 					>
 						{feed.lastAccessedAt ? (
 							<>Accessed {formatRelativeTime(feed.lastAccessedAt)}</>
 						) : (
-							<span css={{ fontStyle: 'italic' }}>Never accessed</span>
+							<span mix={[rmxCss({ fontStyle: 'italic' })]}>
+								Never accessed
+							</span>
 						)}
 					</span>
 				</div>

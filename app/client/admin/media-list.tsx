@@ -1,5 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
 import type { Handle } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	Modal,
 	ModalButton,
@@ -755,51 +756,59 @@ export function MediaList(handle: Handle) {
 
 		return (
 			<div
-				css={{
-					paddingBottom: selectedItems.size > 0 ? '100px' : 0,
-					[mq.mobile]: {
-						paddingBottom: selectedItems.size > 0 ? '220px' : 0,
-					},
-				}}
+				mix={[
+					rmxCss({
+						paddingBottom: selectedItems.size > 0 ? '100px' : 0,
+						[mq.mobile]: {
+							paddingBottom: selectedItems.size > 0 ? '220px' : 0,
+						},
+					}),
+				]}
 			>
 				{/* Header */}
 				<div
-					css={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						marginBottom: spacing.xl,
-						flexWrap: 'wrap',
-						gap: spacing.md,
-						[mq.mobile]: {
-							flexDirection: 'column',
-							alignItems: 'stretch',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
+							marginBottom: spacing.xl,
+							flexWrap: 'wrap',
+							gap: spacing.md,
+							[mq.mobile]: {
+								flexDirection: 'column',
+								alignItems: 'stretch',
+							},
+						}),
+					]}
 				>
 					<div>
 						<h2
-							css={{
-								fontSize: typography.fontSize.xl,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-								[mq.mobile]: {
-									fontSize: typography.fontSize.lg,
-								},
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.xl,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									margin: 0,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.lg,
+									},
+								}),
+							]}
 						>
 							Media Library
 						</h2>
 						<p
-							css={{
-								fontSize: typography.fontSize.sm,
-								color: colors.textMuted,
-								margin: `${spacing.xs} 0 0 0`,
-								[mq.mobile]: {
-									fontSize: typography.fontSize.xs,
-								},
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.sm,
+									color: colors.textMuted,
+									margin: `${spacing.xs} 0 0 0`,
+									[mq.mobile]: {
+										fontSize: typography.fontSize.xs,
+									},
+								}),
+							]}
 						>
 							{filteredMedia.length === media.length
 								? `${media.length} items`
@@ -807,46 +816,52 @@ export function MediaList(handle: Handle) {
 							{filteredMedia.length > 0 &&
 								` · ${startItem}–${endItem} on this page`}
 							<span
-								css={{
-									[mq.mobile]: {
-										display: 'none',
-									},
-								}}
+								mix={[
+									rmxCss({
+										[mq.mobile]: {
+											display: 'none',
+										},
+									}),
+								]}
 							>
 								{' · Click row to view details'}
 							</span>
 						</p>
 					</div>
 					<div
-						css={{
-							display: 'flex',
-							gap: spacing.md,
-							alignItems: 'center',
-							[mq.mobile]: {
-								justifyContent: 'space-between',
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.md,
+								alignItems: 'center',
+								[mq.mobile]: {
+									justifyContent: 'space-between',
+								},
+							}),
+						]}
 					>
 						<button
 							type="button"
-							css={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: spacing.xs,
-								padding: `${spacing.sm} ${spacing.md}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.background,
-								backgroundColor: colors.primary,
-								border: 'none',
-								borderRadius: radius.md,
-								cursor: 'pointer',
-								transition: `background-color ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: colors.primaryHover,
-								},
-							}}
-							on={{ click: openUploadModal }}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.xs,
+									padding: `${spacing.sm} ${spacing.md}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.background,
+									backgroundColor: colors.primary,
+									border: 'none',
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `background-color ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: colors.primaryHover,
+									},
+								}),
+								rmxOn('click', openUploadModal),
+							]}
 						>
 							<svg
 								width="16"
@@ -867,12 +882,14 @@ export function MediaList(handle: Handle) {
 						</button>
 						<a
 							href="/admin"
-							css={{
-								color: colors.textMuted,
-								textDecoration: 'none',
-								fontSize: typography.fontSize.sm,
-								'&:hover': { color: colors.text },
-							}}
+							mix={[
+								rmxCss({
+									color: colors.textMuted,
+									textDecoration: 'none',
+									fontSize: typography.fontSize.sm,
+									'&:hover': { color: colors.text },
+								}),
+							]}
 						>
 							← Back to Feeds
 						</a>
@@ -881,26 +898,30 @@ export function MediaList(handle: Handle) {
 
 				{/* Search */}
 				<div
-					css={{
-						display: 'flex',
-						gap: spacing.md,
-						alignItems: 'flex-end',
-						marginBottom: spacing.lg,
-						flexWrap: 'wrap',
-						[mq.mobile]: {
-							flexDirection: 'column',
-							alignItems: 'stretch',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							gap: spacing.md,
+							alignItems: 'flex-end',
+							marginBottom: spacing.lg,
+							flexWrap: 'wrap',
+							[mq.mobile]: {
+								flexDirection: 'column',
+								alignItems: 'stretch',
+							},
+						}),
+					]}
 				>
 					<div
-						css={{
-							flex: '1 1 320px',
-							minWidth: 0,
-							[mq.mobile]: {
-								width: '100%',
-							},
-						}}
+						mix={[
+							rmxCss({
+								flex: '1 1 320px',
+								minWidth: 0,
+								[mq.mobile]: {
+									width: '100%',
+								},
+							}),
+						]}
 					>
 						<SearchInput
 							placeholder="Search by title, author, narrator, genre..."
@@ -910,61 +931,67 @@ export function MediaList(handle: Handle) {
 						/>
 					</div>
 					<div
-						css={{
-							display: 'flex',
-							gap: spacing.md,
-							flexWrap: 'wrap',
-							[mq.mobile]: {
-								width: '100%',
-							},
-						}}
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.md,
+								flexWrap: 'wrap',
+								[mq.mobile]: {
+									width: '100%',
+								},
+							}),
+						]}
 					>
 						<div
-							css={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: spacing.xs,
-								minWidth: '180px',
-								[mq.mobile]: {
-									flex: 1,
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.xs,
+									minWidth: '180px',
+									[mq.mobile]: {
+										flex: 1,
+									},
+								}),
+							]}
 						>
 							<label
 								for="media-directory-filter"
-								css={{
-									fontSize: typography.fontSize.xs,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.textMuted,
-									textTransform: 'uppercase',
-									letterSpacing: '0.05em',
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}),
+								]}
 							>
 								Directory
 							</label>
 							<select
 								id="media-directory-filter"
 								value={selectedDirectory}
-								css={{
-									padding: `${spacing.xs} ${spacing.sm}`,
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-									backgroundColor: colors.background,
-									border: `1px solid ${colors.border}`,
-									borderRadius: radius.sm,
-									cursor: 'pointer',
-									'&:focus': {
-										outline: 'none',
-										borderColor: colors.primary,
-										boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-									},
-								}}
-								on={{
-									change: (e: Event) => {
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}),
+									rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
 										const nextDirectory = (e.target as HTMLSelectElement).value
 										setSelectedDirectory(nextDirectory)
-									},
-								}}
+									}),
+								]}
 							>
 								<option value="all">All directories</option>
 								{availableDirectories.map((directory) => (
@@ -975,52 +1002,56 @@ export function MediaList(handle: Handle) {
 							</select>
 						</div>
 						<div
-							css={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: spacing.xs,
-								minWidth: '220px',
-								[mq.mobile]: {
-									flex: 1,
-								},
-							}}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									flexDirection: 'column',
+									gap: spacing.xs,
+									minWidth: '220px',
+									[mq.mobile]: {
+										flex: 1,
+									},
+								}),
+							]}
 						>
 							<label
 								for="media-sort"
-								css={{
-									fontSize: typography.fontSize.xs,
-									fontWeight: typography.fontWeight.medium,
-									color: colors.textMuted,
-									textTransform: 'uppercase',
-									letterSpacing: '0.05em',
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.xs,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.textMuted,
+										textTransform: 'uppercase',
+										letterSpacing: '0.05em',
+									}),
+								]}
 							>
 								Sort
 							</label>
 							<select
 								id="media-sort"
 								value={sortBy}
-								css={{
-									padding: `${spacing.xs} ${spacing.sm}`,
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-									backgroundColor: colors.background,
-									border: `1px solid ${colors.border}`,
-									borderRadius: radius.sm,
-									cursor: 'pointer',
-									'&:focus': {
-										outline: 'none',
-										borderColor: colors.primary,
-										boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-									},
-								}}
-								on={{
-									change: (e: Event) => {
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.sm,
+										cursor: 'pointer',
+										'&:focus': {
+											outline: 'none',
+											borderColor: colors.primary,
+											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+										},
+									}),
+									rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
 										const nextSortBy = (e.target as HTMLSelectElement)
 											.value as MediaSortBy
 										setSortBy(nextSortBy)
-									},
-								}}
+									}),
+								]}
 							>
 								{MEDIA_SORT_OPTIONS.map((option) => (
 									<option key={option.value} value={option.value}>
@@ -1034,21 +1065,25 @@ export function MediaList(handle: Handle) {
 
 				{/* Media Table */}
 				<div
-					css={{
-						backgroundColor: colors.surface,
-						borderRadius: radius.lg,
-						border: `1px solid ${colors.border}`,
-						boxShadow: shadows.sm,
-						overflow: 'hidden',
-					}}
+					mix={[
+						rmxCss({
+							backgroundColor: colors.surface,
+							borderRadius: radius.lg,
+							border: `1px solid ${colors.border}`,
+							boxShadow: shadows.sm,
+							overflow: 'hidden',
+						}),
+					]}
 				>
 					{paginatedMedia.length === 0 ? (
 						<div
-							css={{
-								textAlign: 'center',
-								padding: spacing['2xl'],
-								color: colors.textMuted,
-							}}
+							mix={[
+								rmxCss({
+									textAlign: 'center',
+									padding: spacing['2xl'],
+									color: colors.textMuted,
+								}),
+							]}
 						>
 							{searchQuery
 								? 'No media matches your search.'
@@ -1057,27 +1092,33 @@ export function MediaList(handle: Handle) {
 									: 'No media files found.'}
 						</div>
 					) : (
-						<div css={{ overflowX: 'auto' }}>
+						<div mix={[rmxCss({ overflowX: 'auto' })]}>
 							<table
-								css={{
-									width: '100%',
-									borderCollapse: 'collapse',
-									fontSize: typography.fontSize.sm,
-								}}
+								mix={[
+									rmxCss({
+										width: '100%',
+										borderCollapse: 'collapse',
+										fontSize: typography.fontSize.sm,
+									}),
+								]}
 							>
 								<thead>
 									<tr
-										css={{
-											borderBottom: `1px solid ${colors.border}`,
-											backgroundColor: colors.background,
-										}}
+										mix={[
+											rmxCss({
+												borderBottom: `1px solid ${colors.border}`,
+												backgroundColor: colors.background,
+											}),
+										]}
 									>
 										<th
-											css={{
-												width: '48px',
-												padding: spacing.sm,
-												textAlign: 'center',
-											}}
+											mix={[
+												rmxCss({
+													width: '48px',
+													padding: spacing.sm,
+													textAlign: 'center',
+												}),
+											]}
 										>
 											<Checkbox
 												checked={areAllFilteredItemsSelected(filteredMedia)}
@@ -1095,85 +1136,97 @@ export function MediaList(handle: Handle) {
 											/>
 										</th>
 										<th
-											css={{
-												width: '60px',
-												padding: spacing.sm,
-											}}
+											mix={[
+												rmxCss({
+													width: '60px',
+													padding: spacing.sm,
+												}),
+											]}
 										/>
 										<th
-											css={{
-												textAlign: 'left',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-											}}
+											mix={[
+												rmxCss({
+													textAlign: 'left',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+												}),
+											]}
 										>
 											Title
 										</th>
 										<th
-											css={{
-												textAlign: 'left',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												[mq.mobile]: {
-													display: 'none',
-												},
-											}}
+											mix={[
+												rmxCss({
+													textAlign: 'left',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													[mq.mobile]: {
+														display: 'none',
+													},
+												}),
+											]}
 										>
 											Author
 										</th>
 										<th
-											css={{
-												textAlign: 'right',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												width: '80px',
-												[mq.mobile]: {
-													display: 'none',
-												},
-											}}
+											mix={[
+												rmxCss({
+													textAlign: 'right',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													width: '80px',
+													[mq.mobile]: {
+														display: 'none',
+													},
+												}),
+											]}
 										>
 											Duration
 										</th>
 										<th
-											css={{
-												textAlign: 'right',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												width: '80px',
-												[mq.mobile]: {
-													display: 'none',
-												},
-											}}
+											mix={[
+												rmxCss({
+													textAlign: 'right',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													width: '80px',
+													[mq.mobile]: {
+														display: 'none',
+													},
+												}),
+											]}
 										>
 											Size
 										</th>
 										<th
-											css={{
-												textAlign: 'center',
-												padding: `${spacing.sm} ${spacing.md}`,
-												color: colors.textMuted,
-												fontWeight: typography.fontWeight.medium,
-												fontSize: typography.fontSize.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												width: '100px',
-											}}
+											mix={[
+												rmxCss({
+													textAlign: 'center',
+													padding: `${spacing.sm} ${spacing.md}`,
+													color: colors.textMuted,
+													fontWeight: typography.fontWeight.medium,
+													fontSize: typography.fontSize.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													width: '100px',
+												}),
+											]}
 										>
 											Feeds
 										</th>
@@ -1193,55 +1246,69 @@ export function MediaList(handle: Handle) {
 										return (
 											<tr
 												key={item.path}
-												css={{
-													borderBottom: `1px solid ${colors.border}`,
-													'&:last-child': { borderBottom: 'none' },
-													transition: `background-color ${transitions.fast}`,
-													backgroundColor: isSelected
-														? colors.primarySoftSubtle
-														: 'transparent',
-													position: 'relative',
-													// Safari fix: transform creates a proper stacking context
-													// so row hover/focus styles stay contained
-													transform: 'translateZ(0)',
-													cursor: 'pointer',
-													'&:hover, &:focus-within': {
+												mix={[
+													rmxCss({
+														borderBottom: `1px solid ${colors.border}`,
+														'&:last-child': { borderBottom: 'none' },
+														transition: `background-color ${transitions.fast}`,
 														backgroundColor: isSelected
-															? colors.primarySoft
-															: colors.background,
-													},
-												}}
-												on={{
-													click: (event: MouseEvent) => {
-														if (shouldIgnoreRowClick(event)) return
-														window.location.href = detailHref
-													},
-												}}
+															? colors.primarySoftSubtle
+															: 'transparent',
+														position: 'relative',
+														// Safari fix: transform creates a proper stacking context
+														// so row hover/focus styles stay contained
+														transform: 'translateZ(0)',
+														cursor: 'pointer',
+														'&:hover, &:focus-within': {
+															backgroundColor: isSelected
+																? colors.primarySoft
+																: colors.background,
+														},
+													}),
+													rmxOn<HTMLTableRowElement, 'click'>(
+														'click',
+														(event: MouseEvent) => {
+															if (shouldIgnoreRowClick(event)) return
+															window.location.href = detailHref
+														},
+													),
+												]}
 											>
 												<td
-													css={{
-														padding: spacing.sm,
-														textAlign: 'center',
-														width: '48px',
-														position: 'relative',
-														zIndex: 1,
-													}}
+													mix={[
+														rmxCss({
+															padding: spacing.sm,
+															textAlign: 'center',
+															width: '48px',
+															position: 'relative',
+															zIndex: 1,
+														}),
+													]}
 												>
 													<Checkbox
 														checked={isSelected}
 														onChange={() => toggleSelection(item)}
 													/>
 												</td>
-												<td css={{ padding: spacing.sm, textAlign: 'center' }}>
+												<td
+													mix={[
+														rmxCss({
+															padding: spacing.sm,
+															textAlign: 'center',
+														}),
+													]}
+												>
 													<div
-														css={{
-															width: '40px',
-															height: '40px',
-															flexShrink: 0,
-															borderRadius: radius.sm,
-															backgroundColor: colors.background,
-															overflow: 'hidden',
-														}}
+														mix={[
+															rmxCss({
+																width: '40px',
+																height: '40px',
+																flexShrink: 0,
+																borderRadius: radius.sm,
+																backgroundColor: colors.background,
+																overflow: 'hidden',
+															}),
+														]}
 													>
 														<img
 															src={getArtworkUrl(item)}
@@ -1249,112 +1316,130 @@ export function MediaList(handle: Handle) {
 															loading="lazy"
 															width={40}
 															height={40}
-															css={{
-																width: '40px',
-																height: '40px',
-																display: 'block',
-																...artworkLayout.centeredContain,
-															}}
+															mix={[
+																rmxCss({
+																	width: '40px',
+																	height: '40px',
+																	display: 'block',
+																	...artworkLayout.centeredContain,
+																}),
+															]}
 														/>
 													</div>
 												</td>
 												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														color: colors.text,
-														maxWidth: '300px',
-														overflow: 'hidden',
-														textOverflow: 'ellipsis',
-														whiteSpace: 'nowrap',
-													}}
 													title={item.title}
+													mix={[
+														rmxCss({
+															padding: `${spacing.sm} ${spacing.md}`,
+															color: colors.text,
+															maxWidth: '300px',
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+															whiteSpace: 'nowrap',
+														}),
+													]}
 												>
 													<a
 														href={detailHref}
-														css={{
-															color: 'inherit',
-															textDecoration: 'none',
-															'&:focus': {
-																outline: 'none',
-															},
-															'&:focus-visible': {
-																textDecoration: 'underline',
-															},
-														}}
+														mix={[
+															rmxCss({
+																color: 'inherit',
+																textDecoration: 'none',
+																'&:focus': {
+																	outline: 'none',
+																},
+																'&:focus-visible': {
+																	textDecoration: 'underline',
+																},
+															}),
+														]}
 													>
 														{item.title}
 													</a>
 												</td>
 												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														color: colors.textMuted,
-														maxWidth: '200px',
-														overflow: 'hidden',
-														textOverflow: 'ellipsis',
-														whiteSpace: 'nowrap',
-														[mq.mobile]: {
-															display: 'none',
-														},
-													}}
 													title={item.author ?? undefined}
+													mix={[
+														rmxCss({
+															padding: `${spacing.sm} ${spacing.md}`,
+															color: colors.textMuted,
+															maxWidth: '200px',
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+															whiteSpace: 'nowrap',
+															[mq.mobile]: {
+																display: 'none',
+															},
+														}),
+													]}
 												>
 													{item.author || '—'}
 												</td>
 												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														color: colors.textMuted,
-														textAlign: 'right',
-														fontFamily: 'monospace',
-														fontSize: typography.fontSize.xs,
-														[mq.mobile]: {
-															display: 'none',
-														},
-													}}
+													mix={[
+														rmxCss({
+															padding: `${spacing.sm} ${spacing.md}`,
+															color: colors.textMuted,
+															textAlign: 'right',
+															fontFamily: 'monospace',
+															fontSize: typography.fontSize.xs,
+															[mq.mobile]: {
+																display: 'none',
+															},
+														}),
+													]}
 												>
 													{formatDuration(item.duration)}
 												</td>
 												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														color: colors.textMuted,
-														textAlign: 'right',
-														fontFamily: 'monospace',
-														fontSize: typography.fontSize.xs,
-														[mq.mobile]: {
-															display: 'none',
-														},
-													}}
+													mix={[
+														rmxCss({
+															padding: `${spacing.sm} ${spacing.md}`,
+															color: colors.textMuted,
+															textAlign: 'right',
+															fontFamily: 'monospace',
+															fontSize: typography.fontSize.xs,
+															[mq.mobile]: {
+																display: 'none',
+															},
+														}),
+													]}
 												>
 													{formatFileSize(item.sizeBytes)}
 												</td>
 												<td
-													css={{
-														padding: `${spacing.sm} ${spacing.md}`,
-														textAlign: 'center',
-													}}
+													mix={[
+														rmxCss({
+															padding: `${spacing.sm} ${spacing.md}`,
+															textAlign: 'center',
+														}),
+													]}
 												>
 													{feedCount > 0 ? (
 														<span
-															css={{
-																display: 'inline-block',
-																padding: `${spacing.xs} ${spacing.sm}`,
-																fontSize: typography.fontSize.xs,
-																fontWeight: typography.fontWeight.medium,
-																color: colors.primary,
-																backgroundColor: colors.primarySoft,
-																borderRadius: radius.sm,
-															}}
+															mix={[
+																rmxCss({
+																	display: 'inline-block',
+																	padding: `${spacing.xs} ${spacing.sm}`,
+																	fontSize: typography.fontSize.xs,
+																	fontWeight: typography.fontWeight.medium,
+																	color: colors.primary,
+																	backgroundColor: colors.primarySoft,
+																	borderRadius: radius.sm,
+																}),
+															]}
 														>
 															{feedCount} feed{feedCount !== 1 ? 's' : ''}
 														</span>
 													) : (
 														<span
-															css={{
-																fontSize: typography.fontSize.xs,
-																color: colors.textMuted,
-															}}
+															mix={[
+																rmxCss({
+																	fontSize: typography.fontSize.xs,
+																	color: colors.textMuted,
+																}),
+															]}
 														>
 															None
 														</span>
@@ -1508,56 +1593,64 @@ function Pagination() {
 
 		return (
 			<div
-				css={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					gap: spacing.sm,
-					marginTop: spacing.xl,
-					flexWrap: 'wrap',
-				}}
+				mix={[
+					rmxCss({
+						display: 'flex',
+						justifyContent: 'center',
+						alignItems: 'center',
+						gap: spacing.sm,
+						marginTop: spacing.xl,
+						flexWrap: 'wrap',
+					}),
+				]}
 			>
 				<button
 					type="button"
 					disabled={currentPage === 1}
-					css={{
-						padding: `${spacing.sm} ${spacing.md}`,
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: currentPage === 1 ? colors.textMuted : colors.text,
-						backgroundColor: colors.surface,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-						transition: `all ${transitions.fast}`,
-						'&:hover':
-							currentPage === 1 ? {} : { backgroundColor: colors.background },
-						[mq.mobile]: {
-							flex: 1,
-						},
-					}}
-					on={{ click: () => onPageChange(currentPage - 1) }}
+					mix={[
+						rmxCss({
+							padding: `${spacing.sm} ${spacing.md}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: currentPage === 1 ? colors.textMuted : colors.text,
+							backgroundColor: colors.surface,
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover':
+								currentPage === 1 ? {} : { backgroundColor: colors.background },
+							[mq.mobile]: {
+								flex: 1,
+							},
+						}),
+						rmxOn('click', () => onPageChange(currentPage - 1)),
+					]}
 				>
 					← Previous
 				</button>
 
 				<div
-					css={{
-						display: 'flex',
-						gap: spacing.xs,
-						[mq.mobile]: {
-							display: 'none',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							gap: spacing.xs,
+							[mq.mobile]: {
+								display: 'none',
+							},
+						}),
+					]}
 				>
 					{pageNumbers.map((page, index) =>
 						page === 'ellipsis' ? (
 							<span
 								key={`ellipsis-${index}`}
-								css={{
-									padding: `${spacing.sm} ${spacing.sm}`,
-									color: colors.textMuted,
-								}}
+								mix={[
+									rmxCss({
+										padding: `${spacing.sm} ${spacing.sm}`,
+										color: colors.textMuted,
+									}),
+								]}
 							>
 								…
 							</span>
@@ -1565,27 +1658,30 @@ function Pagination() {
 							<button
 								key={page}
 								type="button"
-								css={{
-									minWidth: '40px',
-									padding: spacing.sm,
-									fontSize: typography.fontSize.sm,
-									fontWeight:
-										page === currentPage
-											? typography.fontWeight.semibold
-											: typography.fontWeight.medium,
-									color: page === currentPage ? colors.background : colors.text,
-									backgroundColor:
-										page === currentPage ? colors.primary : colors.surface,
-									border: `1px solid ${page === currentPage ? colors.primary : colors.border}`,
-									borderRadius: radius.md,
-									cursor: 'pointer',
-									transition: `all ${transitions.fast}`,
-									'&:hover':
-										page === currentPage
-											? {}
-											: { backgroundColor: colors.background },
-								}}
-								on={{ click: () => onPageChange(page) }}
+								mix={[
+									rmxCss({
+										minWidth: '40px',
+										padding: spacing.sm,
+										fontSize: typography.fontSize.sm,
+										fontWeight:
+											page === currentPage
+												? typography.fontWeight.semibold
+												: typography.fontWeight.medium,
+										color:
+											page === currentPage ? colors.background : colors.text,
+										backgroundColor:
+											page === currentPage ? colors.primary : colors.surface,
+										border: `1px solid ${page === currentPage ? colors.primary : colors.border}`,
+										borderRadius: radius.md,
+										cursor: 'pointer',
+										transition: `all ${transitions.fast}`,
+										'&:hover':
+											page === currentPage
+												? {}
+												: { backgroundColor: colors.background },
+									}),
+									rmxOn('click', () => onPageChange(page)),
+								]}
 							>
 								{page}
 							</button>
@@ -1595,14 +1691,16 @@ function Pagination() {
 
 				{/* Mobile page indicator */}
 				<span
-					css={{
-						display: 'none',
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-						[mq.mobile]: {
-							display: 'block',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'none',
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+							[mq.mobile]: {
+								display: 'block',
+							},
+						}),
+					]}
 				>
 					{currentPage} / {totalPages}
 				</span>
@@ -1610,25 +1708,28 @@ function Pagination() {
 				<button
 					type="button"
 					disabled={currentPage === totalPages}
-					css={{
-						padding: `${spacing.sm} ${spacing.md}`,
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: currentPage === totalPages ? colors.textMuted : colors.text,
-						backgroundColor: colors.surface,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-						transition: `all ${transitions.fast}`,
-						'&:hover':
-							currentPage === totalPages
-								? {}
-								: { backgroundColor: colors.background },
-						[mq.mobile]: {
-							flex: 1,
-						},
-					}}
-					on={{ click: () => onPageChange(currentPage + 1) }}
+					mix={[
+						rmxCss({
+							padding: `${spacing.sm} ${spacing.md}`,
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color:
+								currentPage === totalPages ? colors.textMuted : colors.text,
+							backgroundColor: colors.surface,
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+							transition: `all ${transitions.fast}`,
+							'&:hover':
+								currentPage === totalPages
+									? {}
+									: { backgroundColor: colors.background },
+							[mq.mobile]: {
+								flex: 1,
+							},
+						}),
+						rmxOn('click', () => onPageChange(currentPage + 1)),
+					]}
 				>
 					Next →
 				</button>
@@ -1640,25 +1741,29 @@ function Pagination() {
 function LoadingSpinner() {
 	return () => (
 		<div
-			css={{
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-				padding: spacing['2xl'],
-			}}
+			mix={[
+				rmxCss({
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					padding: spacing['2xl'],
+				}),
+			]}
 		>
 			<div
-				css={{
-					width: '40px',
-					height: '40px',
-					border: `3px solid ${colors.border}`,
-					borderTopColor: colors.primary,
-					borderRadius: '50%',
-					animation: 'spin 1s linear infinite',
-					'@keyframes spin': {
-						to: { transform: 'rotate(360deg)' },
-					},
-				}}
+				mix={[
+					rmxCss({
+						width: '40px',
+						height: '40px',
+						border: `3px solid ${colors.border}`,
+						borderTopColor: colors.primary,
+						borderRadius: '50%',
+						animation: 'spin 1s linear infinite',
+						'@keyframes spin': {
+							to: { transform: 'rotate(360deg)' },
+						},
+					}),
+				]}
 			/>
 		</div>
 	)
@@ -1667,31 +1772,37 @@ function LoadingSpinner() {
 function ErrorMessage() {
 	return ({ message }: { message: string }) => (
 		<div
-			css={{
-				padding: spacing.xl,
-				backgroundColor: 'rgba(239, 68, 68, 0.1)',
-				borderRadius: radius.md,
-				border: '1px solid rgba(239, 68, 68, 0.3)',
-			}}
+			mix={[
+				rmxCss({
+					padding: spacing.xl,
+					backgroundColor: 'rgba(239, 68, 68, 0.1)',
+					borderRadius: radius.md,
+					border: '1px solid rgba(239, 68, 68, 0.3)',
+				}),
+			]}
 		>
 			<p
-				css={{
-					color: '#ef4444',
-					margin: 0,
-					fontSize: typography.fontSize.base,
-				}}
+				mix={[
+					rmxCss({
+						color: '#ef4444',
+						margin: 0,
+						fontSize: typography.fontSize.base,
+					}),
+				]}
 			>
 				Failed to load media: {message}
 			</p>
 			<a
 				href="/admin"
-				css={{
-					display: 'inline-block',
-					marginTop: spacing.md,
-					color: colors.primary,
-					textDecoration: 'none',
-					'&:hover': { textDecoration: 'underline' },
-				}}
+				mix={[
+					rmxCss({
+						display: 'inline-block',
+						marginTop: spacing.md,
+						color: colors.primary,
+						textDecoration: 'none',
+						'&:hover': { textDecoration: 'underline' },
+					}),
+				]}
 			>
 				← Back to feeds
 			</a>
@@ -1712,66 +1823,68 @@ function Checkbox() {
 		title?: string
 	}) => (
 		<label
-			css={{
-				width: '18px',
-				height: '18px',
-				borderRadius: radius.sm,
-				border: `2px solid ${checked || indeterminate ? colors.primary : colors.border}`,
-				backgroundColor:
-					checked || indeterminate ? colors.primary : 'transparent',
-				cursor: 'pointer',
-				padding: 0,
-				display: 'flex',
-				alignItems: 'center',
-				justifyContent: 'center',
-				transition: `all ${transitions.fast}`,
-				position: 'relative',
-				'&:hover': {
-					borderColor: colors.primary,
-				},
-				'&:focus-within': {
-					outline: `2px solid ${colors.primary}`,
-					outlineOffset: '2px',
-				},
-			}}
 			title={title}
-			on={{
-				click: (e: MouseEvent) => {
+			mix={[
+				rmxCss({
+					width: '18px',
+					height: '18px',
+					borderRadius: radius.sm,
+					border: `2px solid ${checked || indeterminate ? colors.primary : colors.border}`,
+					backgroundColor:
+						checked || indeterminate ? colors.primary : 'transparent',
+					cursor: 'pointer',
+					padding: 0,
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					transition: `all ${transitions.fast}`,
+					position: 'relative',
+					'&:hover': {
+						borderColor: colors.primary,
+					},
+					'&:focus-within': {
+						outline: `2px solid ${colors.primary}`,
+						outlineOffset: '2px',
+					},
+				}),
+				rmxOn<HTMLLabelElement, 'click'>('click', (e: MouseEvent) => {
 					e.stopPropagation()
-				},
-				keydown: (e: KeyboardEvent) => {
+				}),
+				rmxOn<HTMLLabelElement, 'keydown'>('keydown', (e: KeyboardEvent) => {
 					// Stop Space/Enter from bubbling to row's keydown handler
 					if (e.key === ' ' || e.key === 'Enter') {
 						e.stopPropagation()
 					}
-				},
-			}}
+				}),
+			]}
 		>
 			<input
 				type="checkbox"
 				checked={checked}
 				aria-label={title ?? 'Select item'}
-				css={{
-					position: 'absolute',
-					width: '1px',
-					height: '1px',
-					padding: 0,
-					margin: '-1px',
-					overflow: 'hidden',
-					clip: 'rect(0, 0, 0, 0)',
-					whiteSpace: 'nowrap',
-					border: 0,
-				}}
-				on={{
-					change: () => onChange(),
-					click: (e: MouseEvent) => e.stopPropagation(),
-					keydown: (e: KeyboardEvent) => {
+				mix={[
+					rmxCss({
+						position: 'absolute',
+						width: '1px',
+						height: '1px',
+						padding: 0,
+						margin: '-1px',
+						overflow: 'hidden',
+						clip: 'rect(0, 0, 0, 0)',
+						whiteSpace: 'nowrap',
+						border: 0,
+					}),
+					rmxOn<HTMLInputElement>('change', () => onChange()),
+					rmxOn<HTMLInputElement, 'click'>('click', (e: MouseEvent) =>
+						e.stopPropagation(),
+					),
+					rmxOn<HTMLInputElement, 'keydown'>('keydown', (e: KeyboardEvent) => {
 						// Stop Space/Enter from bubbling to row's keydown handler
 						if (e.key === ' ' || e.key === 'Enter') {
 							e.stopPropagation()
 						}
-					},
-				}}
+					}),
+				]}
 			/>
 			{checked && (
 				<svg
@@ -1836,49 +1949,55 @@ function FloatingActionBar() {
 
 		return (
 			<div
-				css={{
-					position: 'fixed',
-					bottom: spacing.xl,
-					left: '50%',
-					transform: 'translateX(-50%)',
-					backgroundColor: colors.surface,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.lg,
-					boxShadow: shadows.lg,
-					padding: `${spacing.sm} ${spacing.lg}`,
-					display: 'flex',
-					alignItems: 'center',
-					gap: spacing.md,
-					zIndex: 100,
-					[mq.mobile]: {
-						left: spacing.md,
-						right: spacing.md,
-						bottom: spacing.md,
-						transform: 'none',
-						flexDirection: 'column',
-						alignItems: 'stretch',
-						padding: spacing.md,
-						gap: spacing.sm,
-					},
-				}}
-			>
-				<div
-					css={{
+				mix={[
+					rmxCss({
+						position: 'fixed',
+						bottom: spacing.xl,
+						left: '50%',
+						transform: 'translateX(-50%)',
+						backgroundColor: colors.surface,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.lg,
+						boxShadow: shadows.lg,
+						padding: `${spacing.sm} ${spacing.lg}`,
 						display: 'flex',
 						alignItems: 'center',
 						gap: spacing.md,
+						zIndex: 100,
 						[mq.mobile]: {
-							justifyContent: 'space-between',
+							left: spacing.md,
+							right: spacing.md,
+							bottom: spacing.md,
+							transform: 'none',
+							flexDirection: 'column',
+							alignItems: 'stretch',
+							padding: spacing.md,
+							gap: spacing.sm,
 						},
-					}}
+					}),
+				]}
+			>
+				<div
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
+							[mq.mobile]: {
+								justifyContent: 'space-between',
+							},
+						}),
+					]}
 				>
 					<span
-						css={{
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							whiteSpace: 'nowrap',
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								whiteSpace: 'nowrap',
+							}),
+						]}
 					>
 						{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
 					</span>
@@ -1886,19 +2005,21 @@ function FloatingActionBar() {
 					{!allFilteredSelected && filteredCount > selectedCount && (
 						<button
 							type="button"
-							css={{
-								padding: `${spacing.xs} ${spacing.sm}`,
-								fontSize: typography.fontSize.sm,
-								color: colors.primary,
-								backgroundColor: 'transparent',
-								border: 'none',
-								cursor: 'pointer',
-								textDecoration: 'underline',
-								'&:hover': {
-									color: colors.primaryHover,
-								},
-							}}
-							on={{ click: onSelectAllFiltered }}
+							mix={[
+								rmxCss({
+									padding: `${spacing.xs} ${spacing.sm}`,
+									fontSize: typography.fontSize.sm,
+									color: colors.primary,
+									backgroundColor: 'transparent',
+									border: 'none',
+									cursor: 'pointer',
+									textDecoration: 'underline',
+									'&:hover': {
+										color: colors.primaryHover,
+									},
+								}),
+								rmxOn('click', onSelectAllFiltered),
+							]}
 						>
 							Select all {filteredCount}
 						</button>
@@ -1906,42 +2027,48 @@ function FloatingActionBar() {
 				</div>
 
 				<div
-					css={{
-						width: '1px',
-						height: '24px',
-						backgroundColor: colors.border,
-						[mq.mobile]: {
-							display: 'none',
-						},
-					}}
+					mix={[
+						rmxCss({
+							width: '1px',
+							height: '24px',
+							backgroundColor: colors.border,
+							[mq.mobile]: {
+								display: 'none',
+							},
+						}),
+					]}
 				/>
 
 				<div
-					css={{
-						display: 'flex',
-						gap: spacing.sm,
-						[mq.mobile]: {
-							flexDirection: 'column',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							gap: spacing.sm,
+							[mq.mobile]: {
+								flexDirection: 'column',
+							},
+						}),
+					]}
 				>
 					<button
 						type="button"
-						css={{
-							padding: `${spacing.sm} ${spacing.md}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor: colors.primary,
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: 'pointer',
-							transition: `background-color ${transitions.fast}`,
-							'&:hover': {
-								backgroundColor: colors.primaryHover,
-							},
-						}}
-						on={{ click: onAssign }}
+						mix={[
+							rmxCss({
+								padding: `${spacing.sm} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.background,
+								backgroundColor: colors.primary,
+								border: 'none',
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `background-color ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: colors.primaryHover,
+								},
+							}),
+							rmxOn('click', onAssign),
+						]}
 					>
 						Assign to Feed
 					</button>
@@ -1949,21 +2076,23 @@ function FloatingActionBar() {
 					{hasAssignedItems && (
 						<button
 							type="button"
-							css={{
-								padding: `${spacing.sm} ${spacing.md}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.error,
-								backgroundColor: 'transparent',
-								border: `1px solid ${colors.error}`,
-								borderRadius: radius.md,
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: 'rgba(239, 68, 68, 0.1)',
-								},
-							}}
-							on={{ click: onUnassign }}
+							mix={[
+								rmxCss({
+									padding: `${spacing.sm} ${spacing.md}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.error,
+									backgroundColor: 'transparent',
+									border: `1px solid ${colors.error}`,
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: 'rgba(239, 68, 68, 0.1)',
+									},
+								}),
+								rmxOn('click', onUnassign),
+							]}
 						>
 							Remove from Feed
 						</button>
@@ -1971,22 +2100,24 @@ function FloatingActionBar() {
 
 					<button
 						type="button"
-						css={{
-							padding: `${spacing.sm} ${spacing.md}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.textMuted,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								color: colors.text,
-								backgroundColor: colors.background,
-							},
-						}}
-						on={{ click: onClearSelection }}
+						mix={[
+							rmxCss({
+								padding: `${spacing.sm} ${spacing.md}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.textMuted,
+								backgroundColor: 'transparent',
+								border: `1px solid ${colors.border}`,
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									color: colors.text,
+									backgroundColor: colors.background,
+								},
+							}),
+							rmxOn('click', onClearSelection),
+						]}
 					>
 						Clear
 					</button>
@@ -2059,11 +2190,13 @@ function BulkAssignModal() {
 					</ModalList>
 				) : (
 					<p
-						css={{
-							textAlign: 'center',
-							color: colors.textMuted,
-							fontSize: typography.fontSize.sm,
-						}}
+						mix={[
+							rmxCss({
+								textAlign: 'center',
+								color: colors.textMuted,
+								fontSize: typography.fontSize.sm,
+							}),
+						]}
 					>
 						No curated feeds available. Create a feed first.
 					</p>
@@ -2128,11 +2261,13 @@ function BulkUnassignModal() {
 				</ModalList>
 			) : (
 				<p
-					css={{
-						textAlign: 'center',
-						color: colors.textMuted,
-						fontSize: typography.fontSize.sm,
-					}}
+					mix={[
+						rmxCss({
+							textAlign: 'center',
+							color: colors.textMuted,
+							fontSize: typography.fontSize.sm,
+						}),
+					]}
 				>
 					None of the selected items are assigned to any feeds.
 				</p>
@@ -2161,81 +2296,93 @@ function FeedRadioRowWithCount() {
 	}) => (
 		<button
 			type="button"
-			css={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				padding: spacing.sm,
-				backgroundColor: isSelected
-					? 'rgba(239, 68, 68, 0.1)'
-					: colors.background,
-				border: `2px solid ${isSelected ? colors.error : 'transparent'}`,
-				borderRadius: radius.md,
-				cursor: 'pointer',
-				textAlign: 'left',
-				width: '100%',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					backgroundColor: isSelected
-						? 'rgba(239, 68, 68, 0.15)'
-						: colors.surface,
-				},
-			}}
-			on={{ click: onSelect }}
-		>
-			<div
-				css={{
-					width: '18px',
-					height: '18px',
-					borderRadius: '50%',
-					border: `2px solid ${isSelected ? colors.error : colors.border}`,
-					backgroundColor: isSelected ? colors.error : 'transparent',
+			mix={[
+				rmxCss({
 					display: 'flex',
 					alignItems: 'center',
-					justifyContent: 'center',
-					flexShrink: 0,
-				}}
+					gap: spacing.md,
+					padding: spacing.sm,
+					backgroundColor: isSelected
+						? 'rgba(239, 68, 68, 0.1)'
+						: colors.background,
+					border: `2px solid ${isSelected ? colors.error : 'transparent'}`,
+					borderRadius: radius.md,
+					cursor: 'pointer',
+					textAlign: 'left',
+					width: '100%',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						backgroundColor: isSelected
+							? 'rgba(239, 68, 68, 0.15)'
+							: colors.surface,
+					},
+				}),
+				rmxOn('click', onSelect),
+			]}
+		>
+			<div
+				mix={[
+					rmxCss({
+						width: '18px',
+						height: '18px',
+						borderRadius: '50%',
+						border: `2px solid ${isSelected ? colors.error : colors.border}`,
+						backgroundColor: isSelected ? colors.error : 'transparent',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						flexShrink: 0,
+					}),
+				]}
 			>
 				{isSelected && (
 					<div
-						css={{
-							width: '8px',
-							height: '8px',
-							borderRadius: '50%',
-							backgroundColor: 'white',
-						}}
+						mix={[
+							rmxCss({
+								width: '8px',
+								height: '8px',
+								borderRadius: '50%',
+								backgroundColor: 'white',
+							}),
+						]}
 					/>
 				)}
 			</div>
 			<img
 				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
 				alt=""
-				css={{
-					width: '32px',
-					height: '32px',
-					borderRadius: radius.sm,
-					...artworkLayout.centeredContain,
-					flexShrink: 0,
-				}}
+				mix={[
+					rmxCss({
+						width: '32px',
+						height: '32px',
+						borderRadius: radius.sm,
+						...artworkLayout.centeredContain,
+						flexShrink: 0,
+					}),
+				]}
 			/>
-			<div css={{ flex: 1, minWidth: 0 }}>
+			<div mix={[rmxCss({ flex: 1, minWidth: 0 })]}>
 				<div
-					css={{
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.text,
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap',
-					}}
+					mix={[
+						rmxCss({
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap',
+						}),
+					]}
 				>
 					{name}
 				</div>
 				<div
-					css={{
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-					}}
+					mix={[
+						rmxCss({
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+						}),
+					]}
 				>
 					{itemCount} of {totalSelected} selected item
 					{totalSelected !== 1 ? 's' : ''}
@@ -2261,38 +2408,42 @@ function FeedCheckboxRow() {
 	}) => (
 		<button
 			type="button"
-			css={{
-				display: 'flex',
-				alignItems: 'center',
-				gap: spacing.md,
-				padding: spacing.sm,
-				backgroundColor: isSelected ? colors.primarySoft : colors.background,
-				border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-				borderRadius: radius.md,
-				cursor: 'pointer',
-				textAlign: 'left',
-				width: '100%',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					backgroundColor: isSelected
-						? colors.primarySoftStrong
-						: colors.surface,
-				},
-			}}
-			on={{ click: onToggle }}
-		>
-			<div
-				css={{
-					width: '18px',
-					height: '18px',
-					borderRadius: radius.sm,
-					border: `2px solid ${isSelected ? colors.primary : colors.border}`,
-					backgroundColor: isSelected ? colors.primary : 'transparent',
+			mix={[
+				rmxCss({
 					display: 'flex',
 					alignItems: 'center',
-					justifyContent: 'center',
-					flexShrink: 0,
-				}}
+					gap: spacing.md,
+					padding: spacing.sm,
+					backgroundColor: isSelected ? colors.primarySoft : colors.background,
+					border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+					borderRadius: radius.md,
+					cursor: 'pointer',
+					textAlign: 'left',
+					width: '100%',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						backgroundColor: isSelected
+							? colors.primarySoftStrong
+							: colors.surface,
+					},
+				}),
+				rmxOn('click', onToggle),
+			]}
+		>
+			<div
+				mix={[
+					rmxCss({
+						width: '18px',
+						height: '18px',
+						borderRadius: radius.sm,
+						border: `2px solid ${isSelected ? colors.primary : colors.border}`,
+						backgroundColor: isSelected ? colors.primary : 'transparent',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						flexShrink: 0,
+					}),
+				]}
 			>
 				{isSelected && (
 					<svg
@@ -2300,9 +2451,9 @@ function FeedCheckboxRow() {
 						height="12"
 						viewBox="0 0 12 12"
 						fill="none"
-						css={{ flexShrink: 0 }}
 						role="img"
 						aria-label="Selected"
+						mix={[rmxCss({ flexShrink: 0 })]}
 					>
 						<path
 							d="M2 6L5 9L10 3"
@@ -2317,23 +2468,27 @@ function FeedCheckboxRow() {
 			<img
 				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
 				alt=""
-				css={{
-					width: '32px',
-					height: '32px',
-					borderRadius: radius.sm,
-					...artworkLayout.centeredContain,
-					flexShrink: 0,
-				}}
+				mix={[
+					rmxCss({
+						width: '32px',
+						height: '32px',
+						borderRadius: radius.sm,
+						...artworkLayout.centeredContain,
+						flexShrink: 0,
+					}),
+				]}
 			/>
 			<span
-				css={{
-					flex: 1,
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-					overflow: 'hidden',
-					textOverflow: 'ellipsis',
-					whiteSpace: 'nowrap',
-				}}
+				mix={[
+					rmxCss({
+						flex: 1,
+						fontSize: typography.fontSize.sm,
+						color: colors.text,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+					}),
+				]}
 			>
 				{name}
 			</span>
@@ -2407,21 +2562,25 @@ function UploadModal() {
 				{/* Success message */}
 				{isSuccess && (
 					<div
-						css={{
-							padding: spacing.lg,
-							backgroundColor: 'rgba(34, 197, 94, 0.1)',
-							borderRadius: radius.md,
-							border: '1px solid rgba(34, 197, 94, 0.3)',
-							marginBottom: spacing.lg,
-						}}
+						mix={[
+							rmxCss({
+								padding: spacing.lg,
+								backgroundColor: 'rgba(34, 197, 94, 0.1)',
+								borderRadius: radius.md,
+								border: '1px solid rgba(34, 197, 94, 0.3)',
+								marginBottom: spacing.lg,
+							}),
+						]}
 					>
 						<div
-							css={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: spacing.sm,
-								marginBottom: spacing.sm,
-							}}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.sm,
+									marginBottom: spacing.sm,
+								}),
+							]}
 						>
 							<svg
 								width="20"
@@ -2440,30 +2599,36 @@ function UploadModal() {
 								/>
 							</svg>
 							<span
-								css={{
-									color: '#22c55e',
-									fontWeight: typography.fontWeight.medium,
-									fontSize: typography.fontSize.sm,
-								}}
+								mix={[
+									rmxCss({
+										color: '#22c55e',
+										fontWeight: typography.fontWeight.medium,
+										fontSize: typography.fontSize.sm,
+									}),
+								]}
 							>
 								Upload successful!
 							</span>
 						</div>
 						<p
-							css={{
-								margin: 0,
-								fontSize: typography.fontSize.sm,
-								color: colors.text,
-							}}
+							mix={[
+								rmxCss({
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+								}),
+							]}
 						>
 							<strong>{uploadState.filename}</strong> has been uploaded to{' '}
 							<code
-								css={{
-									padding: `${spacing.xs} ${spacing.sm}`,
-									backgroundColor: colors.background,
-									borderRadius: radius.sm,
-									fontSize: typography.fontSize.xs,
-								}}
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										backgroundColor: colors.background,
+										borderRadius: radius.sm,
+										fontSize: typography.fontSize.xs,
+									}),
+								]}
 							>
 								{uploadState.mediaPath}
 							</code>
@@ -2474,20 +2639,24 @@ function UploadModal() {
 				{/* Error message */}
 				{isError && (
 					<div
-						css={{
-							padding: spacing.lg,
-							backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							borderRadius: radius.md,
-							border: '1px solid rgba(239, 68, 68, 0.3)',
-							marginBottom: spacing.lg,
-						}}
+						mix={[
+							rmxCss({
+								padding: spacing.lg,
+								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								borderRadius: radius.md,
+								border: '1px solid rgba(239, 68, 68, 0.3)',
+								marginBottom: spacing.lg,
+							}),
+						]}
 					>
 						<p
-							css={{
-								margin: 0,
-								color: '#ef4444',
-								fontSize: typography.fontSize.sm,
-							}}
+							mix={[
+								rmxCss({
+									margin: 0,
+									color: '#ef4444',
+									fontSize: typography.fontSize.sm,
+								}),
+							]}
 						>
 							{uploadState.message}
 						</p>
@@ -2498,61 +2667,65 @@ function UploadModal() {
 				{!isSuccess && (
 					<ModalSection title="Select File">
 						<div
-							css={{
-								border: `2px dashed ${colors.border}`,
-								borderRadius: radius.md,
-								padding: spacing.xl,
-								textAlign: 'center',
-								backgroundColor: colors.background,
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									borderColor: colors.primary,
-									backgroundColor: colors.primarySoftSubtle,
-								},
-							}}
+							mix={[
+								rmxCss({
+									border: `2px dashed ${colors.border}`,
+									borderRadius: radius.md,
+									padding: spacing.xl,
+									textAlign: 'center',
+									backgroundColor: colors.background,
+									transition: `all ${transitions.fast}`,
+									'&:hover': {
+										borderColor: colors.primary,
+										backgroundColor: colors.primarySoftSubtle,
+									},
+								}),
+							]}
 						>
 							<input
 								type="file"
 								accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
 								id="upload-file-input"
-								css={{
-									position: 'absolute',
-									width: '1px',
-									height: '1px',
-									padding: 0,
-									margin: '-1px',
-									overflow: 'hidden',
-									clip: 'rect(0, 0, 0, 0)',
-									whiteSpace: 'nowrap',
-									border: 0,
-								}}
-								on={{
-									click: (e: Event) => {
+								disabled={isUploading}
+								mix={[
+									rmxCss({
+										position: 'absolute',
+										width: '1px',
+										height: '1px',
+										padding: 0,
+										margin: '-1px',
+										overflow: 'hidden',
+										clip: 'rect(0, 0, 0, 0)',
+										whiteSpace: 'nowrap',
+										border: 0,
+									}),
+									rmxOn<HTMLInputElement, 'click'>('click', (e: Event) => {
 										// Clear value before opening file dialog to allow re-selecting same file
 										const input = e.target as HTMLInputElement
 										input.value = ''
-									},
-									change: (e: Event) => {
+									}),
+									rmxOn<HTMLInputElement, 'change'>('change', (e: Event) => {
 										const input = e.target as HTMLInputElement
 										onFileSelect(input.files)
-									},
-								}}
-								disabled={isUploading}
+									}),
+								]}
 							/>
 							<label
 								for="upload-file-input"
-								css={{
-									display: 'block',
-									cursor: isUploading ? 'not-allowed' : 'pointer',
-								}}
+								mix={[
+									rmxCss({
+										display: 'block',
+										cursor: isUploading ? 'not-allowed' : 'pointer',
+									}),
+								]}
 							>
 								<svg
 									width="48"
 									height="48"
 									viewBox="0 0 48 48"
 									fill="none"
-									css={{ margin: '0 auto', marginBottom: spacing.md }}
 									aria-hidden="true"
+									mix={[rmxCss({ margin: '0 auto', marginBottom: spacing.md })]}
 								>
 									<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
 									<path
@@ -2566,21 +2739,25 @@ function UploadModal() {
 								{hasFile ? (
 									<div>
 										<p
-											css={{
-												margin: 0,
-												fontSize: typography.fontSize.sm,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.text,
-											}}
+											mix={[
+												rmxCss({
+													margin: 0,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.text,
+												}),
+											]}
 										>
 											{selectedFiles[0]!.name}
 										</p>
 										<p
-											css={{
-												margin: `${spacing.xs} 0 0 0`,
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-											}}
+											mix={[
+												rmxCss({
+													margin: `${spacing.xs} 0 0 0`,
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+												}),
+											]}
 										>
 											{formatFileSize(selectedFiles[0]!.size)} · Click to change
 										</p>
@@ -2588,21 +2765,25 @@ function UploadModal() {
 								) : (
 									<div>
 										<p
-											css={{
-												margin: 0,
-												fontSize: typography.fontSize.sm,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.text,
-											}}
+											mix={[
+												rmxCss({
+													margin: 0,
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.text,
+												}),
+											]}
 										>
 											Click to select a file
 										</p>
 										<p
-											css={{
-												margin: `${spacing.xs} 0 0 0`,
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-											}}
+											mix={[
+												rmxCss({
+													margin: `${spacing.xs} 0 0 0`,
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+												}),
+											]}
 										>
 											Audio or video files up to 10GB
 										</p>
@@ -2618,35 +2799,41 @@ function UploadModal() {
 					<ModalSection title="Destination">
 						{mediaRoots.length === 0 ? (
 							<p
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-									margin: 0,
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+										margin: 0,
+									}),
+								]}
 							>
 								No media roots configured. Add a MEDIA_PATHS environment
 								variable.
 							</p>
 						) : (
 							<div
-								css={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.md,
-								}}
+								mix={[
+									rmxCss({
+										display: 'flex',
+										flexDirection: 'column',
+										gap: spacing.md,
+									}),
+								]}
 							>
 								<div>
 									<label
 										for="upload-media-root"
-										css={{
-											display: 'block',
-											fontSize: typography.fontSize.xs,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.textMuted,
-											marginBottom: spacing.xs,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-										}}
+										mix={[
+											rmxCss({
+												display: 'block',
+												fontSize: typography.fontSize.xs,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.textMuted,
+												marginBottom: spacing.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+											}),
+										]}
 									>
 										Media Root
 									</label>
@@ -2654,27 +2841,30 @@ function UploadModal() {
 										id="upload-media-root"
 										value={selectedRoot}
 										disabled={isUploading}
-										css={{
-											width: '100%',
-											padding: spacing.sm,
-											fontSize: typography.fontSize.sm,
-											color: colors.text,
-											backgroundColor: colors.background,
-											border: `1px solid ${colors.border}`,
-											borderRadius: radius.md,
-											cursor: isUploading ? 'not-allowed' : 'pointer',
-											'&:focus': {
-												outline: 'none',
-												borderColor: colors.primary,
-												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-											},
-										}}
-										on={{
-											change: (e: Event) => {
-												const select = e.target as HTMLSelectElement
-												onRootChange(select.value)
-											},
-										}}
+										mix={[
+											rmxCss({
+												width: '100%',
+												padding: spacing.sm,
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												backgroundColor: colors.background,
+												border: `1px solid ${colors.border}`,
+												borderRadius: radius.md,
+												cursor: isUploading ? 'not-allowed' : 'pointer',
+												'&:focus': {
+													outline: 'none',
+													borderColor: colors.primary,
+													boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+												},
+											}),
+											rmxOn<HTMLSelectElement, 'change'>(
+												'change',
+												(e: Event) => {
+													const select = e.target as HTMLSelectElement
+													onRootChange(select.value)
+												},
+											),
+										]}
 									>
 										{mediaRoots.map((root) => (
 											<option key={root.name} value={root.name}>
@@ -2686,15 +2876,17 @@ function UploadModal() {
 								<div>
 									<label
 										for="upload-subdirectory"
-										css={{
-											display: 'block',
-											fontSize: typography.fontSize.xs,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.textMuted,
-											marginBottom: spacing.xs,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-										}}
+										mix={[
+											rmxCss({
+												display: 'block',
+												fontSize: typography.fontSize.xs,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.textMuted,
+												marginBottom: spacing.xs,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+											}),
+										]}
 									>
 										Subdirectory (optional)
 									</label>
@@ -2704,40 +2896,42 @@ function UploadModal() {
 										value={subdirectory}
 										placeholder="e.g., audiobooks/fiction"
 										disabled={isUploading}
-										css={{
-											width: '100%',
-											padding: spacing.sm,
-											fontSize: typography.fontSize.sm,
-											color: colors.text,
-											backgroundColor: colors.background,
-											border: `1px solid ${colors.border}`,
-											borderRadius: radius.md,
-											'&:focus': {
-												outline: 'none',
-												borderColor: colors.primary,
-												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-											},
-											'&:disabled': {
-												cursor: 'not-allowed',
-												opacity: 0.6,
-											},
-											'&::placeholder': {
-												color: colors.textMuted,
-											},
-										}}
-										on={{
-											input: (e: Event) => {
+										mix={[
+											rmxCss({
+												width: '100%',
+												padding: spacing.sm,
+												fontSize: typography.fontSize.sm,
+												color: colors.text,
+												backgroundColor: colors.background,
+												border: `1px solid ${colors.border}`,
+												borderRadius: radius.md,
+												'&:focus': {
+													outline: 'none',
+													borderColor: colors.primary,
+													boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+												},
+												'&:disabled': {
+													cursor: 'not-allowed',
+													opacity: 0.6,
+												},
+												'&::placeholder': {
+													color: colors.textMuted,
+												},
+											}),
+											rmxOn<HTMLInputElement>('input', (e: Event) => {
 												const input = e.target as HTMLInputElement
 												onSubdirectoryChange(input.value)
-											},
-										}}
+											}),
+										]}
 									/>
 									<p
-										css={{
-											margin: `${spacing.xs} 0 0 0`,
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-										}}
+										mix={[
+											rmxCss({
+												margin: `${spacing.xs} 0 0 0`,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+											}),
+										]}
 									>
 										Folders will be created if they don't exist
 									</p>
@@ -2750,39 +2944,47 @@ function UploadModal() {
 				{/* Upload progress */}
 				{isUploading && (
 					<div
-						css={{
-							marginTop: spacing.lg,
-							padding: spacing.md,
-							backgroundColor: colors.background,
-							borderRadius: radius.md,
-						}}
+						mix={[
+							rmxCss({
+								marginTop: spacing.lg,
+								padding: spacing.md,
+								backgroundColor: colors.background,
+								borderRadius: radius.md,
+							}),
+						]}
 					>
 						<div
-							css={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: spacing.sm,
-								marginBottom: spacing.sm,
-							}}
+							mix={[
+								rmxCss({
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.sm,
+									marginBottom: spacing.sm,
+								}),
+							]}
 						>
 							<div
-								css={{
-									width: '16px',
-									height: '16px',
-									border: `2px solid ${colors.border}`,
-									borderTopColor: colors.primary,
-									borderRadius: '50%',
-									animation: 'spin 1s linear infinite',
-									'@keyframes spin': {
-										to: { transform: 'rotate(360deg)' },
-									},
-								}}
+								mix={[
+									rmxCss({
+										width: '16px',
+										height: '16px',
+										border: `2px solid ${colors.border}`,
+										borderTopColor: colors.primary,
+										borderRadius: '50%',
+										animation: 'spin 1s linear infinite',
+										'@keyframes spin': {
+											to: { transform: 'rotate(360deg)' },
+										},
+									}),
+								]}
 							/>
 							<span
-								css={{
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-								}}
+								mix={[
+									rmxCss({
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+									}),
+								]}
 							>
 								Uploading {uploadState.filename}...
 							</span>

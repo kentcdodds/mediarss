@@ -34,7 +34,7 @@ type CreateDirectoryFeedRequest = {
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		if (context.method !== 'POST') {
 			return Response.json({ error: 'Method not allowed' }, { status: 405 })
 		}

@@ -28,7 +28,7 @@ function getLastAccessedAt(
  */
 export default {
 	middleware: [],
-	async action() {
+	async handler() {
 		// Process directory feeds
 		const directoryFeedsList = await listDirectoryFeeds()
 		const directoryFeeds = await Promise.all(

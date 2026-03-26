@@ -134,7 +134,7 @@ async function resolveFeedAnalyticsContext(
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { id } = context.params
 		if (!id) {
 			return Response.json({ error: 'Feed id required' }, { status: 400 })

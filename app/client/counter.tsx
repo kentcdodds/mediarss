@@ -1,5 +1,9 @@
-import type { Handle } from 'remix/component'
-import { press } from 'remix/interaction/press'
+import {
+	type Handle,
+	pressEvents,
+	css as rmxCss,
+	on as rmxOn,
+} from 'remix/component'
 import {
 	colors,
 	radius,
@@ -15,33 +19,36 @@ export function Counter(handle: Handle, setup: CounterSetup = {}) {
 	return () => (
 		<button
 			type="button"
-			css={{
-				padding: `${spacing.lg} ${spacing.xl}`,
-				fontSize: typography.fontSize.base,
-				fontWeight: typography.fontWeight.medium,
-				color: colors.background,
-				backgroundColor: colors.primary,
-				border: 'none',
-				borderRadius: radius.md,
-				cursor: 'pointer',
-				transition: `all ${transitions.fast}`,
-				'&:hover': {
-					backgroundColor: colors.primaryHover,
-				},
-				'&:active': {
-					transform: 'scale(0.98)',
-					backgroundColor: colors.primaryActive,
-				},
-			}}
-			on={{
-				[press]: () => {
+			mix={[
+				rmxCss({
+					padding: `${spacing.lg} ${spacing.xl}`,
+					fontSize: typography.fontSize.base,
+					fontWeight: typography.fontWeight.medium,
+					color: colors.background,
+					backgroundColor: colors.primary,
+					border: 'none',
+					borderRadius: radius.md,
+					cursor: 'pointer',
+					transition: `all ${transitions.fast}`,
+					'&:hover': {
+						backgroundColor: colors.primaryHover,
+					},
+					'&:active': {
+						transform: 'scale(0.98)',
+						backgroundColor: colors.primaryActive,
+					},
+				}),
+				pressEvents(),
+				rmxOn(pressEvents.press, () => {
 					count++
 					handle.update()
-				},
-			}}
+				}),
+			]}
 		>
 			Count:{' '}
-			<span css={{ fontWeight: typography.fontWeight.bold }}>{count}</span>
+			<span mix={[rmxCss({ fontWeight: typography.fontWeight.bold })]}>
+				{count}
+			</span>
 		</button>
 	)
 }

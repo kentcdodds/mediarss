@@ -1,3 +1,4 @@
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	colors,
 	mq,
@@ -21,72 +22,74 @@ type SearchInputProps = {
 export function SearchInput() {
 	return ({ placeholder, value, onInput, onClear }: SearchInputProps) => (
 		<div
-			css={{
-				position: 'relative',
-				width: '100%',
-				maxWidth: '400px',
-				[mq.mobile]: {
-					maxWidth: 'none',
-				},
-			}}
+			mix={[
+				rmxCss({
+					position: 'relative',
+					width: '100%',
+					maxWidth: '400px',
+					[mq.mobile]: {
+						maxWidth: 'none',
+					},
+				}),
+			]}
 		>
 			<input
 				type="text"
 				placeholder={placeholder}
 				value={value}
-				css={{
-					width: '100%',
-					padding: spacing.sm,
-					paddingRight: value ? '36px' : spacing.sm,
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-					backgroundColor: colors.surface,
-					border: `1px solid ${colors.border}`,
-					borderRadius: radius.md,
-					outline: 'none',
-					transition: `border-color ${transitions.fast}`,
-					'&:focus': {
-						borderColor: colors.primary,
-					},
-					'&::placeholder': {
-						color: colors.textMuted,
-					},
-				}}
-				on={{
-					input: (e) => {
+				mix={[
+					rmxCss({
+						width: '100%',
+						padding: spacing.sm,
+						paddingRight: value ? '36px' : spacing.sm,
+						fontSize: typography.fontSize.sm,
+						color: colors.text,
+						backgroundColor: colors.surface,
+						border: `1px solid ${colors.border}`,
+						borderRadius: radius.md,
+						outline: 'none',
+						transition: `border-color ${transitions.fast}`,
+						'&:focus': {
+							borderColor: colors.primary,
+						},
+						'&::placeholder': {
+							color: colors.textMuted,
+						},
+					}),
+					rmxOn('input', (e) => {
 						onInput((e.target as HTMLInputElement).value)
-					},
-				}}
+					}),
+				]}
 			/>
 			{value && (
 				<button
 					type="button"
 					aria-label="Clear search"
-					css={{
-						position: 'absolute',
-						right: '8px',
-						top: '50%',
-						transform: 'translateY(-50%)',
-						width: '20px',
-						height: '20px',
-						padding: 0,
-						border: 'none',
-						borderRadius: '50%',
-						backgroundColor: colors.border,
-						color: colors.textMuted,
-						cursor: 'pointer',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						transition: `all ${transitions.fast}`,
-						'&:hover': {
-							backgroundColor: colors.textMuted,
-							color: colors.surface,
-						},
-					}}
-					on={{
-						click: onClear,
-					}}
+					mix={[
+						rmxCss({
+							position: 'absolute',
+							right: '8px',
+							top: '50%',
+							transform: 'translateY(-50%)',
+							width: '20px',
+							height: '20px',
+							padding: 0,
+							border: 'none',
+							borderRadius: '50%',
+							backgroundColor: colors.border,
+							color: colors.textMuted,
+							cursor: 'pointer',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							transition: `all ${transitions.fast}`,
+							'&:hover': {
+								backgroundColor: colors.textMuted,
+								color: colors.surface,
+							},
+						}),
+						rmxOn('click', onClear),
+					]}
 				>
 					<svg
 						width="12"

@@ -218,7 +218,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 export default {
 	middleware: [],
-	action: withCors({
+	handler: withCors({
 		getCorsHeaders: () => TOKEN_CORS_HEADERS,
 		handler: async (context: RequestContext) => {
 			if (context.method !== 'POST') {

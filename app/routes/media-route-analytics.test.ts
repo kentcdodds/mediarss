@@ -21,7 +21,7 @@ import mediaHandler from './media.ts'
 
 migrate(db)
 
-type MediaActionContext = Parameters<typeof mediaHandler.action>[0]
+type MediaActionContext = Parameters<typeof mediaHandler.handler>[0]
 type MinimalMediaActionContext = {
 	request: Request
 	method: string
@@ -242,12 +242,12 @@ test('media route logs media_request analytics for full and ranged requests', as
 		'X-Forwarded-For': '198.51.100.42',
 	}
 
-	const fullResponse = await mediaHandler.action(
+	const fullResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam, clientHeaders),
 	)
 	expect(fullResponse.status).toBe(200)
 
-	const rangedResponse = await mediaHandler.action(
+	const rangedResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam, {
 			...clientHeaders,
 			Range: 'bytes=10-',
@@ -255,7 +255,7 @@ test('media route logs media_request analytics for full and ranged requests', as
 	)
 	expect(rangedResponse.status).toBe(206)
 
-	const rangeFromStartResponse = await mediaHandler.action(
+	const rangeFromStartResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam, {
 			...clientHeaders,
 			Range: 'bytes=0-',
@@ -296,7 +296,7 @@ test('media route treats malformed range headers as download starts when serving
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
-	const response = await mediaHandler.action(
+	const response = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam, {
 			'User-Agent': 'AntennaPod/3.0',
 			'X-Forwarded-For': '198.51.100.42',
@@ -320,7 +320,7 @@ test('media route still serves files when analytics writes fail', async () => {
 	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
 	try {
 		await withAnalyticsTableUnavailable(async () => {
-			const response = await mediaHandler.action(
+			const response = await mediaHandler.handler(
 				createMediaActionContext(ctx.token, pathParam, {
 					'User-Agent': 'AntennaPod/3.0',
 					'X-Forwarded-For': '198.51.100.42',
@@ -341,7 +341,7 @@ test('media route stores null client metadata when request lacks client traits',
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
-	const response = await mediaHandler.action(
+	const response = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam),
 	)
 	expect(response.status).toBe(200)
@@ -356,21 +356,21 @@ test('media route rejects invalid access cases without logging analytics', async
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
 
-	const missingPathResponse = await mediaHandler.action(
+	const missingPathResponse = await mediaHandler.handler(
 		createMediaActionContextWithoutPath(ctx.token),
 	)
 	expect(missingPathResponse.status).toBe(400)
 	expect(countEventsForToken(ctx.token)).toBe(0)
 
 	const missingToken = `missing-token-${Date.now()}`
-	const missingTokenResponse = await mediaHandler.action(
+	const missingTokenResponse = await mediaHandler.handler(
 		createMediaActionContext(missingToken, pathParam),
 	)
 	expect(missingTokenResponse.status).toBe(404)
 	expect(countEventsForToken(missingToken)).toBe(0)
 
 	expect(await revokeDirectoryFeedToken(ctx.token)).toBe(true)
-	const revokedTokenResponse = await mediaHandler.action(
+	const revokedTokenResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam),
 	)
 	expect(revokedTokenResponse.status).toBe(404)
@@ -382,14 +382,14 @@ test('media route logs analytics for curated feed items and blocks non-feed file
 	const allowedPath = `${ctx.rootName}/${ctx.relativePath}`
 	const disallowedPath = `${ctx.rootName}/${ctx.otherRelativePath}`
 
-	const allowedResponse = await mediaHandler.action(
+	const allowedResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, allowedPath, {
 			'User-Agent': 'Pocket Casts/7.0',
 		}),
 	)
 	expect(allowedResponse.status).toBe(200)
 
-	const disallowedResponse = await mediaHandler.action(
+	const disallowedResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, disallowedPath, {
 			'User-Agent': 'Pocket Casts/7.0',
 		}),

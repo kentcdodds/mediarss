@@ -1,8 +1,19 @@
 import { expect, mock, test } from 'bun:test'
+import type { resolveMediaPath } from '#app/config/env.ts'
+import type { MediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
+import type { MediaFile } from '#app/helpers/media.ts'
 
-const scanAllMediaRootsMock = mock(async () => [])
-const resolveMediaPathMock = mock(() => null)
-const listMediaPopularityMetricsMock = mock(() => new Map())
+type ResolvedMediaPath = NonNullable<ReturnType<typeof resolveMediaPath>>
+
+const scanAllMediaRootsMock = mock<() => Promise<Array<MediaFile>>>(
+	async () => [],
+)
+const resolveMediaPathMock = mock<(path: string) => ResolvedMediaPath | null>(
+	() => null,
+)
+const listMediaPopularityMetricsMock = mock<
+	() => Map<string, MediaPopularityMetrics>
+>(() => new Map())
 
 mock.module('#app/helpers/media.ts', () => ({
 	scanAllMediaRoots: scanAllMediaRootsMock,
@@ -81,11 +92,11 @@ test('media api includes popularity metrics for each media item', async () => {
 	])
 	resolveMediaPathMock
 		.mockReturnValueOnce({
-			root: { name: 'audio' },
+			root: { name: 'audio', path: '/library/audio' },
 			relativePath: 'books/book-one.wav',
 		})
 		.mockReturnValueOnce({
-			root: { name: 'audio' },
+			root: { name: 'audio', path: '/library/audio' },
 			relativePath: 'books/book-two.wav',
 		})
 	listMediaPopularityMetricsMock.mockReturnValueOnce(
@@ -93,6 +104,8 @@ test('media api includes popularity metrics for each media item', async () => {
 			[
 				'audio:books/book-one.wav',
 				{
+					mediaRoot: 'audio',
+					relativePath: 'books/book-one.wav',
 					mediaRequests: 9,
 					downloadStarts: 4,
 					uniqueClients: 2,

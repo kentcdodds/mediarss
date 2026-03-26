@@ -372,7 +372,10 @@ export function listMediaPopularityMetrics(
 				uniqueClients: row.unique_clients ?? 0,
 				lastSeenAt: row.last_seen_at,
 			}
-			return [createMediaKey(row.media_root, row.relative_path), metrics] as const
+			return [
+				createMediaKey(row.media_root, row.relative_path),
+				metrics,
+			] as const
 		}),
 	)
 }

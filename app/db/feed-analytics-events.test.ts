@@ -7,11 +7,11 @@ import {
 	getFeedDailyAnalytics,
 	getFeedTopClientAnalytics,
 	getFeedTopMediaItemAnalytics,
-	listMediaPopularityMetrics,
 	getMediaAnalyticsByFeed,
 	getMediaAnalyticsByToken,
 	getMediaAnalyticsSummary,
 	getMediaTopClientAnalytics,
+	listMediaPopularityMetrics,
 	pruneFeedAnalyticsEvents,
 } from './feed-analytics-events.ts'
 import { createMigratedTestDatabase } from './test-database.ts'

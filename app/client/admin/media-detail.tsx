@@ -1,4 +1,5 @@
 import type { Handle } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	formatDate,
 	formatDuration,
@@ -627,21 +628,25 @@ export function MediaDetail(handle: Handle) {
 			<div>
 				{/* Header */}
 				<div
-					css={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: spacing.md,
-						marginBottom: spacing.xl,
-					}}
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
+							marginBottom: spacing.xl,
+						}),
+					]}
 				>
 					<a
 						href={isEditRoute ? detailHref : '/admin/media'}
-						css={{
-							color: colors.textMuted,
-							textDecoration: 'none',
-							fontSize: typography.fontSize.sm,
-							'&:hover': { color: colors.text },
-						}}
+						mix={[
+							rmxCss({
+								color: colors.textMuted,
+								textDecoration: 'none',
+								fontSize: typography.fontSize.sm,
+								'&:hover': { color: colors.text },
+							}),
+						]}
 					>
 						{isEditRoute ? '← Back to Media Item' : '← Back to Media'}
 					</a>
@@ -649,78 +654,92 @@ export function MediaDetail(handle: Handle) {
 
 				{/* Main Content Grid */}
 				<div
-					css={{
-						display: 'grid',
-						gridTemplateColumns: '1fr',
-						gap: responsive.spacingSection,
-						[`@media (min-width: ${breakpoints.mobile})` as const]: {
-							gridTemplateColumns: isEditRoute ? '1fr' : '250px 1fr',
-						},
-						[`@media (min-width: ${breakpoints.tablet})` as const]: {
-							gridTemplateColumns: isEditRoute ? '1fr' : '300px 1fr',
-						},
-					}}
+					mix={[
+						rmxCss({
+							display: 'grid',
+							gridTemplateColumns: '1fr',
+							gap: responsive.spacingSection,
+							[`@media (min-width: ${breakpoints.mobile})` as const]: {
+								gridTemplateColumns: isEditRoute ? '1fr' : '250px 1fr',
+							},
+							[`@media (min-width: ${breakpoints.tablet})` as const]: {
+								gridTemplateColumns: isEditRoute ? '1fr' : '300px 1fr',
+							},
+						}),
+					]}
 				>
 					{/* Left Column - Artwork & Metadata */}
 					{!isEditRoute && (
 						<div
-							css={{
-								// On mobile, show after the title/player section
-								order: 1,
-								[`@media (min-width: ${breakpoints.mobile})` as const]: {
-									order: 0,
-								},
-							}}
+							mix={[
+								rmxCss({
+									// On mobile, show after the title/player section
+									order: 1,
+									[`@media (min-width: ${breakpoints.mobile})` as const]: {
+										order: 0,
+									},
+								}),
+							]}
 						>
 							{/* Artwork */}
 							<div
-								css={{
-									backgroundColor: colors.surface,
-									borderRadius: radius.lg,
-									border: `1px solid ${colors.border}`,
-									overflow: 'hidden',
-									boxShadow: shadows.md,
-								}}
+								mix={[
+									rmxCss({
+										backgroundColor: colors.surface,
+										borderRadius: radius.lg,
+										border: `1px solid ${colors.border}`,
+										overflow: 'hidden',
+										boxShadow: shadows.md,
+									}),
+								]}
 							>
 								<img
 									src={getArtworkUrl(media)}
 									alt={media.title}
-									css={{
-										width: '100%',
-										...artworkLayout.centeredContain,
-										display: 'block',
-									}}
+									mix={[
+										rmxCss({
+											width: '100%',
+											...artworkLayout.centeredContain,
+											display: 'block',
+										}),
+									]}
 								/>
 							</div>
 
 							{/* Metadata Card - Below artwork on desktop */}
 							<div
-								css={{
-									backgroundColor: colors.surface,
-									borderRadius: radius.lg,
-									border: `1px solid ${colors.border}`,
-									padding: spacing.md,
-									marginTop: spacing.md,
-									boxShadow: shadows.sm,
-								}}
+								mix={[
+									rmxCss({
+										backgroundColor: colors.surface,
+										borderRadius: radius.lg,
+										border: `1px solid ${colors.border}`,
+										padding: spacing.md,
+										marginTop: spacing.md,
+										boxShadow: shadows.sm,
+									}),
+								]}
 							>
 								<h3
-									css={{
-										fontSize: typography.fontSize.sm,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: `0 0 ${spacing.sm} 0`,
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.sm,
+											fontWeight: typography.fontWeight.semibold,
+											color: colors.text,
+											margin: `0 0 ${spacing.sm} 0`,
+										}),
+									]}
 								>
 									Details
 								</h3>
 
 								<div
-									css={{
-										display: 'flex',
-										flexDirection: 'column',
-										gap: spacing.sm,
-									}}
+									mix={[
+										rmxCss({
+											display: 'flex',
+											flexDirection: 'column',
+											gap: spacing.sm,
+										}),
+									]}
 								>
 									<MetadataItem
 										label="Duration"
@@ -817,32 +836,39 @@ export function MediaDetail(handle: Handle) {
 								{/* Description - Only shown on mobile */}
 								{media.description && (
 									<div
-										css={{
-											marginTop: spacing.md,
-											[`@media (min-width: ${breakpoints.mobile})` as const]: {
-												display: 'none',
-											},
-										}}
+										mix={[
+											rmxCss({
+												marginTop: spacing.md,
+												[`@media (min-width: ${breakpoints.mobile})` as const]:
+													{
+														display: 'none',
+													},
+											}),
+										]}
 									>
 										<dt
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-												marginBottom: spacing.xs,
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+													marginBottom: spacing.xs,
+												}),
+											]}
 										>
 											Description
 										</dt>
 										<dd
-											css={{
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												margin: 0,
-												lineHeight: 1.6,
-												whiteSpace: 'pre-wrap',
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.sm,
+													color: colors.text,
+													margin: 0,
+													lineHeight: 1.6,
+													whiteSpace: 'pre-wrap',
+												}),
+											]}
 										>
 											{media.description}
 										</dd>
@@ -850,29 +876,33 @@ export function MediaDetail(handle: Handle) {
 								)}
 
 								{/* File Path */}
-								<div css={{ marginTop: spacing.md }}>
+								<div mix={[rmxCss({ marginTop: spacing.md })]}>
 									<dt
-										css={{
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-											textTransform: 'uppercase',
-											letterSpacing: '0.05em',
-											marginBottom: spacing.xs,
-										}}
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												textTransform: 'uppercase',
+												letterSpacing: '0.05em',
+												marginBottom: spacing.xs,
+											}),
+										]}
 									>
 										File Path
 									</dt>
 									<dd
-										css={{
-											fontSize: typography.fontSize.xs,
-											color: colors.text,
-											margin: 0,
-											fontFamily: 'monospace',
-											backgroundColor: colors.background,
-											padding: spacing.xs,
-											borderRadius: radius.sm,
-											wordBreak: 'break-all',
-										}}
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.xs,
+												color: colors.text,
+												margin: 0,
+												fontFamily: 'monospace',
+												backgroundColor: colors.background,
+												padding: spacing.xs,
+												borderRadius: radius.sm,
+												wordBreak: 'break-all',
+											}),
+										]}
 									>
 										{media.rootName}:{media.relativePath}
 									</dd>
@@ -883,39 +913,45 @@ export function MediaDetail(handle: Handle) {
 
 					{/* Right Column - Title, Player, Description & Feeds */}
 					<div
-						css={{
-							// On mobile, show first (before artwork/metadata)
-							order: 0,
-						}}
+						mix={[
+							rmxCss({
+								// On mobile, show first (before artwork/metadata)
+								order: 0,
+							}),
+						]}
 					>
 						{!isEditRoute && (
 							<>
 								{/* Title & Author */}
-								<div css={{ marginBottom: spacing.lg }}>
+								<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
 									<h1
-										css={{
-											fontSize: typography.fontSize['2xl'],
-											fontWeight: typography.fontWeight.bold,
-											color: colors.text,
-											margin: 0,
-											lineHeight: 1.2,
-											[mq.mobile]: {
-												fontSize: typography.fontSize.xl,
-											},
-										}}
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize['2xl'],
+												fontWeight: typography.fontWeight.bold,
+												color: colors.text,
+												margin: 0,
+												lineHeight: 1.2,
+												[mq.mobile]: {
+													fontSize: typography.fontSize.xl,
+												},
+											}),
+										]}
 									>
 										{media.title}
 									</h1>
 									{media.author && (
 										<p
-											css={{
-												fontSize: typography.fontSize.lg,
-												color: colors.textMuted,
-												margin: `${spacing.xs} 0 0 0`,
-												[mq.mobile]: {
-													fontSize: typography.fontSize.base,
-												},
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.lg,
+													color: colors.textMuted,
+													margin: `${spacing.xs} 0 0 0`,
+													[mq.mobile]: {
+														fontSize: typography.fontSize.base,
+													},
+												}),
+											]}
 										>
 											by {media.author}
 										</p>
@@ -924,25 +960,29 @@ export function MediaDetail(handle: Handle) {
 
 								{/* Media Player */}
 								<div
-									css={{
-										backgroundColor: colors.surface,
-										borderRadius: radius.lg,
-										border: `1px solid ${colors.border}`,
-										padding: spacing.md,
-										marginBottom: spacing.xl,
-										boxShadow: shadows.sm,
-									}}
+									mix={[
+										rmxCss({
+											backgroundColor: colors.surface,
+											borderRadius: radius.lg,
+											border: `1px solid ${colors.border}`,
+											padding: spacing.md,
+											marginBottom: spacing.xl,
+											boxShadow: shadows.sm,
+										}),
+									]}
 								>
 									{isVideoFile ? (
 										<video
 											src={getStreamUrl(media)}
 											controls
 											preload="metadata"
-											css={{
-												width: '100%',
-												borderRadius: radius.md,
-												backgroundColor: '#000',
-											}}
+											mix={[
+												rmxCss({
+													width: '100%',
+													borderRadius: radius.md,
+													backgroundColor: '#000',
+												}),
+											]}
 										>
 											<track kind="captions" />
 											Your browser does not support video playback.
@@ -952,9 +992,11 @@ export function MediaDetail(handle: Handle) {
 											src={getStreamUrl(media)}
 											controls
 											preload="metadata"
-											css={{
-												width: '100%',
-											}}
+											mix={[
+												rmxCss({
+													width: '100%',
+												}),
+											]}
 										>
 											<track kind="captions" />
 											Your browser does not support audio playback.
@@ -965,38 +1007,45 @@ export function MediaDetail(handle: Handle) {
 								{/* Description Card - Hidden on mobile (shown in metadata card instead) */}
 								{media.description && (
 									<div
-										css={{
-											display: 'none',
-											[`@media (min-width: ${breakpoints.mobile})` as const]: {
-												display: 'block',
-											},
-											backgroundColor: colors.surface,
-											borderRadius: radius.lg,
-											border: `1px solid ${colors.border}`,
-											padding: responsive.spacingSection,
-											marginBottom: spacing.xl,
-											boxShadow: shadows.sm,
-										}}
+										mix={[
+											rmxCss({
+												display: 'none',
+												[`@media (min-width: ${breakpoints.mobile})` as const]:
+													{
+														display: 'block',
+													},
+												backgroundColor: colors.surface,
+												borderRadius: radius.lg,
+												border: `1px solid ${colors.border}`,
+												padding: responsive.spacingSection,
+												marginBottom: spacing.xl,
+												boxShadow: shadows.sm,
+											}),
+										]}
 									>
 										<h3
-											css={{
-												fontSize: typography.fontSize.base,
-												fontWeight: typography.fontWeight.semibold,
-												color: colors.text,
-												margin: `0 0 ${spacing.md} 0`,
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.base,
+													fontWeight: typography.fontWeight.semibold,
+													color: colors.text,
+													margin: `0 0 ${spacing.md} 0`,
+												}),
+											]}
 										>
 											Description
 										</h3>
 										{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
 										<p
-											css={{
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												margin: 0,
-												lineHeight: 1.6,
-												whiteSpace: 'pre-wrap',
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.sm,
+													color: colors.text,
+													margin: 0,
+													lineHeight: 1.6,
+													whiteSpace: 'pre-wrap',
+												}),
+											]}
 										>
 											{media.description}
 										</p>
@@ -1007,51 +1056,59 @@ export function MediaDetail(handle: Handle) {
 
 						{/* Metadata Editing Card */}
 						<div
-							css={{
-								backgroundColor: colors.surface,
-								borderRadius: radius.lg,
-								border: `1px solid ${colors.border}`,
-								padding: responsive.spacingSection,
-								marginBottom: spacing.xl,
-								boxShadow: shadows.sm,
-							}}
+							mix={[
+								rmxCss({
+									backgroundColor: colors.surface,
+									borderRadius: radius.lg,
+									border: `1px solid ${colors.border}`,
+									padding: responsive.spacingSection,
+									marginBottom: spacing.xl,
+									boxShadow: shadows.sm,
+								}),
+							]}
 						>
 							<div
-								css={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'center',
-									marginBottom: spacing.md,
-								}}
+								mix={[
+									rmxCss({
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										marginBottom: spacing.md,
+									}),
+								]}
 							>
 								<h3
-									css={{
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: 0,
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.base,
+											fontWeight: typography.fontWeight.semibold,
+											color: colors.text,
+											margin: 0,
+										}),
+									]}
 								>
 									Edit Metadata
 								</h3>
 								{!isEditRoute && (
 									<a
 										href={editMetadataHref}
-										css={{
-											display: 'inline-flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											padding: `${spacing.xs} ${spacing.md}`,
-											fontSize: typography.fontSize.sm,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.background,
-											backgroundColor: colors.primary,
-											border: 'none',
-											borderRadius: radius.md,
-											textDecoration: 'none',
-											transition: `all ${transitions.fast}`,
-											'&:hover': { backgroundColor: colors.primaryHover },
-										}}
+										mix={[
+											rmxCss({
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												padding: `${spacing.xs} ${spacing.md}`,
+												fontSize: typography.fontSize.sm,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.background,
+												backgroundColor: colors.primary,
+												border: 'none',
+												borderRadius: radius.md,
+												textDecoration: 'none',
+												transition: `all ${transitions.fast}`,
+												'&:hover': { backgroundColor: colors.primaryHover },
+											}),
+										]}
 									>
 										Edit
 									</a>
@@ -1060,26 +1117,30 @@ export function MediaDetail(handle: Handle) {
 
 							{metadataMessage && !isEditingMetadata && (
 								<div
-									css={{
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										marginBottom: spacing.md,
-										backgroundColor:
-											metadataMessage.type === 'success'
-												? 'rgba(16, 185, 129, 0.1)'
-												: 'rgba(239, 68, 68, 0.1)',
-										border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-									}}
+									mix={[
+										rmxCss({
+											padding: spacing.sm,
+											borderRadius: radius.md,
+											marginBottom: spacing.md,
+											backgroundColor:
+												metadataMessage.type === 'success'
+													? 'rgba(16, 185, 129, 0.1)'
+													: 'rgba(239, 68, 68, 0.1)',
+											border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+										}),
+									]}
 								>
 									<p
-										css={{
-											margin: 0,
-											fontSize: typography.fontSize.sm,
-											color:
-												metadataMessage.type === 'success'
-													? '#10b981'
-													: '#ef4444',
-										}}
+										mix={[
+											rmxCss({
+												margin: 0,
+												fontSize: typography.fontSize.sm,
+												color:
+													metadataMessage.type === 'success'
+														? '#10b981'
+														: '#ef4444',
+											}),
+										]}
 									>
 										{metadataMessage.text}
 									</p>
@@ -1090,26 +1151,30 @@ export function MediaDetail(handle: Handle) {
 								<div>
 									{metadataMessage && (
 										<div
-											css={{
-												padding: spacing.sm,
-												borderRadius: radius.md,
-												marginBottom: spacing.md,
-												backgroundColor:
-													metadataMessage.type === 'success'
-														? 'rgba(16, 185, 129, 0.1)'
-														: 'rgba(239, 68, 68, 0.1)',
-												border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-											}}
+											mix={[
+												rmxCss({
+													padding: spacing.sm,
+													borderRadius: radius.md,
+													marginBottom: spacing.md,
+													backgroundColor:
+														metadataMessage.type === 'success'
+															? 'rgba(16, 185, 129, 0.1)'
+															: 'rgba(239, 68, 68, 0.1)',
+													border: `1px solid ${metadataMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+												}),
+											]}
 										>
 											<p
-												css={{
-													margin: 0,
-													fontSize: typography.fontSize.sm,
-													color:
-														metadataMessage.type === 'success'
-															? '#10b981'
-															: '#ef4444',
-												}}
+												mix={[
+													rmxCss({
+														margin: 0,
+														fontSize: typography.fontSize.sm,
+														color:
+															metadataMessage.type === 'success'
+																? '#10b981'
+																: '#ef4444',
+													}),
+												]}
 											>
 												{metadataMessage.text}
 											</p>
@@ -1117,11 +1182,13 @@ export function MediaDetail(handle: Handle) {
 									)}
 
 									<div
-										css={{
-											display: 'flex',
-											flexDirection: 'column',
-											gap: spacing.md,
-										}}
+										mix={[
+											rmxCss({
+												display: 'flex',
+												flexDirection: 'column',
+												gap: spacing.md,
+											}),
+										]}
 									>
 										{/* Basic Info */}
 										<MetadataField
@@ -1159,11 +1226,13 @@ export function MediaDetail(handle: Handle) {
 
 										{/* Track/Disc Numbers */}
 										<div
-											css={{
-												display: 'grid',
-												gridTemplateColumns: '1fr 1fr',
-												gap: spacing.md,
-											}}
+											mix={[
+												rmxCss({
+													display: 'grid',
+													gridTemplateColumns: '1fr 1fr',
+													gap: spacing.md,
+												}),
+											]}
 										>
 											<MetadataField
 												label="Track Number"
@@ -1198,11 +1267,13 @@ export function MediaDetail(handle: Handle) {
 											onChange={(v) => updateEditedField('genre', v)}
 										/>
 										<div
-											css={{
-												display: 'grid',
-												gridTemplateColumns: '1fr 1fr',
-												gap: spacing.md,
-											}}
+											mix={[
+												rmxCss({
+													display: 'grid',
+													gridTemplateColumns: '1fr 1fr',
+													gap: spacing.md,
+												}),
+											]}
 										>
 											<MetadataField
 												label="Publication Date"
@@ -1219,11 +1290,13 @@ export function MediaDetail(handle: Handle) {
 
 										{/* Series Info */}
 										<div
-											css={{
-												display: 'grid',
-												gridTemplateColumns: '2fr 1fr',
-												gap: spacing.md,
-											}}
+											mix={[
+												rmxCss({
+													display: 'grid',
+													gridTemplateColumns: '2fr 1fr',
+													gap: spacing.md,
+												}),
+											]}
 										>
 											<MetadataField
 												label="Series / Show"
@@ -1255,54 +1328,60 @@ export function MediaDetail(handle: Handle) {
 										/>
 
 										<div
-											css={{
-												display: 'flex',
-												gap: spacing.sm,
-												justifyContent: 'flex-end',
-												marginTop: spacing.sm,
-											}}
+											mix={[
+												rmxCss({
+													display: 'flex',
+													gap: spacing.sm,
+													justifyContent: 'flex-end',
+													marginTop: spacing.sm,
+												}),
+											]}
 										>
 											<button
 												type="button"
 												disabled={savingMetadata}
-												css={{
-													padding: `${spacing.sm} ${spacing.lg}`,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.text,
-													backgroundColor: colors.background,
-													border: `1px solid ${colors.border}`,
-													borderRadius: radius.md,
-													cursor: savingMetadata ? 'not-allowed' : 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': savingMetadata
-														? {}
-														: { backgroundColor: colors.surface },
-												}}
-												on={{ click: cancelEditingMetadata }}
+												mix={[
+													rmxCss({
+														padding: `${spacing.sm} ${spacing.lg}`,
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+														backgroundColor: colors.background,
+														border: `1px solid ${colors.border}`,
+														borderRadius: radius.md,
+														cursor: savingMetadata ? 'not-allowed' : 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': savingMetadata
+															? {}
+															: { backgroundColor: colors.surface },
+													}),
+													rmxOn('click', cancelEditingMetadata),
+												]}
 											>
 												Cancel
 											</button>
 											<button
 												type="button"
 												disabled={savingMetadata}
-												css={{
-													padding: `${spacing.sm} ${spacing.lg}`,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.background,
-													backgroundColor: savingMetadata
-														? colors.border
-														: colors.primary,
-													border: 'none',
-													borderRadius: radius.md,
-													cursor: savingMetadata ? 'not-allowed' : 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': savingMetadata
-														? {}
-														: { backgroundColor: colors.primaryHover },
-												}}
-												on={{ click: saveMetadata }}
+												mix={[
+													rmxCss({
+														padding: `${spacing.sm} ${spacing.lg}`,
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.background,
+														backgroundColor: savingMetadata
+															? colors.border
+															: colors.primary,
+														border: 'none',
+														borderRadius: radius.md,
+														cursor: savingMetadata ? 'not-allowed' : 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': savingMetadata
+															? {}
+															: { backgroundColor: colors.primaryHover },
+													}),
+													rmxOn('click', saveMetadata),
+												]}
 											>
 												{savingMetadata ? 'Saving...' : 'Save Metadata'}
 											</button>
@@ -1311,11 +1390,13 @@ export function MediaDetail(handle: Handle) {
 								</div>
 							) : (
 								<p
-									css={{
-										fontSize: typography.fontSize.sm,
-										color: colors.textMuted,
-										margin: 0,
-									}}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.sm,
+											color: colors.textMuted,
+											margin: 0,
+										}),
+									]}
 								>
 									Edit the file's embedded metadata (title, author, description,
 									etc.)
@@ -1327,29 +1408,35 @@ export function MediaDetail(handle: Handle) {
 							<>
 								{/* Feed Assignments Card */}
 								<div
-									css={{
-										backgroundColor: colors.surface,
-										borderRadius: radius.lg,
-										border: `1px solid ${colors.border}`,
-										padding: responsive.spacingSection,
-										boxShadow: shadows.sm,
-									}}
+									mix={[
+										rmxCss({
+											backgroundColor: colors.surface,
+											borderRadius: radius.lg,
+											border: `1px solid ${colors.border}`,
+											padding: responsive.spacingSection,
+											boxShadow: shadows.sm,
+										}),
+									]}
 								>
 									<div
-										css={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											alignItems: 'center',
-											marginBottom: spacing.md,
-										}}
+										mix={[
+											rmxCss({
+												display: 'flex',
+												justifyContent: 'space-between',
+												alignItems: 'center',
+												marginBottom: spacing.md,
+											}),
+										]}
 									>
 										<h3
-											css={{
-												fontSize: typography.fontSize.base,
-												fontWeight: typography.fontWeight.semibold,
-												color: colors.text,
-												margin: 0,
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.base,
+													fontWeight: typography.fontWeight.semibold,
+													color: colors.text,
+													margin: 0,
+												}),
+											]}
 										>
 											Feed Assignments
 										</h3>
@@ -1357,23 +1444,25 @@ export function MediaDetail(handle: Handle) {
 											<button
 												type="button"
 												disabled={saving}
-												css={{
-													padding: `${spacing.xs} ${spacing.md}`,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.background,
-													backgroundColor: saving
-														? colors.border
-														: colors.primary,
-													border: 'none',
-													borderRadius: radius.md,
-													cursor: saving ? 'not-allowed' : 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': saving
-														? {}
-														: { backgroundColor: colors.primaryHover },
-												}}
-												on={{ click: saveAssignments }}
+												mix={[
+													rmxCss({
+														padding: `${spacing.xs} ${spacing.md}`,
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.background,
+														backgroundColor: saving
+															? colors.border
+															: colors.primary,
+														border: 'none',
+														borderRadius: radius.md,
+														cursor: saving ? 'not-allowed' : 'pointer',
+														transition: `all ${transitions.fast}`,
+														'&:hover': saving
+															? {}
+															: { backgroundColor: colors.primaryHover },
+													}),
+													rmxOn('click', saveAssignments),
+												]}
 											>
 												{saving ? 'Saving...' : 'Save Changes'}
 											</button>
@@ -1382,26 +1471,30 @@ export function MediaDetail(handle: Handle) {
 
 									{saveMessage && (
 										<div
-											css={{
-												padding: spacing.sm,
-												borderRadius: radius.md,
-												marginBottom: spacing.md,
-												backgroundColor:
-													saveMessage.type === 'success'
-														? 'rgba(16, 185, 129, 0.1)'
-														: 'rgba(239, 68, 68, 0.1)',
-												border: `1px solid ${saveMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-											}}
+											mix={[
+												rmxCss({
+													padding: spacing.sm,
+													borderRadius: radius.md,
+													marginBottom: spacing.md,
+													backgroundColor:
+														saveMessage.type === 'success'
+															? 'rgba(16, 185, 129, 0.1)'
+															: 'rgba(239, 68, 68, 0.1)',
+													border: `1px solid ${saveMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+												}),
+											]}
 										>
 											<p
-												css={{
-													margin: 0,
-													fontSize: typography.fontSize.sm,
-													color:
-														saveMessage.type === 'success'
-															? '#10b981'
-															: '#ef4444',
-												}}
+												mix={[
+													rmxCss({
+														margin: 0,
+														fontSize: typography.fontSize.sm,
+														color:
+															saveMessage.type === 'success'
+																? '#10b981'
+																: '#ef4444',
+													}),
+												]}
 											>
 												{saveMessage.text}
 											</p>
@@ -1410,56 +1503,66 @@ export function MediaDetail(handle: Handle) {
 
 									{/* Curated Feeds */}
 									{curatedFeeds.length > 0 && (
-										<div css={{ marginBottom: spacing.lg }}>
+										<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
 											<h4
-												css={{
-													fontSize: typography.fontSize.xs,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.textMuted,
-													textTransform: 'uppercase',
-													letterSpacing: '0.05em',
-													margin: `0 0 ${spacing.sm} 0`,
-												}}
+												mix={[
+													rmxCss({
+														fontSize: typography.fontSize.xs,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.textMuted,
+														textTransform: 'uppercase',
+														letterSpacing: '0.05em',
+														margin: `0 0 ${spacing.sm} 0`,
+													}),
+												]}
 											>
 												Curated Feeds
 											</h4>
 											<div
-												css={{
-													display: 'flex',
-													flexDirection: 'column',
-													gap: spacing.sm,
-												}}
+												mix={[
+													rmxCss({
+														display: 'flex',
+														flexDirection: 'column',
+														gap: spacing.sm,
+													}),
+												]}
 											>
 												{curatedFeeds.map((feed) => {
 													const isEnabled = selectedFeedIds.has(feed.id)
 													return (
 														<div
 															key={feed.id}
-															css={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: spacing.md,
-																padding: spacing.sm,
-																backgroundColor: colors.background,
-																borderRadius: radius.md,
-															}}
+															mix={[
+																rmxCss({
+																	display: 'flex',
+																	alignItems: 'center',
+																	gap: spacing.md,
+																	padding: spacing.sm,
+																	backgroundColor: colors.background,
+																	borderRadius: radius.md,
+																}),
+															]}
 														>
 															<img
 																src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
 																alt=""
-																css={{
-																	width: '32px',
-																	height: '32px',
-																	borderRadius: radius.sm,
-																	...artworkLayout.centeredContain,
-																}}
+																mix={[
+																	rmxCss({
+																		width: '32px',
+																		height: '32px',
+																		borderRadius: radius.sm,
+																		...artworkLayout.centeredContain,
+																	}),
+																]}
 															/>
 															<span
-																css={{
-																	flex: 1,
-																	fontSize: typography.fontSize.sm,
-																	color: colors.text,
-																}}
+																mix={[
+																	rmxCss({
+																		flex: 1,
+																		fontSize: typography.fontSize.sm,
+																		color: colors.text,
+																	}),
+																]}
 															>
 																{feed.name}
 															</span>
@@ -1467,38 +1570,42 @@ export function MediaDetail(handle: Handle) {
 																type="button"
 																role="switch"
 																aria-checked={isEnabled}
-																css={{
-																	width: '44px',
-																	height: '24px',
-																	borderRadius: '12px',
-																	border: 'none',
-																	backgroundColor: isEnabled
-																		? colors.primary
-																		: colors.border,
-																	cursor: 'pointer',
-																	padding: '2px',
-																	transition: `background-color ${transitions.fast}`,
-																	display: 'flex',
-																	alignItems: 'center',
-																	'&:focus': {
-																		outline: `2px solid ${colors.primary}`,
-																		outlineOffset: '2px',
-																	},
-																}}
-																on={{ click: () => toggleFeed(feed.id) }}
+																mix={[
+																	rmxCss({
+																		width: '44px',
+																		height: '24px',
+																		borderRadius: '12px',
+																		border: 'none',
+																		backgroundColor: isEnabled
+																			? colors.primary
+																			: colors.border,
+																		cursor: 'pointer',
+																		padding: '2px',
+																		transition: `background-color ${transitions.fast}`,
+																		display: 'flex',
+																		alignItems: 'center',
+																		'&:focus': {
+																			outline: `2px solid ${colors.primary}`,
+																			outlineOffset: '2px',
+																		},
+																	}),
+																	rmxOn('click', () => toggleFeed(feed.id)),
+																]}
 															>
 																<div
-																	css={{
-																		width: '20px',
-																		height: '20px',
-																		borderRadius: '50%',
-																		backgroundColor: '#fff',
-																		boxShadow: shadows.sm,
-																		transition: `transform ${transitions.fast}`,
-																		transform: isEnabled
-																			? 'translateX(20px)'
-																			: 'translateX(0)',
-																	}}
+																	mix={[
+																		rmxCss({
+																			width: '20px',
+																			height: '20px',
+																			borderRadius: '50%',
+																			backgroundColor: '#fff',
+																			boxShadow: shadows.sm,
+																			transition: `transform ${transitions.fast}`,
+																			transform: isEnabled
+																				? 'translateX(20px)'
+																				: 'translateX(0)',
+																		}),
+																	]}
 																/>
 															</button>
 														</div>
@@ -1512,23 +1619,27 @@ export function MediaDetail(handle: Handle) {
 									{directoryAssignments.length > 0 && (
 										<div>
 											<h4
-												css={{
-													fontSize: typography.fontSize.xs,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.textMuted,
-													textTransform: 'uppercase',
-													letterSpacing: '0.05em',
-													margin: `0 0 ${spacing.sm} 0`,
-												}}
+												mix={[
+													rmxCss({
+														fontSize: typography.fontSize.xs,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.textMuted,
+														textTransform: 'uppercase',
+														letterSpacing: '0.05em',
+														margin: `0 0 ${spacing.sm} 0`,
+													}),
+												]}
 											>
 												Directory Feeds
 											</h4>
 											<div
-												css={{
-													display: 'flex',
-													flexDirection: 'column',
-													gap: spacing.sm,
-												}}
+												mix={[
+													rmxCss({
+														display: 'flex',
+														flexDirection: 'column',
+														gap: spacing.sm,
+													}),
+												]}
 											>
 												{directoryAssignments.map((assignment) => {
 													const feed = directoryFeeds.find(
@@ -1537,41 +1648,49 @@ export function MediaDetail(handle: Handle) {
 													return (
 														<div
 															key={assignment.feedId}
-															css={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: spacing.md,
-																padding: spacing.sm,
-																backgroundColor: colors.background,
-																borderRadius: radius.md,
-																opacity: 0.7,
-															}}
+															mix={[
+																rmxCss({
+																	display: 'flex',
+																	alignItems: 'center',
+																	gap: spacing.md,
+																	padding: spacing.sm,
+																	backgroundColor: colors.background,
+																	borderRadius: radius.md,
+																	opacity: 0.7,
+																}),
+															]}
 														>
 															<img
 																src={`/admin/api/feeds/${assignment.feedId}/artwork?t=${feed?.updatedAt ?? 0}`}
 																alt=""
-																css={{
-																	width: '32px',
-																	height: '32px',
-																	borderRadius: radius.sm,
-																	...artworkLayout.centeredContain,
-																}}
+																mix={[
+																	rmxCss({
+																		width: '32px',
+																		height: '32px',
+																		borderRadius: radius.sm,
+																		...artworkLayout.centeredContain,
+																	}),
+																]}
 															/>
 															<span
-																css={{
-																	flex: 1,
-																	fontSize: typography.fontSize.sm,
-																	color: colors.text,
-																}}
+																mix={[
+																	rmxCss({
+																		flex: 1,
+																		fontSize: typography.fontSize.sm,
+																		color: colors.text,
+																	}),
+																]}
 															>
 																{assignment.feedName}
 															</span>
 															<span
-																css={{
-																	fontSize: typography.fontSize.xs,
-																	color: colors.textMuted,
-																	fontStyle: 'italic',
-																}}
+																mix={[
+																	rmxCss({
+																		fontSize: typography.fontSize.xs,
+																		color: colors.textMuted,
+																		fontStyle: 'italic',
+																	}),
+																]}
 															>
 																via directory
 															</span>
@@ -1585,11 +1704,13 @@ export function MediaDetail(handle: Handle) {
 									{curatedFeeds.length === 0 &&
 										directoryAssignments.length === 0 && (
 											<p
-												css={{
-													textAlign: 'center',
-													color: colors.textMuted,
-													fontSize: typography.fontSize.sm,
-												}}
+												mix={[
+													rmxCss({
+														textAlign: 'center',
+														color: colors.textMuted,
+														fontSize: typography.fontSize.sm,
+													}),
+												]}
 											>
 												No feeds available.
 											</p>
@@ -1598,66 +1719,72 @@ export function MediaDetail(handle: Handle) {
 
 								{/* Media Analytics Card */}
 								<div
-									css={{
-										backgroundColor: colors.surface,
-										borderRadius: radius.lg,
-										border: `1px solid ${colors.border}`,
-										padding: responsive.spacingSection,
-										marginTop: spacing.xl,
-										boxShadow: shadows.sm,
-									}}
+									mix={[
+										rmxCss({
+											backgroundColor: colors.surface,
+											borderRadius: radius.lg,
+											border: `1px solid ${colors.border}`,
+											padding: responsive.spacingSection,
+											marginTop: spacing.xl,
+											boxShadow: shadows.sm,
+										}),
+									]}
 								>
 									<div
-										css={{
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'space-between',
-											gap: spacing.sm,
-											marginBottom: spacing.md,
-											flexWrap: 'wrap',
-										}}
+										mix={[
+											rmxCss({
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'space-between',
+												gap: spacing.sm,
+												marginBottom: spacing.md,
+												flexWrap: 'wrap',
+											}),
+										]}
 									>
 										<h3
-											css={{
-												fontSize: typography.fontSize.base,
-												fontWeight: typography.fontWeight.semibold,
-												color: colors.text,
-												margin: 0,
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.base,
+													fontWeight: typography.fontWeight.semibold,
+													color: colors.text,
+													margin: 0,
+												}),
+											]}
 										>
 											Analytics (last {analyticsWindowDays} days)
 										</h3>
-										<div css={{ display: 'flex', gap: spacing.xs }}>
+										<div mix={[rmxCss({ display: 'flex', gap: spacing.xs })]}>
 											{[7, 30, 90].map((days) => (
 												<button
 													key={days}
 													type="button"
-													css={{
-														padding: `${spacing.xs} ${spacing.sm}`,
-														fontSize: typography.fontSize.xs,
-														fontWeight: typography.fontWeight.medium,
-														color:
-															days === analyticsWindowDays
-																? colors.background
-																: colors.textMuted,
-														backgroundColor:
-															days === analyticsWindowDays
-																? colors.primary
-																: 'transparent',
-														border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
-														borderRadius: radius.sm,
-														cursor: 'pointer',
-														transition: `all ${transitions.fast}`,
-														'&:hover': {
-															borderColor: colors.primary,
+													mix={[
+														rmxCss({
+															padding: `${spacing.xs} ${spacing.sm}`,
+															fontSize: typography.fontSize.xs,
+															fontWeight: typography.fontWeight.medium,
 															color:
 																days === analyticsWindowDays
 																	? colors.background
-																	: colors.text,
-														},
-													}}
-													on={{
-														click: () => {
+																	: colors.textMuted,
+															backgroundColor:
+																days === analyticsWindowDays
+																	? colors.primary
+																	: 'transparent',
+															border: `1px solid ${days === analyticsWindowDays ? colors.primary : colors.border}`,
+															borderRadius: radius.sm,
+															cursor: 'pointer',
+															transition: `all ${transitions.fast}`,
+															'&:hover': {
+																borderColor: colors.primary,
+																color:
+																	days === analyticsWindowDays
+																		? colors.background
+																		: colors.text,
+															},
+														}),
+														rmxOn('click', () => {
 															if (
 																days === analyticsWindowDays ||
 																state.status !== 'success'
@@ -1670,8 +1797,8 @@ export function MediaDetail(handle: Handle) {
 																state.data.media.relativePath,
 																days,
 															)
-														},
-													}}
+														}),
+													]}
 												>
 													{days}d
 												</button>
@@ -1692,25 +1819,29 @@ export function MediaDetail(handle: Handle) {
 function LoadingSpinner() {
 	return () => (
 		<div
-			css={{
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-				padding: spacing['2xl'],
-			}}
+			mix={[
+				rmxCss({
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					padding: spacing['2xl'],
+				}),
+			]}
 		>
 			<div
-				css={{
-					width: '40px',
-					height: '40px',
-					border: `3px solid ${colors.border}`,
-					borderTopColor: colors.primary,
-					borderRadius: '50%',
-					animation: 'spin 1s linear infinite',
-					'@keyframes spin': {
-						to: { transform: 'rotate(360deg)' },
-					},
-				}}
+				mix={[
+					rmxCss({
+						width: '40px',
+						height: '40px',
+						border: `3px solid ${colors.border}`,
+						borderTopColor: colors.primary,
+						borderRadius: '50%',
+						animation: 'spin 1s linear infinite',
+						'@keyframes spin': {
+							to: { transform: 'rotate(360deg)' },
+						},
+					}),
+				]}
 			/>
 		</div>
 	)
@@ -1719,31 +1850,37 @@ function LoadingSpinner() {
 function ErrorMessage() {
 	return ({ message }: { message: string }) => (
 		<div
-			css={{
-				padding: spacing.xl,
-				backgroundColor: 'rgba(239, 68, 68, 0.1)',
-				borderRadius: radius.md,
-				border: '1px solid rgba(239, 68, 68, 0.3)',
-			}}
+			mix={[
+				rmxCss({
+					padding: spacing.xl,
+					backgroundColor: 'rgba(239, 68, 68, 0.1)',
+					borderRadius: radius.md,
+					border: '1px solid rgba(239, 68, 68, 0.3)',
+				}),
+			]}
 		>
 			<p
-				css={{
-					color: '#ef4444',
-					margin: 0,
-					fontSize: typography.fontSize.base,
-				}}
+				mix={[
+					rmxCss({
+						color: '#ef4444',
+						margin: 0,
+						fontSize: typography.fontSize.base,
+					}),
+				]}
 			>
 				Failed to load media: {message}
 			</p>
 			<a
 				href="/admin/media"
-				css={{
-					display: 'inline-block',
-					marginTop: spacing.md,
-					color: colors.primary,
-					textDecoration: 'none',
-					'&:hover': { textDecoration: 'underline' },
-				}}
+				mix={[
+					rmxCss({
+						display: 'inline-block',
+						marginTop: spacing.md,
+						color: colors.primary,
+						textDecoration: 'none',
+						'&:hover': { textDecoration: 'underline' },
+					}),
+				]}
 			>
 				← Back to media library
 			</a>
@@ -1755,22 +1892,26 @@ function MetadataItem() {
 	return ({ label, value }: { label: string; value: string }) => (
 		<div>
 			<dt
-				css={{
-					fontSize: typography.fontSize.xs,
-					color: colors.textMuted,
-					textTransform: 'uppercase',
-					letterSpacing: '0.05em',
-					marginBottom: spacing.xs,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+						marginBottom: spacing.xs,
+					}),
+				]}
 			>
 				{label}
 			</dt>
 			<dd
-				css={{
-					fontSize: typography.fontSize.sm,
-					color: colors.text,
-					margin: 0,
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.fontSize.sm,
+						color: colors.text,
+						margin: 0,
+					}),
+				]}
 			>
 				{value}
 			</dd>
@@ -1787,11 +1928,13 @@ function MediaAnalyticsSection() {
 		if (analyticsState.status === 'loading') {
 			return (
 				<p
-					css={{
-						margin: 0,
-						fontSize: typography.fontSize.sm,
-						color: colors.textMuted,
-					}}
+					mix={[
+						rmxCss({
+							margin: 0,
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+						}),
+					]}
 				>
 					Loading analytics...
 				</p>
@@ -1801,11 +1944,13 @@ function MediaAnalyticsSection() {
 		if (analyticsState.status === 'error') {
 			return (
 				<p
-					css={{
-						margin: 0,
-						fontSize: typography.fontSize.sm,
-						color: '#ef4444',
-					}}
+					mix={[
+						rmxCss({
+							margin: 0,
+							fontSize: typography.fontSize.sm,
+							color: '#ef4444',
+						}),
+					]}
 				>
 					Unable to load analytics: {analyticsState.message}
 				</p>
@@ -1815,18 +1960,22 @@ function MediaAnalyticsSection() {
 		const { summary, byFeed, byToken, topClients, daily } = analyticsState.data
 		return (
 			<div
-				css={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap: spacing.lg,
-				}}
+				mix={[
+					rmxCss({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: spacing.lg,
+					}),
+				]}
 			>
 				<div
-					css={{
-						display: 'grid',
-						gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-						gap: spacing.sm,
-					}}
+					mix={[
+						rmxCss({
+							display: 'grid',
+							gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+							gap: spacing.sm,
+						}),
+					]}
 				>
 					<AnalyticsMetricCard
 						label="Requests"
@@ -1847,74 +1996,88 @@ function MediaAnalyticsSection() {
 				</div>
 
 				<div
-					css={{
-						display: 'grid',
-						gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-						gap: spacing.lg,
-					}}
+					mix={[
+						rmxCss({
+							display: 'grid',
+							gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+							gap: spacing.lg,
+						}),
+					]}
 				>
 					<div>
 						<h4
-							css={{
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.semibold,
-								margin: `0 0 ${spacing.sm} 0`,
-								color: colors.text,
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.semibold,
+									margin: `0 0 ${spacing.sm} 0`,
+									color: colors.text,
+								}),
+							]}
 						>
 							By Feed
 						</h4>
 						{byFeed.length === 0 ? (
 							<p
-								css={{
-									margin: 0,
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-								}}
+								mix={[
+									rmxCss({
+										margin: 0,
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+									}),
+								]}
 							>
 								No feed-level analytics yet.
 							</p>
 						) : (
 							<ul
-								css={{
-									listStyle: 'none',
-									padding: 0,
-									margin: 0,
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
-								}}
+								mix={[
+									rmxCss({
+										listStyle: 'none',
+										padding: 0,
+										margin: 0,
+										display: 'flex',
+										flexDirection: 'column',
+										gap: spacing.sm,
+									}),
+								]}
 							>
 								{byFeed.map((feed) => (
 									<li
 										key={`${feed.feedType}-${feed.feedId}`}
-										css={{
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
-											backgroundColor: colors.background,
-										}}
+										mix={[
+											rmxCss({
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												border: `1px solid ${colors.border}`,
+												backgroundColor: colors.background,
+											}),
+										]}
 									>
 										<a
 											href={`/admin/feeds/${feed.feedId}`}
-											css={{
-												color: colors.primary,
-												textDecoration: 'none',
-												fontSize: typography.fontSize.sm,
-												fontWeight: typography.fontWeight.medium,
-											}}
+											mix={[
+												rmxCss({
+													color: colors.primary,
+													textDecoration: 'none',
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.medium,
+												}),
+											]}
 										>
 											{feed.feedName}
 										</a>
 										<div
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												display: 'flex',
-												gap: spacing.sm,
-												marginTop: spacing.xs,
-												flexWrap: 'wrap',
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+													display: 'flex',
+													gap: spacing.sm,
+													marginTop: spacing.xs,
+													flexWrap: 'wrap',
+												}),
+											]}
 										>
 											<span>{feed.downloadStarts} starts</span>
 											<span>{feed.mediaRequests} requests</span>
@@ -1928,64 +2091,76 @@ function MediaAnalyticsSection() {
 
 					<div>
 						<h4
-							css={{
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.semibold,
-								margin: `0 0 ${spacing.sm} 0`,
-								color: colors.text,
-							}}
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.semibold,
+									margin: `0 0 ${spacing.sm} 0`,
+									color: colors.text,
+								}),
+							]}
 						>
 							Top Tokens
 						</h4>
 						{byToken.length === 0 ? (
 							<p
-								css={{
-									margin: 0,
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-								}}
+								mix={[
+									rmxCss({
+										margin: 0,
+										fontSize: typography.fontSize.sm,
+										color: colors.textMuted,
+									}),
+								]}
 							>
 								No token-level analytics yet.
 							</p>
 						) : (
 							<ul
-								css={{
-									listStyle: 'none',
-									padding: 0,
-									margin: 0,
-									display: 'flex',
-									flexDirection: 'column',
-									gap: spacing.sm,
-								}}
+								mix={[
+									rmxCss({
+										listStyle: 'none',
+										padding: 0,
+										margin: 0,
+										display: 'flex',
+										flexDirection: 'column',
+										gap: spacing.sm,
+									}),
+								]}
 							>
 								{byToken.slice(0, 8).map((token) => (
 									<li
 										key={`${token.feedType}-${token.feedId}-${token.token}`}
-										css={{
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
-											backgroundColor: colors.background,
-										}}
+										mix={[
+											rmxCss({
+												padding: spacing.sm,
+												borderRadius: radius.md,
+												border: `1px solid ${colors.border}`,
+												backgroundColor: colors.background,
+											}),
+										]}
 									>
 										<div
-											css={{
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												fontWeight: typography.fontWeight.medium,
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.sm,
+													color: colors.text,
+													fontWeight: typography.fontWeight.medium,
+												}),
+											]}
 										>
 											{token.label || 'Unlabeled token'}
 										</div>
 										<div
-											css={{
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												marginTop: spacing.xs,
-												display: 'flex',
-												gap: spacing.sm,
-												flexWrap: 'wrap',
-											}}
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+													marginTop: spacing.xs,
+													display: 'flex',
+													gap: spacing.sm,
+													flexWrap: 'wrap',
+												}),
+											]}
 										>
 											<span>{token.downloadStarts} starts</span>
 											<span>{token.mediaRequests} requests</span>
@@ -2043,21 +2218,12 @@ function MetadataField() {
 			marginBottom: spacing.xs,
 		}
 
-		const inputHandler = {
-			input: (e: Event) => onChange((e.target as HTMLInputElement).value),
-		}
-
 		if (type === 'number') {
 			return (
 				<div>
-					<label css={{ display: 'block' }}>
-						<span css={labelStyles}>{label}</span>
-						<input
-							type="number"
-							value={value}
-							css={inputStyles}
-							on={inputHandler}
-						/>
+					<label mix={[rmxCss({ display: 'block' })]}>
+						<span mix={[rmxCss(labelStyles)]}>{label}</span>
+						<input type="number" value={value} mix={[rmxCss(inputStyles)]} />
 					</label>
 				</div>
 			)
@@ -2066,16 +2232,17 @@ function MetadataField() {
 		if (type === 'date') {
 			return (
 				<div>
-					<label css={{ display: 'block' }}>
-						<span css={labelStyles}>{label}</span>
+					<label mix={[rmxCss({ display: 'block' })]}>
+						<span mix={[rmxCss(labelStyles)]}>{label}</span>
 						<input
 							type="date"
 							value={value}
-							css={inputStyles}
-							on={{
-								change: (e: Event) =>
+							mix={[
+								rmxCss(inputStyles),
+								rmxOn<HTMLInputElement, 'change'>('change', (e: Event) =>
 									onChange((e.target as HTMLInputElement).value),
-							}}
+								),
+							]}
 						/>
 					</label>
 				</div>
@@ -2084,14 +2251,13 @@ function MetadataField() {
 
 		return (
 			<div>
-				<label css={{ display: 'block' }}>
-					<span css={labelStyles}>{label}</span>
+				<label mix={[rmxCss({ display: 'block' })]}>
+					<span mix={[rmxCss(labelStyles)]}>{label}</span>
 					<input
 						type="text"
 						value={value}
 						list={undefined}
-						css={inputStyles}
-						on={inputHandler}
+						mix={[rmxCss(inputStyles)]}
 					/>
 				</label>
 			</div>
@@ -2111,44 +2277,50 @@ function MetadataTextArea() {
 	}) => (
 		<div>
 			<label
-				css={{
-					display: 'block',
-				}}
+				mix={[
+					rmxCss({
+						display: 'block',
+					}),
+				]}
 			>
 				<span
-					css={{
-						display: 'block',
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-						textTransform: 'uppercase',
-						letterSpacing: '0.05em',
-						marginBottom: spacing.xs,
-					}}
+					mix={[
+						rmxCss({
+							display: 'block',
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em',
+							marginBottom: spacing.xs,
+						}),
+					]}
 				>
 					{label}
 				</span>
 				<textarea
 					value={value}
 					rows={4}
-					css={{
-						width: '100%',
-						padding: spacing.sm,
-						fontSize: typography.fontSize.sm,
-						color: colors.text,
-						backgroundColor: colors.background,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						outline: 'none',
-						resize: 'vertical',
-						fontFamily: 'inherit',
-						transition: `border-color ${transitions.fast}`,
-						'&:focus': {
-							borderColor: colors.primary,
-						},
-					}}
-					on={{
-						input: (e) => onChange((e.target as HTMLTextAreaElement).value),
-					}}
+					mix={[
+						rmxCss({
+							width: '100%',
+							padding: spacing.sm,
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							backgroundColor: colors.background,
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							outline: 'none',
+							resize: 'vertical',
+							fontFamily: 'inherit',
+							transition: `border-color ${transitions.fast}`,
+							'&:focus': {
+								borderColor: colors.primary,
+							},
+						}),
+						rmxOn('input', (e) =>
+							onChange((e.target as HTMLTextAreaElement).value),
+						),
+					]}
 				/>
 			</label>
 		</div>

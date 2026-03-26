@@ -55,7 +55,7 @@ async function isFileAllowed(
 
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { token, path: splatParam } = context.params
 
 		// Look up feed by token

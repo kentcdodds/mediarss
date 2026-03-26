@@ -268,7 +268,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 export default {
 	middleware: [],
-	async action(context: RequestContext) {
+	async handler(context: RequestContext) {
 		if (context.method === 'POST') {
 			return handlePost(context)
 		}

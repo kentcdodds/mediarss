@@ -16,6 +16,10 @@ Always run the full gate before committing:
 
 Do not commit if any part of the gate fails.
 
+## Remix Documentation
+
+Reference `docs/remix/README.md` for mirrored package docs and package-specific deep dives. Prefer those docs before guessing Remix APIs.
+
 ## No React
 
 This application does NOT use React. We use `remix/component` for UI components. Do not introduce React, Preact, or any other UI framework.
@@ -322,8 +326,7 @@ function UserBadge(handle: Handle) {
 #### Router Stability Note
 
 The historical client-router `insertBefore` instability that required manual
-refreshes should be treated as fixed for this project after upgrading to
-`remix@3.0.0-alpha.3`.
+refreshes should be treated as fixed for this project after upgrading to `remix@3.0.0-alpha.4`.
 
 If navigation regressions appear, debug the app code first (Link handling,
 route registration, and state updates) before assuming a framework bug.

@@ -74,7 +74,7 @@ type UpdateFeedRequest = {
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { id } = context.params
 
 		if (context.method === 'GET') {

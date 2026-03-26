@@ -9,7 +9,7 @@ import { getVersionInfo } from '#app/helpers/version.ts'
  */
 const adminApiVersionHandlers = {
 	middleware: [],
-	async action() {
+	async handler() {
 		const versionInfo = await getVersionInfo()
 		const githubRepo = getGitHubRepo()
 

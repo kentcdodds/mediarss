@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 import '#app/config/init-env.ts'
 import mediaHandlers from './media.ts'
 
-type MediaActionContext = Parameters<typeof mediaHandlers.action>[0]
+type MediaActionContext = Parameters<typeof mediaHandlers.handler>[0]
 type MinimalMediaActionContext = {
 	request: Request
 	method: string
@@ -30,7 +30,7 @@ function createMediaActionContext(pathParam: string): MediaActionContext {
 }
 
 test('media route returns 400 for malformed path encoding', async () => {
-	const response = await mediaHandlers.action(
+	const response = await mediaHandlers.handler(
 		createMediaActionContext('%E0%A4%A'),
 	)
 	expect(response.status).toBe(400)

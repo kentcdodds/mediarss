@@ -27,7 +27,7 @@ import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { id } = context.params
 
 		// Verify feed exists

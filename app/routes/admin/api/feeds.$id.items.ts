@@ -34,7 +34,7 @@ type ReorderItemsRequest = {
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { id } = context.params
 
 		// Only curated feeds support item management

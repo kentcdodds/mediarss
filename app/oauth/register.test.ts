@@ -43,16 +43,16 @@ async function createDcrTestServer() {
 
 			// Route to the appropriate handler
 			if (url.pathname === '/oauth/register') {
-				return oauthRegisterHandlers.default.action(context)
+				return oauthRegisterHandlers.default.handler(context)
 			}
 			if (url.pathname === '/.well-known/oauth-authorization-server') {
-				return oauthServerMetadataHandlers.default.action(context)
+				return oauthServerMetadataHandlers.default.handler(context)
 			}
 			if (url.pathname === '/oauth/token') {
-				return oauthTokenHandlers.default.action(context)
+				return oauthTokenHandlers.default.handler(context)
 			}
 			if (url.pathname === '/admin/authorize') {
-				return adminAuthorizeHandlers.default.action(context)
+				return adminAuthorizeHandlers.default.handler(context)
 			}
 
 			return new Response('Not Found', { status: 404 })

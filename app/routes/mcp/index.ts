@@ -304,7 +304,7 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 
 export default {
 	middleware: [],
-	action: withCors({
+	handler: withCors({
 		getCorsHeaders: () => MCP_CORS_HEADERS,
 		handler: async (context: RequestContext) => {
 			try {

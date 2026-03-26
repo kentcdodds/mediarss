@@ -10,7 +10,7 @@ import { render } from '#app/helpers/render.ts'
  */
 const adminShellHandler = {
 	middleware: [],
-	action() {
+	handler() {
 		return render(
 			Layout({
 				title: 'MediaRSS Admin',

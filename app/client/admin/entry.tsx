@@ -1,4 +1,4 @@
-import { createRoot, type Handle } from 'remix/component'
+import { createRoot, type Handle, css as rmxCss } from 'remix/component'
 import {
 	colors,
 	mq,
@@ -51,24 +51,28 @@ function AppFooter(handle: Handle) {
 
 	return () => (
 		<footer
-			css={{
-				borderTop: `1px solid ${colors.border}`,
-				padding: `${spacing.md} ${responsive.spacingHeader}`,
-				display: 'flex',
-				justifyContent: 'center',
-				alignItems: 'center',
-			}}
+			mix={[
+				rmxCss({
+					borderTop: `1px solid ${colors.border}`,
+					padding: `${spacing.md} ${responsive.spacingHeader}`,
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+				}),
+			]}
 		>
 			<a
 				href="/admin/version"
-				css={{
-					fontSize: typography.fontSize.xs,
-					color: colors.textMuted,
-					textDecoration: 'none',
-					'&:hover': {
-						color: colors.primary,
-					},
-				}}
+				mix={[
+					rmxCss({
+						fontSize: typography.fontSize.xs,
+						color: colors.textMuted,
+						textDecoration: 'none',
+						'&:hover': {
+							color: colors.primary,
+						},
+					}),
+				]}
 			>
 				{displayVersion ? `v${displayVersion}` : '...'}
 			</a>
@@ -79,74 +83,88 @@ function AppFooter(handle: Handle) {
 function AdminApp() {
 	return () => (
 		<div
-			css={{
-				fontFamily: typography.fontFamily,
-				minHeight: '100vh',
-				backgroundColor: colors.background,
-				display: 'flex',
-				flexDirection: 'column',
-			}}
+			mix={[
+				rmxCss({
+					fontFamily: typography.fontFamily,
+					minHeight: '100vh',
+					backgroundColor: colors.background,
+					display: 'flex',
+					flexDirection: 'column',
+				}),
+			]}
 		>
 			<header
-				css={{
-					borderBottom: `1px solid ${colors.border}`,
-					padding: `${spacing.md} ${responsive.spacingHeader}`,
-					display: 'flex',
-					alignItems: 'center',
-					gap: spacing.md,
-					[mq.mobile]: {
-						gap: spacing.sm,
-					},
-				}}
-			>
-				<a
-					href="/admin"
-					css={{
+				mix={[
+					rmxCss({
+						borderBottom: `1px solid ${colors.border}`,
+						padding: `${spacing.md} ${responsive.spacingHeader}`,
 						display: 'flex',
 						alignItems: 'center',
 						gap: spacing.md,
-						textDecoration: 'none',
-					}}
+						[mq.mobile]: {
+							gap: spacing.sm,
+						},
+					}),
+				]}
+			>
+				<a
+					href="/admin"
+					mix={[
+						rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
+							textDecoration: 'none',
+						}),
+					]}
 				>
 					<img
 						src="/assets/logo.svg"
 						alt="MediaRSS"
-						css={{
-							width: '36px',
-							height: '36px',
-						}}
+						mix={[
+							rmxCss({
+								width: '36px',
+								height: '36px',
+							}),
+						]}
 					/>
 					<h1
-						css={{
-							fontSize: typography.fontSize.lg,
-							fontWeight: typography.fontWeight.semibold,
-							color: colors.text,
-							margin: 0,
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.lg,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+							}),
+						]}
 					>
 						MediaRSS
 					</h1>
 					<span
-						css={{
-							fontSize: typography.fontSize.sm,
-							color: colors.textMuted,
-							[mq.mobile]: {
-								display: 'none',
-							},
-						}}
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								[mq.mobile]: {
+									display: 'none',
+								},
+							}),
+						]}
 					>
 						Admin
 					</span>
 				</a>
 			</header>
 			<main
-				css={{
-					flex: 1,
-					maxWidth: '1200px',
-					width: '100%',
-					margin: '0 auto',
-					padding: responsive.spacingPage,
-				}}
+				mix={[
+					rmxCss({
+						flex: 1,
+						maxWidth: '1200px',
+						width: '100%',
+						margin: '0 auto',
+						padding: responsive.spacingPage,
+					}),
+				]}
 			>
 				<RouterOutlet />
 			</main>

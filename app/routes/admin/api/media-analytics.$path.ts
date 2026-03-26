@@ -183,7 +183,7 @@ function getFeedTokenKey(
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { path: splatParam } = context.params
 		if (!splatParam) {
 			return Response.json({ error: 'Path required' }, { status: 400 })

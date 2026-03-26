@@ -1,5 +1,5 @@
 import {
-	type AdapterStatement,
+	type DataManipulationOperation,
 	getTableName,
 	getTablePrimaryKey,
 } from 'remix/data-table'
@@ -16,7 +16,7 @@ type CompiledStatement = {
 type DataTableAnyTable = Parameters<typeof getTableName>[0]
 
 export function compileBunSqliteStatement(
-	statement: AdapterStatement,
+	statement: DataManipulationOperation,
 ): CompiledStatement {
 	if (statement.kind === 'raw') {
 		return {
@@ -199,7 +199,7 @@ function compileInsertManyStatement(
 }
 
 function compileUpsertStatement(
-	statement: Extract<AdapterStatement, { kind: 'upsert' }>,
+	statement: Extract<DataManipulationOperation, { kind: 'upsert' }>,
 	context: CompilerContext,
 ): CompiledStatement {
 	const insertColumns = Object.keys(statement.values)
@@ -230,7 +230,7 @@ function compileUpsertStatement(
 					)
 					.join(', ')}`
 
-	const compiled = {
+	return {
 		text:
 			`insert into ${quotePath(getTableName(statement.table))} (` +
 			insertColumns.map((column) => quotePath(column)).join(', ') +
@@ -241,7 +241,6 @@ function compileUpsertStatement(
 			compileReturningClause(statement.returning),
 		values: context.values,
 	}
-	return compiled
 }
 
 function compileFromClause(

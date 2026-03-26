@@ -22,7 +22,10 @@ export async function addItemToFeed(
 		},
 		{
 			conflictTarget: ['feed_id', 'media_root', 'relative_path'],
-			update: { position: position ?? null },
+			update: {
+				position: position ?? null,
+				added_at: now,
+			},
 			returning: '*',
 		},
 	)

@@ -1,5 +1,8 @@
-import type { Handle } from 'remix/component'
-import { TypedEventTarget } from 'remix/interaction'
+import {
+	addEventListeners,
+	type Handle,
+	TypedEventTarget,
+} from 'remix/component'
 
 type RouteMatch = {
 	path: string
@@ -239,7 +242,7 @@ function handleDocumentSubmit(event: SubmitEvent) {
  */
 export function RouterOutlet(handle: Handle) {
 	// Subscribe to navigation events
-	handle.on(router, {
+	addEventListeners(router, handle.signal, {
 		navigate: () => {
 			void handle.update()
 		},

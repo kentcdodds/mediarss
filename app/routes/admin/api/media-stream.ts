@@ -12,7 +12,7 @@ import { serveFileWithRanges } from '#app/helpers/range-request.ts'
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		const { path: splatParam } = context.params
 
 		if (!splatParam) {

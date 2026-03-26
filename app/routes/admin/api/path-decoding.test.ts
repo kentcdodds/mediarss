@@ -5,12 +5,12 @@ import mediaMetadataHandler from './media.$path.metadata.ts'
 import mediaDetailHandler from './media.$path.ts'
 import mediaStreamHandler from './media-stream.ts'
 
-type ArtworkActionContext = Parameters<typeof artworkHandler.action>[0]
-type MediaDetailActionContext = Parameters<typeof mediaDetailHandler.action>[0]
+type ArtworkActionContext = Parameters<typeof artworkHandler.handler>[0]
+type MediaDetailActionContext = Parameters<typeof mediaDetailHandler.handler>[0]
 type MediaMetadataActionContext = Parameters<
-	typeof mediaMetadataHandler.action
+	typeof mediaMetadataHandler.handler
 >[0]
-type MediaStreamActionContext = Parameters<typeof mediaStreamHandler.action>[0]
+type MediaStreamActionContext = Parameters<typeof mediaStreamHandler.handler>[0]
 
 type MinimalPathActionContext = {
 	request: Request
@@ -25,7 +25,7 @@ function asActionContext<T>(context: MinimalPathActionContext): T {
 
 test('admin artwork route rejects malformed path encoding', async () => {
 	const request = new Request('http://localhost/admin/api/artwork/%E0%A4%A')
-	const response = await artworkHandler.action(
+	const response = await artworkHandler.handler(
 		asActionContext<ArtworkActionContext>({
 			request,
 			method: 'GET',
@@ -42,7 +42,7 @@ test('admin media-stream route rejects malformed path encoding', async () => {
 	const request = new Request(
 		'http://localhost/admin/api/media-stream/%E0%A4%A',
 	)
-	const response = await mediaStreamHandler.action(
+	const response = await mediaStreamHandler.handler(
 		asActionContext<MediaStreamActionContext>({
 			request,
 			method: 'GET',
@@ -57,7 +57,7 @@ test('admin media-stream route rejects malformed path encoding', async () => {
 
 test('admin media detail route rejects malformed path encoding', async () => {
 	const request = new Request('http://localhost/admin/api/media/%E0%A4%A')
-	const response = await mediaDetailHandler.action(
+	const response = await mediaDetailHandler.handler(
 		asActionContext<MediaDetailActionContext>({
 			request,
 			method: 'GET',
@@ -77,7 +77,7 @@ test('admin media metadata route rejects malformed path encoding', async () => {
 			method: 'PUT',
 		},
 	)
-	const response = await mediaMetadataHandler.action(
+	const response = await mediaMetadataHandler.handler(
 		asActionContext<MediaMetadataActionContext>({
 			request,
 			method: 'PUT',

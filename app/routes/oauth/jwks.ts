@@ -26,7 +26,7 @@ async function handleGet(): Promise<Response> {
 
 export default {
 	middleware: [],
-	action: withCors({
+	handler: withCors({
 		getCorsHeaders: () => DISCOVERY_CORS_HEADERS,
 		handler: async (context: RequestContext) => {
 			if (context.method !== 'GET') {

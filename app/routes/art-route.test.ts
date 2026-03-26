@@ -11,7 +11,7 @@ import artHandler from './art.ts'
 
 migrate(db)
 
-type ArtActionContext = Parameters<typeof artHandler.action>[0]
+type ArtActionContext = Parameters<typeof artHandler.handler>[0]
 type MinimalArtActionContext = {
 	request: Request
 	method: string
@@ -47,7 +47,7 @@ async function createArtRouteTestContext(): Promise<{
 test('art route rejects malformed path encoding', async () => {
 	await using ctx = await createArtRouteTestContext()
 	const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
-	const response = await artHandler.action(
+	const response = await artHandler.handler(
 		asActionContext({
 			request,
 			method: 'GET',

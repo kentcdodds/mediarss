@@ -18,7 +18,7 @@ import analyticsHandler from './media-analytics.$path.ts'
 
 migrate(db)
 
-type AnalyticsActionContext = Parameters<typeof analyticsHandler.action>[0]
+type AnalyticsActionContext = Parameters<typeof analyticsHandler.handler>[0]
 type MinimalAnalyticsActionContext = Pick<
 	AnalyticsActionContext,
 	'request' | 'method' | 'url' | 'params'
@@ -194,7 +194,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		createdAt: now - 45,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -348,7 +348,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 	}) as typeof db.query)
 
 	try {
-		const response = await analyticsHandler.action(
+		const response = await analyticsHandler.handler(
 			createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 		)
 		expect(response.status).toBe(200)
@@ -434,7 +434,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	}) as typeof db.query)
 
 	try {
-		const response = await analyticsHandler.action(
+		const response = await analyticsHandler.handler(
 			createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 		)
 		expect(response.status).toBe(200)
@@ -473,7 +473,7 @@ test('media analytics endpoint groups missing client names under Unknown', async
 		createdAt: now - 20,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -522,7 +522,7 @@ test('media analytics endpoint merges null and explicit Unknown client names', a
 		createdAt: now - 10,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -541,13 +541,13 @@ test('media analytics endpoint merges null and explicit Unknown client names', a
 test('media analytics endpoint validates params and returns expected errors', async () => {
 	await using ctx = await createMediaApiTestContext()
 
-	const missingPathResponse = await analyticsHandler.action(
+	const missingPathResponse = await analyticsHandler.handler(
 		createActionContext(undefined),
 	)
 	expect(missingPathResponse.status).toBe(400)
 	expect(await missingPathResponse.json()).toEqual({ error: 'Path required' })
 
-	const invalidFormatResponse = await analyticsHandler.action(
+	const invalidFormatResponse = await analyticsHandler.handler(
 		createActionContext('invalid-format'),
 	)
 	expect(invalidFormatResponse.status).toBe(400)
@@ -555,7 +555,7 @@ test('media analytics endpoint validates params and returns expected errors', as
 		error: 'Invalid path format',
 	})
 
-	const invalidEncodingResponse = await analyticsHandler.action(
+	const invalidEncodingResponse = await analyticsHandler.handler(
 		createRawActionContext('%E0%A4%A'),
 	)
 	expect(invalidEncodingResponse.status).toBe(400)
@@ -563,7 +563,7 @@ test('media analytics endpoint validates params and returns expected errors', as
 		error: 'Invalid path encoding',
 	})
 
-	const unknownRootResponse = await analyticsHandler.action(
+	const unknownRootResponse = await analyticsHandler.handler(
 		createActionContext(`unknown-root/${ctx.relativePath}`),
 	)
 	expect(unknownRootResponse.status).toBe(404)
@@ -571,7 +571,7 @@ test('media analytics endpoint validates params and returns expected errors', as
 		error: 'Unknown media root',
 	})
 
-	const missingFileResponse = await analyticsHandler.action(
+	const missingFileResponse = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/missing.mp3`),
 	)
 	expect(missingFileResponse.status).toBe(404)
@@ -581,7 +581,7 @@ test('media analytics endpoint validates params and returns expected errors', as
 test('media analytics endpoint clamps analytics window days to max', async () => {
 	await using ctx = await createMediaApiTestContext()
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, 9999),
 	)
 	expect(response.status).toBe(200)
@@ -593,7 +593,7 @@ test('media analytics endpoint clamps analytics window days to max', async () =>
 test('media analytics endpoint clamps huge integer window values', async () => {
 	await using ctx = await createMediaApiTestContext()
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(
 			`${ctx.rootName}/${ctx.relativePath}`,
 			'999999999999999999999999999',
@@ -606,22 +606,22 @@ test('media analytics endpoint clamps huge integer window values', async () => {
 test('media analytics endpoint defaults analytics window for invalid values', async () => {
 	await using ctx = await createMediaApiTestContext()
 
-	const invalidTextResponse = await analyticsHandler.action(
+	const invalidTextResponse = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, 'abc'),
 	)
 	expect(invalidTextResponse.status).toBe(200)
 
-	const decimalResponse = await analyticsHandler.action(
+	const decimalResponse = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, '7.5'),
 	)
 	expect(decimalResponse.status).toBe(200)
 
-	const mixedResponse = await analyticsHandler.action(
+	const mixedResponse = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, '30abc'),
 	)
 	expect(mixedResponse.status).toBe(200)
 
-	const negativeResponse = await analyticsHandler.action(
+	const negativeResponse = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`, -10),
 	)
 	expect(negativeResponse.status).toBe(200)
@@ -673,7 +673,7 @@ test('media analytics endpoint resolves curated token metadata', async () => {
 		createdAt: now - 30,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -753,7 +753,7 @@ test('media analytics endpoint resolves feed names across feed types', async () 
 		createdAt: now - 30,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -833,7 +833,7 @@ test('media analytics endpoint labels missing feed metadata as deleted feed', as
 
 	await deleteDirectoryFeed(deletedFeed.id)
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -893,7 +893,7 @@ test('media analytics endpoint labels missing feed and token metadata as deleted
 		createdAt: now - 15,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -945,7 +945,7 @@ test('media analytics endpoint requires token metadata to match feed id', async 
 		createdAt: now - 10,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)
@@ -1007,7 +1007,7 @@ test('media analytics endpoint requires curated token metadata to match feed id'
 		createdAt: now - 10,
 	})
 
-	const response = await analyticsHandler.action(
+	const response = await analyticsHandler.handler(
 		createActionContext(`${ctx.rootName}/${ctx.relativePath}`),
 	)
 	expect(response.status).toBe(200)

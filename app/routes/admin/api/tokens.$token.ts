@@ -9,7 +9,7 @@ import { revokeDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
  */
 export default {
 	middleware: [],
-	async action(context) {
+	async handler(context) {
 		if (context.method !== 'DELETE') {
 			return Response.json({ error: 'Method not allowed' }, { status: 405 })
 		}

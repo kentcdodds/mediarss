@@ -11,7 +11,7 @@ import widgetHandler from './widget.ts'
 
 migrate(db)
 
-type WidgetActionContext = Parameters<typeof widgetHandler.action>[0]
+type WidgetActionContext = Parameters<typeof widgetHandler.handler>[0]
 type MinimalWidgetActionContext = {
 	request: Request
 	method: string
@@ -51,7 +51,7 @@ test('mcp widget route rejects malformed path encoding', async () => {
 	const request = new Request(
 		`http://localhost/mcp/widget/${ctx.token}/%E0%A4%A`,
 	)
-	const response = await widgetHandler.action(
+	const response = await widgetHandler.handler(
 		asActionContext({
 			request,
 			method: 'GET',

@@ -49,7 +49,7 @@ function toMediaItem(file: MediaFile): MediaItem | null {
  */
 export default {
 	middleware: [],
-	async action() {
+	async handler() {
 		const files = await scanAllMediaRoots()
 
 		const items = files

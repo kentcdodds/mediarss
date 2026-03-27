@@ -1,7 +1,7 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import type { RequestContext } from 'remix/fetch-router'
+import { type RequestContext } from 'remix/fetch-router'
 import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
@@ -60,7 +60,7 @@ async function createDcrTestServer() {
 		},
 	})
 
-	const baseUrl = `http://localhost:${server.port}`
+	const baseUrl = `http://${server.hostname}:${server.port}`
 
 	return {
 		server,

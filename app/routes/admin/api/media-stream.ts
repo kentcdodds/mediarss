@@ -1,8 +1,7 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
-import { createLazyFile } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 
@@ -36,12 +35,6 @@ export default {
 		const filePath = toAbsolutePath(parsed.rootName, parsed.relativePath)
 		if (!filePath) {
 			return new Response('Unknown media root', { status: 404 })
-		}
-
-		// Confirm the file exists
-		const file = await createLazyFile(filePath)
-		if (!file) {
-			return new Response('File not found', { status: 404 })
 		}
 
 		return serveFileWithRanges(

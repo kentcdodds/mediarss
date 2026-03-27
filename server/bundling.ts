@@ -122,7 +122,7 @@ async function bundleEntrypoint(
 export function createBundlingRoutes(rootDir: string) {
 	const clientDir = path.resolve(rootDir, 'app', 'client')
 
-	return {
+	const routes: Record<string, (request: Request) => Promise<Response>> = {
 		'/app/client/*': async (request: Request) => {
 			// Handle CORS preflight requests
 			if (request.method === 'OPTIONS') {
@@ -211,13 +211,14 @@ export function createBundlingRoutes(rootDir: string) {
 			return new Response(output, {
 				headers: {
 					'Content-Type': 'application/javascript',
-					'Cache-Control':
-						isProduction
-							? 'public, max-age=31536000, immutable'
-							: 'no-cache',
+					'Cache-Control': isProduction
+						? 'public, max-age=31536000, immutable'
+						: 'no-cache',
 					...BUNDLING_CORS_HEADERS,
 				},
 			})
 		},
 	}
+
+	return routes
 }

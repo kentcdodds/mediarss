@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from './sqlite.ts'
 import { generateId } from '#app/helpers/crypto.ts'
 import { createMediaKey, normalizePath } from '#app/helpers/path-parsing.ts'
 import { db } from './index.ts'

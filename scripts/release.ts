@@ -1,6 +1,7 @@
-#!/usr/bin/env bun
-import { $ } from 'bun'
+#!/usr/bin/env node
+import { readFile, writeFile } from 'node:fs/promises'
 import semver from 'semver'
+import { execFileText, execText } from '#app/helpers/exec.ts'
 
 type SemverType = 'major' | 'minor' | 'patch'
 
@@ -11,14 +12,16 @@ async function main() {
 
 	// Validate input
 	if (!semverType || !VALID_TYPES.includes(semverType)) {
-		console.error(`Usage: bun scripts/release.ts <major|minor|patch>`)
+		console.error(`Usage: node scripts/release.ts <major|minor|patch>`)
 		console.error(`Received: ${semverType || '(none)'}`)
 		process.exit(1)
 	}
 
 	// Read current package.json
 	const packageJsonPath = new URL('../package.json', import.meta.url).pathname
-	const packageJson = await Bun.file(packageJsonPath).json()
+	const packageJson = JSON.parse(
+		await readFile(packageJsonPath, 'utf8'),
+	) as Record<string, unknown>
 	const currentVersion = packageJson.version as string
 
 	if (!currentVersion) {
@@ -39,29 +42,29 @@ async function main() {
 
 	// Update package.json
 	packageJson.version = newVersion
-	await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
+	await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
 	console.log('✓ Updated package.json')
 
 	// Git operations
 	const tagName = `v${newVersion}`
 
 	// Stage package.json
-	await $`git add package.json`
+	await execFileText('git', ['add', 'package.json'])
 	console.log('✓ Staged package.json')
 
 	// Create commit
-	await $`git commit -m ${'release: ' + tagName}`
+	await execFileText('git', ['commit', '-m', `release: ${tagName}`])
 	console.log(`✓ Created commit: release: ${tagName}`)
 
 	// Create tag
-	await $`git tag -a ${tagName} -m "Release ${tagName}"`
+	await execFileText('git', ['tag', '-a', tagName, '-m', `Release ${tagName}`])
 	console.log(`✓ Created tag: ${tagName}`)
 
 	// Push commit and tag
-	await $`git push`
+	await execFileText('git', ['push'])
 	console.log('✓ Pushed commit')
 
-	await $`git push origin ${tagName}`
+	await execFileText('git', ['push', 'origin', tagName])
 	console.log(`✓ Pushed tag: ${tagName}`)
 
 	// Create GitHub release using gh CLI or the API
@@ -74,11 +77,18 @@ async function main() {
 		// Generate release notes from commits since last tag
 		let releaseNotes = `Release ${tagName}`
 		try {
-			const previousTag =
-				await $`git describe --tags --abbrev=0 ${tagName}^ 2>/dev/null`.text()
+			const previousTag = await execFileText(
+				'git',
+				['describe', '--tags', '--abbrev=0', `${tagName}^`],
+				{ allowNonZeroExit: true },
+			)
 			if (previousTag.trim()) {
-				const commits =
-					await $`git log ${previousTag.trim()}..${tagName} --pretty=format:"- %s" --no-merges`.text()
+				const commits = await execFileText('git', [
+					'log',
+					`${previousTag.trim()}..${tagName}`,
+					'--pretty=format:- %s',
+					'--no-merges',
+				])
 				if (commits.trim()) {
 					releaseNotes = `## What's Changed\n\n${commits.trim()}`
 				}

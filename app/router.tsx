@@ -3,6 +3,7 @@ import { createRouter, type Middleware } from 'remix/fetch-router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
+import { getFileResponse } from '#app/helpers/node-file.ts'
 import { render } from '#app/helpers/render.ts'
 import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'
@@ -51,11 +52,9 @@ const STATIC_CORS_HEADERS = {
 } as const
 
 /**
- * Bun-native static file middleware that uses Bun.file() for proper lazy file handling.
- *
- * See: https://github.com/remix-run/remix/issues/10872
+ * Static file middleware with CORS support for embedded widgets.
  */
-function bunStaticFiles(
+function staticFiles(
 	root: string,
 	options: { filter?: (path: string) => boolean; cacheControl?: string },
 ): Middleware {
@@ -68,8 +67,8 @@ function bunStaticFiles(
 				return next()
 			}
 			const filePath = path.join(absoluteRoot, relativePath)
-			const file = Bun.file(filePath)
-			if (!(await file.exists())) {
+			const response = await getFileResponse(filePath, context.request)
+			if (!response) {
 				return next()
 			}
 			return new Response(null, {
@@ -89,36 +88,32 @@ function bunStaticFiles(
 			return next()
 		}
 		const filePath = path.join(absoluteRoot, relativePath)
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		const response = await getFileResponse(filePath, context.request, {
+			cacheControl: options.cacheControl,
+		})
+		if (!response) {
 			return next()
 		}
-		return new Response(context.method === 'HEAD' ? null : file, {
-			headers: {
-				'Content-Type': file.type,
-				'Content-Length': String(file.size),
-				...(options.cacheControl
-					? { 'Cache-Control': options.cacheControl }
-					: {}),
-				...STATIC_CORS_HEADERS,
-			},
-		})
+		for (const [key, value] of Object.entries(STATIC_CORS_HEADERS)) {
+			response.headers.set(key, value)
+		}
+		return response
 	}
 }
 
 const router = createRouter({
 	middleware: [
 		rateLimit(),
-		bunStaticFiles('./public', {
+		staticFiles('./public', {
 			cacheControl:
-				Bun.env.NODE_ENV === 'production'
+				process.env.NODE_ENV === 'production'
 					? 'public, max-age=31536000, immutable'
 					: 'no-cache',
 		}),
-		bunStaticFiles('./app', {
+		staticFiles('./app', {
 			filter: (p) => p.startsWith('assets/'),
 			cacheControl:
-				Bun.env.NODE_ENV === 'production'
+				process.env.NODE_ENV === 'production'
 					? 'public, max-age=31536000, immutable'
 					: 'no-cache',
 		}),

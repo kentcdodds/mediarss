@@ -965,11 +965,12 @@ export async function scanDirectoryWithMetadata(
 ): Promise<MediaFile[]> {
 	const filePaths = await scanDirectory(directory)
 
-	// Get mtimes for all files (Bun.file().lastModified is sync and fast ~1.3µs/call)
+	// Get mtimes for all files.
 	const validFileStats: Array<{ path: string; mtime: number }> = []
 	for (const p of filePaths) {
 		try {
-			const mtime = Bun.file(p).lastModified
+			const { mtimeMs } = await fs.promises.stat(p)
+			const mtime = Number(mtimeMs)
 			validFileStats.push({ path: p, mtime })
 		} catch {
 			// File may have been deleted since scan

@@ -3,6 +3,7 @@ import { getItemsForFeed } from '#app/db/feed-items.ts'
 import type { Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
+import { getFileResponse } from '#app/helpers/node-file.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 
 /**
@@ -19,12 +20,9 @@ export async function resolveFeedArtwork(
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		const artworkFile = Bun.file(uploadedArtwork.path)
-		return new Response(artworkFile.stream(), {
-			headers: {
-				'Content-Type': uploadedArtwork.mimeType,
-				'Cache-Control': 'public, max-age=86400',
-			},
+		return getFileResponse(uploadedArtwork.path, new Request('http://localhost'), {
+			cacheControl: 'public, max-age=86400',
+			contentType: uploadedArtwork.mimeType,
 		})
 	}
 

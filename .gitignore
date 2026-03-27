@@ -1,7 +1,6 @@
 # dependencies
 /node_modules
-# we use bun
-package-lock.json
+# npm lockfile is committed
 
 # dotenv environment variable files
 .env

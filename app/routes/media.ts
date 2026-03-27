@@ -16,6 +16,7 @@ import {
 } from '#app/helpers/analytics-request.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 
@@ -99,14 +100,12 @@ export default {
 			return new Response('Not found', { status: 404 })
 		}
 
-		// Get the file
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		if (!(await fileExists(filePath))) {
 			return new Response('File not found', { status: 404 })
 		}
 
-		const response = serveFileWithRanges(
-			file,
+		const response = await serveFileWithRanges(
+			filePath,
 			context.request,
 			'public, max-age=31536000',
 		)

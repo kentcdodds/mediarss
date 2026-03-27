@@ -25,13 +25,14 @@ jobs:
           fetch-depth: 0 # Fetch all history for tags
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: '24'
+          cache: npm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Configure Git
         run: |
@@ -42,4 +43,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bun scripts/release.ts ${{ inputs.semverType }}
+        run: npx -y node@24.14.1 --import ./server/register-hooks.mjs ./scripts/release.ts ${{ inputs.semverType }}

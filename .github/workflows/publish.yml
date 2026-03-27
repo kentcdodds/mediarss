@@ -24,14 +24,17 @@ jobs:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
 
       - name: 📥 Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: 🔬 Lint
-        run: bun run check:ci
+        run: npm run check:ci
 
   typecheck:
     name: ʦ TypeCheck
@@ -40,14 +43,17 @@ jobs:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
 
       - name: 📥 Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: 🔎 Type check
-        run: bun run typecheck
+        run: npm run typecheck
 
   test:
     name: 🧪 Test
@@ -56,14 +62,17 @@ jobs:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
 
-      - name: 📦 Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: 📦 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
 
       - name: 📥 Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: 🧪 Run tests
-        run: bun test
+        run: npm test
 
   build:
     name: 🐳 Build

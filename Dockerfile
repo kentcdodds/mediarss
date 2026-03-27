@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1 AS base
+FROM node:24-bookworm AS base
 WORKDIR /app
 
 # Install FFmpeg for metadata editing
@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 FROM base AS install
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 # Final image
 FROM base AS release
@@ -29,4 +29,4 @@ ENV CACHE_DATABASE_PATH=/data/cache.db
 EXPOSE 22050
 
 # Run the application
-CMD ["bun", "run", "start"]
+CMD ["npm", "run", "start"]

@@ -178,7 +178,7 @@ let _env: Env | null = null
  * Must be called before accessing env.
  */
 export function initEnv(): Env {
-	const parsed = parseSafe(EnvSchema, Bun.env)
+	const parsed = parseSafe(EnvSchema, process.env)
 
 	if (!parsed.success) {
 		console.error('❌ Invalid environment variables:')

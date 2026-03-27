@@ -7,7 +7,7 @@ import path from 'node:path'
  *
  * The version is based on:
  * 1. The app version from package.json
- * 2. A hash of the bun.lock file (captures dependency changes)
+ * 2. A hash of the package-lock.json file (captures dependency changes)
  *
  * This ensures cache invalidation when either:
  * - The app version is bumped (new release)
@@ -16,7 +16,7 @@ import path from 'node:path'
  * The version is computed once at module load time and cached.
  */
 function computeVersion(): string {
-	const rootDir = path.resolve(import.meta.dir, '..', '..')
+	const rootDir = path.resolve(import.meta.dirname, '..', '..')
 
 	// Get app version from package.json
 	const packageJsonPath = path.join(rootDir, 'package.json')
@@ -24,7 +24,7 @@ function computeVersion(): string {
 	const appVersion = packageJson.version || '0.0.0'
 
 	// Get hash of lock file (captures dependency changes)
-	const lockFilePath = path.join(rootDir, 'bun.lock')
+	const lockFilePath = path.join(rootDir, 'package-lock.json')
 	let lockHash = 'nolockfile'
 	if (fs.existsSync(lockFilePath)) {
 		const lockContent = fs.readFileSync(lockFilePath)

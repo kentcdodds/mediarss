@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '#app/db/sqlite.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
@@ -60,14 +60,13 @@ function getCacheDb(): Database {
 type CacheRow = { metadata: string; value: string }
 
 // Lazy prepared statements with explicit types
-let _getStatement: ReturnType<
-	typeof Database.prototype.prepare<CacheRow, [string]>
-> | null = null
+let _getStatement: ReturnType<typeof Database.prototype.prepare<CacheRow, [string]>> | null =
+	null
 let _setStatement: ReturnType<
-	typeof Database.prototype.prepare<void, [string, string, string]>
+	typeof Database.prototype.prepare<Record<string, unknown>, [string, string, string]>
 > | null = null
 let _deleteStatement: ReturnType<
-	typeof Database.prototype.prepare<void, [string]>
+	typeof Database.prototype.prepare<Record<string, unknown>, [string]>
 > | null = null
 
 function getGetStatement() {
@@ -214,7 +213,7 @@ export function deleteCacheByPrefix(prefix: string): number {
 	// Escape LIKE special characters in prefix to prevent unintended matches
 	// _ matches any single character, % matches any sequence of characters
 	const escapedPrefix = prefix.replace(/[\\%_]/g, '\\$&')
-	const statement = db.prepare<void, [string]>(
+	const statement = db.prepare<Record<string, unknown>, [string]>(
 		'DELETE FROM cache WHERE key LIKE ? ESCAPE "\\"',
 	)
 	const result = statement.run(`${escapedPrefix}%`)

@@ -458,5 +458,5 @@ function getBaseUrlFromExtra(extra: unknown, fallback?: string): string {
 	}
 
 	// Use fallback if provided, otherwise default to environment variable or localhost
-	return fallback ?? Bun.env.PUBLIC_URL ?? 'http://localhost:3000'
+	return fallback ?? process.env.PUBLIC_URL ?? 'http://localhost:3000'
 }

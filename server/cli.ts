@@ -1,19 +1,24 @@
-import type { Server } from 'bun'
-
-// Server type without WebSocket data (this app doesn't use WebSockets)
-type AppServer = Server<undefined>
-
 import closeWithGrace from 'close-with-grace'
+import type { AppServer } from './node-server.ts'
+import { copyToClipboard, openInBrowser } from './platform-cli.ts'
 
-// Use Bun's built-in color API
 const reset = '\x1b[0m'
 const brightCode = '\x1b[1m'
 const dimCode = '\x1b[2m'
 
-const colorize = (text: string, color: string) => {
-	const colorCode = Bun.color(color, 'ansi-16m') || ''
-	return colorCode ? `${colorCode}${text}${reset}` : text
-}
+const ANSI_COLORS = {
+	cyan: '\x1b[36m',
+	green: '\x1b[32m',
+	cornflowerblue: '\x1b[94m',
+	dodgerblue: '\x1b[94m',
+	yellow: '\x1b[33m',
+	magenta: '\x1b[35m',
+	firebrick: '\x1b[31m',
+	crimson: '\x1b[31m',
+} as const
+
+const colorize = (text: string, color: keyof typeof ANSI_COLORS) =>
+	`${ANSI_COLORS[color]}${text}${reset}`
 
 const bright = (text: string) => `${brightCode}${text}${reset}`
 const dim = (text: string) => `${dimCode}${text}${reset}`
@@ -80,7 +85,7 @@ export function setupInteractiveCli(url: string, server: AppServer) {
 			case 'o':
 			case 'O': {
 				console.log(`\n${colorize('Opening browser...', 'green')}`)
-				Bun.spawn(['open', url])
+				openInBrowser(url)
 				break
 			}
 			case 'u':
@@ -88,9 +93,7 @@ export function setupInteractiveCli(url: string, server: AppServer) {
 				console.log(
 					`\n${colorize('Copying URL to clipboard...', 'dodgerblue')}`,
 				)
-				const proc = Bun.spawn(['pbcopy'], { stdin: 'pipe' })
-				proc.stdin.write(url)
-				proc.stdin.end()
+				copyToClipboard(url)
 				console.log(
 					`${colorize('✓', 'green')} ${dim('URL copied:')} ${bright(url)}`,
 				)

@@ -2,6 +2,7 @@ import type { BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
+import { createLazyFile } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 
@@ -38,8 +39,8 @@ export default {
 		}
 
 		// Get the file
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		const file = await createLazyFile(filePath)
+		if (!file) {
 			return new Response('File not found', { status: 404 })
 		}
 

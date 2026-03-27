@@ -22,6 +22,7 @@ type MediaItem = {
 	popularityScore: number
 	downloadStarts: number
 	mediaRequests: number
+	uniqueClients: number
 	lastPlayedAt: number | null
 }
 
@@ -49,6 +50,7 @@ function toMediaItem(file: MediaFile): MediaItem | null {
 		popularityScore: 0,
 		downloadStarts: 0,
 		mediaRequests: 0,
+		uniqueClients: 0,
 		lastPlayedAt: null,
 	}
 }
@@ -77,6 +79,7 @@ export default {
 						(popularity?.mediaRequests ?? 0),
 					downloadStarts: popularity?.downloadStarts ?? 0,
 					mediaRequests: popularity?.mediaRequests ?? 0,
+					uniqueClients: popularity?.uniqueClients ?? 0,
 					lastPlayedAt: popularity?.lastSeenAt ?? null,
 				}
 			})

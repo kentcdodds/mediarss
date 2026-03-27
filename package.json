@@ -46,8 +46,5 @@
     "p-limit": "^7.2.0",
     "remix": "3.0.0-alpha.4",
     "zod": "^4.3.6"
-  },
-  "patchedDependencies": {
-    "@remix-run/component@0.6.0": "patches/@remix-run+component@0.6.0.patch"
   }
 }

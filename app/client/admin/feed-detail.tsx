@@ -3291,7 +3291,7 @@ function EditForm() {
 					value={form.feedType}
 					mix={[
 						rmxCss(inputStyles),
-						rmxOn('change', (e) =>
+						rmxOn('input', (e) =>
 							onFeedTypeChange(
 								(e.target as HTMLSelectElement).value as 'episodic' | 'serial',
 							),
@@ -3424,7 +3424,7 @@ function EditForm() {
 						value={form.sortFields}
 						mix={[
 							rmxCss(inputStyles),
-							rmxOn('change', (e) =>
+							rmxOn('input', (e) =>
 								onSortFieldsChange((e.target as HTMLSelectElement).value),
 							),
 						]}
@@ -3476,7 +3476,7 @@ function EditForm() {
 						value={form.sortOrder}
 						mix={[
 							rmxCss(inputStyles),
-							rmxOn('change', (e) =>
+							rmxOn('input', (e) =>
 								onSortOrderChange(
 									(e.target as HTMLSelectElement).value as 'asc' | 'desc',
 								),

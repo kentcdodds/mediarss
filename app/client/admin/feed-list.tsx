@@ -375,7 +375,7 @@ export function FeedList(handle: Handle) {
 												boxShadow: `0 0 0 2px ${colors.primarySoft}`,
 											},
 										}),
-										rmxOn<HTMLSelectElement, 'change'>('change', (e: Event) => {
+										rmxOn<HTMLSelectElement, 'input'>('input', (e: Event) => {
 											const nextSortBy = (e.target as HTMLSelectElement)
 												.value as FeedSortBy
 											setSortBy(nextSortBy)

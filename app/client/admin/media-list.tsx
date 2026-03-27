@@ -990,7 +990,7 @@ export function MediaList(handle: Handle) {
 											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
 										},
 									}),
-									rmxOn('change', (e) => {
+									rmxOn('input', (e) => {
 										setSelectedDirectory(
 											(e.currentTarget as HTMLSelectElement).value,
 										)
@@ -1050,7 +1050,7 @@ export function MediaList(handle: Handle) {
 											boxShadow: `0 0 0 2px ${colors.primarySoft}`,
 										},
 									}),
-									rmxOn('change', (e) => {
+									rmxOn('input', (e) => {
 										setSortBy(
 											(e.currentTarget as HTMLSelectElement)
 												.value as MediaSortBy,

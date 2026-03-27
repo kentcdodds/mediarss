@@ -28,7 +28,10 @@ export async function execCommand(
 		return {
 			stdout: failure.stdout ?? '',
 			stderr: failure.stderr ?? failure.message,
-			exitCode: typeof failure.code === 'number' ? failure.code : 1,
+			exitCode:
+				typeof failure.code === 'number'
+					? failure.code
+					: 1,
 		}
 	}
 }

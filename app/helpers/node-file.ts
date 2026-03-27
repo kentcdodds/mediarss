@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import { basename } from 'node:path'
-import { detectContentType } from 'remix/mime'
 import { createFileResponse } from 'remix/response/file'
 
 export async function fileExists(path: string): Promise<boolean> {
@@ -14,7 +13,7 @@ export async function fileExists(path: string): Promise<boolean> {
 
 export async function createLazyFile(
 	path: string,
-	type = detectContentType(path) ?? 'application/octet-stream',
+	type = 'application/octet-stream',
 ): Promise<File | null> {
 	try {
 		const stats = await fs.promises.stat(path)
@@ -71,5 +70,5 @@ export async function writeFile(
 		return
 	}
 
-	await fs.promises.writeFile(path, new Uint8Array(data.buffer))
+	await fs.promises.writeFile(path, data)
 }

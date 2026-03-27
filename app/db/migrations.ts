@@ -1,5 +1,5 @@
-import { sql } from './sql.ts'
 import type { Database } from './sqlite.ts'
+import { sql } from './sql.ts'
 
 type Migration = {
 	version: number

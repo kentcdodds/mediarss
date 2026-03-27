@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from 'node:fs/promises'
 import semver from 'semver'
-import { execCommand } from '#app/helpers/exec.ts'
+import { execFileText, execText } from '#app/helpers/exec.ts'
 
 type SemverType = 'major' | 'minor' | 'patch'
 
@@ -49,22 +49,22 @@ async function main() {
 	const tagName = `v${newVersion}`
 
 	// Stage package.json
-	await execCommand('git', ['add', 'package.json'])
+	await execFileText('git', ['add', 'package.json'])
 	console.log('✓ Staged package.json')
 
 	// Create commit
-	await execCommand('git', ['commit', '-m', `release: ${tagName}`])
+	await execFileText('git', ['commit', '-m', `release: ${tagName}`])
 	console.log(`✓ Created commit: release: ${tagName}`)
 
 	// Create tag
-	await execCommand('git', ['tag', '-a', tagName, '-m', `Release ${tagName}`])
+	await execFileText('git', ['tag', '-a', tagName, '-m', `Release ${tagName}`])
 	console.log(`✓ Created tag: ${tagName}`)
 
 	// Push commit and tag
-	await execCommand('git', ['push'])
+	await execFileText('git', ['push'])
 	console.log('✓ Pushed commit')
 
-	await execCommand('git', ['push', 'origin', tagName])
+	await execFileText('git', ['push', 'origin', tagName])
 	console.log(`✓ Pushed tag: ${tagName}`)
 
 	// Create GitHub release using gh CLI or the API
@@ -77,21 +77,18 @@ async function main() {
 		// Generate release notes from commits since last tag
 		let releaseNotes = `Release ${tagName}`
 		try {
-			const previousTagResult = await execCommand('git', [
-				'describe',
-				'--tags',
-				'--abbrev=0',
-				`${tagName}^`,
-			])
-			const previousTag = previousTagResult.stdout.trim()
+			const previousTag = await execFileText(
+				'git',
+				['describe', '--tags', '--abbrev=0', `${tagName}^`],
+				{ allowNonZeroExit: true },
+			)
 			if (previousTag.trim()) {
-				const commitsResult = await execCommand('git', [
+				const commits = await execFileText('git', [
 					'log',
 					`${previousTag.trim()}..${tagName}`,
 					'--pretty=format:- %s',
 					'--no-merges',
 				])
-				const commits = commitsResult.stdout
 				if (commits.trim()) {
 					releaseNotes = `## What's Changed\n\n${commits.trim()}`
 				}

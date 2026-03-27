@@ -1,7 +1,7 @@
+import { Database } from './sqlite.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { migrate } from './migrations.ts'
-import { Database } from './sqlite.ts'
 
 export function createMigratedTestDatabase(prefix: string): {
 	db: Database

@@ -8,6 +8,10 @@ import {
 
 type DatabaseParameters = Array<unknown> | Record<string, unknown>
 
+type BindArgs<TParams extends DatabaseParameters> = TParams extends Array<unknown>
+	? TParams
+	: [TParams]
+
 type NamedParameters = Record<string, SQLInputValue>
 
 function isNamedParameters(value: unknown): value is NamedParameters {
@@ -39,25 +43,26 @@ function normalizeRunResult(result: StatementResultingChanges) {
 	}
 }
 
-class PreparedStatement<TRow = Record<string, unknown>> {
+class PreparedStatement<
+	TRow extends Record<string, unknown> = Record<string, unknown>,
+	TParams extends DatabaseParameters = [],
+> {
 	#statement: StatementSync
 
 	constructor(statement: StatementSync) {
 		this.#statement = statement
 	}
 
-	all(...params: Array<unknown>): Array<TRow> {
+	all(...params: BindArgs<TParams>): Array<TRow> {
 		return this.#call('all', params) as Array<TRow>
 	}
 
-	get(...params: Array<unknown>): TRow | undefined {
+	get(...params: BindArgs<TParams>): TRow | undefined {
 		return this.#call('get', params) as TRow | undefined
 	}
 
-	run(...params: Array<unknown>) {
-		return normalizeRunResult(
-			this.#call('run', params) as StatementResultingChanges,
-		)
+	run(...params: BindArgs<TParams>) {
+		return normalizeRunResult(this.#call('run', params) as StatementResultingChanges)
 	}
 
 	#call(method: 'all' | 'get' | 'run', params: Array<unknown>) {
@@ -79,8 +84,7 @@ export class Database {
 	}
 
 	run(sql: string, ...params: Array<unknown>) {
-		const statement = this.prepare(sql)
-		return statement.run(...params)
+		return this.prepare(sql).run(...params)
 	}
 
 	exec(sql: string): void {
@@ -88,17 +92,17 @@ export class Database {
 	}
 
 	query<
-		TRow = Record<string, unknown>,
+		TRow extends Record<string, unknown> = Record<string, unknown>,
 		TParams extends DatabaseParameters = [],
-	>(sql: string): PreparedStatement<TRow> {
+	>(sql: string): PreparedStatement<TRow, TParams> {
 		return this.prepare<TRow, TParams>(sql)
 	}
 
 	prepare<
-		TRow = Record<string, unknown>,
-		_TParams extends DatabaseParameters = [],
-	>(sql: string): PreparedStatement<TRow> {
-		return new PreparedStatement<TRow>(this.#database.prepare(sql))
+		TRow extends Record<string, unknown> = Record<string, unknown>,
+		TParams extends DatabaseParameters = [],
+	>(sql: string): PreparedStatement<TRow, TParams> {
+		return new PreparedStatement<TRow, TParams>(this.#database.prepare(sql))
 	}
 
 	close(): void {

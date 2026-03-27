@@ -1,7 +1,7 @@
-import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { readFile } from 'node:fs/promises'
 
 const execFileAsync = promisify(execFile)
 
@@ -46,9 +46,9 @@ function getProjectRoot(): string {
 export async function getAppVersion(): Promise<string | null> {
 	try {
 		const packageJsonPath = path.join(getProjectRoot(), 'package.json')
-		const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
-			version?: string
-		}
+		const packageJson = JSON.parse(
+			await readFile(packageJsonPath, 'utf8'),
+		) as { version?: string }
 		return packageJson.version ?? null
 	} catch {
 		return null

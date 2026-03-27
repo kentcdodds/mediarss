@@ -54,12 +54,12 @@ function startServer(port: number) {
 					if (route.includes('*')) {
 						const prefix = route.split('*', 1)[0]
 						if (prefix && url.pathname.startsWith(prefix)) {
-							return bundlingHandler(request)
+							return await bundlingHandler(request)
 						}
 						continue
 					}
 					if (url.pathname === route) {
-						return bundlingHandler(request)
+						return await bundlingHandler(request)
 					}
 				}
 				return await router.fetch(request)

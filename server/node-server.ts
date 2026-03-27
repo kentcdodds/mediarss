@@ -1,5 +1,5 @@
 import http from 'node:http'
-import type { AddressInfo } from 'node:net'
+import  { type AddressInfo } from 'node:net'
 import {
 	createRequest,
 	type FetchHandler,
@@ -17,7 +17,7 @@ export type AppServer = {
 
 export async function startNodeServer({
 	port,
-	hostname = '127.0.0.1',
+	hostname = '0.0.0.0',
 	handler,
 }: {
 	port: number

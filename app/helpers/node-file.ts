@@ -39,10 +39,7 @@ export async function getFileResponse(
 		contentType?: string
 	} = {},
 ): Promise<Response | null> {
-	const file = await createLazyFile(
-		path,
-		options.contentType ?? 'application/octet-stream',
-	)
+	const file = await createLazyFile(path, options.contentType)
 	if (!file) {
 		return null
 	}
@@ -71,5 +68,8 @@ export async function writeFile(
 		return
 	}
 
-	await fs.promises.writeFile(path, new Uint8Array(data.buffer))
+	await fs.promises.writeFile(
+		path,
+		new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
+	)
 }

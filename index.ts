@@ -41,6 +41,7 @@ await ensureSigningKey()
 
 function startServer(port: number) {
 	const bundlingRoutes = createBundlingRoutes(rootDir)
+	const bundlingRouteEntries = Object.entries(bundlingRoutes)
 	return startNodeServer({
 		port,
 		async handler(request) {
@@ -49,9 +50,17 @@ function startServer(port: number) {
 				if (url.pathname === '/') {
 					return Response.redirect(new URL('/admin', request.url), 302)
 				}
-				const bundlingHandler = bundlingRoutes[url.pathname]
-				if (bundlingHandler) {
-					return bundlingHandler(request)
+				for (const [route, bundlingHandler] of bundlingRouteEntries) {
+					if (route.includes('*')) {
+						const prefix = route.split('*', 1)[0]
+						if (prefix && url.pathname.startsWith(prefix)) {
+							return bundlingHandler(request)
+						}
+						continue
+					}
+					if (url.pathname === route) {
+						return bundlingHandler(request)
+					}
 				}
 				return await router.fetch(request)
 			} catch (error) {

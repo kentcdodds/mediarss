@@ -1,14 +1,14 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, expect, test } from 'vitest'
 import type { RequestContext } from 'remix/fetch-router'
+import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { deleteClient, getClient } from '#app/oauth/clients.ts'
 import { computeS256Challenge, generateCodeVerifier } from '#app/oauth/pkce.ts'
-import { startNodeServer } from '#app/../server/node-server.ts'
+import { startNodeServer } from '../../server/node-server.ts'
 
 // Ensure migrations are run
 migrate(db)
@@ -32,7 +32,7 @@ async function createDcrTestServer() {
 
 	const server = await startNodeServer({
 		port: 0,
-		async handler(request) {
+		async handler(request: Request) {
 			const url = new URL(request.url)
 
 			const context = {
@@ -91,7 +91,9 @@ test('server metadata includes registration_endpoint for DCR', async () => {
 	const metadata = (await response.json()) as {
 		registration_endpoint: string
 	}
-	expect(new URL(metadata.registration_endpoint).pathname).toBe('/oauth/register')
+	expect(new URL(metadata.registration_endpoint).pathname).toBe(
+		'/oauth/register',
+	)
 })
 
 test('DCR endpoint creates clients with various configurations', async () => {

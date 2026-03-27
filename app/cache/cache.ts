@@ -1,4 +1,3 @@
-import { Database } from '#app/db/sqlite.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
@@ -17,6 +16,7 @@ import {
 } from 'remix/data-schema'
 import { getEnv } from '#app/config/env.ts'
 import { sql } from '#app/db/sql.ts'
+import { Database } from '#app/db/sqlite.ts'
 
 function ensureDirectoryExists(filePath: string): void {
 	const dir = path.dirname(filePath)
@@ -87,9 +87,7 @@ function getSetStatement() {
 		_setStatement = getCacheDb().prepare<
 			Record<string, unknown>,
 			[string, string, string]
-		>(
-			'INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)',
-		)
+		>('INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)')
 	}
 	return _setStatement!
 }

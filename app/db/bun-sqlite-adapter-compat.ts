@@ -1,4 +1,3 @@
-import type { Database as BunDatabase } from './sqlite.ts'
 import type {
 	AdapterCapabilityOverrides,
 	DatabaseAdapter,
@@ -16,6 +15,7 @@ import {
 	compileBunSqliteStatement,
 	quoteIdentifier,
 } from './bun-data-table-sql-compiler.ts'
+import type { Database as BunDatabase } from './sqlite.ts'
 
 type BunStatementResult = {
 	changes: number

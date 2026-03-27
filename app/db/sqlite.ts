@@ -87,9 +87,10 @@ export class Database {
 		this.#database.exec(sql)
 	}
 
-	query<TRow = Record<string, unknown>, TParams extends DatabaseParameters = []>(
-		sql: string,
-	): PreparedStatement<TRow> {
+	query<
+		TRow = Record<string, unknown>,
+		TParams extends DatabaseParameters = [],
+	>(sql: string): PreparedStatement<TRow> {
 		return this.prepare<TRow, TParams>(sql)
 	}
 

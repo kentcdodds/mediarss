@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
-import { expect, test } from 'vitest'
 import path from 'node:path'
+import { expect, test } from 'vitest'
 import { initEnv } from '#app/config/env.ts'
 import { consoleError, consoleWarn } from '#test/setup.ts'
 import {

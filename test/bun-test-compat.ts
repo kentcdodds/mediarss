@@ -4,13 +4,13 @@ import {
 	beforeAll,
 	beforeEach,
 	expect,
-	test,
 	type MockInstance,
+	test,
 	vi,
 } from 'vitest'
 
 declare module 'vitest' {
-	interface Assertion<T = any> {
+	interface Assertion<T> {
 		toBeString(): void
 		toBeNumber(): void
 		toBeArray(): void
@@ -53,4 +53,5 @@ expect.extend({
 export { afterAll, afterEach, beforeAll, beforeEach, expect, test }
 
 export const spyOn = vi.spyOn
-export type Mock<T extends (...args: any[]) => any> = MockInstance<T>
+export type Mock<T extends (...args: Array<unknown>) => unknown> =
+	MockInstance<T>

@@ -1,7 +1,7 @@
-import { expect, test } from 'vitest'
-import { spyOn } from '#test/bun-test-compat.ts'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
+import { expect, test } from 'vitest'
+import { spyOn } from '#test/bun-test-compat.ts'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -15,11 +15,7 @@ import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
-import {
-	deleteEnvVar,
-	setEnvVar,
-	writeTextFile,
-} from '#test/test-helpers.ts'
+import { deleteEnvVar, setEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import analyticsHandler from './media-analytics.$path.ts'
 
 migrate(db)

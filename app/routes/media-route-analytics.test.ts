@@ -1,7 +1,7 @@
-import { expect, test } from 'vitest'
-import { spyOn } from '#test/bun-test-compat.ts'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
+import { expect, test } from 'vitest'
+import { spyOn } from '#test/bun-test-compat.ts'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -182,17 +182,19 @@ function createMediaActionContextWithoutPath(
 }
 
 function readLatestMediaEvent(feedId: string): LatestMediaEvent | null {
-	return db
-		.query<LatestMediaEvent, [string]>(
-			sql`
+	return (
+		db
+			.query<LatestMediaEvent, [string]>(
+				sql`
 				SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint, token, feed_type
 				FROM feed_analytics_events
 				WHERE feed_id = ? AND event_type = 'media_request'
 				ORDER BY rowid DESC
 				LIMIT 1;
 			`,
-		)
-		.get(feedId) ?? null
+			)
+			.get(feedId) ?? null
+	)
 }
 
 function listMediaEvents(feedId: string): LatestMediaEvent[] {

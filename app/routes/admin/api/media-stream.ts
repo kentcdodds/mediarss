@@ -44,7 +44,11 @@ export default {
 			return new Response('File not found', { status: 404 })
 		}
 
-		return serveFileWithRanges(filePath, context.request, 'private, max-age=3600')
+		return serveFileWithRanges(
+			filePath,
+			context.request,
+			'private, max-age=3600',
+		)
 	},
 } satisfies BuildAction<
 	typeof routes.adminApiMediaStream.method,

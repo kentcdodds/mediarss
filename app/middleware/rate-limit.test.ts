@@ -1,6 +1,6 @@
-import { expect, test } from 'vitest'
 import { invariant } from '@epic-web/invariant'
 import type { RequestContext } from 'remix/fetch-router'
+import { expect, test } from 'vitest'
 import { consoleWarn } from '#test/setup.ts'
 import { setEnvVar } from '#test/test-helpers.ts'
 

@@ -1,12 +1,13 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, expect, test } from 'vitest'
 import * as jose from 'jose'
+import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
+import { startNodeServer } from '../../server/node-server.ts'
 import {
 	clearKeyCache,
 	computeS256Challenge,
@@ -23,7 +24,6 @@ import {
 	listClients,
 	verifyCodeChallenge,
 } from './index.ts'
-import { startNodeServer } from '../../server/node-server.ts'
 
 // Ensure migrations are run
 migrate(db)

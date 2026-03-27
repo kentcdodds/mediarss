@@ -1,14 +1,14 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, afterEach, expect, test } from 'vitest'
 import * as jose from 'jose'
+import { afterAll, afterEach, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { consoleError } from '#test/setup.ts'
-import { startNodeServer } from '#app/../server/node-server.ts'
+import { startNodeServer } from '../../server/node-server.ts'
 import {
 	clearKeyCache,
 	clearMetadataCache,
@@ -52,7 +52,7 @@ async function createTestServer() {
 
 	const server = await startNodeServer({
 		port: 0,
-		async handler(request) {
+		async handler(request: Request) {
 			return await router.fetch(request)
 		},
 	})

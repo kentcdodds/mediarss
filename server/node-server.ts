@@ -1,12 +1,18 @@
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { createRequest, sendResponse, type FetchHandler } from 'remix/node-fetch-server'
+import {
+	createRequest,
+	type FetchHandler,
+	sendResponse,
+} from 'remix/node-fetch-server'
 
 export type AppServer = {
 	server: http.Server
 	hostname: string
 	port: number
 	stop: (closeIdleConnections?: boolean) => Promise<void>
+	[Symbol.dispose]: () => void
+	[Symbol.asyncDispose]: () => Promise<void>
 }
 
 export async function startNodeServer({

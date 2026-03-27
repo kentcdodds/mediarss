@@ -5,6 +5,7 @@ const textCollator = new Intl.Collator(undefined, {
 
 export const MEDIA_SORT_OPTIONS = [
 	{ value: 'recently-modified', label: 'Recently added/modified' },
+	{ value: 'most-popular', label: 'Popularity' },
 	{ value: 'least-recently-modified', label: 'Least recently modified' },
 	{ value: 'publication-date-newest', label: 'Publication date (newest)' },
 	{ value: 'publication-date-oldest', label: 'Publication date (oldest)' },
@@ -26,6 +27,9 @@ type SortableMediaItem = {
 	duration: number | null
 	publicationDate: string | null
 	fileModifiedAt: number
+	mediaRequests?: number
+	downloadStarts?: number
+	uniqueClients?: number
 }
 
 function compareText(a: string, b: string): number {
@@ -79,6 +83,27 @@ export function sortMediaItems<T extends SortableMediaItem>(
 	return [...items].sort((a, b) => {
 		switch (sortBy) {
 			case 'recently-modified': {
+				if (b.fileModifiedAt !== a.fileModifiedAt) {
+					return b.fileModifiedAt - a.fileModifiedAt
+				}
+				return compareStable(a, b)
+			}
+			case 'most-popular': {
+				const downloadStartsA = a.downloadStarts ?? 0
+				const downloadStartsB = b.downloadStarts ?? 0
+				if (downloadStartsB !== downloadStartsA) {
+					return downloadStartsB - downloadStartsA
+				}
+				const mediaRequestsA = a.mediaRequests ?? 0
+				const mediaRequestsB = b.mediaRequests ?? 0
+				if (mediaRequestsB !== mediaRequestsA) {
+					return mediaRequestsB - mediaRequestsA
+				}
+				const uniqueClientsA = a.uniqueClients ?? 0
+				const uniqueClientsB = b.uniqueClients ?? 0
+				if (uniqueClientsB !== uniqueClientsA) {
+					return uniqueClientsB - uniqueClientsA
+				}
 				if (b.fileModifiedAt !== a.fileModifiedAt) {
 					return b.fileModifiedAt - a.fileModifiedAt
 				}

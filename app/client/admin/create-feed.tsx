@@ -600,7 +600,7 @@ export function CreateFeed(handle: Handle) {
 								value={directoryForm.feedType}
 								mix={[
 									rmxCss(inputStyles),
-									rmxOn('change', (e) => {
+									rmxOn('input', (e) => {
 										directoryForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										handle.update()
@@ -753,7 +753,7 @@ export function CreateFeed(handle: Handle) {
 									value={directoryForm.sortFields}
 									mix={[
 										rmxCss(inputStyles),
-										rmxOn('change', (e) => {
+										rmxOn('input', (e) => {
 											directoryForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
@@ -778,7 +778,7 @@ export function CreateFeed(handle: Handle) {
 									value={directoryForm.sortOrder}
 									mix={[
 										rmxCss(inputStyles),
-										rmxOn('change', (e) => {
+										rmxOn('input', (e) => {
 											directoryForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											handle.update()
@@ -889,7 +889,7 @@ export function CreateFeed(handle: Handle) {
 								value={curatedForm.feedType}
 								mix={[
 									rmxCss(inputStyles),
-									rmxOn('change', (e) => {
+									rmxOn('input', (e) => {
 										curatedForm.feedType = (e.target as HTMLSelectElement)
 											.value as 'episodic' | 'serial'
 										handle.update()
@@ -1001,7 +1001,7 @@ export function CreateFeed(handle: Handle) {
 									value={curatedForm.sortFields}
 									mix={[
 										rmxCss(inputStyles),
-										rmxOn('change', (e) => {
+										rmxOn('input', (e) => {
 											curatedForm.sortFields = (
 												e.target as HTMLSelectElement
 											).value
@@ -1027,7 +1027,7 @@ export function CreateFeed(handle: Handle) {
 									value={curatedForm.sortOrder}
 									mix={[
 										rmxCss(inputStyles),
-										rmxOn('change', (e) => {
+										rmxOn('input', (e) => {
 											curatedForm.sortOrder = (e.target as HTMLSelectElement)
 												.value as 'asc' | 'desc'
 											handle.update()

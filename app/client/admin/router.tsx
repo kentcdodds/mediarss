@@ -29,7 +29,6 @@ const ROUTER_BASE_PATH = '/admin'
 class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
 	#currentPath: string = window.location.pathname
-	#currentHref: string = getLocationHref()
 
 	get currentPath() {
 		return this.#currentPath
@@ -60,10 +59,12 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 */
 	navigate(path: string) {
 		const target = normalizeNavigationTarget(path)
-		if (target.href === this.#currentHref) return
+		// Compare against the live location. Other code (e.g. media list filters) uses
+		// history.replaceState for query params; a cached href would make navigate() no-op
+		// when only ?query differs from what the SPA last pushed.
+		if (target.href === getLocationHref()) return
 		history.pushState(null, '', target.href)
-		this.#currentHref = target.href
-		this.#currentPath = target.pathname
+		this.#currentPath = window.location.pathname
 		this.dispatchEvent(new Event('navigate'))
 	}
 
@@ -92,7 +93,6 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Handle browser back/forward navigation.
 	 */
 	handlePopState = () => {
-		this.#currentHref = getLocationHref()
 		this.#currentPath = window.location.pathname
 		this.dispatchEvent(new Event('navigate'))
 	}

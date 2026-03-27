@@ -1,6 +1,6 @@
 import type { Database } from 'bun:sqlite'
 import { generateId } from '#app/helpers/crypto.ts'
-import { normalizePath } from '#app/helpers/path-parsing.ts'
+import { createMediaKey, normalizePath } from '#app/helpers/path-parsing.ts'
 import { db } from './index.ts'
 import { sql } from './sql.ts'
 import type { AnalyticsEventType, AnalyticsFeedType } from './types.ts'
@@ -40,6 +40,15 @@ export type FeedTopMediaItemAnalyticsRow = {
 	mediaRequests: number
 	downloadStarts: number
 	bytesServed: number
+	uniqueClients: number
+	lastSeenAt: number | null
+}
+
+export type MediaPopularityMetrics = {
+	mediaRoot: string
+	relativePath: string
+	mediaRequests: number
+	downloadStarts: number
 	uniqueClients: number
 	lastSeenAt: number | null
 }
@@ -316,6 +325,59 @@ export function getFeedTopMediaItemAnalytics(
 		uniqueClients: row.unique_clients ?? 0,
 		lastSeenAt: row.last_seen_at,
 	}))
+}
+
+/**
+ * Aggregate popularity metrics for all media items across all feeds/tokens.
+ */
+export function listMediaPopularityMetrics(
+	database: Database = db,
+): Map<string, MediaPopularityMetrics> {
+	const rows = database
+		.query<
+			{
+				media_root: string
+				relative_path: string
+				media_requests: number | null
+				download_starts: number | null
+				unique_clients: number | null
+				last_seen_at: number | null
+			},
+			[]
+		>(
+			sql`
+				SELECT
+					media_root,
+					relative_path,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+					MAX(created_at) AS last_seen_at
+				FROM feed_analytics_events
+				WHERE media_root IS NOT NULL AND relative_path IS NOT NULL
+				GROUP BY media_root, relative_path
+				HAVING SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END) > 0
+				ORDER BY download_starts DESC, media_requests DESC, unique_clients DESC, last_seen_at DESC;
+			`,
+		)
+		.all()
+
+	return new Map(
+		rows.map((row) => {
+			const metrics: MediaPopularityMetrics = {
+				mediaRoot: row.media_root,
+				relativePath: row.relative_path,
+				mediaRequests: row.media_requests ?? 0,
+				downloadStarts: row.download_starts ?? 0,
+				uniqueClients: row.unique_clients ?? 0,
+				lastSeenAt: row.last_seen_at,
+			}
+			return [
+				createMediaKey(row.media_root, row.relative_path),
+				metrics,
+			] as const
+		}),
+	)
 }
 
 /**

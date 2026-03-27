@@ -11,6 +11,7 @@ import {
 	getMediaAnalyticsByToken,
 	getMediaAnalyticsSummary,
 	getMediaTopClientAnalytics,
+	listMediaPopularityMetrics,
 	pruneFeedAnalyticsEvents,
 } from './feed-analytics-events.ts'
 import { createMigratedTestDatabase } from './test-database.ts'
@@ -210,6 +211,83 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 	expect(topClients.map((client) => client.clientName)).toEqual(
 		expect.arrayContaining(['Pocket Casts', 'Overcast']),
 	)
+})
+
+test('media popularity metrics aggregate multiple items with normalized keys', () => {
+	using ctx = createMigratedTestDatabase('test-feed-analytics-summaries')
+	const { db: database } = ctx
+	const base = 1_700_150_000
+
+	createFeedAnalyticsEvent(
+		{
+			eventType: 'media_request',
+			feedId: 'feed-1',
+			feedType: 'directory',
+			token: 'token-a',
+			mediaRoot: 'audio',
+			relativePath: 'series\\book-one.mp3',
+			isDownloadStart: true,
+			bytesServed: 1000,
+			statusCode: 200,
+			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
+			createdAt: base,
+		},
+		database,
+	)
+	createFeedAnalyticsEvent(
+		{
+			eventType: 'media_request',
+			feedId: 'feed-1',
+			feedType: 'directory',
+			token: 'token-a',
+			mediaRoot: 'audio',
+			relativePath: 'series/book-one.mp3',
+			isDownloadStart: false,
+			bytesServed: 500,
+			statusCode: 206,
+			clientFingerprint: 'fp-1',
+			clientName: 'Apple Podcasts',
+			createdAt: base + 60,
+		},
+		database,
+	)
+	createFeedAnalyticsEvent(
+		{
+			eventType: 'media_request',
+			feedId: 'feed-2',
+			feedType: 'curated',
+			token: 'token-b',
+			mediaRoot: 'audio',
+			relativePath: 'series/book-two.mp3',
+			isDownloadStart: true,
+			bytesServed: 2000,
+			statusCode: 200,
+			clientFingerprint: 'fp-2',
+			clientName: 'Overcast',
+			createdAt: base + 120,
+		},
+		database,
+	)
+
+	const summaries = listMediaPopularityMetrics(database)
+
+	expect(summaries.get('audio:series/book-one.mp3')).toEqual({
+		mediaRoot: 'audio',
+		relativePath: 'series/book-one.mp3',
+		mediaRequests: 2,
+		downloadStarts: 1,
+		uniqueClients: 1,
+		lastSeenAt: base + 60,
+	})
+	expect(summaries.get('audio:series/book-two.mp3')).toEqual({
+		mediaRoot: 'audio',
+		relativePath: 'series/book-two.mp3',
+		mediaRequests: 1,
+		downloadStarts: 1,
+		uniqueClients: 1,
+		lastSeenAt: base + 120,
+	})
 })
 
 test('media analytics aggregate across feeds/tokens and normalize paths', () => {

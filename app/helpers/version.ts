@@ -46,9 +46,9 @@ function getProjectRoot(): string {
 export async function getAppVersion(): Promise<string | null> {
 	try {
 		const packageJsonPath = path.join(getProjectRoot(), 'package.json')
-		const packageJson = JSON.parse(
-			await readFile(packageJsonPath, 'utf8'),
-		) as { version?: string }
+		const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+			version?: string
+		}
 		return packageJson.version ?? null
 	} catch {
 		return null

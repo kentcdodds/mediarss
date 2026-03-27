@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import {

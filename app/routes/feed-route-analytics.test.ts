@@ -1,5 +1,6 @@
-import { expect, spyOn, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
+import { spyOn } from '#test/bun-test-compat.ts'
 import {
 	createCuratedFeedToken,
 	revokeCuratedFeedToken,
@@ -106,7 +107,8 @@ function createFeedActionContext(
 }
 
 function readLatestRssEvent(feedId: string): LatestRssEvent | null {
-	return db
+	return (
+		db
 		.query<LatestRssEvent, [string]>(
 			sql`
 				SELECT feed_type, token, status_code, client_name, client_fingerprint
@@ -117,6 +119,7 @@ function readLatestRssEvent(feedId: string): LatestRssEvent | null {
 			`,
 		)
 		.get(feedId)
+	) ?? null
 }
 
 function countEventsForToken(token: string): number {

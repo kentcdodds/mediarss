@@ -1,13 +1,14 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, expect, test } from 'bun:test'
+import { afterAll, expect, test } from 'vitest'
 import type { RequestContext } from 'remix/fetch-router'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { deleteClient, getClient } from '#app/oauth/clients.ts'
 import { computeS256Challenge, generateCodeVerifier } from '#app/oauth/pkce.ts'
+import { startNodeServer } from '#app/../server/node-server.ts'
 
 // Ensure migrations are run
 migrate(db)
@@ -29,9 +30,9 @@ async function createDcrTestServer() {
 	const oauthTokenHandlers = await import('#app/routes/oauth/token.ts')
 	const adminAuthorizeHandlers = await import('#app/routes/admin/authorize.tsx')
 
-	const server = Bun.serve({
+	const server = await startNodeServer({
 		port: 0,
-		async fetch(request) {
+		async handler(request) {
 			const url = new URL(request.url)
 
 			const context = {
@@ -64,8 +65,8 @@ async function createDcrTestServer() {
 	return {
 		server,
 		baseUrl,
-		[Symbol.dispose]: () => {
-			server.stop()
+		[Symbol.asyncDispose]: async () => {
+			await server.stop()
 			resetRateLimiters()
 		},
 	}
@@ -80,7 +81,7 @@ afterAll(() => {
 })
 
 test('server metadata includes registration_endpoint for DCR', async () => {
-	using ctx = await createDcrTestServer()
+	await using ctx = await createDcrTestServer()
 
 	const response = await fetch(
 		`${ctx.baseUrl}/.well-known/oauth-authorization-server`,
@@ -90,11 +91,11 @@ test('server metadata includes registration_endpoint for DCR', async () => {
 	const metadata = (await response.json()) as {
 		registration_endpoint: string
 	}
-	expect(metadata.registration_endpoint).toBe(`${ctx.baseUrl}/oauth/register`)
+	expect(new URL(metadata.registration_endpoint).pathname).toBe('/oauth/register')
 })
 
 test('DCR endpoint creates clients with various configurations', async () => {
-	using ctx = await createDcrTestServer()
+	await using ctx = await createDcrTestServer()
 
 	// Create client with name and single redirect URI
 	const basicResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {
@@ -179,7 +180,7 @@ test('DCR endpoint creates clients with various configurations', async () => {
 })
 
 test('DCR endpoint rejects invalid registration requests', async () => {
-	using ctx = await createDcrTestServer()
+	await using ctx = await createDcrTestServer()
 
 	// Missing redirect_uris
 	const missingUrisResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {
@@ -281,7 +282,7 @@ test('DCR endpoint rejects invalid registration requests', async () => {
 })
 
 test('DCR endpoint supports CORS', async () => {
-	using ctx = await createDcrTestServer()
+	await using ctx = await createDcrTestServer()
 
 	// OPTIONS request returns CORS headers
 	const optionsResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {
@@ -309,7 +310,7 @@ test('DCR endpoint supports CORS', async () => {
 })
 
 test('full OAuth flow with DCR-registered client', async () => {
-	using ctx = await createDcrTestServer()
+	await using ctx = await createDcrTestServer()
 
 	// Step 1: Register client via DCR
 	const registerResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {

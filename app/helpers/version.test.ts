@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import {
 	getAppVersion,
 	getCommitInfo,
@@ -21,12 +21,12 @@ test('getCommitInfo returns complete git commit information when in a git repo',
 	}
 
 	// Verify all commit info properties
-	expect(commit.hash).toBeString()
+	expect(typeof commit.hash).toBe('string')
 	expect(commit.hash).toHaveLength(40) // Full SHA is 40 chars
-	expect(commit.shortHash).toBeString()
+	expect(typeof commit.shortHash).toBe('string')
 	expect(commit.shortHash).toHaveLength(7) // Short SHA is 7 chars
-	expect(commit.message).toBeString()
-	expect(commit.date).toBeString()
+	expect(typeof commit.message).toBe('string')
+	expect(typeof commit.date).toBe('string')
 
 	// Date should be ISO format
 	expect(new Date(commit.date).toISOString()).toBeTruthy()
@@ -39,14 +39,14 @@ test('getShortCommitHash returns 7 character hash when in git repo', async () =>
 	const shortHash = await getShortCommitHash()
 	if (shortHash === null) return
 
-	expect(shortHash).toBeString()
+	expect(typeof shortHash).toBe('string')
 	expect(shortHash).toHaveLength(7)
 })
 
 test('getDisplayVersion returns version or short commit hash', async () => {
 	const displayVersion = await getDisplayVersion()
 	expect(displayVersion).not.toBeNull()
-	expect(displayVersion).toBeString()
+	expect(typeof displayVersion).toBe('string')
 	// Should be either semver (version) or 7-char hash
 	expect(
 		displayVersion!.match(/^\d+\.\d+\.\d+/) || displayVersion!.length === 7,
@@ -67,10 +67,10 @@ test('getVersionInfo returns complete version info object with all required prop
 	}
 
 	// Start time should be valid ISO date string
-	expect(info.startTime).toBeString()
+	expect(typeof info.startTime).toBe('string')
 	expect(new Date(info.startTime).toISOString()).toBeTruthy()
 
 	// Uptime should be a positive number
-	expect(info.uptimeMs).toBeNumber()
+	expect(typeof info.uptimeMs).toBe('number')
 	expect(info.uptimeMs).toBeGreaterThanOrEqual(0)
 })

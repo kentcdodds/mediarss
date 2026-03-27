@@ -1,4 +1,5 @@
-import { expect, test } from 'bun:test'
+import { promises as fs } from 'node:fs'
+import { expect, test } from 'vitest'
 import path from 'node:path'
 import { initEnv } from '#app/config/env.ts'
 import { consoleError, consoleWarn } from '#test/setup.ts'
@@ -23,12 +24,13 @@ function createTempDirectory() {
 	return {
 		path: tempDir,
 		async setup() {
-			await Bun.write(`${tempDir}/.gitkeep`, '')
+			await fs.mkdir(tempDir, { recursive: true })
+			await fs.writeFile(`${tempDir}/.gitkeep`, '')
 		},
 		[Symbol.asyncDispose]: async () => {
 			// SWR background revalidation may warn after cleanup deletes the directory
 			consoleWarn.mockImplementation(() => {})
-			await Bun.$`rm -rf ${tempDir}`
+			await fs.rm(tempDir, { force: true, recursive: true })
 			// Wait for SWR background revalidation to complete
 			await new Promise((resolve) => setTimeout(resolve, 10))
 		},

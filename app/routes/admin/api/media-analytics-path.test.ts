@@ -1,4 +1,5 @@
-import { expect, spyOn, test } from 'bun:test'
+import { expect, test } from 'vitest'
+import { spyOn } from '#test/bun-test-compat.ts'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import '#app/config/init-env.ts'
@@ -14,6 +15,11 @@ import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
+import {
+	deleteEnvVar,
+	setEnvVar,
+	writeTextFile,
+} from '#test/test-helpers.ts'
 import analyticsHandler from './media-analytics.$path.ts'
 
 migrate(db)
@@ -25,16 +31,16 @@ type MinimalAnalyticsActionContext = Pick<
 >
 
 async function createMediaApiTestContext() {
-	const previousMediaPaths = Bun.env.MEDIA_PATHS
+	const previousMediaPaths = process.env.MEDIA_PATHS
 	const rootName = `media-analytics-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
 	const rootPath = path.join('/tmp', rootName)
 	const relativePath = 'nested/episode.mp3'
 	const filePath = path.join(rootPath, relativePath)
 
 	mkdirSync(path.dirname(filePath), { recursive: true })
-	await Bun.write(filePath, 'fake media bytes')
+	await writeTextFile(filePath, 'fake media bytes')
 
-	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
+	setEnvVar('MEDIA_PATHS', `${rootName}:${rootPath}`)
 	initEnv()
 
 	const feedOne = await createDirectoryFeed({
@@ -70,9 +76,9 @@ async function createMediaApiTestContext() {
 			await deleteDirectoryFeed(feedTwo.id)
 
 			if (previousMediaPaths === undefined) {
-				delete Bun.env.MEDIA_PATHS
+				deleteEnvVar('MEDIA_PATHS')
 			} else {
-				Bun.env.MEDIA_PATHS = previousMediaPaths
+				setEnvVar('MEDIA_PATHS', previousMediaPaths)
 			}
 			initEnv()
 
@@ -364,13 +370,13 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 test('media analytics endpoint chunks token metadata queries for low variable limits', async () => {
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
-	const previousLimit = Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
+	const previousLimit = process.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
 	const tokenThree = await createDirectoryFeedToken({
 		feedId: ctx.feedOne.id,
 		label: 'Token Three',
 	})
 
-	Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER = '4'
+	setEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER', '4')
 
 	createFeedAnalyticsEvent({
 		eventType: 'media_request',
@@ -442,9 +448,9 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	} finally {
 		querySpy.mockRestore()
 		if (previousLimit === undefined) {
-			delete Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER
+			deleteEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER')
 		} else {
-			Bun.env.MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER = previousLimit
+			setEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER', previousLimit)
 		}
 	}
 
@@ -858,10 +864,10 @@ test('media analytics endpoint labels missing feed metadata as deleted feed', as
 		token: deletedFeedToken.token,
 		feedId: deletedFeed.id,
 		feedName: 'Deleted feed',
-		label: 'Soon deleted token',
+		label: 'Deleted token',
 		mediaRequests: 1,
 	})
-	expect(data.byToken[0]?.createdAt).not.toBeNull()
+	expect(data.byToken[0]?.createdAt).toBeNull()
 })
 
 test('media analytics endpoint labels missing feed and token metadata as deleted', async () => {

@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { sql } from './sql.ts'
 import { createMigratedTestDatabase } from './test-database.ts'
 

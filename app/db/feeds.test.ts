@@ -1,5 +1,5 @@
 import { Database } from './sqlite.ts'
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { migrate } from './migrations.ts'

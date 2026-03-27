@@ -20,10 +20,17 @@ export async function resolveFeedArtwork(
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		return getFileResponse(uploadedArtwork.path, new Request('http://localhost'), {
-			cacheControl: 'public, max-age=86400',
-			contentType: uploadedArtwork.mimeType,
-		})
+		const response = await getFileResponse(
+			uploadedArtwork.path,
+			new Request('http://localhost'),
+			{
+				cacheControl: 'public, max-age=86400',
+				contentType: uploadedArtwork.mimeType,
+			},
+		)
+		if (response) {
+			return response
+		}
 	}
 
 	// Priority 2: External imageUrl (redirect)

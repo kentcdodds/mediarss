@@ -1,4 +1,5 @@
-import { expect, spyOn, test } from 'bun:test'
+import { expect, test } from 'vitest'
+import { spyOn } from '#test/bun-test-compat.ts'
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import '#app/config/init-env.ts'
@@ -17,6 +18,7 @@ import { addItemToFeed } from '#app/db/feed-items.ts'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
+import { setEnvVar, unsetEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import mediaHandler from './media.ts'
 
 migrate(db)
@@ -48,16 +50,16 @@ function asActionContext(
 }
 
 async function createDirectoryMediaAnalyticsTestContext() {
-	const previousMediaPaths = Bun.env.MEDIA_PATHS
+	const previousMediaPaths = process.env.MEDIA_PATHS
 	const rootName = `media-route-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
 	const rootPath = path.join('/tmp', rootName)
 	const relativePath = 'episode.mp3'
 	const filePath = path.join(rootPath, relativePath)
 
 	mkdirSync(rootPath, { recursive: true })
-	await Bun.write(filePath, '0123456789abcdefghijklmnopqrstuvwxyz')
+	await writeTextFile(filePath, '0123456789abcdefghijklmnopqrstuvwxyz')
 
-	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
+	setEnvVar('MEDIA_PATHS', `${rootName}:${rootPath}`)
 	initEnv()
 
 	const feed = await createDirectoryFeed({
@@ -81,9 +83,9 @@ async function createDirectoryMediaAnalyticsTestContext() {
 			await deleteDirectoryFeed(feed.id)
 
 			if (previousMediaPaths === undefined) {
-				delete Bun.env.MEDIA_PATHS
+				unsetEnvVar('MEDIA_PATHS')
 			} else {
-				Bun.env.MEDIA_PATHS = previousMediaPaths
+				setEnvVar('MEDIA_PATHS', previousMediaPaths)
 			}
 			initEnv()
 
@@ -93,7 +95,7 @@ async function createDirectoryMediaAnalyticsTestContext() {
 }
 
 async function createCuratedMediaAnalyticsTestContext() {
-	const previousMediaPaths = Bun.env.MEDIA_PATHS
+	const previousMediaPaths = process.env.MEDIA_PATHS
 	const rootName = `curated-media-route-root-${Date.now()}-${Math.random().toString(36).slice(2)}`
 	const rootPath = path.join('/tmp', rootName)
 	const relativePath = 'curated-episode.mp3'
@@ -102,10 +104,10 @@ async function createCuratedMediaAnalyticsTestContext() {
 	const otherFilePath = path.join(rootPath, otherRelativePath)
 
 	mkdirSync(rootPath, { recursive: true })
-	await Bun.write(filePath, 'curated media fixture bytes')
-	await Bun.write(otherFilePath, 'excluded fixture bytes')
+	await writeTextFile(filePath, 'curated media fixture bytes')
+	await writeTextFile(otherFilePath, 'excluded fixture bytes')
 
-	Bun.env.MEDIA_PATHS = `${rootName}:${rootPath}`
+	setEnvVar('MEDIA_PATHS', `${rootName}:${rootPath}`)
 	initEnv()
 
 	const feed = await createCuratedFeed({
@@ -131,9 +133,9 @@ async function createCuratedMediaAnalyticsTestContext() {
 			await deleteCuratedFeed(feed.id)
 
 			if (previousMediaPaths === undefined) {
-				delete Bun.env.MEDIA_PATHS
+				unsetEnvVar('MEDIA_PATHS')
 			} else {
-				Bun.env.MEDIA_PATHS = previousMediaPaths
+				setEnvVar('MEDIA_PATHS', previousMediaPaths)
 			}
 			initEnv()
 
@@ -190,7 +192,7 @@ function readLatestMediaEvent(feedId: string): LatestMediaEvent | null {
 				LIMIT 1;
 			`,
 		)
-		.get(feedId)
+		.get(feedId) ?? null
 }
 
 function listMediaEvents(feedId: string): LatestMediaEvent[] {

@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { sortFeeds } from './feed-list-sort.ts'
 
 type MockFeed = {

@@ -1,6 +1,10 @@
 import { spawn } from 'node:child_process'
 
-function spawnAndForget(command: string, args: string[], input?: string): boolean {
+function spawnAndForget(
+	command: string,
+	args: string[],
+	input?: string,
+): boolean {
 	try {
 		const child = spawn(command, args, {
 			detached: true,

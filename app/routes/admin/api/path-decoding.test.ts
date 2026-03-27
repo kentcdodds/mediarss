@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import artworkHandler from './artwork.ts'
 import mediaMetadataHandler from './media.$path.metadata.ts'

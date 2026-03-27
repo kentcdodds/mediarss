@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { sortMediaItems } from './media-list-sort.ts'
 
 type MockMediaItem = {

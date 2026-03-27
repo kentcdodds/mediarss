@@ -1,4 +1,4 @@
-import type { Database as BunDatabase } from 'bun:sqlite'
+import type { Database as BunDatabase } from './sqlite.ts'
 import type {
 	AdapterCapabilityOverrides,
 	DatabaseAdapter,

@@ -9,6 +9,7 @@ import { isDirectoryFeed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { getFileResponse } from '#app/helpers/node-file.ts'
 import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
@@ -103,7 +104,7 @@ export default {
 		}
 
 		// Check file exists
-		if (!(await getFileResponse(filePath))) {
+		if (!(await fileExists(filePath))) {
 			return new Response('File not found', { status: 404 })
 		}
 
@@ -123,10 +124,18 @@ export default {
 		// Priority 1: Check for uploaded feed artwork
 		const uploadedFeedArtwork = await getFeedArtworkPath(feed.id)
 		if (uploadedFeedArtwork) {
-			return getFileResponse(uploadedFeedArtwork.path, context.request, {
+			const response = await getFileResponse(
+				uploadedFeedArtwork.path,
+				context.request,
+				{
 				cacheControl: 'public, max-age=86400',
 				contentType: uploadedFeedArtwork.mimeType,
-			})
+				},
+			)
+			if (response) {
+				return response
+			}
+			return new Response('File not found', { status: 404 })
 		}
 
 		// Priority 2: Check for external imageUrl

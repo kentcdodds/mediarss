@@ -119,7 +119,9 @@ async function bundleEntrypoint(
 	return output.text
 }
 
-export function createBundlingRoutes(rootDir: string) {
+export function createBundlingRoutes(
+	rootDir: string,
+): Record<string, (request: Request) => Promise<Response>> {
 	const clientDir = path.resolve(rootDir, 'app', 'client')
 
 	return {
@@ -211,10 +213,9 @@ export function createBundlingRoutes(rootDir: string) {
 			return new Response(output, {
 				headers: {
 					'Content-Type': 'application/javascript',
-					'Cache-Control':
-						isProduction
-							? 'public, max-age=31536000, immutable'
-							: 'no-cache',
+					'Cache-Control': isProduction
+						? 'public, max-age=31536000, immutable'
+						: 'no-cache',
 					...BUNDLING_CORS_HEADERS,
 				},
 			})

@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'

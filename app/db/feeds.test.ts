@@ -1,9 +1,9 @@
-import { Database } from './sqlite.ts'
-import { expect, test } from 'bun:test'
 import fs from 'node:fs'
 import path from 'node:path'
+import { expect, test } from 'vitest'
 import { migrate } from './migrations.ts'
 import { sql } from './sql.ts'
+import { Database } from './sqlite.ts'
 
 /**
  * Creates a test database that will be automatically closed and deleted.

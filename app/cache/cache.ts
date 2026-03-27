@@ -1,4 +1,3 @@
-import { Database } from '#app/db/sqlite.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
@@ -17,6 +16,7 @@ import {
 } from 'remix/data-schema'
 import { getEnv } from '#app/config/env.ts'
 import { sql } from '#app/db/sql.ts'
+import { Database } from '#app/db/sqlite.ts'
 
 function ensureDirectoryExists(filePath: string): void {
 	const dir = path.dirname(filePath)
@@ -60,10 +60,14 @@ function getCacheDb(): Database {
 type CacheRow = { metadata: string; value: string }
 
 // Lazy prepared statements with explicit types
-let _getStatement: ReturnType<typeof Database.prototype.prepare<CacheRow, [string]>> | null =
-	null
+let _getStatement: ReturnType<
+	typeof Database.prototype.prepare<CacheRow, [string]>
+> | null = null
 let _setStatement: ReturnType<
-	typeof Database.prototype.prepare<Record<string, unknown>, [string, string, string]>
+	typeof Database.prototype.prepare<
+		Record<string, unknown>,
+		[string, string, string]
+	>
 > | null = null
 let _deleteStatement: ReturnType<
 	typeof Database.prototype.prepare<Record<string, unknown>, [string]>
@@ -80,20 +84,21 @@ function getGetStatement() {
 
 function getSetStatement() {
 	if (!_setStatement) {
-		_setStatement = getCacheDb().prepare<void, [string, string, string]>(
-			'INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)',
-		)
+		_setStatement = getCacheDb().prepare<
+			Record<string, unknown>,
+			[string, string, string]
+		>('INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)')
 	}
-	return _setStatement
+	return _setStatement!
 }
 
 function getDeleteStatement() {
 	if (!_deleteStatement) {
-		_deleteStatement = getCacheDb().prepare<void, [string]>(
+		_deleteStatement = getCacheDb().prepare<Record<string, unknown>, [string]>(
 			'DELETE FROM cache WHERE key = ?',
 		)
 	}
-	return _deleteStatement
+	return _deleteStatement!
 }
 
 // Schema for validating cache entry metadata

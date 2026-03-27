@@ -1,7 +1,7 @@
-import { Database } from './sqlite.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { getEnv } from '#app/config/env.ts'
+import { Database } from './sqlite.ts'
 
 function getDatabasePath(): string {
 	const envPath = getEnv().DATABASE_PATH

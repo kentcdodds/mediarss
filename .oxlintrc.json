@@ -1,0 +1,7 @@
+{
+	"extends": ["./node_modules/@epic-web/config/oxlint-config.json"],
+	"rules": {
+		"import/consistent-type-specifier-style": "off",
+		"typescript/consistent-type-imports": "off"
+	}
+}

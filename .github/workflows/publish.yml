@@ -8,6 +8,9 @@ on:
       - 'v*'
   pull_request: {}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,11 +33,14 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Opt actions into Node 24
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> "$GITHUB_ENV"
+
       - name: 📥 Install dependencies
         run: npm ci
 
       - name: 🔬 Lint
-        run: npm run check:ci
+        run: npm run lint:check
 
   typecheck:
     name: ʦ TypeCheck
@@ -48,6 +54,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - name: Opt actions into Node 24
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> "$GITHUB_ENV"
 
       - name: 📥 Install dependencies
         run: npm ci
@@ -68,6 +77,9 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Opt actions into Node 24
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> "$GITHUB_ENV"
+
       - name: 📥 Install dependencies
         run: npm ci
 
@@ -80,6 +92,9 @@ jobs:
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v6
+
+      - name: Opt actions into Node 24
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> "$GITHUB_ENV"
 
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -128,6 +143,9 @@ jobs:
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v6
+
+      - name: Opt actions into Node 24
+        run: echo "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true" >> "$GITHUB_ENV"
 
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

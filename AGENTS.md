@@ -1,18 +1,18 @@
-Default to using Bun instead of Node.js.
+Default to using Node.js and npm.
 
 ## Linting
 
-Always run `bun run lint` before you're done working to fix any lint issues.
+Always run `npm run lint` before you're done working to fix any lint issues.
 
 ## Formatting
 
-Always run `bun run format` before you're done working to fix any formatting issues.
+Always run `npm run format` before you're done working to fix any formatting issues.
 
 ## Commit Gate
 
 Always run the full gate before committing:
 
-`bun run validate`
+`npm run validate`
 
 Do not commit if any part of the gate fails.
 
@@ -331,36 +331,30 @@ refreshes should be treated as fixed for this project after upgrading to `remix@
 If navigation regressions appear, debug the app code first (Link handling,
 route registration, and state updates) before assuming a framework bug.
 
-## Bun
+## Node.js
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>`
-- Bun automatically loads .env, so don't use dotenv.
-- Use `Bun.env` instead of `process.env` to access environment variables. Runtime changes to `process.env` may not be reflected in `Bun.env`, so always use `Bun.env` for consistency.
+- Use `node` for runtime execution and `npm` for package management.
+- Use `npm install` to add dependencies and update `package-lock.json`.
+- Use `npm run <script>` for project scripts.
+- Use `process.env` for environment variables.
 
 ## Build
 
-There is no build step. This is shipped as-is. Instead, we use Bun's built-in runtime typescript support and we do a runtime bundling of the client-side code in `server/bundling.ts`.
+There is no build step. This is shipped as-is. We use modern Node.js runtime TypeScript support for `.ts` files, a small Node hook for `.tsx` loading, and runtime bundling of the client-side code in `server/bundling.ts`.
 
 ## APIs
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
+- Use the Node HTTP stack plus `remix/node-fetch-server` for the server entrypoint.
+- Use `node:sqlite` for SQLite.
 - `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+- Prefer Node's built-in `fs`, `fs/promises`, and web `File`/`Blob` APIs for file access.
 
 ## Testing
 
-Use `bun test` to run tests.
+Use `npm test` to run tests.
 
 ```ts#index.test.ts
-import { test, expect } from "bun:test";
+import { test, expect } from "vitest";
 
 test("hello world", () => {
 	expect(1).toBe(1);
@@ -372,7 +366,7 @@ test("hello world", () => {
 To test the application with sample media files, use the `local-test` directory:
 
 ```bash
-bun run dev:test
+npm run dev:test
 ```
 
 This command:

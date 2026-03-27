@@ -78,30 +78,23 @@ function setupMockFetch() {
 	mockFetchResponses = new Map()
 
 	// Mock global fetch for HTTPS URLs
-	const mockFetch = Object.assign(
-		async (input: RequestInfo | URL, init?: RequestInit) => {
-			const url =
-				typeof input === 'string'
-					? input
-					: input instanceof URL
-						? input.toString()
-						: input.url
+	const mockFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url =
+			typeof input === 'string'
+				? input
+				: input instanceof URL
+					? input.toString()
+					: input.url
 
-			// Check if we have a mock response for this URL
-			const mockResponseFn = mockFetchResponses.get(url)
-			if (mockResponseFn) {
-				return mockResponseFn()
-			}
+		// Check if we have a mock response for this URL
+		const mockResponseFn = mockFetchResponses.get(url)
+		if (mockResponseFn) {
+			return mockResponseFn()
+		}
 
-			// For non-mocked URLs, use original fetch (e.g., localhost test server)
-			return originalFetch(input, init)
-		},
-		originalFetch.preconnect
-			? {
-					preconnect: originalFetch.preconnect.bind(originalFetch),
-				}
-			: {},
-	)
+		// For non-mocked URLs, use original fetch (e.g., localhost test server)
+		return originalFetch(input, init)
+	}
 	globalThis.fetch = mockFetch as typeof fetch
 
 	return {

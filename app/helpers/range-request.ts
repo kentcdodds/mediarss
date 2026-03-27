@@ -4,7 +4,7 @@ import { createLazyFile } from '#app/helpers/node-file.ts'
 function isMalformedRangeRequest(request: Request): boolean {
 	const rangeHeader = request.headers.get('Range')
 	if (!rangeHeader) return false
-	return !/^bytes=\d*-\d*$/.test(rangeHeader.trim())
+	return !/^bytes=(\d*-\d*)(\s*,\s*\d*-\d*)*$/.test(rangeHeader.trim())
 }
 
 /**

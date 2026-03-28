@@ -74,8 +74,9 @@ export class Database {
 
 	constructor(path: string) {
 		this.#database = new DatabaseSync(path, {
-			timeout: 5_000,
+			enableForeignKeyConstraints: true,
 		})
+		this.#database.exec('PRAGMA busy_timeout = 5000;')
 	}
 
 	run(sql: string, ...params: Array<unknown>) {

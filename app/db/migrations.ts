@@ -1,10 +1,10 @@
 import { sql } from './sql.ts'
-import type { Database } from './sqlite.ts'
+import type { Database as SqliteDatabase } from 'better-sqlite3'
 
 type Migration = {
 	version: number
 	name: string
-	up: (db: Database) => void
+	up: (db: SqliteDatabase) => void
 }
 
 const migrations: Array<Migration> = [
@@ -235,7 +235,7 @@ const migrations: Array<Migration> = [
 /**
  * Run all pending migrations
  */
-export function migrate(db: Database): void {
+export function migrate(db: SqliteDatabase): void {
 	// Create schema_versions table if it doesn't exist
 	db.run(sql`
 		CREATE TABLE IF NOT EXISTS schema_versions (

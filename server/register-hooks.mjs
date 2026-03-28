@@ -13,9 +13,6 @@ const rootDir = path.resolve(thisDir, '..')
 const bunTestCompatUrl = pathToFileURL(
 	path.join(rootDir, 'test', 'bun-test-compat.ts'),
 ).href
-const sqliteCompatUrl = pathToFileURL(
-	path.join(rootDir, 'app', 'db', 'sqlite.ts'),
-).href
 
 registerHooks({
 	resolve(specifier, context, nextResolve) {
@@ -23,13 +20,6 @@ registerHooks({
 			return {
 				shortCircuit: true,
 				url: bunTestCompatUrl,
-			}
-		}
-
-		if (specifier === 'bun:sqlite') {
-			return {
-				shortCircuit: true,
-				url: sqliteCompatUrl,
 			}
 		}
 

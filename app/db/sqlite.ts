@@ -1,14 +1,8 @@
-import {
-	DatabaseSync,
-	type SQLInputValue,
-	type SQLOutputValue,
-	type StatementResultingChanges,
-	type StatementSync,
-} from 'node:sqlite'
+import BetterSqlite3 from 'better-sqlite3'
 
 type DatabaseParameters = Array<unknown> | Record<string, unknown>
 
-type NamedParameters = Record<string, SQLInputValue>
+type NamedParameters = Record<string, unknown>
 
 function isNamedParameters(value: unknown): value is NamedParameters {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -26,12 +20,14 @@ function isNamedParameters(value: unknown): value is NamedParameters {
 	return Object.getPrototypeOf(value) === Object.prototype
 }
 
-function normalizeRunResult(result: StatementResultingChanges) {
+type StatementResult = {
+	changes: number
+	lastInsertRowid: number
+}
+
+function normalizeRunResult(result: { changes: number; lastInsertRowid: number | bigint }) {
 	return {
-		changes:
-			typeof result.changes === 'bigint'
-				? Number(result.changes)
-				: result.changes,
+		changes: result.changes,
 		lastInsertRowid:
 			typeof result.lastInsertRowid === 'bigint'
 				? Number(result.lastInsertRowid)
@@ -40,9 +36,9 @@ function normalizeRunResult(result: StatementResultingChanges) {
 }
 
 class PreparedStatement<TRow = Record<string, unknown>> {
-	#statement: StatementSync
+	#statement: BetterSqlite3.Statement
 
-	constructor(statement: StatementSync) {
+	constructor(statement: BetterSqlite3.Statement) {
 		this.#statement = statement
 	}
 
@@ -54,10 +50,12 @@ class PreparedStatement<TRow = Record<string, unknown>> {
 		return this.#call('get', params) as TRow | undefined
 	}
 
-	run(...params: Array<unknown>) {
-		return normalizeRunResult(
-			this.#call('run', params) as StatementResultingChanges,
-		)
+	run(...params: Array<unknown>): StatementResult {
+		const result = this.#call('run', params) as {
+			changes: number
+			lastInsertRowid: number | bigint
+		}
+		return normalizeRunResult(result)
 	}
 
 	#call(method: 'all' | 'get' | 'run', params: Array<unknown>) {
@@ -65,20 +63,22 @@ class PreparedStatement<TRow = Record<string, unknown>> {
 			return this.#statement[method](params[0])
 		}
 
-		return this.#statement[method](...(params as Array<SQLInputValue>))
+		return this.#statement[method](...params)
 	}
 }
 
 export class Database {
-	#database: DatabaseSync
+	#database: BetterSqlite3.Database
 
 	constructor(path: string) {
-		this.#database = new DatabaseSync(path, {
-			timeout: 5_000,
-		})
+		this.#database = new BetterSqlite3(path)
 	}
 
-	run(sql: string, ...params: Array<unknown>) {
+	get raw(): BetterSqlite3.Database {
+		return this.#database
+	}
+
+	run(sql: string, ...params: Array<unknown>): StatementResult {
 		const statement = this.prepare(sql)
 		return statement.run(...params)
 	}
@@ -87,11 +87,15 @@ export class Database {
 		this.#database.exec(sql)
 	}
 
+	pragma(sql: string): void {
+		this.#database.pragma(sql)
+	}
+
 	query<
 		TRow = Record<string, unknown>,
-		TParams extends DatabaseParameters = [],
+		_TParams extends DatabaseParameters = [],
 	>(sql: string): PreparedStatement<TRow> {
-		return this.prepare<TRow, TParams>(sql)
+		return this.prepare<TRow, _TParams>(sql)
 	}
 
 	prepare<
@@ -105,6 +109,3 @@ export class Database {
 		this.#database.close()
 	}
 }
-
-export type StatementResult = ReturnType<PreparedStatement['run']>
-export type { SQLOutputValue }

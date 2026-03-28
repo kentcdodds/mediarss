@@ -1,9 +1,9 @@
 import { generateId } from '#app/helpers/crypto.ts'
 import { createMediaKey, normalizePath } from '#app/helpers/path-parsing.ts'
+import type Database from 'better-sqlite3'
 import { db } from './index.ts'
 import { sql } from './sql.ts'
-import type { Database } from './sqlite.ts'
-import type { AnalyticsEventType, AnalyticsFeedType } from './types.ts'
+import { type AnalyticsEventType, type AnalyticsFeedType } from './types.ts'
 
 export type CreateFeedAnalyticsEventData = {
 	eventType: AnalyticsEventType

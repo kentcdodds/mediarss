@@ -1,4 +1,4 @@
-import type { BuildAction, RequestContext } from 'remix/fetch-router'
+import { type BuildAction, type RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
@@ -180,7 +180,9 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	// Validate Host header to prevent issuer injection attacks
 	// Only validates if ALLOWED_HOSTS is configured
-	const allowedHosts = Bun.env.ALLOWED_HOSTS?.split(',').map((h) => h.trim())
+	const allowedHosts = process.env.ALLOWED_HOSTS?.split(',').map((h) =>
+		h.trim(),
+	)
 	const requestHost = context.url.host
 
 	if (allowedHosts && allowedHosts.length > 0) {

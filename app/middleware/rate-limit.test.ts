@@ -1,7 +1,8 @@
-import { expect, test } from 'bun:test'
 import { invariant } from '@epic-web/invariant'
-import type { RequestContext } from 'remix/fetch-router'
+import { type RequestContext } from 'remix/fetch-router'
+import { expect, test } from 'vitest'
 import { consoleWarn } from '#test/setup.ts'
+import { setEnvVar } from '#test/test-helpers.ts'
 
 // Configure rate limits for testing BEFORE importing any source code
 // Note: With failure penalty (10x cost for failed requests), these limits must
@@ -15,7 +16,7 @@ const TEST_RATE_LIMITS = {
 
 // Set environment variables BEFORE importing source code
 for (const [key, value] of Object.entries(TEST_RATE_LIMITS)) {
-	Bun.env[key] = value
+	setEnvVar(key, value)
 }
 
 // Dynamic imports ensure env vars are set before modules are loaded

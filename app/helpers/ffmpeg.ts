@@ -1,6 +1,9 @@
+import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { $ } from 'bun'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 /**
  * Metadata fields that can be edited via FFmpeg.
@@ -246,12 +249,16 @@ export async function updateMetadata(
 		]
 
 		// Run FFmpeg
-		const result = await $`ffmpeg ${ffmpegArgs}`.quiet()
-
-		if (result.exitCode !== 0) {
-			throw new Error(
-				`FFmpeg failed with exit code ${result.exitCode}: ${result.stderr.toString()}`,
-			)
+		try {
+			await execFileAsync('ffmpeg', ffmpegArgs, {
+				windowsHide: true,
+			})
+		} catch (error) {
+			const stderr =
+				error && typeof error === 'object' && 'stderr' in error
+					? String(error.stderr)
+					: String(error)
+			throw new Error(`FFmpeg failed: ${stderr}`)
 		}
 
 		// Verify temp file was created and has content
@@ -281,8 +288,10 @@ export async function updateMetadata(
  */
 export async function isFFmpegAvailable(): Promise<boolean> {
 	try {
-		const result = await $`ffmpeg -version`.quiet()
-		return result.exitCode === 0
+		await execFileAsync('ffmpeg', ['-version'], {
+			windowsHide: true,
+		})
+		return true
 	} catch {
 		return false
 	}

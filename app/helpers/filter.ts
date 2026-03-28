@@ -1,4 +1,4 @@
-import type { MediaFile } from './media.ts'
+import { type MediaFile } from './media.ts'
 
 /**
  * Filter configuration for feed items.

@@ -1,5 +1,5 @@
 import { number, object, optional, parseSafe, string } from 'remix/data-schema'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
@@ -9,7 +9,7 @@ import {
 	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'

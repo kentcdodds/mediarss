@@ -6,7 +6,7 @@ import {
 	getDirectoryFeedByToken,
 	touchDirectoryFeedToken,
 } from '#app/db/directory-feed-tokens.ts'
-import type { Feed } from '#app/db/types.ts'
+import { type Feed } from '#app/db/types.ts'
 
 export type FeedLookupResult = {
 	feed: Feed

@@ -1,4 +1,4 @@
-import { expect, spyOn, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import {
 	createCuratedFeedToken,
@@ -16,6 +16,7 @@ import {
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
+import { spyOn } from '#test/bun-test-compat.ts'
 import feedHandler from './feed.ts'
 
 migrate(db)
@@ -106,17 +107,19 @@ function createFeedActionContext(
 }
 
 function readLatestRssEvent(feedId: string): LatestRssEvent | null {
-	return db
-		.query<LatestRssEvent, [string]>(
-			sql`
+	return (
+		db
+			.query<LatestRssEvent, [string]>(
+				sql`
 				SELECT feed_type, token, status_code, client_name, client_fingerprint
 				FROM feed_analytics_events
 				WHERE feed_id = ? AND event_type = 'rss_fetch'
 				ORDER BY rowid DESC
 				LIMIT 1;
 			`,
-		)
-		.get(feedId)
+			)
+			.get(feedId) ?? null
+	)
 }
 
 function countEventsForToken(token: string): number {

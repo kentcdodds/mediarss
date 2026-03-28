@@ -1,8 +1,7 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
-import type { CuratedFeed } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { type CuratedFeed, isDirectoryFeed } from '#app/db/types.ts'
 import {
 	getClientFingerprint,
 	getClientName,
@@ -13,7 +12,7 @@ import {
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
 import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
-import type { MediaFile } from '#app/helpers/media.ts'
+import { type MediaFile } from '#app/helpers/media.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
 

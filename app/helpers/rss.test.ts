@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { formatEpisodeNumber, isSortingByPubDate } from './rss.ts'
 
 test('isSortingByPubDate correctly identifies pubDate as primary sort field', () => {

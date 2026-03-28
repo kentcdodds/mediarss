@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import {
 	getMediaRootByName,
 	parseMediaPath,
@@ -20,7 +20,7 @@ import {
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import { reorderFeedItems } from '#app/db/feed-items.ts'
-import type { SortOrder } from '#app/db/types.ts'
+import { type SortOrder } from '#app/db/types.ts'
 import { deleteFeedArtwork, hasFeedArtwork } from '#app/helpers/feed-artwork.ts'
 import {
 	getCuratedFeedItems,

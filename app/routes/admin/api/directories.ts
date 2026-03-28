@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 

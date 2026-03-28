@@ -20,6 +20,20 @@ For migration details (including import rules, package adoption decisions, and
 router behavior expectations), see
 [`docs/remix/README.md`](docs/remix/README.md).
 
+## Development Tooling
+
+- Runtime: Node.js 24
+- Package manager: npm
+- Linter: `oxlint`
+- Formatter: Biome
+
+Common commands:
+
+- `npm run dev`
+- `npm run lint`
+- `npm run format`
+- `npm run validate`
+
 ## Screenshots
 
 ### Dashboard

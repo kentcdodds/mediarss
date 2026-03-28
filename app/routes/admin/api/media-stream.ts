@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
@@ -37,13 +37,11 @@ export default {
 			return new Response('Unknown media root', { status: 404 })
 		}
 
-		// Get the file
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
-			return new Response('File not found', { status: 404 })
-		}
-
-		return serveFileWithRanges(file, context.request, 'private, max-age=3600')
+		return serveFileWithRanges(
+			filePath,
+			context.request,
+			'private, max-age=3600',
+		)
 	},
 } satisfies BuildAction<
 	typeof routes.adminApiMediaStream.method,

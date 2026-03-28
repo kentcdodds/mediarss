@@ -20,18 +20,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Fetch all history for tags
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
-          bun-version: latest
+          node-version: '24'
+          cache: npm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Configure Git
         run: |
@@ -42,4 +43,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bun scripts/release.ts ${{ inputs.semverType }}
+        run: node --import ./server/register-hooks.mjs ./scripts/release.ts ${{ inputs.semverType }}

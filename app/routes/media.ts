@@ -1,12 +1,11 @@
 import nodePath from 'node:path'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { type Feed, isDirectoryFeed } from '#app/db/types.ts'
 import {
 	getClientFingerprint,
 	getClientName,
@@ -16,6 +15,7 @@ import {
 } from '#app/helpers/analytics-request.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 
@@ -99,14 +99,12 @@ export default {
 			return new Response('Not found', { status: 404 })
 		}
 
-		// Get the file
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		if (!(await fileExists(filePath))) {
 			return new Response('File not found', { status: 404 })
 		}
 
-		const response = serveFileWithRanges(
-			file,
+		const response = await serveFileWithRanges(
+			filePath,
 			context.request,
 			'public, max-age=31536000',
 		)

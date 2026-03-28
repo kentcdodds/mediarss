@@ -1,8 +1,9 @@
 import { toAbsolutePath } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
+import { type Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
+import { getFileResponse } from '#app/helpers/node-file.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 
 /**
@@ -15,17 +16,18 @@ import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 export async function resolveFeedArtwork(
 	feedId: string,
 	feed: Feed,
+	request: Request,
 ): Promise<Response> {
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		const artworkFile = Bun.file(uploadedArtwork.path)
-		return new Response(artworkFile.stream(), {
-			headers: {
-				'Content-Type': uploadedArtwork.mimeType,
-				'Cache-Control': 'public, max-age=86400',
-			},
+		const response = await getFileResponse(uploadedArtwork.path, request, {
+			cacheControl: 'public, max-age=86400',
+			contentType: uploadedArtwork.mimeType,
 		})
+		if (response) {
+			return response
+		}
 	}
 
 	// Priority 2: External imageUrl (redirect)

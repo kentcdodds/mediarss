@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
@@ -7,7 +7,7 @@ import {
 	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'

@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { build } from 'esbuild'
 
 type PackageJson = {
 	exports?: Record<string, { default?: string; types?: string } | string>
@@ -65,6 +66,8 @@ function resolvePackageExport(
 	return fs.existsSync(resolvedPath) ? resolvedPath : null
 }
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 /**
  * CORS headers for bundled JavaScript modules.
  * These need to be accessible cross-origin for MCP widgets embedded in external apps.
@@ -75,10 +78,51 @@ const BUNDLING_CORS_HEADERS = {
 	'Access-Control-Allow-Headers': 'Accept, Content-Type',
 } as const
 
+async function bundleEntrypoint(
+	entrypoint: string,
+	options: { rootDir: string; bundleDependencies: boolean },
+): Promise<string> {
+	const result = await build({
+		absWorkingDir: options.rootDir,
+		bundle: true,
+		entryPoints: [entrypoint],
+		format: 'esm',
+		jsx: 'automatic',
+		jsxImportSource: 'remix/component',
+		logLevel: 'silent',
+		minify: isProduction,
+		platform: 'browser',
+		resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
+		sourcemap: isProduction ? false : 'inline',
+		splitting: false,
+		target: 'esnext',
+		write: false,
+		packages: options.bundleDependencies ? 'bundle' : 'external',
+		loader: {
+			'.ts': 'ts',
+			'.tsx': 'tsx',
+		},
+		tsconfigRaw: {
+			compilerOptions: {
+				jsx: 'react-jsx',
+				jsxImportSource: 'remix/component',
+				verbatimModuleSyntax: true,
+			},
+		},
+	})
+
+	const output = result.outputFiles[0]
+	if (!output) {
+		throw new Error(`No bundle output produced for ${entrypoint}`)
+	}
+
+	return output.text
+}
+
 export function createBundlingRoutes(rootDir: string) {
 	const clientDir = path.resolve(rootDir, 'app', 'client')
 
-	return {
+	const routes: Record<string, (request: Request) => Promise<Response>> = {
 		'/app/client/*': async (request: Request) => {
 			// Handle CORS preflight requests
 			if (request.method === 'OPTIONS') {
@@ -123,17 +167,9 @@ export function createBundlingRoutes(rootDir: string) {
 
 			// Bundle entry files WITHOUT externals so that all dependencies
 			// share singleton instances (e.g., the interactions Map)
-			const {
-				outputs: [output],
-			} = await Bun.build({
-				entrypoints: [filepath],
-				target: 'browser',
-				minify: Bun.env.NODE_ENV === 'production',
-				splitting: false,
-				format: 'esm',
-				sourcemap: Bun.env.NODE_ENV === 'production' ? 'none' : 'inline',
-				jsx: { importSource: 'remix/component' },
-				// No externals - bundle everything together
+			const output = await bundleEntrypoint(filepath, {
+				rootDir,
+				bundleDependencies: true,
 			})
 
 			return new Response(output, {
@@ -167,27 +203,22 @@ export function createBundlingRoutes(rootDir: string) {
 				})
 			}
 
-			const {
-				outputs: [output],
-			} = await Bun.build({
-				entrypoints: [filepath],
-				target: 'browser',
-				minify: Bun.env.NODE_ENV === 'production',
-				splitting: false,
-				format: 'esm',
-				sourcemap: Bun.env.NODE_ENV === 'production' ? 'none' : 'inline',
+			const output = await bundleEntrypoint(filepath, {
+				rootDir,
+				bundleDependencies: true,
 			})
 
 			return new Response(output, {
 				headers: {
 					'Content-Type': 'application/javascript',
-					'Cache-Control':
-						Bun.env.NODE_ENV === 'production'
-							? 'public, max-age=31536000, immutable'
-							: 'no-cache',
+					'Cache-Control': isProduction
+						? 'public, max-age=31536000, immutable'
+						: 'no-cache',
 					...BUNDLING_CORS_HEADERS,
 				},
 			})
 		},
 	}
+
+	return routes
 }

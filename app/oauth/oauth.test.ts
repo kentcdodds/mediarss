@@ -1,12 +1,13 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, expect, test } from 'bun:test'
 import * as jose from 'jose'
+import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
+import { startNodeServer } from '../../server/node-server.ts'
 import {
 	clearKeyCache,
 	computeS256Challenge,
@@ -50,20 +51,20 @@ async function createTestServer() {
 	resetRateLimiters()
 	const { default: router } = await import('#app/router.tsx')
 
-	const server = Bun.serve({
-		port: 0, // Let OS assign a port
-		async fetch(request) {
+	const server = await startNodeServer({
+		port: 0,
+		async handler(request) {
 			return router.fetch(request)
 		},
 	})
 
-	const baseUrl = `http://localhost:${server.port}`
+	const baseUrl = `http://${server.hostname}:${server.port}`
 
 	return {
 		server,
 		baseUrl,
-		[Symbol.dispose]: () => {
-			server.stop()
+		[Symbol.asyncDispose]: async () => {
+			await server.stop()
 			clearKeyCache()
 			resetRateLimiters()
 		},
@@ -189,7 +190,7 @@ test('authorization codes can be created and consumed only once', async () => {
 // OAuth Full Flow Integration Tests
 
 test('JWKS endpoint returns valid public key without private components', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const response = await fetch(`${ctx.baseUrl}/oauth/jwks`)
 	expect(response.status).toBe(200)
@@ -206,7 +207,7 @@ test('JWKS endpoint returns valid public key without private components', async 
 		}>
 	}
 
-	expect(jwks.keys).toBeArray()
+	expect(Array.isArray(jwks.keys)).toBe(true)
 	expect(jwks.keys.length).toBe(1)
 
 	const key = jwks.keys[0]!
@@ -221,7 +222,7 @@ test('JWKS endpoint returns valid public key without private components', async 
 })
 
 test('authorization endpoint shows page, validates client, and requires PKCE', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Auth Endpoint Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -280,7 +281,7 @@ test('authorization endpoint shows page, validates client, and requires PKCE', a
 })
 
 test('POST to authorization endpoint issues authorization code with state', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('POST Auth Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -316,7 +317,7 @@ test('POST to authorization endpoint issues authorization code with state', asyn
 })
 
 test('full OAuth authorization code flow with token exchange and JWT verification', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Full Flow Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -393,7 +394,7 @@ test('full OAuth authorization code flow with token exchange and JWT verificatio
 })
 
 test('token endpoint rejects requests with invalid PKCE verifier or missing verifier', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('PKCE Reject Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -481,7 +482,7 @@ test('token endpoint rejects requests with invalid PKCE verifier or missing veri
 })
 
 test('authorization code cannot be reused', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Code Reuse Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -551,7 +552,7 @@ test('authorization code cannot be reused', async () => {
 })
 
 test('token endpoint validates redirect_uri and client_id match the authorization code', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Validation Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -639,7 +640,7 @@ test('token endpoint validates redirect_uri and client_id match the authorizatio
 })
 
 test('token endpoint rejects unsupported grant types and wrong content type', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	// Unsupported grant type
 	const unsupportedGrantResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
@@ -678,7 +679,7 @@ test('token endpoint rejects unsupported grant types and wrong content type', as
 })
 
 test('OAuth endpoints enforce correct HTTP methods', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	// Token endpoint only allows POST
 	const tokenGetResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
@@ -694,7 +695,7 @@ test('OAuth endpoints enforce correct HTTP methods', async () => {
 })
 
 test('JWT token has correct claims structure', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('JWT Claims Test ' + uniqueId(), [
 		'http://localhost:9999/callback',

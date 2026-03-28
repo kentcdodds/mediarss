@@ -1,4 +1,9 @@
+import { execFile } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 /**
  * Application start time - captured when this module is first loaded.
@@ -41,8 +46,9 @@ function getProjectRoot(): string {
 export async function getAppVersion(): Promise<string | null> {
 	try {
 		const packageJsonPath = path.join(getProjectRoot(), 'package.json')
-		const file = Bun.file(packageJsonPath)
-		const packageJson = (await file.json()) as { version?: string }
+		const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+			version?: string
+		}
 		return packageJson.version ?? null
 	} catch {
 		return null
@@ -55,24 +61,24 @@ export async function getAppVersion(): Promise<string | null> {
  */
 export async function getCommitInfo(): Promise<CommitInfo | null> {
 	try {
-		// Get full commit hash
-		const hashResult = await Bun.$`git rev-parse HEAD`.quiet()
-		if (hashResult.exitCode !== 0) return null
-		const hash = hashResult.text().trim()
-
-		// Get commit message
-		const messageResult = await Bun.$`git log -1 --pretty=%B`.quiet()
-		const message = messageResult.text().trim()
-
-		// Get commit date in ISO format
-		const dateResult = await Bun.$`git log -1 --format=%cI`.quiet()
-		const date = dateResult.text().trim()
+		const [{ stdout: hash }, { stdout: message }, { stdout: date }] =
+			await Promise.all([
+				execFileAsync('git', ['rev-parse', 'HEAD'], {
+					cwd: getProjectRoot(),
+				}),
+				execFileAsync('git', ['log', '-1', '--pretty=%B'], {
+					cwd: getProjectRoot(),
+				}),
+				execFileAsync('git', ['log', '-1', '--format=%cI'], {
+					cwd: getProjectRoot(),
+				}),
+			])
 
 		return {
-			hash,
-			shortHash: hash.slice(0, 7),
-			message,
-			date,
+			hash: hash.trim(),
+			shortHash: hash.trim().slice(0, 7),
+			message: message.trim(),
+			date: date.trim(),
 		}
 	} catch {
 		return null

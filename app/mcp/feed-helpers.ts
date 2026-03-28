@@ -3,7 +3,7 @@ import {
 	getDirectoryFeedById,
 	listDirectoryFeeds,
 } from '#app/db/directory-feeds.ts'
-import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
 
 export type FeedWithType =
 	| (DirectoryFeed & { type: 'directory' })

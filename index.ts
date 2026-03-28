@@ -12,8 +12,10 @@ import { ensureSigningKey } from './app/oauth/keys.ts'
 import router from './app/router.tsx'
 import { createBundlingRoutes } from './server/bundling.ts'
 import { setupInteractiveCli } from './server/cli.ts'
+import { startNodeServer } from './server/node-server.ts'
 
 const env = getEnv()
+const rootDir = new URL('.', import.meta.url).pathname
 
 // Initialize database and run migrations
 migrate(db)
@@ -38,16 +40,27 @@ ensureDefaultClient()
 await ensureSigningKey()
 
 function startServer(port: number) {
-	return Bun.serve({
+	const bundlingRoutes = createBundlingRoutes(rootDir)
+	const bundlingRouteEntries = Object.entries(bundlingRoutes)
+	return startNodeServer({
 		port,
-		idleTimeout: 30, // seconds
-		routes: createBundlingRoutes(import.meta.dirname),
-
-		async fetch(request) {
+		async handler(request) {
 			try {
 				const url = new URL(request.url)
 				if (url.pathname === '/') {
 					return Response.redirect(new URL('/admin', request.url), 302)
+				}
+				for (const [route, bundlingHandler] of bundlingRouteEntries) {
+					if (route.includes('*')) {
+						const prefix = route.split('*', 1)[0]
+						if (prefix && url.pathname.startsWith(prefix)) {
+							return await bundlingHandler(request)
+						}
+						continue
+					}
+					if (url.pathname === route) {
+						return await bundlingHandler(request)
+					}
 				}
 				return await router.fetch(request)
 			} catch (error) {
@@ -73,7 +86,7 @@ async function getServerPort(desiredPort: number) {
 }
 
 const port = await getServerPort(env.PORT)
-const server = startServer(port)
+const server = await startServer(port)
 
 const url = `http://${server.hostname}:${server.port}`
 

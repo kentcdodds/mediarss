@@ -1,4 +1,3 @@
-import { Database } from 'bun:sqlite'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
@@ -17,6 +16,7 @@ import {
 } from 'remix/data-schema'
 import { getEnv } from '#app/config/env.ts'
 import { sql } from '#app/db/sql.ts'
+import { Database } from '#app/db/sqlite.ts'
 
 function ensureDirectoryExists(filePath: string): void {
 	const dir = path.dirname(filePath)
@@ -64,10 +64,13 @@ let _getStatement: ReturnType<
 	typeof Database.prototype.prepare<CacheRow, [string]>
 > | null = null
 let _setStatement: ReturnType<
-	typeof Database.prototype.prepare<void, [string, string, string]>
+	typeof Database.prototype.prepare<
+		Record<string, unknown>,
+		[string, string, string]
+	>
 > | null = null
 let _deleteStatement: ReturnType<
-	typeof Database.prototype.prepare<void, [string]>
+	typeof Database.prototype.prepare<Record<string, unknown>, [string]>
 > | null = null
 
 function getGetStatement() {
@@ -81,20 +84,21 @@ function getGetStatement() {
 
 function getSetStatement() {
 	if (!_setStatement) {
-		_setStatement = getCacheDb().prepare<void, [string, string, string]>(
-			'INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)',
-		)
+		_setStatement = getCacheDb().prepare<
+			Record<string, unknown>,
+			[string, string, string]
+		>('INSERT OR REPLACE INTO cache (key, metadata, value) VALUES (?, ?, ?)')
 	}
-	return _setStatement
+	return _setStatement!
 }
 
 function getDeleteStatement() {
 	if (!_deleteStatement) {
-		_deleteStatement = getCacheDb().prepare<void, [string]>(
+		_deleteStatement = getCacheDb().prepare<Record<string, unknown>, [string]>(
 			'DELETE FROM cache WHERE key = ?',
 		)
 	}
-	return _deleteStatement
+	return _deleteStatement!
 }
 
 // Schema for validating cache entry metadata
@@ -214,7 +218,7 @@ export function deleteCacheByPrefix(prefix: string): number {
 	// Escape LIKE special characters in prefix to prevent unintended matches
 	// _ matches any single character, % matches any sequence of characters
 	const escapedPrefix = prefix.replace(/[\\%_]/g, '\\$&')
-	const statement = db.prepare<void, [string]>(
+	const statement = db.prepare<Record<string, unknown>, [string]>(
 		'DELETE FROM cache WHERE key LIKE ? ESCAPE "\\"',
 	)
 	const result = statement.run(`${escapedPrefix}%`)

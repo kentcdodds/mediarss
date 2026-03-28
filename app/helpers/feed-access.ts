@@ -8,8 +8,7 @@ import nodePath from 'node:path'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { type Feed, isDirectoryFeed } from '#app/db/types.ts'
 
 /**
  * Validate that a file path is allowed for the given feed.

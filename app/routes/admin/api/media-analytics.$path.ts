@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import {
@@ -12,6 +12,7 @@ import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
 import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 
 type FeedType = 'directory' | 'curated'
@@ -72,7 +73,7 @@ function getCompiledMaxSqliteVariableNumber(): number {
 
 function getMaxSqliteVariableNumber(): number {
 	const configuredLimit = parsePositiveInteger(
-		Bun.env[SQLITE_MAX_VARIABLE_NUMBER_ENV],
+		process.env[SQLITE_MAX_VARIABLE_NUMBER_ENV],
 	)
 	const compiledLimit = getCompiledMaxSqliteVariableNumber()
 	if (configuredLimit === null) return compiledLimit
@@ -203,8 +204,7 @@ export default {
 			return Response.json({ error: 'Unknown media root' }, { status: 404 })
 		}
 
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		if (!(await fileExists(filePath))) {
 			return Response.json({ error: 'File not found' }, { status: 404 })
 		}
 

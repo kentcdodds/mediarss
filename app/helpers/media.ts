@@ -27,6 +27,11 @@ import { getMediaRoots } from '#app/config/env.ts'
 const metadataLimit = pLimit(10)
 
 /**
+ * Concurrency limit for stat calls when scanning directories.
+ */
+const statLimit = pLimit(50)
+
+/**
  * Directories to skip when scanning (Synology NAS junk, macOS metadata, etc.)
  */
 const IGNORED_DIRECTORIES = new Set([
@@ -965,16 +970,23 @@ export async function scanDirectoryWithMetadata(
 ): Promise<MediaFile[]> {
 	const filePaths = await scanDirectory(directory)
 
-	// Get mtimes for all files (Bun.file().lastModified is sync and fast ~1.3µs/call)
-	const validFileStats: Array<{ path: string; mtime: number }> = []
-	for (const p of filePaths) {
-		try {
-			const mtime = Bun.file(p).lastModified
-			validFileStats.push({ path: p, mtime })
-		} catch {
-			// File may have been deleted since scan
-		}
-	}
+	// Get mtimes for all files.
+	const statResults = await Promise.all(
+		filePaths.map((filePath) =>
+			statLimit(async () => {
+				try {
+					const { mtimeMs } = await fs.promises.stat(filePath)
+					return { path: filePath, mtime: Number(mtimeMs) }
+				} catch {
+					// File may have been deleted since scan
+					return null
+				}
+			}),
+		),
+	)
+	const validFileStats = statResults.filter(
+		(result): result is { path: string; mtime: number } => result !== null,
+	)
 
 	// Extract metadata in parallel with concurrency limit
 	const results = await Promise.all(

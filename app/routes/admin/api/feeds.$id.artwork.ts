@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
@@ -40,7 +40,7 @@ export default {
 		}
 
 		if (context.method === 'GET') {
-			return resolveFeedArtwork(id, feed)
+			return resolveFeedArtwork(id, feed, context.request)
 		}
 
 		if (context.method === 'POST') {

@@ -1,6 +1,5 @@
 import { matchSorter, rankings } from 'match-sorter'
-import type { Handle } from 'remix/component'
-import { css as rmxCss, on as rmxOn } from 'remix/component'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/component'
 import {
 	Modal,
 	ModalButton,

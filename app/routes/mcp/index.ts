@@ -3,9 +3,9 @@
  * Handles Streamable HTTP transport for MCP clients.
  */
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import type { BuildAction, RequestContext } from 'remix/fetch-router'
+import { type BuildAction, type RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import {

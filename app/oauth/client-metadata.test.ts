@@ -1,13 +1,14 @@
 // Initialize environment before any imports that depend on it
 import '#app/config/init-env.ts'
 
-import { afterAll, afterEach, expect, test } from 'bun:test'
 import * as jose from 'jose'
+import { afterAll, afterEach, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
 import { migrate } from '#app/db/migrations.ts'
 import { sql } from '#app/db/sql.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { consoleError } from '#test/setup.ts'
+import { startNodeServer } from '../../server/node-server.ts'
 import {
 	clearKeyCache,
 	clearMetadataCache,
@@ -49,20 +50,20 @@ async function createTestServer() {
 	resetRateLimiters()
 	const { default: router } = await import('#app/router.tsx')
 
-	const server = Bun.serve({
+	const server = await startNodeServer({
 		port: 0,
-		async fetch(request) {
-			return router.fetch(request)
+		async handler(request: Request) {
+			return await router.fetch(request)
 		},
 	})
 
-	const baseUrl = `http://localhost:${server.port}`
+	const baseUrl = `http://${server.hostname}:${server.port}`
 
 	return {
 		server,
 		baseUrl,
-		[Symbol.dispose]: () => {
-			server.stop()
+		[Symbol.asyncDispose]: async () => {
+			await server.stop()
 			clearKeyCache()
 			resetRateLimiters()
 		},
@@ -77,28 +78,23 @@ function setupMockFetch() {
 	mockFetchResponses = new Map()
 
 	// Mock global fetch for HTTPS URLs
-	const mockFetch = Object.assign(
-		async (input: RequestInfo | URL, init?: RequestInit) => {
-			const url =
-				typeof input === 'string'
-					? input
-					: input instanceof URL
-						? input.toString()
-						: input.url
+	const mockFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url =
+			typeof input === 'string'
+				? input
+				: input instanceof URL
+					? input.toString()
+					: input.url
 
-			// Check if we have a mock response for this URL
-			const mockResponseFn = mockFetchResponses.get(url)
-			if (mockResponseFn) {
-				return mockResponseFn()
-			}
+		// Check if we have a mock response for this URL
+		const mockResponseFn = mockFetchResponses.get(url)
+		if (mockResponseFn) {
+			return mockResponseFn()
+		}
 
-			// For non-mocked URLs, use original fetch (e.g., localhost test server)
-			return originalFetch(input, init)
-		},
-		{
-			preconnect: originalFetch.preconnect.bind(originalFetch),
-		},
-	)
+		// For non-mocked URLs, use original fetch (e.g., localhost test server)
+		return originalFetch(input, init)
+	}
 	globalThis.fetch = mockFetch as typeof fetch
 
 	return {
@@ -250,7 +246,7 @@ test('clientSupportsGrantType validates grant types correctly', async () => {
 // Server Metadata Tests
 
 test('server metadata indicates DCR and client ID metadata document support', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const response = await fetch(
 		`${ctx.baseUrl}/.well-known/oauth-authorization-server`,
@@ -293,7 +289,7 @@ test('server metadata indicates DCR and client ID metadata document support', as
 // Full OAuth Flow with Static Client
 
 test('full authorization code flow with static client', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Flow Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -366,7 +362,7 @@ test('full authorization code flow with static client', async () => {
 })
 
 test('authorization endpoint rejects unknown and invalid redirect URIs', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	const testClient = createTestClient('Reject Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
@@ -946,7 +942,7 @@ test('URL-based client redirect URI and grant type validation', async () => {
 })
 
 test('DCR endpoint works (MCP 2025-11-25 compliance)', async () => {
-	using ctx = await createTestServer()
+	await using ctx = await createTestServer()
 
 	// Register a new client via DCR
 	const registerResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {

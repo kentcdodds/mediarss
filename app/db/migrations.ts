@@ -1,5 +1,5 @@
-import type { Database } from 'bun:sqlite'
 import { sql } from './sql.ts'
+import { type Database } from './sqlite.ts'
 
 type Migration = {
 	version: number

@@ -1,16 +1,16 @@
 import nodePath from 'node:path'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { type Feed, isDirectoryFeed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 
@@ -68,7 +68,7 @@ export default {
 
 		// Special case: "/art/:token/feed" returns the feed's artwork
 		if (splatParam === 'feed') {
-			return resolveFeedArtwork(feed.id, feed)
+			return resolveFeedArtwork(feed.id, feed, context.request)
 		}
 
 		// File-specific artwork
@@ -102,8 +102,7 @@ export default {
 		}
 
 		// Check file exists
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		if (!(await fileExists(filePath))) {
 			return new Response('File not found', { status: 404 })
 		}
 
@@ -123,13 +122,18 @@ export default {
 		// Priority 1: Check for uploaded feed artwork
 		const uploadedFeedArtwork = await getFeedArtworkPath(feed.id)
 		if (uploadedFeedArtwork) {
-			const artworkFile = Bun.file(uploadedFeedArtwork.path)
-			return new Response(artworkFile.stream(), {
-				headers: {
-					'Content-Type': uploadedFeedArtwork.mimeType,
-					'Cache-Control': 'public, max-age=86400',
+			const response = await getFileResponse(
+				uploadedFeedArtwork.path,
+				context.request,
+				{
+					cacheControl: 'public, max-age=86400',
+					contentType: uploadedFeedArtwork.mimeType,
 				},
-			})
+			)
+			if (response) {
+				return response
+			}
+			return new Response('File not found', { status: 404 })
 		}
 
 		// Priority 2: Check for external imageUrl

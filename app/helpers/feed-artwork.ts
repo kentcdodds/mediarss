@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileTypeFromBlob, fileTypeFromFile } from 'file-type'
 
@@ -22,8 +23,7 @@ export async function getFeedArtworkPath(
 ): Promise<{ path: string; mimeType: string } | null> {
 	for (const ext of ['jpg', 'jpeg', 'png', 'webp']) {
 		const artPath = path.join(ARTWORK_DIR, `${feedId}.${ext}`)
-		const file = Bun.file(artPath)
-		if (await file.exists()) {
+		if (fs.existsSync(artPath)) {
 			// Detect actual MIME type from file content
 			const fileType = await fileTypeFromFile(artPath)
 			const mimeType = fileType?.mime ?? 'application/octet-stream'
@@ -86,7 +86,7 @@ export async function saveFeedArtwork(
 
 	try {
 		const arrayBuffer = await file.arrayBuffer()
-		await Bun.write(artworkPath, arrayBuffer)
+		await fs.promises.writeFile(artworkPath, Buffer.from(arrayBuffer))
 		return { path: artworkPath }
 	} catch (error) {
 		console.error(`Error saving artwork for feed ${feedId}:`, error)

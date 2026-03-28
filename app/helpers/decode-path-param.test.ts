@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { decodePathParam } from './decode-path-param.ts'
 
 test('decodePathParam decodes valid encoded segments', () => {

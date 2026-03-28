@@ -1,21 +1,21 @@
-import type { Database as BunDatabase } from 'bun:sqlite'
-import type {
-	AdapterCapabilityOverrides,
-	DatabaseAdapter,
-	DataManipulationOperation,
-	DataManipulationRequest,
-	DataManipulationResult,
-	DataMigrationRequest,
-	DataMigrationResult,
-	TableRef,
-	TransactionOptions,
-	TransactionToken,
+import {
+	type AdapterCapabilityOverrides,
+	type DatabaseAdapter,
+	type DataManipulationOperation,
+	type DataManipulationRequest,
+	type DataManipulationResult,
+	type DataMigrationRequest,
+	type DataMigrationResult,
+	getTablePrimaryKey,
+	type TableRef,
+	type TransactionOptions,
+	type TransactionToken,
 } from 'remix/data-table'
-import { getTablePrimaryKey } from 'remix/data-table'
 import {
 	compileBunSqliteStatement,
 	quoteIdentifier,
 } from './bun-data-table-sql-compiler.ts'
+import { type Database as BunDatabase } from './sqlite.ts'
 
 type BunStatementResult = {
 	changes: number

@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, type Mock, spyOn } from 'bun:test'
+import { afterEach, beforeEach, type MockInstance, vi } from 'vitest'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 
-export let consoleError: Mock<typeof console.error>
-export let consoleWarn: Mock<typeof console.warn>
+export let consoleError: MockInstance<typeof console.error>
+export let consoleWarn: MockInstance<typeof console.warn>
 
 beforeEach(() => {
 	// Reset rate limiters between tests to ensure clean state
@@ -10,7 +10,7 @@ beforeEach(() => {
 	resetRateLimiters()
 
 	const originalConsoleError = console.error
-	consoleError = spyOn(console, 'error')
+	consoleError = vi.spyOn(console, 'error')
 	consoleError.mockImplementation(
 		(...args: Parameters<typeof console.error>) => {
 			originalConsoleError(...args)
@@ -21,7 +21,7 @@ beforeEach(() => {
 	)
 
 	const originalConsoleWarn = console.warn
-	consoleWarn = spyOn(console, 'warn')
+	consoleWarn = vi.spyOn(console, 'warn')
 	consoleWarn.mockImplementation((...args: Parameters<typeof console.warn>) => {
 		originalConsoleWarn(...args)
 		throw new Error(

@@ -1,8 +1,9 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 
@@ -40,8 +41,7 @@ export default {
 		}
 
 		// Check file exists
-		const file = Bun.file(filePath)
-		if (!(await file.exists())) {
+		if (!(await fileExists(filePath))) {
 			return new Response('File not found', { status: 404 })
 		}
 

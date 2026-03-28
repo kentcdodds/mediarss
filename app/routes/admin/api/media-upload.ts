@@ -4,7 +4,7 @@ import { fileTypeFromFile } from 'file-type'
 import type { BuildAction } from 'remix/fetch-router'
 import { getMediaRootByName, getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
-import { writeFile } from '#app/helpers/node-file.ts'
+import { writeBlobToFile } from '#app/helpers/node-file.ts'
 
 /**
  * Check if a MIME type is allowed for upload.
@@ -247,7 +247,7 @@ export default {
 
 		// Stream the file to disk first (avoids loading entire file into memory)
 		try {
-			await writeFile(tempPath, file)
+			await writeBlobToFile(tempPath, file)
 		} catch (err) {
 			// Clean up temp file if it was partially created
 			try {

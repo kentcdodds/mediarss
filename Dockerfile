@@ -29,4 +29,4 @@ ENV CACHE_DATABASE_PATH=/data/cache.db
 EXPOSE 22050
 
 # Run the application
-CMD ["npm", "run", "start"]
+CMD ["node", "--import", "./server/register-hooks.mjs", "index.ts"]

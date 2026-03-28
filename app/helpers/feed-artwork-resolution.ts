@@ -16,18 +16,15 @@ import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
 export async function resolveFeedArtwork(
 	feedId: string,
 	feed: Feed,
+	request: Request,
 ): Promise<Response> {
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		const response = await getFileResponse(
-			uploadedArtwork.path,
-			new Request('http://localhost'),
-			{
-				cacheControl: 'public, max-age=86400',
-				contentType: uploadedArtwork.mimeType,
-			},
-		)
+		const response = await getFileResponse(uploadedArtwork.path, request, {
+			cacheControl: 'public, max-age=86400',
+			contentType: uploadedArtwork.mimeType,
+		})
 		if (response) {
 			return response
 		}

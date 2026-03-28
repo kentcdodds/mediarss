@@ -40,7 +40,7 @@ export default {
 		}
 
 		if (context.method === 'GET') {
-			return resolveFeedArtwork(id, feed)
+			return resolveFeedArtwork(id, feed, context.request)
 		}
 
 		if (context.method === 'POST') {

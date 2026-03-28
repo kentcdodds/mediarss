@@ -17,7 +17,7 @@ export type AppServer = {
 
 export async function startNodeServer({
 	port,
-	hostname = '127.0.0.1',
+	hostname = '0.0.0.0',
 	handler,
 }: {
 	port: number
@@ -25,19 +25,29 @@ export async function startNodeServer({
 	handler: FetchHandler
 }): Promise<AppServer> {
 	const server = http.createServer(async (req, res) => {
-		const address = server.address()
-		const resolvedHost =
-			address && typeof address !== 'string'
-				? `${address.address}:${address.port}`
-				: `${hostname}:${port}`
-		const request = createRequest(req, res, { host: resolvedHost })
-		const client = {
-			address: req.socket.remoteAddress ?? '127.0.0.1',
-			family: (req.socket.remoteFamily as 'IPv4' | 'IPv6') ?? 'IPv4',
-			port: req.socket.remotePort ?? 0,
+		try {
+			const address = server.address()
+			const resolvedHost =
+				address && typeof address !== 'string'
+					? `${address.address}:${address.port}`
+					: `${hostname}:${port}`
+			const request = createRequest(req, res, { host: resolvedHost })
+			const client = {
+				address: req.socket.remoteAddress ?? '127.0.0.1',
+				family: (req.socket.remoteFamily as 'IPv4' | 'IPv6') ?? 'IPv4',
+				port: req.socket.remotePort ?? 0,
+			}
+			const response = await handler(request, client)
+			await sendResponse(res, response)
+		} catch (error) {
+			console.error(error)
+			if (!res.headersSent) {
+				res.statusCode = 500
+				res.end('Internal Server Error')
+			} else {
+				res.destroy()
+			}
 		}
-		const response = await handler(request, client)
-		await sendResponse(res, response)
 	})
 
 	await new Promise<void>((resolve, reject) => {

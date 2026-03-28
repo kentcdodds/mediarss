@@ -1,8 +1,8 @@
 import { column as c, createDatabase, table } from 'remix/data-table'
-import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
+import { createBunSqliteDatabaseAdapter } from './bun-sqlite-adapter-compat.ts'
 import { db as sqliteDb } from './index.ts'
 
-const sqliteAdapter = createSqliteDatabaseAdapter(sqliteDb)
+const sqliteAdapter = createBunSqliteDatabaseAdapter(sqliteDb)
 
 export const dataTableDb = createDatabase(sqliteAdapter)
 

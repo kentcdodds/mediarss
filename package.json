@@ -42,7 +42,6 @@
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "^6.0.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "better-sqlite3": "^12.4.1",
     "close-with-grace": "^2.4.0",
     "esbuild": "^0.27.4",
     "fast-sort": "^3.4.1",

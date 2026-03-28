@@ -19,7 +19,7 @@ function ensureDirectoryExists(filePath: string): void {
 	}
 }
 
-export const dbPath = getDatabasePath()
+const dbPath = getDatabasePath()
 ensureDirectoryExists(dbPath)
 
 export const db = new Database(dbPath)

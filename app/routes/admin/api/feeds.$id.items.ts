@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import {
 	getMediaRootByName,
 	parseMediaPath,

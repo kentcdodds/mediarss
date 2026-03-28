@@ -3,7 +3,7 @@
  * Handles token verification and authorization for MCP requests.
  */
 
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
+import { type AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js'
 import { getOrigin } from '#app/helpers/origin.ts'
 import {
 	type AccessTokenPayload,

@@ -1,4 +1,4 @@
-import type { BuildAction, RequestContext } from 'remix/fetch-router'
+import { type BuildAction, type RequestContext } from 'remix/fetch-router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'

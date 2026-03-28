@@ -1,4 +1,4 @@
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {

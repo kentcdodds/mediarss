@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import { basename } from 'node:path'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
+import { writeFile as writeFileStream } from 'remix/fs'
 import { detectContentType } from 'remix/mime'
 import { createFileResponse } from 'remix/response/file'
 
@@ -50,31 +49,6 @@ export async function getFileResponse(
 	})
 }
 
-export async function writeFile(
-	path: string,
-	data: string | ArrayBuffer | ArrayBufferView | Blob,
-): Promise<void> {
-	if (typeof data === 'string') {
-		await fs.promises.writeFile(path, data)
-		return
-	}
-
-	if (data instanceof Blob) {
-		await writeBlobToFile(path, data)
-		return
-	}
-
-	if (data instanceof ArrayBuffer) {
-		await fs.promises.writeFile(path, new Uint8Array(data))
-		return
-	}
-
-	await fs.promises.writeFile(
-		path,
-		new Uint8Array(data.buffer, data.byteOffset, data.byteLength),
-	)
-}
-
 export async function writeBlobToFile(path: string, blob: Blob): Promise<void> {
-	await fs.promises.writeFile(path, Buffer.from(await blob.arrayBuffer()))
+	await writeFileStream(path, blob)
 }

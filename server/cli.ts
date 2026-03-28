@@ -1,5 +1,5 @@
 import closeWithGrace from 'close-with-grace'
-import type { AppServer } from './node-server.ts'
+import { type AppServer } from './node-server.ts'
 import { copyToClipboard, openInBrowser } from './platform-cli.ts'
 
 const reset = '\x1b[0m'

@@ -1,8 +1,8 @@
 import { invariant } from '@epic-web/invariant'
 import { resolveMediaPath } from '#app/config/env.ts'
-import type { DirectoryFeed, Feed } from '#app/db/types.ts'
+import { type DirectoryFeed, type Feed } from '#app/db/types.ts'
 import { formatItunesDuration, formatRssDate } from './format.ts'
-import type { MediaFile } from './media.ts'
+import { type MediaFile } from './media.ts'
 
 /**
  * Options for generating an RSS feed.

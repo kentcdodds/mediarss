@@ -1,6 +1,6 @@
 import { toAbsolutePath } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
+import { type Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import { getFileResponse } from '#app/helpers/node-file.ts'

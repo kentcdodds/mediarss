@@ -1,7 +1,12 @@
 import fs from 'node:fs'
 import nodePath from 'node:path'
 import { fileTypeFromFile } from 'file-type'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
+import {
+	MaxFileSizeExceededError,
+	MaxFilesExceededError,
+	parseFormData,
+} from 'remix/form-data-parser'
 import { getMediaRootByName, getMediaRoots } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { writeBlobToFile } from '#app/helpers/node-file.ts'
@@ -21,7 +26,8 @@ function isAllowedMimeType(mime: string): boolean {
  */
 function sanitizeFilename(filename: string, defaultExt?: string): string {
 	// Remove path separators and null bytes
-	let sanitized = filename.replace(/[/\\:\0]/g, '_')
+	const nullByte = String.fromCharCode(0)
+	let sanitized = filename.replace(/[/\\:]/g, '_').replaceAll(nullByte, '_')
 
 	// Remove leading dots to prevent hidden files
 	sanitized = sanitized.replace(/^\.+/, '')
@@ -168,11 +174,29 @@ export default {
 			return Response.json({ error: 'Method not allowed' }, { status: 405 })
 		}
 
-		// Parse multipart form data
+		// Check file size (limit to 10GB)
+		const maxSize = 10 * 1024 * 1024 * 1024 // 10GB
+
+		// Parse multipart form data (streaming uploads)
 		let formData: FormData
 		try {
-			formData = await context.request.formData()
-		} catch {
+			formData = await parseFormData(
+				context.request,
+				{
+					maxFiles: 1,
+					maxFileSize: maxSize,
+					maxParts: 5,
+					maxTotalSize: maxSize + 1024 * 1024,
+				},
+				(upload) => (upload.fieldName === 'file' ? upload : null),
+			)
+		} catch (error) {
+			if (error instanceof MaxFilesExceededError) {
+				return Response.json({ error: 'Too many files' }, { status: 413 })
+			}
+			if (error instanceof MaxFileSizeExceededError) {
+				return Response.json({ error: 'File too large' }, { status: 413 })
+			}
 			return Response.json(
 				{ error: 'Invalid multipart form data' },
 				{ status: 400 },
@@ -183,15 +207,6 @@ export default {
 		const file = formData.get('file')
 		if (!file || !(file instanceof File)) {
 			return Response.json({ error: 'No file provided' }, { status: 400 })
-		}
-
-		// Check file size (limit to 10GB)
-		const maxSize = 10 * 1024 * 1024 * 1024 // 10GB
-		if (file.size > maxSize) {
-			return Response.json(
-				{ error: 'File too large. Maximum size is 10GB.' },
-				{ status: 400 },
-			)
 		}
 
 		// Get the target media root

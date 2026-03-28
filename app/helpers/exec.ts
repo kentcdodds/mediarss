@@ -24,11 +24,17 @@ export async function execCommand(
 			stderr?: string
 			code?: number | string
 		}
-
-		return {
+		const result: ExecResult = {
 			stdout: failure.stdout ?? '',
 			stderr: failure.stderr ?? failure.message,
 			exitCode: typeof failure.code === 'number' ? failure.code : 1,
 		}
+		const commandLabel = [command, ...args].join(' ')
+		const execError = Object.assign(
+			new Error(`Command failed (${result.exitCode}): ${commandLabel}`),
+			result,
+		)
+
+		throw execError
 	}
 }

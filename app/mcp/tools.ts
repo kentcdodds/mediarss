@@ -3,7 +3,7 @@
  * Tools provide callable functions that the AI can invoke.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { matchSorter } from 'match-sorter'
 import { z } from 'zod'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
@@ -37,12 +37,12 @@ import {
 	getItemsForFeed,
 	removeItemFromFeed,
 } from '#app/db/feed-items.ts'
-import type {
-	CuratedFeed,
-	CuratedFeedToken,
-	DirectoryFeed,
-	DirectoryFeedToken,
-	FeedItem,
+import {
+	type CuratedFeed,
+	type CuratedFeedToken,
+	type DirectoryFeed,
+	type DirectoryFeedToken,
+	type FeedItem,
 } from '#app/db/types.ts'
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'

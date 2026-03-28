@@ -1,7 +1,7 @@
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { CuratedFeed, DirectoryFeed } from '#app/db/types.ts'
+import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
 import { filterMediaFiles } from '#app/helpers/filter.ts'
 import {
 	getFileMetadata,

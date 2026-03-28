@@ -1,12 +1,11 @@
 import nodePath from 'node:path'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { Feed } from '#app/db/types.ts'
-import { isDirectoryFeed } from '#app/db/types.ts'
+import { type Feed, isDirectoryFeed } from '#app/db/types.ts'
 import {
 	getClientFingerprint,
 	getClientName,

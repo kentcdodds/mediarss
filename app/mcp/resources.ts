@@ -5,13 +5,13 @@
 
 import { createUIResource } from '@mcp-ui/server'
 import {
-	McpServer,
+	type McpServer,
 	ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { FeedItem } from '#app/db/types.ts'
+import { type FeedItem } from '#app/db/types.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'

@@ -3,11 +3,11 @@
  * Prompts are pre-defined conversation starters that help users accomplish tasks.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import type { FeedItem } from '#app/db/types.ts'
+import { type FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { promptsMetadata } from './metadata.ts'

@@ -11,7 +11,7 @@
  * Uses token-based authentication to ensure only authorized users can access media.
  */
 
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'

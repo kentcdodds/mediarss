@@ -3,7 +3,7 @@ import { createRouter, type Middleware } from 'remix/fetch-router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import routes from '#app/config/routes.ts'
-import { getFileResponse } from '#app/helpers/node-file.ts'
+import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
 import { render } from '#app/helpers/render.ts'
 import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'
@@ -67,8 +67,7 @@ function staticFiles(
 				return next()
 			}
 			const filePath = path.join(absoluteRoot, relativePath)
-			const response = await getFileResponse(filePath, context.request)
-			if (!response) {
+			if (!(await fileExists(filePath))) {
 				return next()
 			}
 			return new Response(null, {

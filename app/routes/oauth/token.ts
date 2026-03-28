@@ -1,4 +1,4 @@
-import type { BuildAction, RequestContext } from 'remix/fetch-router'
+import { type BuildAction, type RequestContext } from 'remix/fetch-router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'

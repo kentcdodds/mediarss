@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import {
 	getMediaRootByName,
 	parseMediaPath,
@@ -9,7 +9,7 @@ import type routes from '#app/config/routes.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed } from '#app/db/curated-feeds.ts'
 import { addItemToFeed } from '#app/db/feed-items.ts'
-import type { SortOrder } from '#app/db/types.ts'
+import { type SortOrder } from '#app/db/types.ts'
 
 type CreateCuratedFeedRequest = {
 	name: string

@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import type { BuildAction } from 'remix/fetch-router'
+import { type BuildAction } from 'remix/fetch-router'
 import {
 	getMediaRootByName,
 	parseMediaPath,
@@ -8,7 +8,7 @@ import {
 import type routes from '#app/config/routes.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import { createDirectoryFeed } from '#app/db/directory-feeds.ts'
-import type { SortOrder } from '#app/db/types.ts'
+import { type SortOrder } from '#app/db/types.ts'
 
 type CreateDirectoryFeedRequest = {
 	name: string

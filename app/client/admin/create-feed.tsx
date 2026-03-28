@@ -1,5 +1,9 @@
-import type { Handle, RemixNode } from 'remix/component'
-import { css as rmxCss, on as rmxOn } from 'remix/component'
+import {
+	type Handle,
+	type RemixNode,
+	css as rmxCss,
+	on as rmxOn,
+} from 'remix/component'
 import {
 	colors,
 	mq,

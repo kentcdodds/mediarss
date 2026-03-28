@@ -1,6 +1,5 @@
-import type { ISortByObjectSorter } from 'fast-sort'
-import { sort as fastSort } from 'fast-sort'
-import type { MediaFile } from './media.ts'
+import { sort as fastSort, type ISortByObjectSorter } from 'fast-sort'
+import { type MediaFile } from './media.ts'
 
 type SortDirection = 'asc' | 'desc'
 type SortOption = ISortByObjectSorter<MediaFile>

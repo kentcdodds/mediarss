@@ -1,19 +1,23 @@
 import { expect, test, vi } from 'vitest'
-import type { resolveMediaPath } from '#app/config/env.ts'
-import type { MediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
-import type { MediaFile } from '#app/helpers/media.ts'
+import { type resolveMediaPath } from '#app/config/env.ts'
+import { type MediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
+import { type MediaFile } from '#app/helpers/media.ts'
 
 type ResolvedMediaPath = NonNullable<ReturnType<typeof resolveMediaPath>>
 
-const scanAllMediaRootsMock = vi.fn<() => Promise<Array<MediaFile>>>(
-	async () => [],
-)
-const resolveMediaPathMock = vi.fn<(path: string) => ResolvedMediaPath | null>(
-	() => null,
-)
-const listMediaPopularityMetricsMock = vi.fn<
-	() => Map<string, MediaPopularityMetrics>
->(() => new Map())
+const {
+	scanAllMediaRootsMock,
+	resolveMediaPathMock,
+	listMediaPopularityMetricsMock,
+} = vi.hoisted(() => ({
+	scanAllMediaRootsMock: vi.fn<() => Promise<Array<MediaFile>>>(async () => []),
+	resolveMediaPathMock: vi.fn<(path: string) => ResolvedMediaPath | null>(
+		() => null,
+	),
+	listMediaPopularityMetricsMock: vi.fn<
+		() => Map<string, MediaPopularityMetrics>
+	>(() => new Map()),
+}))
 
 vi.mock('#app/helpers/media.ts', () => ({
 	scanAllMediaRoots: scanAllMediaRootsMock,

@@ -5,6 +5,7 @@ import getPort from 'get-port'
 import { getEnv } from '#app/config/env.ts'
 import { pruneFeedAnalyticsEvents } from '#app/db/feed-analytics-events.ts'
 import { warmMediaCache } from '#app/helpers/media.ts'
+import { createAdminRedirectResponse } from '#app/helpers/root-redirect.ts'
 import { db } from './app/db/index.ts'
 import { migrate } from './app/db/migrations.ts'
 import { ensureDefaultClient } from './app/oauth/clients.ts'
@@ -48,7 +49,7 @@ function startServer(port: number) {
 			try {
 				const url = new URL(request.url)
 				if (url.pathname === '/') {
-					return Response.redirect(new URL('/admin', request.url), 302)
+					return createAdminRedirectResponse(request)
 				}
 				for (const [route, bundlingHandler] of bundlingRouteEntries) {
 					if (route.includes('*')) {

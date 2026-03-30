@@ -26,12 +26,7 @@ export async function startNodeServer({
 }): Promise<AppServer> {
 	const server = http.createServer(async (req, res) => {
 		try {
-			const address = server.address()
-			const resolvedHost =
-				address && typeof address !== 'string'
-					? `${address.address}:${address.port}`
-					: `${hostname}:${port}`
-			const request = createRequest(req, res, { host: resolvedHost })
+			const request = createRequest(req, res)
 			const client = {
 				address: req.socket.remoteAddress ?? '127.0.0.1',
 				family: (req.socket.remoteFamily as 'IPv4' | 'IPv6') ?? 'IPv4',

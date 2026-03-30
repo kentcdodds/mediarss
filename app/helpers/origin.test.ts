@@ -1,5 +1,11 @@
+import http from 'node:http'
 import { expect, test } from 'vitest'
+import { startNodeServer } from '../../server/node-server.ts'
 import { getOrigin, getProtocol } from './origin.ts'
+import {
+	createAdminRedirectResponse,
+	getAdminRedirectUrl,
+} from './root-redirect.ts'
 
 test('getProtocol prefers x-forwarded-proto when present', () => {
 	const request = new Request('http://mediarss.doddsfamily.us/mcp', {
@@ -60,4 +66,55 @@ test('getOrigin prefers X-Forwarded-Host over request URL host', () => {
 	})
 	const origin = getOrigin(request, new URL(request.url))
 	expect(origin).toBe('https://mediarss.doddsfamily.us')
+})
+
+test('getAdminRedirectUrl prefers forwarded public origin', () => {
+	const request = new Request('http://internal-service:22050/', {
+		headers: {
+			'X-Forwarded-Proto': 'https',
+			'X-Forwarded-Host': 'mediarss.doddsfamily.us',
+		},
+	})
+
+	expect(getAdminRedirectUrl(request).toString()).toBe(
+		'https://mediarss.doddsfamily.us/admin',
+	)
+})
+
+test('root redirect preserves incoming host on the node server', async () => {
+	await using server = await startNodeServer({
+		port: 0,
+		async handler(request) {
+			return createAdminRedirectResponse(request)
+		},
+	})
+
+	const response = await new Promise<{
+		statusCode: number | undefined
+		location: string | string[] | undefined
+	}>((resolve, reject) => {
+		const request = http.request(
+			{
+				hostname: '127.0.0.1',
+				port: server.port,
+				path: '/',
+				method: 'GET',
+				headers: {
+					Host: 'mediarss.doddsfamily.us',
+				},
+			},
+			(response) => {
+				resolve({
+					statusCode: response.statusCode,
+					location: response.headers.location,
+				})
+			},
+		)
+
+		request.on('error', reject)
+		request.end()
+	})
+
+	expect(response.statusCode).toBe(302)
+	expect(response.location).toBe('http://mediarss.doddsfamily.us/admin')
 })

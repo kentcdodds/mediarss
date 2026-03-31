@@ -189,7 +189,7 @@ Inputs:
 - name: string (required) — Display name for the feed
 - description: string (optional) — Description shown in podcast apps
 - subtitle: string (optional) — Short subtitle/tagline shown in podcast apps
-- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
 - sortFields, sortOrder, filterIn, filterOut, overrides: (optional) — Advanced feed configuration
 - mediaRoot: string (required) — Name from \`list_media_directories\`
 - directoryPath: string (required) — Path within the media root
@@ -215,7 +215,7 @@ Inputs:
 - name: string (required) — Display name for the feed
 - description: string (optional) — Description shown in podcast apps
 - subtitle: string (optional) — Short subtitle/tagline shown in podcast apps
-- imageUrl, author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- author, ownerName, ownerEmail, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
 - sortFields, sortOrder, overrides: (optional) — Advanced feed configuration
 
 Returns: { success, feed: { id, name, description, subtitle, ...metadata }, token }
@@ -240,7 +240,7 @@ Inputs:
 - name: string (optional) — New name
 - description: string (optional) — New description
 - subtitle: string|null (optional) — New subtitle/tagline (null clears it)
-- imageUrl, author, ownerName, ownerEmail, owner, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
+- author, ownerName, ownerEmail, owner, language, explicit, category, link, copyright, feedType: (optional) — Feed metadata
 - sortFields, sortOrder, overrides: (optional) — Feed configuration
 - directoryPaths, filterIn, filterOut: (optional) — Directory-feed-only settings
 

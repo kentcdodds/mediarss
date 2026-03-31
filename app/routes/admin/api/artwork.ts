@@ -6,6 +6,10 @@ import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
+import {
+	getFileArtworkSourceKey,
+	getSquareArtwork,
+} from '#app/helpers/square-artwork.ts'
 
 /**
  * GET /admin/api/artwork/*path
@@ -49,12 +53,21 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
-			return new Response(new Uint8Array(artwork.data), {
-				headers: {
-					'Content-Type': artwork.mimeType,
-					'Cache-Control': 'public, max-age=31536000, immutable',
-				},
-			})
+			try {
+				const squareArtwork = await getSquareArtwork({
+					data: artwork.data,
+					mimeType: artwork.mimeType,
+					sourceKey: await getFileArtworkSourceKey(filePath),
+				})
+				return new Response(new Uint8Array(squareArtwork.data), {
+					headers: {
+						'Content-Type': squareArtwork.mimeType,
+						'Cache-Control': 'public, max-age=31536000, immutable',
+					},
+				})
+			} catch (error) {
+				console.error(`Failed to square artwork for ${filePath}:`, error)
+			}
 		}
 
 		// No embedded artwork - generate placeholder based on filename

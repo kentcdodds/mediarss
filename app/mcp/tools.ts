@@ -88,7 +88,6 @@ async function findRecentMatchingCuratedFeed(params: {
 	subtitle: string | null
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
-	imageUrl: string | null
 	author: string | null
 	ownerName: string | null
 	ownerEmail: string | null
@@ -112,7 +111,6 @@ async function findRecentMatchingCuratedFeed(params: {
 			feed.subtitle === params.subtitle &&
 			feed.sortFields === params.sortFields &&
 			feed.sortOrder === params.sortOrder &&
-			feed.imageUrl === params.imageUrl &&
 			feed.author === params.author &&
 			feed.ownerName === params.ownerName &&
 			feed.ownerEmail === params.ownerEmail &&
@@ -137,7 +135,6 @@ async function findRecentMatchingDirectoryFeed(params: {
 	directoryPathsJson: string
 	sortFields: string
 	sortOrder: 'asc' | 'desc'
-	imageUrl: string | null
 	author: string | null
 	ownerName: string | null
 	ownerEmail: string | null
@@ -164,7 +161,6 @@ async function findRecentMatchingDirectoryFeed(params: {
 			feed.directoryPaths === params.directoryPathsJson &&
 			feed.sortFields === params.sortFields &&
 			feed.sortOrder === params.sortOrder &&
-			feed.imageUrl === params.imageUrl &&
 			feed.author === params.author &&
 			feed.ownerName === params.ownerName &&
 			feed.ownerEmail === params.ownerEmail &&
@@ -440,7 +436,6 @@ export async function initializeTools(
 							name: feed.name,
 							description: feed.description,
 							subtitle: feed.subtitle,
-							imageUrl: feed.imageUrl,
 							author: feed.author,
 							ownerName: feed.ownerName,
 							ownerEmail: feed.ownerEmail,
@@ -552,7 +547,6 @@ export async function initializeTools(
 							name: feed.name,
 							description: feed.description,
 							subtitle: feed.subtitle,
-							imageUrl: feed.imageUrl,
 							author: feed.author,
 							ownerName: feed.ownerName,
 							ownerEmail: feed.ownerEmail,
@@ -1325,12 +1319,6 @@ export async function initializeTools(
 						.describe(
 							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
 						),
-					imageUrl: z
-						.string()
-						.url()
-						.nullable()
-						.optional()
-						.describe('Custom feed artwork URL (or null to clear)'),
 					author: z
 						.string()
 						.nullable()
@@ -1418,7 +1406,6 @@ export async function initializeTools(
 				name,
 				description,
 				subtitle,
-				imageUrl,
 				author,
 				ownerName,
 				ownerEmail,
@@ -1475,7 +1462,6 @@ export async function initializeTools(
 					const normalizedSubtitle = subtitle ?? null
 					const normalizedSortFields = sortFields ?? 'filename'
 					const normalizedSortOrder = sortOrder ?? 'asc'
-					const normalizedImageUrl = imageUrl ?? null
 					const normalizedAuthor = author ?? null
 					const normalizedOwnerName = ownerName ?? null
 					const normalizedOwnerEmail = ownerEmail ?? null
@@ -1499,7 +1485,6 @@ export async function initializeTools(
 						directoryPathsJson,
 						sortFields: normalizedSortFields,
 						sortOrder: normalizedSortOrder,
-						imageUrl: normalizedImageUrl,
 						author: normalizedAuthor,
 						ownerName: normalizedOwnerName,
 						ownerEmail: normalizedOwnerEmail,
@@ -1524,7 +1509,6 @@ export async function initializeTools(
 								directoryPaths: [`${mediaRoot}:${directoryPath}`],
 								sortFields: normalizedSortFields,
 								sortOrder: normalizedSortOrder,
-								imageUrl: normalizedImageUrl,
 								author: normalizedAuthor,
 								ownerName: normalizedOwnerName,
 								ownerEmail: normalizedOwnerEmail,
@@ -1581,7 +1565,6 @@ export async function initializeTools(
 								name: feed.name,
 								description: feed.description,
 								subtitle: feed.subtitle,
-								imageUrl: feed.imageUrl,
 								author: feed.author,
 								ownerName: feed.ownerName,
 								ownerEmail: feed.ownerEmail,
@@ -1637,12 +1620,6 @@ export async function initializeTools(
 						.describe(
 							'Short subtitle/tagline (max ~255 chars). If omitted, podcast apps usually show a truncated description.',
 						),
-					imageUrl: z
-						.string()
-						.url()
-						.nullable()
-						.optional()
-						.describe('Custom feed artwork URL (or null to clear)'),
 					author: z
 						.string()
 						.nullable()
@@ -1712,7 +1689,6 @@ export async function initializeTools(
 				name,
 				description,
 				subtitle,
-				imageUrl,
 				author,
 				ownerName,
 				ownerEmail,
@@ -1732,7 +1708,6 @@ export async function initializeTools(
 					const normalizedSubtitle = subtitle ?? null
 					const normalizedSortFields = sortFields ?? 'position'
 					const normalizedSortOrder = sortOrder ?? 'asc'
-					const normalizedImageUrl = imageUrl ?? null
 					const normalizedAuthor = author ?? null
 					const normalizedOwnerName = ownerName ?? null
 					const normalizedOwnerEmail = ownerEmail ?? null
@@ -1750,7 +1725,6 @@ export async function initializeTools(
 						subtitle: normalizedSubtitle,
 						sortFields: normalizedSortFields,
 						sortOrder: normalizedSortOrder,
-						imageUrl: normalizedImageUrl,
 						author: normalizedAuthor,
 						ownerName: normalizedOwnerName,
 						ownerEmail: normalizedOwnerEmail,
@@ -1772,7 +1746,6 @@ export async function initializeTools(
 								subtitle: normalizedSubtitle,
 								sortFields: normalizedSortFields,
 								sortOrder: normalizedSortOrder,
-								imageUrl: normalizedImageUrl,
 								author: normalizedAuthor,
 								ownerName: normalizedOwnerName,
 								ownerEmail: normalizedOwnerEmail,
@@ -1824,7 +1797,6 @@ export async function initializeTools(
 								name: feed.name,
 								description: feed.description,
 								subtitle: feed.subtitle,
-								imageUrl: feed.imageUrl,
 								author: feed.author,
 								ownerName: feed.ownerName,
 								ownerEmail: feed.ownerEmail,
@@ -1880,12 +1852,6 @@ export async function initializeTools(
 						.nullable()
 						.optional()
 						.describe('New subtitle/tagline (or null to clear)'),
-					imageUrl: z
-						.string()
-						.url()
-						.nullable()
-						.optional()
-						.describe('New feed artwork URL (or null to clear)'),
 					author: z
 						.string()
 						.nullable()
@@ -1984,7 +1950,6 @@ export async function initializeTools(
 				name,
 				description,
 				subtitle,
-				imageUrl,
 				author,
 				ownerName,
 				ownerEmail,
@@ -2078,7 +2043,6 @@ export async function initializeTools(
 							directoryPaths,
 							sortFields,
 							sortOrder,
-							imageUrl,
 							author,
 							ownerName: resolvedOwnerName,
 							ownerEmail: resolvedOwnerEmail,
@@ -2099,7 +2063,6 @@ export async function initializeTools(
 							subtitle,
 							sortFields,
 							sortOrder,
-							imageUrl,
 							author,
 							ownerName: resolvedOwnerName,
 							ownerEmail: resolvedOwnerEmail,
@@ -2143,7 +2106,6 @@ export async function initializeTools(
 								name: updatedFeed.name,
 								description: updatedFeed.description,
 								subtitle: updatedFeed.subtitle,
-								imageUrl: updatedFeed.imageUrl,
 								author: updatedFeed.author,
 								ownerName: updatedFeed.ownerName,
 								ownerEmail: updatedFeed.ownerEmail,

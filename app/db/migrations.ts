@@ -230,6 +230,14 @@ const migrations: Array<Migration> = [
 			`)
 		},
 	},
+	{
+		version: 6,
+		name: 'drop_feed_image_url_columns',
+		up: (db) => {
+			db.run(sql`ALTER TABLE directory_feeds DROP COLUMN image_url;`)
+			db.run(sql`ALTER TABLE curated_feeds DROP COLUMN image_url;`)
+		},
+	},
 ]
 
 /**

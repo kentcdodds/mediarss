@@ -22,7 +22,6 @@ export const DirectoryFeedSchema = object({
 	directoryPaths: string(), // JSON array of "mediaRoot:relativePath" strings
 	sortFields: string(),
 	sortOrder: SortOrderSchema,
-	imageUrl: nullable(string()),
 	author: nullable(string()),
 	ownerName: nullable(string()),
 	ownerEmail: nullable(string()),
@@ -47,7 +46,6 @@ export const CuratedFeedSchema = object({
 	subtitle: nullable(string()),
 	sortFields: string(),
 	sortOrder: SortOrderSchema,
-	imageUrl: nullable(string()),
 	author: nullable(string()),
 	ownerName: nullable(string()),
 	ownerEmail: nullable(string()),

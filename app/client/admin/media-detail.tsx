@@ -68,7 +68,6 @@ type FeedAssignment = {
 type CuratedFeed = {
 	id: string
 	name: string
-	imageUrl: string | null
 	updatedAt: number
 }
 
@@ -76,7 +75,6 @@ type DirectoryFeed = {
 	id: string
 	name: string
 	directoryPaths: string[]
-	imageUrl: string | null
 	updatedAt: number
 }
 

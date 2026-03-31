@@ -51,12 +51,12 @@ type MediaDetailResponse = {
 		subtitle: string | null
 	}
 	assignments: FeedAssignment[]
-	curatedFeeds: Array<{ id: string; name: string; imageUrl: string | null }>
+	curatedFeeds: Array<{ id: string; name: string; updatedAt: number }>
 	directoryFeeds: Array<{
 		id: string
 		name: string
 		directoryPaths: string[]
-		imageUrl: string | null
+		updatedAt: number
 	}>
 }
 
@@ -216,14 +216,12 @@ export default {
 			curatedFeeds: curatedFeeds.map((f) => ({
 				id: f.id,
 				name: f.name,
-				imageUrl: f.imageUrl,
 				updatedAt: f.updatedAt,
 			})),
 			directoryFeeds: directoryFeeds.map((f) => ({
 				id: f.id,
 				name: f.name,
 				directoryPaths: JSON.parse(f.directoryPaths) as string[],
-				imageUrl: f.imageUrl,
 				updatedAt: f.updatedAt,
 			})),
 		}

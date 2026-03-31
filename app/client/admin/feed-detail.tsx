@@ -44,7 +44,6 @@ type DirectoryFeed = {
 	feedType: ('episodic' | 'serial') | null
 	link: string | null
 	copyright: string | null
-	imageUrl: string | null
 	author: string | null
 	ownerName: string | null
 	ownerEmail: string | null
@@ -64,7 +63,6 @@ type CuratedFeed = {
 	feedType: ('episodic' | 'serial') | null
 	link: string | null
 	copyright: string | null
-	imageUrl: string | null
 	author: string | null
 	ownerName: string | null
 	ownerEmail: string | null
@@ -353,8 +351,6 @@ export function FeedDetail(handle: Handle) {
 	let artworkUploadLoading = false
 	let artworkDeleteLoading = false
 	let artworkError: string | null = null
-	let imageUrlInput = ''
-	let imageUrlSaving = false
 	let artworkImageKey = 0 // Used to force image refresh after upload
 
 	// Fetch media roots for file picker
@@ -501,8 +497,6 @@ export function FeedDetail(handle: Handle) {
 			})
 			.then((data) => {
 				state = { status: 'success', data }
-				// Initialize imageUrl input with current value
-				imageUrlInput = data.feed.imageUrl ?? ''
 				// Use feed's updatedAt as cache buster for artwork
 				artworkImageKey = data.feed.updatedAt
 				artworkError = null
@@ -741,68 +735,6 @@ export function FeedDetail(handle: Handle) {
 			handle.update()
 		} finally {
 			artworkDeleteLoading = false
-			handle.update()
-		}
-	}
-
-	const saveImageUrl = async () => {
-		imageUrlSaving = true
-		artworkError = null
-		handle.update()
-
-		try {
-			const newImageUrl = imageUrlInput.trim() || null
-			const res = await fetch(`/admin/api/feeds/${feedId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ imageUrl: newImageUrl }),
-			})
-
-			if (!res.ok) {
-				const data = await res.json()
-				throw new Error(data.error || `HTTP ${res.status}`)
-			}
-
-			// Force image refresh and reload feed data
-			artworkImageKey++
-			fetchFeed(feedId)
-		} catch (err) {
-			artworkError =
-				err instanceof Error ? err.message : 'Failed to save image URL'
-			handle.update()
-		} finally {
-			imageUrlSaving = false
-			handle.update()
-		}
-	}
-
-	const clearImageUrl = async () => {
-		imageUrlInput = ''
-		imageUrlSaving = true
-		artworkError = null
-		handle.update()
-
-		try {
-			const res = await fetch(`/admin/api/feeds/${feedId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ imageUrl: null }),
-			})
-
-			if (!res.ok) {
-				const data = await res.json()
-				throw new Error(data.error || `HTTP ${res.status}`)
-			}
-
-			// Force image refresh and reload feed data
-			artworkImageKey++
-			fetchFeed(feedId)
-		} catch (err) {
-			artworkError =
-				err instanceof Error ? err.message : 'Failed to clear image URL'
-			handle.update()
-		} finally {
-			imageUrlSaving = false
 			handle.update()
 		}
 	}
@@ -1476,9 +1408,7 @@ export function FeedDetail(handle: Handle) {
 								<strong>Current source:</strong>{' '}
 								{state.status === 'success' && state.data.hasUploadedArtwork
 									? 'Uploaded artwork'
-									: feed.imageUrl
-										? 'External URL'
-										: 'Generated placeholder'}
+									: 'Generated placeholder'}
 							</div>
 
 							{/* Upload Button */}
@@ -1577,117 +1507,6 @@ export function FeedDetail(handle: Handle) {
 								</p>
 							</div>
 
-							{/* External URL Input */}
-							<div mix={[rmxCss({ marginBottom: spacing.sm })]}>
-								<label
-									for="artwork-url"
-									mix={[
-										rmxCss({
-											display: 'block',
-											fontSize: typography.fontSize.sm,
-											fontWeight: typography.fontWeight.medium,
-											color: colors.text,
-											marginBottom: spacing.xs,
-										}),
-									]}
-								>
-									External URL (optional)
-								</label>
-								<div mix={[rmxCss({ display: 'flex', gap: spacing.sm })]}>
-									<input
-										id="artwork-url"
-										type="url"
-										value={imageUrlInput}
-										placeholder="https://example.com/artwork.jpg"
-										mix={[
-											rmxCss({
-												flex: 1,
-												padding: spacing.sm,
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												backgroundColor: colors.background,
-												border: `1px solid ${colors.border}`,
-												borderRadius: radius.md,
-												outline: 'none',
-												'&:focus': { borderColor: colors.primary },
-												'&::placeholder': { color: colors.textMuted },
-											}),
-											rmxOn('input', (e) => {
-												imageUrlInput = (e.target as HTMLInputElement).value
-												handle.update()
-											}),
-											rmxOn('focus', () => {
-												// Initialize with current value on focus if empty
-												if (!imageUrlInput && feed.imageUrl) {
-													imageUrlInput = feed.imageUrl
-													handle.update()
-												}
-											}),
-										]}
-									/>
-									<button
-										type="button"
-										disabled={
-											imageUrlSaving || imageUrlInput === (feed.imageUrl ?? '')
-										}
-										mix={[
-											rmxCss({
-												padding: `${spacing.xs} ${spacing.md}`,
-												fontSize: typography.fontSize.sm,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.background,
-												backgroundColor:
-													imageUrlSaving ||
-													imageUrlInput === (feed.imageUrl ?? '')
-														? colors.border
-														: colors.primary,
-												border: 'none',
-												borderRadius: radius.md,
-												cursor:
-													imageUrlSaving ||
-													imageUrlInput === (feed.imageUrl ?? '')
-														? 'not-allowed'
-														: 'pointer',
-												transition: `all ${transitions.fast}`,
-												'&:hover':
-													imageUrlSaving ||
-													imageUrlInput === (feed.imageUrl ?? '')
-														? {}
-														: { backgroundColor: colors.primaryHover },
-											}),
-											rmxOn('click', () => saveImageUrl()),
-										]}
-									>
-										{imageUrlSaving ? 'Saving...' : 'Save'}
-									</button>
-									{feed.imageUrl && (
-										<button
-											type="button"
-											disabled={imageUrlSaving}
-											mix={[
-												rmxCss({
-													padding: `${spacing.xs} ${spacing.md}`,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: '#ef4444',
-													backgroundColor: 'transparent',
-													border: '1px solid #ef4444',
-													borderRadius: radius.md,
-													cursor: imageUrlSaving ? 'not-allowed' : 'pointer',
-													transition: `all ${transitions.fast}`,
-													'&:hover': imageUrlSaving
-														? {}
-														: { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-												}),
-												rmxOn('click', clearImageUrl),
-											]}
-										>
-											Clear
-										</button>
-									)}
-								</div>
-							</div>
-
 							{/* Error Message */}
 							{artworkError && (
 								<div
@@ -1726,7 +1545,8 @@ export function FeedDetail(handle: Handle) {
 									}),
 								]}
 							>
-								Uploaded artwork takes priority over external URL.
+								Without an uploaded image, MediaRSS serves a generated square
+								placeholder.
 							</p>
 						</div>
 					</div>

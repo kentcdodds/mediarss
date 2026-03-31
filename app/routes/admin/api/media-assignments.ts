@@ -22,14 +22,12 @@ type AssignmentsResponse = {
 	curatedFeeds: Array<{
 		id: string
 		name: string
-		imageUrl: string | null
 		updatedAt: number
 	}>
 	directoryFeeds: Array<{
 		id: string
 		name: string
 		directoryPaths: Array<string> // Array of "mediaRoot:relativePath" strings
-		imageUrl: string | null
 		updatedAt: number
 	}>
 }
@@ -120,14 +118,12 @@ async function handleGet(): Promise<Response> {
 		curatedFeeds: curatedFeeds.map((f) => ({
 			id: f.id,
 			name: f.name,
-			imageUrl: f.imageUrl,
 			updatedAt: f.updatedAt,
 		})),
 		directoryFeeds: directoryFeeds.map((f) => ({
 			id: f.id,
 			name: f.name,
 			directoryPaths: JSON.parse(f.directoryPaths) as Array<string>,
-			imageUrl: f.imageUrl,
 			updatedAt: f.updatedAt,
 		})),
 	} satisfies AssignmentsResponse)

@@ -118,34 +118,48 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
-			const embeddedSourceKey = await getFileArtworkSourceKey(filePath)
-			const squareArtwork = await getSquareArtwork({
-				data: artwork.data,
-				mimeType: artwork.mimeType,
-				sourceKey: `embedded:${feed.id}:${embeddedSourceKey}`,
-			})
-			return new Response(new Uint8Array(squareArtwork.data), {
-				headers: {
-					'Content-Type': squareArtwork.mimeType,
-					'Cache-Control': 'public, max-age=31536000, immutable',
-				},
-			})
+			try {
+				const embeddedSourceKey = await getFileArtworkSourceKey(filePath)
+				const squareArtwork = await getSquareArtwork({
+					data: artwork.data,
+					mimeType: artwork.mimeType,
+					sourceKey: `embedded:${feed.id}:${embeddedSourceKey}`,
+				})
+				return new Response(new Uint8Array(squareArtwork.data), {
+					headers: {
+						'Content-Type': squareArtwork.mimeType,
+						'Cache-Control': 'public, max-age=31536000, immutable',
+					},
+				})
+			} catch (error) {
+				console.error(
+					`Failed to square embedded artwork for ${filePath}:`,
+					error,
+				)
+			}
 		}
 
 		// No embedded artwork - fall back to feed artwork or placeholder
 		// Priority 1: Check for uploaded feed artwork
 		const uploadedFeedArtwork = await getFeedArtworkPath(feed.id)
 		if (uploadedFeedArtwork) {
-			const squareArtwork = await getSquareArtworkFromFile({
-				filePath: uploadedFeedArtwork.path,
-				mimeType: uploadedFeedArtwork.mimeType,
-			})
-			return new Response(new Uint8Array(squareArtwork.data), {
-				headers: {
-					'Content-Type': squareArtwork.mimeType,
-					'Cache-Control': 'public, max-age=86400',
-				},
-			})
+			try {
+				const squareArtwork = await getSquareArtworkFromFile({
+					filePath: uploadedFeedArtwork.path,
+					mimeType: uploadedFeedArtwork.mimeType,
+				})
+				return new Response(new Uint8Array(squareArtwork.data), {
+					headers: {
+						'Content-Type': squareArtwork.mimeType,
+						'Cache-Control': 'public, max-age=86400',
+					},
+				})
+			} catch (error) {
+				console.error(
+					`Failed to square uploaded feed artwork for feed ${feed.id}:`,
+					error,
+				)
+			}
 		}
 
 		// Priority 2: Raster placeholder (SVG is poorly supported in podcast apps)

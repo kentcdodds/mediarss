@@ -12,7 +12,10 @@ import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
-import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
+import {
+	getPodcastArtPlaceholderBody,
+	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
+} from '#app/helpers/podcast-art-placeholder.ts'
 
 /**
  * Validate that a file path is allowed for the given feed.
@@ -144,12 +147,11 @@ export default {
 			})
 		}
 
-		// Priority 3: Generate placeholder based on filename
-		const filename = nodePath.basename(filePath)
-		const svg = generatePlaceholderSvg(filename)
-		return new Response(svg, {
+		// Priority 3: Raster placeholder (SVG is poorly supported in podcast apps)
+		const png = getPodcastArtPlaceholderBody()
+		return new Response(png, {
 			headers: {
-				'Content-Type': 'image/svg+xml',
+				'Content-Type': PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 				'Cache-Control': 'public, max-age=86400',
 			},
 		})

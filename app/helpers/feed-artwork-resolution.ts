@@ -4,14 +4,17 @@ import { type Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import { getFileResponse } from '#app/helpers/node-file.ts'
-import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
+import {
+	getPodcastArtPlaceholderBody,
+	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
+} from '#app/helpers/podcast-art-placeholder.ts'
 
 /**
  * Resolve artwork for a feed with fallback chain:
  * 1. Uploaded artwork (if exists)
  * 2. External imageUrl (redirect)
  * 3. First item's embedded artwork
- * 4. Generated placeholder SVG
+ * 4. Generated placeholder PNG (podcast clients often ignore SVG)
  */
 export async function resolveFeedArtwork(
 	feedId: string,
@@ -56,11 +59,11 @@ export async function resolveFeedArtwork(
 		}
 	}
 
-	// Priority 4: Generated placeholder SVG
-	const svg = generatePlaceholderSvg(feed.name)
-	return new Response(svg, {
+	// Priority 4: Raster placeholder (SVG is poorly supported in podcast apps)
+	const png = getPodcastArtPlaceholderBody()
+	return new Response(png, {
 		headers: {
-			'Content-Type': 'image/svg+xml',
+			'Content-Type': PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 			'Cache-Control': 'public, max-age=86400',
 		},
 	})

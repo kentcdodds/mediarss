@@ -37,7 +37,7 @@ export async function extractArtwork(
 
 		return {
 			data: Buffer.from(picture.data),
-			mimeType: picture.format,
+			mimeType: getArtworkMimeType(picture.format),
 		}
 	} catch (error) {
 		console.error(`Error extracting artwork from ${filepath}:`, error)

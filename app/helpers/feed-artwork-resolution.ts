@@ -1,6 +1,5 @@
 import { toAbsolutePath } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
-import { type Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import {
@@ -23,16 +22,23 @@ export async function resolveFeedArtwork(feedId: string): Promise<Response> {
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		const squareArtwork = await getSquareArtworkFromFile({
-			filePath: uploadedArtwork.path,
-			mimeType: uploadedArtwork.mimeType,
-		})
-		return new Response(new Uint8Array(squareArtwork.data), {
-			headers: {
-				'Content-Type': squareArtwork.mimeType,
-				'Cache-Control': 'public, max-age=86400',
-			},
-		})
+		try {
+			const squareArtwork = await getSquareArtworkFromFile({
+				filePath: uploadedArtwork.path,
+				mimeType: uploadedArtwork.mimeType,
+			})
+			return new Response(new Uint8Array(squareArtwork.data), {
+				headers: {
+					'Content-Type': squareArtwork.mimeType,
+					'Cache-Control': 'public, max-age=86400',
+				},
+			})
+		} catch (error) {
+			console.error(
+				`Failed to square uploaded feed artwork for feed ${feedId}:`,
+				error,
+			)
+		}
 	}
 
 	// Priority 2: First item's embedded artwork
@@ -43,18 +49,25 @@ export async function resolveFeedArtwork(feedId: string): Promise<Response> {
 		if (filePath) {
 			const itemArtwork = await extractArtwork(filePath)
 			if (itemArtwork) {
-				const embeddedSourceKey = await getFileArtworkSourceKey(filePath)
-				const squareArtwork = await getSquareArtwork({
-					data: itemArtwork.data,
-					mimeType: itemArtwork.mimeType,
-					sourceKey: `embedded:${feedId}:${embeddedSourceKey}`,
-				})
-				return new Response(new Uint8Array(squareArtwork.data), {
-					headers: {
-						'Content-Type': squareArtwork.mimeType,
-						'Cache-Control': 'public, max-age=86400',
-					},
-				})
+				try {
+					const embeddedSourceKey = await getFileArtworkSourceKey(filePath)
+					const squareArtwork = await getSquareArtwork({
+						data: itemArtwork.data,
+						mimeType: itemArtwork.mimeType,
+						sourceKey: `embedded:${feedId}:${embeddedSourceKey}`,
+					})
+					return new Response(new Uint8Array(squareArtwork.data), {
+						headers: {
+							'Content-Type': squareArtwork.mimeType,
+							'Cache-Control': 'public, max-age=86400',
+						},
+					})
+				} catch (error) {
+					console.error(
+						`Failed to square embedded feed artwork for ${filePath}:`,
+						error,
+					)
+				}
 			}
 		}
 	}

@@ -27,6 +27,7 @@ export async function resolveFeedArtwork(
 		const response = await getFileResponse(uploadedArtwork.path, request, {
 			cacheControl: 'public, max-age=86400',
 			contentType: uploadedArtwork.mimeType,
+			conditionalResponses: false,
 		})
 		if (response) {
 			return response

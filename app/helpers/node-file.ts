@@ -38,14 +38,23 @@ export async function getFileResponse(
 	options: {
 		cacheControl?: string
 		contentType?: string
+		/**
+		 * When false, skip ETag / Last-Modified and never return 304.
+		 * Bun-era artwork responses always streamed a full body; `createFileResponse`
+		 * otherwise returns 304 for conditional requests, which many podcast clients
+		 * mishandle for itunes:image-style fetches.
+		 */
+		conditionalResponses?: boolean
 	} = {},
 ): Promise<Response | null> {
 	const file = await createLazyFile(path, options.contentType)
 	if (!file) {
 		return null
 	}
+	const allowConditional = options.conditionalResponses !== false
 	return createFileResponse(file, request, {
 		cacheControl: options.cacheControl,
+		...(allowConditional ? {} : { etag: false as const, lastModified: false }),
 	})
 }
 

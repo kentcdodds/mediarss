@@ -131,6 +131,7 @@ export default {
 				{
 					cacheControl: 'public, max-age=86400',
 					contentType: uploadedFeedArtwork.mimeType,
+					conditionalResponses: false,
 				},
 			)
 			if (response) {

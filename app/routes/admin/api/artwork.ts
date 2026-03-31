@@ -53,17 +53,21 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
-			const squareArtwork = await getSquareArtwork({
-				data: artwork.data,
-				mimeType: artwork.mimeType,
-				sourceKey: await getFileArtworkSourceKey(filePath),
-			})
-			return new Response(new Uint8Array(squareArtwork.data), {
-				headers: {
-					'Content-Type': squareArtwork.mimeType,
-					'Cache-Control': 'public, max-age=31536000, immutable',
-				},
-			})
+			try {
+				const squareArtwork = await getSquareArtwork({
+					data: artwork.data,
+					mimeType: artwork.mimeType,
+					sourceKey: await getFileArtworkSourceKey(filePath),
+				})
+				return new Response(new Uint8Array(squareArtwork.data), {
+					headers: {
+						'Content-Type': squareArtwork.mimeType,
+						'Cache-Control': 'public, max-age=31536000, immutable',
+					},
+				})
+			} catch (error) {
+				console.error(`Failed to square artwork for ${filePath}:`, error)
+			}
 		}
 
 		// No embedded artwork - generate placeholder based on filename

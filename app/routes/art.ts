@@ -10,12 +10,16 @@ import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
 import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
-import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
+import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import {
-	getPodcastArtPlaceholderBody,
+	getPodcastArtPlaceholderBytes,
 	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 } from '#app/helpers/podcast-art-placeholder.ts'
+import {
+	getSquareArtwork,
+	getSquareArtworkFromFile,
+} from '#app/helpers/square-artwork.ts'
 
 /**
  * Validate that a file path is allowed for the given feed.
@@ -113,9 +117,14 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
-			return new Response(new Uint8Array(artwork.data), {
+			const squareArtwork = await getSquareArtwork({
+				data: artwork.data,
+				mimeType: artwork.mimeType,
+				sourceKey: `embedded:${feed.id}:${parsed.rootName}:${parsed.relativePath}`,
+			})
+			return new Response(new Uint8Array(squareArtwork.data), {
 				headers: {
-					'Content-Type': artwork.mimeType,
+					'Content-Type': squareArtwork.mimeType,
 					'Cache-Control': 'public, max-age=31536000, immutable',
 				},
 			})
@@ -125,32 +134,20 @@ export default {
 		// Priority 1: Check for uploaded feed artwork
 		const uploadedFeedArtwork = await getFeedArtworkPath(feed.id)
 		if (uploadedFeedArtwork) {
-			const response = await getFileResponse(
-				uploadedFeedArtwork.path,
-				context.request,
-				{
-					cacheControl: 'public, max-age=86400',
-					contentType: uploadedFeedArtwork.mimeType,
-					conditionalResponses: false,
+			const squareArtwork = await getSquareArtworkFromFile({
+				filePath: uploadedFeedArtwork.path,
+				mimeType: uploadedFeedArtwork.mimeType,
+			})
+			return new Response(new Uint8Array(squareArtwork.data), {
+				headers: {
+					'Content-Type': squareArtwork.mimeType,
+					'Cache-Control': 'public, max-age=86400',
 				},
-			)
-			if (response) {
-				return response
-			}
-			return new Response('File not found', { status: 404 })
-		}
-
-		// Priority 2: Check for external imageUrl
-		if (feed.imageUrl) {
-			return new Response(null, {
-				status: 302,
-				headers: { Location: feed.imageUrl },
 			})
 		}
 
-		// Priority 3: Raster placeholder (SVG is poorly supported in podcast apps)
-		const png = getPodcastArtPlaceholderBody()
-		return new Response(png, {
+		// Priority 2: Raster placeholder (SVG is poorly supported in podcast apps)
+		return new Response(new Uint8Array(getPodcastArtPlaceholderBytes()), {
 			headers: {
 				'Content-Type': PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 				'Cache-Control': 'public, max-age=86400',

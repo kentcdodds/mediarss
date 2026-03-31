@@ -3,46 +3,42 @@ import { getItemsForFeed } from '#app/db/feed-items.ts'
 import { type Feed } from '#app/db/types.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
 import { getFeedArtworkPath } from '#app/helpers/feed-artwork.ts'
-import { getFileResponse } from '#app/helpers/node-file.ts'
 import {
-	getPodcastArtPlaceholderBody,
+	getPodcastArtPlaceholderBytes,
 	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 } from '#app/helpers/podcast-art-placeholder.ts'
+import {
+	getSquareArtwork,
+	getSquareArtworkFromFile,
+} from '#app/helpers/square-artwork.ts'
 
 /**
  * Resolve artwork for a feed with fallback chain:
  * 1. Uploaded artwork (if exists)
- * 2. External imageUrl (redirect)
- * 3. First item's embedded artwork
- * 4. Generated placeholder PNG (podcast clients often ignore SVG)
+ * 2. First item's embedded artwork
+ * 3. Generated placeholder PNG (podcast clients often ignore SVG)
  */
 export async function resolveFeedArtwork(
 	feedId: string,
-	feed: Feed,
-	request: Request,
+	_feed: Feed,
+	_request: Request,
 ): Promise<Response> {
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {
-		const response = await getFileResponse(uploadedArtwork.path, request, {
-			cacheControl: 'public, max-age=86400',
-			contentType: uploadedArtwork.mimeType,
-			conditionalResponses: false,
+		const squareArtwork = await getSquareArtworkFromFile({
+			filePath: uploadedArtwork.path,
+			mimeType: uploadedArtwork.mimeType,
 		})
-		if (response) {
-			return response
-		}
-	}
-
-	// Priority 2: External imageUrl (redirect)
-	if (feed.imageUrl) {
-		return new Response(null, {
-			status: 302,
-			headers: { Location: feed.imageUrl },
+		return new Response(new Uint8Array(squareArtwork.data), {
+			headers: {
+				'Content-Type': squareArtwork.mimeType,
+				'Cache-Control': 'public, max-age=86400',
+			},
 		})
 	}
 
-	// Priority 3: First item's embedded artwork
+	// Priority 2: First item's embedded artwork
 	const feedItems = await getItemsForFeed(feedId)
 	if (feedItems.length > 0) {
 		const firstItem = feedItems[0]!
@@ -50,9 +46,14 @@ export async function resolveFeedArtwork(
 		if (filePath) {
 			const itemArtwork = await extractArtwork(filePath)
 			if (itemArtwork) {
-				return new Response(new Uint8Array(itemArtwork.data), {
+				const squareArtwork = await getSquareArtwork({
+					data: itemArtwork.data,
+					mimeType: itemArtwork.mimeType,
+					sourceKey: `embedded:${feedId}:${firstItem.mediaRoot}:${firstItem.relativePath}`,
+				})
+				return new Response(new Uint8Array(squareArtwork.data), {
 					headers: {
-						'Content-Type': itemArtwork.mimeType,
+						'Content-Type': squareArtwork.mimeType,
 						'Cache-Control': 'public, max-age=86400',
 					},
 				})
@@ -60,9 +61,8 @@ export async function resolveFeedArtwork(
 		}
 	}
 
-	// Priority 4: Raster placeholder (SVG is poorly supported in podcast apps)
-	const png = getPodcastArtPlaceholderBody()
-	return new Response(png, {
+	// Priority 3: Raster placeholder (SVG is poorly supported in podcast apps)
+	return new Response(new Uint8Array(getPodcastArtPlaceholderBytes()), {
 		headers: {
 			'Content-Type': PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 			'Cache-Control': 'public, max-age=86400',

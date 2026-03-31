@@ -16,8 +16,7 @@ import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
  * GET /admin/api/feeds/:id/artwork
  * Returns artwork for a feed with fallbacks:
  * 1. Uploaded artwork (if exists)
- * 2. External imageUrl (redirect)
- * 3. Generated placeholder PNG (same as public /art route)
+ * 2. Generated placeholder PNG (same as public /art route)
  *
  * POST /admin/api/feeds/:id/artwork
  * Uploads new artwork for a feed (multipart/form-data with 'file' field).

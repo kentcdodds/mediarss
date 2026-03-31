@@ -6,6 +6,7 @@ import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
+import { getSquareArtwork } from '#app/helpers/square-artwork.ts'
 
 /**
  * GET /admin/api/artwork/*path
@@ -49,9 +50,14 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
-			return new Response(new Uint8Array(artwork.data), {
+			const squareArtwork = await getSquareArtwork({
+				data: artwork.data,
+				mimeType: artwork.mimeType,
+				sourceKey: `admin-artwork:${parsed.rootName}:${parsed.relativePath}`,
+			})
+			return new Response(new Uint8Array(squareArtwork.data), {
 				headers: {
-					'Content-Type': artwork.mimeType,
+					'Content-Type': squareArtwork.mimeType,
 					'Cache-Control': 'public, max-age=31536000, immutable',
 				},
 			})

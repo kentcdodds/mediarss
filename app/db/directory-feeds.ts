@@ -14,7 +14,6 @@ export type CreateDirectoryFeedData = {
 	directoryPaths: Array<string> // Array of "mediaRoot:relativePath" strings
 	sortFields?: string
 	sortOrder?: SortOrder
-	imageUrl?: string | null
 	author?: string | null
 	ownerName?: string | null
 	ownerEmail?: string | null
@@ -43,7 +42,6 @@ export async function createDirectoryFeed(
 		directory_paths: JSON.stringify(data.directoryPaths),
 		sort_fields: data.sortFields ?? 'filename',
 		sort_order: data.sortOrder ?? 'asc',
-		image_url: data.imageUrl ?? null,
 		author: data.author ?? null,
 		owner_name: data.ownerName ?? null,
 		owner_email: data.ownerEmail ?? null,
@@ -88,7 +86,6 @@ export type UpdateDirectoryFeedData = {
 	directoryPaths?: Array<string> // Array of "mediaRoot:relativePath" strings
 	sortFields?: string
 	sortOrder?: SortOrder
-	imageUrl?: string | null
 	author?: string | null
 	ownerName?: string | null
 	ownerEmail?: string | null
@@ -121,7 +118,6 @@ export async function updateDirectoryFeed(
 			: existing.directoryPaths,
 		sort_fields: data.sortFields ?? existing.sortFields,
 		sort_order: data.sortOrder ?? existing.sortOrder,
-		image_url: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
 		author: data.author !== undefined ? data.author : existing.author,
 		owner_name:
 			data.ownerName !== undefined ? data.ownerName : existing.ownerName,

@@ -9,7 +9,6 @@ export type CreateCuratedFeedData = {
 	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
-	imageUrl?: string | null
 	author?: string | null
 	ownerName?: string | null
 	ownerEmail?: string | null
@@ -35,7 +34,6 @@ export async function createCuratedFeed(
 		subtitle: data.subtitle ?? null,
 		sort_fields: data.sortFields ?? 'position',
 		sort_order: data.sortOrder ?? 'asc',
-		image_url: data.imageUrl ?? null,
 		author: data.author ?? null,
 		owner_name: data.ownerName ?? null,
 		owner_email: data.ownerEmail ?? null,
@@ -77,7 +75,6 @@ export type UpdateCuratedFeedData = {
 	subtitle?: string | null
 	sortFields?: string
 	sortOrder?: SortOrder
-	imageUrl?: string | null
 	author?: string | null
 	ownerName?: string | null
 	ownerEmail?: string | null
@@ -105,7 +102,6 @@ export async function updateCuratedFeed(
 		subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
 		sort_fields: data.sortFields ?? existing.sortFields,
 		sort_order: data.sortOrder ?? existing.sortOrder,
-		image_url: data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl,
 		author: data.author !== undefined ? data.author : existing.author,
 		owner_name:
 			data.ownerName !== undefined ? data.ownerName : existing.ownerName,

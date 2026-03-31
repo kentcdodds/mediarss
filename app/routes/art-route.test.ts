@@ -69,7 +69,6 @@ test('art route rejects malformed path encoding', async () => {
 test('art route serves PNG placeholder for feed artwork when no artwork exists', async () => {
 	const feed = await createCuratedFeed({
 		name: `art-route-placeholder-${Date.now()}`,
-		imageUrl: null,
 	})
 	const token = await createCuratedFeedToken({
 		feedId: feed.id,

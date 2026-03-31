@@ -117,14 +117,12 @@ type MediaDetailResponse = {
 	curatedFeeds: Array<{
 		id: string
 		name: string
-		imageUrl: string | null
 		updatedAt: number
 	}>
 	directoryFeeds: Array<{
 		id: string
 		name: string
 		directoryPaths: string[]
-		imageUrl: string | null
 		updatedAt: number
 	}>
 }
@@ -377,14 +375,12 @@ export default {
 			curatedFeeds: curatedFeeds.map((f) => ({
 				id: f.id,
 				name: f.name,
-				imageUrl: f.imageUrl,
 				updatedAt: f.updatedAt,
 			})),
 			directoryFeeds: directoryFeeds.map((f) => ({
 				id: f.id,
 				name: f.name,
 				directoryPaths: parseDirectoryPaths(f),
-				imageUrl: f.imageUrl,
 				updatedAt: f.updatedAt,
 			})),
 		}

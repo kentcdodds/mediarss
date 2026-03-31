@@ -30,7 +30,6 @@ type DirectoryFeed = {
 	type: 'directory'
 	createdAt: number
 	updatedAt: number
-	imageUrl: string | null
 }
 
 type CuratedFeed = {
@@ -43,7 +42,6 @@ type CuratedFeed = {
 	type: 'curated'
 	createdAt: number
 	updatedAt: number
-	imageUrl: string | null
 }
 
 type FilterType = 'all' | 'directory' | 'curated'

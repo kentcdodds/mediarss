@@ -51,7 +51,6 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 	expect(minimalFeed.sort_order).toBe('asc')
 	expect(minimalFeed.language).toBe('en')
 	expect(minimalFeed.explicit).toBe('no')
-	expect(minimalFeed.image_url).toBeNull()
 	expect(minimalFeed.author).toBeNull()
 	expect(minimalFeed.owner_name).toBeNull()
 	expect(minimalFeed.owner_email).toBeNull()
@@ -65,13 +64,13 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 	ctx.db.run(sql`
 		INSERT INTO directory_feeds (
 			id, name, description, directory_paths, sort_fields, sort_order,
-			image_url, author, owner_name, owner_email, language, explicit,
+			author, owner_name, owner_email, language, explicit,
 			category, link, filter_in, filter_out, overrides
 		)
 		VALUES (
 			'test-2', 'Full Feed', 'A description', '["video:/media/video","audio:/media/audio"]',
 			'desc:pubDate,asc:title', 'desc',
-			'https://example.com/image.png', 'John Doe', 'Jane Doe', 'jane@example.com',
+			'John Doe', 'Jane Doe', 'jane@example.com',
 			'en-US', 'clean', 'Arts > Books', 'https://example.com',
 			'Season 1:title', 'Trailer:title', '{"custom": "value"}'
 		)
@@ -88,7 +87,6 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 	)
 	expect(fullFeed.sort_fields).toBe('desc:pubDate,asc:title')
 	expect(fullFeed.sort_order).toBe('desc')
-	expect(fullFeed.image_url).toBe('https://example.com/image.png')
 	expect(fullFeed.author).toBe('John Doe')
 	expect(fullFeed.owner_name).toBe('Jane Doe')
 	expect(fullFeed.owner_email).toBe('jane@example.com')
@@ -128,7 +126,6 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	expect(minimalFeed.sort_order).toBe('asc')
 	expect(minimalFeed.language).toBe('en')
 	expect(minimalFeed.explicit).toBe('no')
-	expect(minimalFeed.image_url).toBeNull()
 	expect(minimalFeed.author).toBeNull()
 	expect(minimalFeed.owner_name).toBeNull()
 	expect(minimalFeed.owner_email).toBeNull()
@@ -140,13 +137,13 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	ctx.db.run(sql`
 		INSERT INTO curated_feeds (
 			id, name, description, sort_fields, sort_order,
-			image_url, author, owner_name, owner_email, language, explicit,
+			author, owner_name, owner_email, language, explicit,
 			category, link, overrides
 		)
 		VALUES (
 			'test-2', 'Full Curated Feed', 'A curated description',
 			'asc:position,desc:addedAt', 'asc',
-			'https://example.com/curated.png', 'Curator', 'Owner Name', 'owner@example.com',
+			'Curator', 'Owner Name', 'owner@example.com',
 			'es', 'yes', 'Comedy', 'https://curated.example.com',
 			'{"rss": {"channel": {"custom": true}}}'
 		)
@@ -159,7 +156,6 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	expect(fullFeed.name).toBe('Full Curated Feed')
 	expect(fullFeed.description).toBe('A curated description')
 	expect(fullFeed.sort_fields).toBe('asc:position,desc:addedAt')
-	expect(fullFeed.image_url).toBe('https://example.com/curated.png')
 	expect(fullFeed.author).toBe('Curator')
 	expect(fullFeed.owner_name).toBe('Owner Name')
 	expect(fullFeed.owner_email).toBe('owner@example.com')
@@ -193,8 +189,7 @@ test('directory_feeds supports updating fields and setting nullable fields to nu
 		UPDATE directory_feeds
 		SET name = 'Updated',
 			sort_fields = 'desc:pubDate',
-			filter_in = 'Chapter:title',
-			image_url = 'https://new-image.com/art.png'
+			filter_in = 'Chapter:title'
 		WHERE id = 'update-test'
 	`)
 
@@ -205,7 +200,6 @@ test('directory_feeds supports updating fields and setting nullable fields to nu
 	expect(updatedFeed.name).toBe('Updated')
 	expect(updatedFeed.sort_fields).toBe('desc:pubDate')
 	expect(updatedFeed.filter_in).toBe('Chapter:title')
-	expect(updatedFeed.image_url).toBe('https://new-image.com/art.png')
 	// Unchanged fields should remain
 	expect(updatedFeed.directory_paths).toBe('["audio:/original/path"]')
 	expect(updatedFeed.language).toBe('en')

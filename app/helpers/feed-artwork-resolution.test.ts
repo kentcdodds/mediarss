@@ -11,7 +11,6 @@ migrate(db)
 test('resolveFeedArtwork returns PNG placeholder when feed has no artwork sources', async () => {
 	const feed = await createCuratedFeed({
 		name: `placeholder-feed-${Date.now()}`,
-		imageUrl: null,
 	})
 	try {
 		const response = await resolveFeedArtwork(

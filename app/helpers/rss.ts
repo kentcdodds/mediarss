@@ -270,9 +270,7 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	)
 	const link = escapeXml(feed.link || adminUrl)
 	const cacheVersion = feed.updatedAt
-	const imageUrl = feed.imageUrl
-		? escapeXml(feed.imageUrl)
-		: `${baseUrl}/art/${token}/feed?v=${cacheVersion}`
+	const imageUrl = `${baseUrl}/art/${token}/feed?v=${cacheVersion}`
 	// PocketCasts and similar apps prefer itunes:author; fall back to ownerName.
 	const author = escapeXml(feed.author || feed.ownerName)
 	const ownerName = escapeXml(feed.ownerName || feed.author)

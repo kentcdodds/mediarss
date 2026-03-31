@@ -50,7 +50,6 @@ type UpdateFeedRequest = {
 	sortFields?: string
 	sortOrder?: SortOrder
 	directoryPaths?: Array<string> // Only for directory feeds - array of "mediaRoot:relativePath" strings
-	imageUrl?: string | null // External artwork URL
 	author?: string | null
 	ownerName?: string | null
 	ownerEmail?: string | null
@@ -264,7 +263,6 @@ async function handlePut(id: string, request: Request) {
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
 			directoryPaths: validatedPaths,
-			imageUrl: body.imageUrl,
 			author: body.author,
 			ownerName: body.ownerName,
 			ownerEmail: body.ownerEmail,
@@ -327,7 +325,6 @@ async function handlePut(id: string, request: Request) {
 			subtitle: body.subtitle,
 			sortFields: body.sortFields,
 			sortOrder: body.sortOrder,
-			imageUrl: body.imageUrl,
 			author: body.author,
 			ownerName: body.ownerName,
 			ownerEmail: body.ownerEmail,

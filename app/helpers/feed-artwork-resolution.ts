@@ -19,11 +19,7 @@ import {
  * 2. First item's embedded artwork
  * 3. Generated placeholder PNG (podcast clients often ignore SVG)
  */
-export async function resolveFeedArtwork(
-	feedId: string,
-	_feed: Feed,
-	_request: Request,
-): Promise<Response> {
+export async function resolveFeedArtwork(feedId: string): Promise<Response> {
 	// Priority 1: Uploaded artwork
 	const uploadedArtwork = await getFeedArtworkPath(feedId)
 	if (uploadedArtwork) {

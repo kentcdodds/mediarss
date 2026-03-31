@@ -13,11 +13,7 @@ test('resolveFeedArtwork returns PNG placeholder when feed has no artwork source
 		name: `placeholder-feed-${Date.now()}`,
 	})
 	try {
-		const response = await resolveFeedArtwork(
-			feed.id,
-			feed,
-			new Request('http://localhost/'),
-		)
+		const response = await resolveFeedArtwork(feed.id)
 		expect(response.status).toBe(200)
 		expect(response.headers.get('Content-Type')).toBe('image/png')
 		const buf = Buffer.from(await response.arrayBuffer())

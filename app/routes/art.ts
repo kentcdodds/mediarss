@@ -76,7 +76,7 @@ export default {
 
 		// Special case: "/art/:token/feed" returns the feed's artwork
 		if (splatParam === 'feed') {
-			return resolveFeedArtwork(feed.id, feed, context.request)
+			return resolveFeedArtwork(feed.id)
 		}
 
 		// File-specific artwork

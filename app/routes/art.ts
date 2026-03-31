@@ -17,6 +17,7 @@ import {
 	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
 } from '#app/helpers/podcast-art-placeholder.ts'
 import {
+	getFileArtworkSourceKey,
 	getSquareArtwork,
 	getSquareArtworkFromFile,
 } from '#app/helpers/square-artwork.ts'
@@ -117,10 +118,11 @@ export default {
 		const artwork = await extractArtwork(filePath)
 
 		if (artwork) {
+			const embeddedSourceKey = await getFileArtworkSourceKey(filePath)
 			const squareArtwork = await getSquareArtwork({
 				data: artwork.data,
 				mimeType: artwork.mimeType,
-				sourceKey: `embedded:${feed.id}:${parsed.rootName}:${parsed.relativePath}`,
+				sourceKey: `embedded:${feed.id}:${embeddedSourceKey}`,
 			})
 			return new Response(new Uint8Array(squareArtwork.data), {
 				headers: {

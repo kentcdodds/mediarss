@@ -56,6 +56,7 @@ type MediaDetailResponse = {
 		id: string
 		name: string
 		directoryPaths: string[]
+		updatedAt: number
 	}>
 }
 

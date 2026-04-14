@@ -27,23 +27,23 @@
     "validate": "npm run check:ci && npm run lint:check && npm run typecheck && npm run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
+    "@biomejs/biome": "^2.4.11",
     "@epic-web/config": "^2.0.0",
-    "@playwright/test": "^1.58.0",
-    "@types/node": "^25.5.0",
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
     "@types/semver": "^7.7.1",
-    "oxlint": "^1.57.0",
+    "oxlint": "^1.60.0",
     "semver": "^7.7.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "@epic-web/cachified": "^5.6.1",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "^6.0.0",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "close-with-grace": "^2.4.0",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.0",
     "fast-sort": "^3.4.1",
     "get-port": "^7.1.0",
     "jose": "^6.1.3",

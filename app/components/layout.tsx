@@ -19,7 +19,9 @@ export function Layout({
 	const importmap = { imports: versionedImports }
 
 	const importmapJson = JSON.stringify(importmap)
-	const importmapScript = html.raw`<script type="importmap">${importmapJson}</script>`
+	const importmapScript = html.raw`<script type="importmap">
+		${importmapJson}
+	</script>`
 	const modulePreloads = Object.values(versionedImports).map(
 		(value) => html`<link rel="modulepreload" href="${value}" />`,
 	)
@@ -36,11 +38,12 @@ export function Layout({
 		</head>
 		<body>
 			<div id="root">${children ?? ''}</div>
-			${
-				entryScript
-					? html`<script type="module" src="${versionedUrl(entryScript)}"></script>`
-					: ''
-			}
+			${entryScript
+				? html`<script
+						type="module"
+						src="${versionedUrl(entryScript)}"
+					></script>`
+				: ''}
 		</body>
 	</html>`
 }

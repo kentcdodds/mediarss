@@ -1,15 +1,19 @@
 # html-template
 
-Safe HTML template literals for Remix. `html-template` automatically escapes interpolated values to prevent XSS while still supporting explicit trusted HTML insertion.
+Safe HTML template literals for Remix. `html-template` automatically escapes
+interpolated values to prevent XSS while still supporting explicit trusted HTML
+insertion.
 
 ## Features
 
 - **Automatic HTML escaping** - All interpolated values are escaped by default
-- **Explicit raw HTML** - Use `html.raw` when you need unescaped HTML from trusted sources
+- **Explicit raw HTML** - Use `html.raw` when you need unescaped HTML from
+  trusted sources
 - **Composable** - SafeHtml values can be nested without double-escaping
 - **Type-safe** - Full TypeScript support with branded types
 - **Zero dependencies** - Lightweight and self-contained
-- **Runtime agnostic** - Works in Node.js, Bun, Deno, browsers, and edge runtimes
+- **Runtime agnostic** - Works in Node.js, Bun, Deno, browsers, and edge
+  runtimes
 
 ## Installation
 
@@ -29,7 +33,8 @@ console.log(String(greeting))
 // Output: <h1>Hello &lt;script&gt;alert("XSS")&lt;/script&gt;!</h1>
 ```
 
-By default, all interpolated values are automatically escaped to prevent XSS attacks.
+By default, all interpolated values are automatically escaped to prevent XSS
+attacks.
 
 If you have trusted HTML that should not be escaped, use `html.raw`:
 
@@ -43,7 +48,8 @@ console.log(String(button))
 // => <button><svg>...</svg> Click me</button>
 ```
 
-**Warning**: Only use `html.raw` with content you trust. Never use it with user input.
+**Warning**: Only use `html.raw` with content you trust. Never use it with user
+input.
 
 ### Composing HTML Fragments
 
@@ -56,12 +62,12 @@ let title = html`<h1>My Title</h1>`
 let content = html`<p>Some content with ${userInput}</p>`
 
 let page = html`
-  <!doctype html>
-  <html>
-    <body>
-      ${title} ${content}
-    </body>
-  </html>
+	<!doctype html>
+	<html>
+		<body>
+			${title} ${content}
+		</body>
+	</html>
 `
 ```
 
@@ -74,9 +80,9 @@ import { html } from 'remix/html-template'
 
 let items = ['Apple', 'Banana', 'Cherry']
 let list = html`
-  <ul>
-    ${items.map((item) => html`<li>${item}</li>`)}
-  </ul>
+	<ul>
+		${items.map((item) => html`<li>${item}</li>`)}
+	</ul>
 `
 ```
 
@@ -89,12 +95,15 @@ import { html } from 'remix/html-template'
 
 let showError = false
 let errorMessage = 'Something went wrong'
-let page = html`<div>${showError ? html`<div class="error">${errorMessage}</div>` : null}</div>`
+let page = html`<div>
+	${showError ? html`<div class="error">${errorMessage}</div>` : null}
+</div>`
 ```
 
 ## Related Packages
 
-- [`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) - HTTP router that works great with html-template
+- [`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
+  HTTP router that works great with html-template
 
 ## License
 

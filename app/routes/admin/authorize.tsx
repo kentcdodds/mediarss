@@ -39,10 +39,14 @@ function renderError(title: string, message: string): Response {
 			title: 'Authorization Error',
 			entryScript: false,
 			children: html`
-				<main style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: system-ui, sans-serif;">
+				<main
+					style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: system-ui, sans-serif;"
+				>
 					<h1 style="color: #dc2626;">${title}</h1>
 					<p style="color: #666; margin: 20px 0;">${message}</p>
-					<a href="/admin" style="color: #3b82f6; text-decoration: none;">← Back to Admin</a>
+					<a href="/admin" style="color: #3b82f6; text-decoration: none;"
+						>← Back to Admin</a
+					>
 				</main>
 			`,
 		}),
@@ -70,42 +74,71 @@ function renderAuthorizePage(
 			title: 'Authorize Application',
 			entryScript: false,
 			children: html`
-				<main style="max-width: 500px; margin: 80px auto; padding: 32px; font-family: system-ui, sans-serif; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.1);">
+				<main
+					style="max-width: 500px; margin: 80px auto; padding: 32px; font-family: system-ui, sans-serif; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.1);"
+				>
 					<div style="text-align: center; margin-bottom: 32px;">
-						<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="48"
+							height="48"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="#3b82f6"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
 							<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
 							<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
 						</svg>
 					</div>
 
-					<h1 style="text-align: center; margin: 0 0 8px 0; font-size: 24px; color: #111;">Authorize Application</h1>
+					<h1
+						style="text-align: center; margin: 0 0 8px 0; font-size: 24px; color: #111;"
+					>
+						Authorize Application
+					</h1>
 					<p style="text-align: center; color: #666; margin: 0 0 32px 0;">
 						<strong>${clientName}</strong> wants to access your account
 					</p>
 
-					${
-						params.scope
-							? html`
-								<div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-									<p style="margin: 0 0 8px 0; font-weight: 500; color: #374151;">Requested permissions:</p>
-									<p style="margin: 0; color: #6b7280; font-size: 14px;">${params.scope}</p>
+					${params.scope
+						? html`
+								<div
+									style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 24px;"
+								>
+									<p
+										style="margin: 0 0 8px 0; font-weight: 500; color: #374151;"
+									>
+										Requested permissions:
+									</p>
+									<p style="margin: 0; color: #6b7280; font-size: 14px;">
+										${params.scope}
+									</p>
 								</div>
 							`
-							: ''
-					}
+						: ''}
 
 					<form method="POST" action="${formAction}">
-						<button type="submit"
+						<button
+							type="submit"
 							style="width: 100%; padding: 14px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.2s;"
 							onmouseover="this.style.background='#2563eb'"
-							onmouseout="this.style.background='#3b82f6'">
+							onmouseout="this.style.background='#3b82f6'"
+						>
 							Authorize
 						</button>
 					</form>
 
-					<p style="text-align: center; margin-top: 16px; font-size: 13px; color: #9ca3af;">
-						You will be redirected to<br>
-						<code style="font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${params.redirect_uri}</code>
+					<p
+						style="text-align: center; margin-top: 16px; font-size: 13px; color: #9ca3af;"
+					>
+						You will be redirected to<br />
+						<code
+							style="font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;"
+							>${params.redirect_uri}</code
+						>
 					</p>
 				</main>
 			`,

@@ -1,12 +1,16 @@
 # headers
 
-Typed utilities for parsing, manipulating, and serializing HTTP header values. `headers` provides focused classes for common HTTP headers.
+Typed utilities for parsing, manipulating, and serializing HTTP header values.
+`headers` provides focused classes for common HTTP headers.
 
 ## Features
 
-- **Header-Specific Classes** - Purpose-built APIs for `Accept`, `Cache-Control`, `Content-Type`, and more
-- **Round-Trip Safety** - Parse from raw values and serialize back with `.toString()`
-- **Typed Operations** - Work with structured values instead of manual string parsing
+- **Header-Specific Classes** - Purpose-built APIs for `Accept`,
+  `Cache-Control`, `Content-Type`, and more
+- **Round-Trip Safety** - Parse from raw values and serialize back with
+  `.toString()`
+- **Typed Operations** - Work with structured values instead of manual string
+  parsing
 
 ## Installation
 
@@ -16,7 +20,11 @@ npm i remix
 
 ## Individual Header Utilities
 
-Each supported header has a class that represents the header value. Use the static `from()` method to parse header values. Each class has a `toString()` method that returns the header value as a string, which you can either call manually, or will be called automatically when the header class is used in a context that expects a string.
+Each supported header has a class that represents the header value. Use the
+static `from()` method to parse header values. Each class has a `toString()`
+method that returns the header value as a string, which you can either call
+manually, or will be called automatically when the header class is used in a
+context that expects a string.
 
 The following headers are currently supported:
 
@@ -37,7 +45,8 @@ The following headers are currently supported:
 
 ### Accept
 
-Parse, manipulate and stringify [`Accept` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept).
+Parse, manipulate and stringify
+[`Accept` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept).
 
 Implements `Map<mediaType, quality>`.
 
@@ -57,7 +66,7 @@ accept.getPreferred(['text/html', 'text/plain']) // 'text/html'
 
 // Iterate
 for (let [mediaType, quality] of accept) {
-  // ...
+	// ...
 }
 
 // Modify and set header
@@ -73,14 +82,15 @@ new Accept(['text/html', ['text/*', 0.9]])
 // Use class for type safety when setting Headers values
 // via Accept's `.toString()` method
 let headers = new Headers({
-  Accept: new Accept({ 'text/html': 1, 'application/json': 0.8 }),
+	Accept: new Accept({ 'text/html': 1, 'application/json': 0.8 }),
 })
 headers.set('Accept', new Accept({ 'text/html': 1, 'application/json': 0.8 }))
 ```
 
 ### Accept-Encoding
 
-Parse, manipulate and stringify [`Accept-Encoding` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
+Parse, manipulate and stringify
+[`Accept-Encoding` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding).
 
 Implements `Map<encoding, quality>`.
 
@@ -109,14 +119,15 @@ new AcceptEncoding({ gzip: 1, deflate: 0.8 })
 // Use class for type safety when setting Headers values
 // via AcceptEncoding's `.toString()` method
 let headers = new Headers({
-  'Accept-Encoding': new AcceptEncoding({ gzip: 1, br: 0.9 }),
+	'Accept-Encoding': new AcceptEncoding({ gzip: 1, br: 0.9 }),
 })
 headers.set('Accept-Encoding', new AcceptEncoding({ gzip: 1, br: 0.9 }))
 ```
 
 ### Accept-Language
 
-Parse, manipulate and stringify [`Accept-Language` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language).
+Parse, manipulate and stringify
+[`Accept-Language` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language).
 
 Implements `Map<language, quality>`.
 
@@ -145,14 +156,15 @@ new AcceptLanguage({ 'en-US': 1, en: 0.9 })
 // Use class for type safety when setting Headers values
 // via AcceptLanguage's `.toString()` method
 let headers = new Headers({
-  'Accept-Language': new AcceptLanguage({ 'en-US': 1, fr: 0.5 }),
+	'Accept-Language': new AcceptLanguage({ 'en-US': 1, fr: 0.5 }),
 })
 headers.set('Accept-Language', new AcceptLanguage({ 'en-US': 1, fr: 0.5 }))
 ```
 
 ### Cache-Control
 
-Parse, manipulate and stringify [`Cache-Control` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control).
+Parse, manipulate and stringify
+[`Cache-Control` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control).
 
 ```ts
 import { CacheControl } from 'remix/headers'
@@ -181,20 +193,23 @@ new CacheControl({ public: true, maxAge: 3600 })
 // Use class for type safety when setting Headers values
 // via CacheControl's `.toString()` method
 let headers = new Headers({
-  'Cache-Control': new CacheControl({ public: true, maxAge: 3600 }),
+	'Cache-Control': new CacheControl({ public: true, maxAge: 3600 }),
 })
 headers.set('Cache-Control', new CacheControl({ public: true, maxAge: 3600 }))
 ```
 
 ### Content-Disposition
 
-Parse, manipulate and stringify [`Content-Disposition` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition).
+Parse, manipulate and stringify
+[`Content-Disposition` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition).
 
 ```ts
 import { ContentDisposition } from 'remix/headers'
 
 // Parse from headers
-let contentDisposition = ContentDisposition.from(response.headers.get('content-disposition'))
+let contentDisposition = ContentDisposition.from(
+	response.headers.get('content-disposition'),
+)
 
 contentDisposition.type // 'attachment'
 contentDisposition.filename // 'example.pdf'
@@ -212,17 +227,21 @@ new ContentDisposition({ type: 'attachment', filename: 'example.pdf' })
 // Use class for type safety when setting Headers values
 // via ContentDisposition's `.toString()` method
 let headers = new Headers({
-  'Content-Disposition': new ContentDisposition({ type: 'attachment', filename: 'example.pdf' }),
+	'Content-Disposition': new ContentDisposition({
+		type: 'attachment',
+		filename: 'example.pdf',
+	}),
 })
 headers.set(
-  'Content-Disposition',
-  new ContentDisposition({ type: 'attachment', filename: 'example.pdf' }),
+	'Content-Disposition',
+	new ContentDisposition({ type: 'attachment', filename: 'example.pdf' }),
 )
 ```
 
 ### Content-Range
 
-Parse, manipulate and stringify [`Content-Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range).
+Parse, manipulate and stringify
+[`Content-Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range).
 
 ```ts
 import { ContentRange } from 'remix/headers'
@@ -247,14 +266,23 @@ new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 })
 // Use class for type safety when setting Headers values
 // via ContentRange's `.toString()` method
 let headers = new Headers({
-  'Content-Range': new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 }),
+	'Content-Range': new ContentRange({
+		unit: 'bytes',
+		start: 0,
+		end: 499,
+		size: 1000,
+	}),
 })
-headers.set('Content-Range', new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 }))
+headers.set(
+	'Content-Range',
+	new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 }),
+)
 ```
 
 ### Content-Type
 
-Parse, manipulate and stringify [`Content-Type` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type).
+Parse, manipulate and stringify
+[`Content-Type` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type).
 
 ```ts
 import { ContentType } from 'remix/headers'
@@ -277,14 +305,18 @@ new ContentType({ mediaType: 'text/html', charset: 'utf-8' })
 // Use class for type safety when setting Headers values
 // via ContentType's `.toString()` method
 let headers = new Headers({
-  'Content-Type': new ContentType({ mediaType: 'text/html', charset: 'utf-8' }),
+	'Content-Type': new ContentType({ mediaType: 'text/html', charset: 'utf-8' }),
 })
-headers.set('Content-Type', new ContentType({ mediaType: 'text/html', charset: 'utf-8' }))
+headers.set(
+	'Content-Type',
+	new ContentType({ mediaType: 'text/html', charset: 'utf-8' }),
+)
 ```
 
 ### Cookie
 
-Parse, manipulate and stringify [`Cookie` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie).
+Parse, manipulate and stringify
+[`Cookie` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie).
 
 Implements `Map<name, value>`.
 
@@ -301,7 +333,7 @@ cookie.size // 2
 
 // Iterate
 for (let [name, value] of cookie) {
-  // ...
+	// ...
 }
 
 // Modify and set header
@@ -313,21 +345,22 @@ headers.set('Cookie', cookie)
 new Cookie('session_id=abc123; theme=dark')
 new Cookie({ session_id: 'abc123', theme: 'dark' })
 new Cookie([
-  ['session_id', 'abc123'],
-  ['theme', 'dark'],
+	['session_id', 'abc123'],
+	['theme', 'dark'],
 ])
 
 // Use class for type safety when setting Headers values
 // via Cookie's `.toString()` method
 let headers = new Headers({
-  Cookie: new Cookie({ session_id: 'abc123', theme: 'dark' }),
+	Cookie: new Cookie({ session_id: 'abc123', theme: 'dark' }),
 })
 headers.set('Cookie', new Cookie({ session_id: 'abc123', theme: 'dark' }))
 ```
 
 ### If-Match
 
-Parse, manipulate and stringify [`If-Match` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match).
+Parse, manipulate and stringify
+[`If-Match` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match).
 
 Implements `Set<etag>`.
 
@@ -357,14 +390,15 @@ new IfMatch(['abc123', 'def456'])
 // Use class for type safety when setting Headers values
 // via IfMatch's `.toString()` method
 let headers = new Headers({
-  'If-Match': new IfMatch(['"abc123"', '"def456"']),
+	'If-Match': new IfMatch(['"abc123"', '"def456"']),
 })
 headers.set('If-Match', new IfMatch(['"abc123"', '"def456"']))
 ```
 
 ### If-None-Match
 
-Parse, manipulate and stringify [`If-None-Match` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match).
+Parse, manipulate and stringify
+[`If-None-Match` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match).
 
 Implements `Set<etag>`.
 
@@ -393,14 +427,15 @@ new IfNoneMatch(['abc123'])
 // Use class for type safety when setting Headers values
 // via IfNoneMatch's `.toString()` method
 let headers = new Headers({
-  'If-None-Match': new IfNoneMatch(['"abc123"']),
+	'If-None-Match': new IfNoneMatch(['"abc123"']),
 })
 headers.set('If-None-Match', new IfNoneMatch(['"abc123"']))
 ```
 
 ### If-Range
 
-Parse, manipulate and stringify [`If-Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Range).
+Parse, manipulate and stringify
+[`If-Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Range).
 
 ```ts
 import { IfRange } from 'remix/headers'
@@ -426,14 +461,15 @@ new IfRange('"abc123"')
 // Use class for type safety when setting Headers values
 // via IfRange's `.toString()` method
 let headers = new Headers({
-  'If-Range': new IfRange('"abc123"'),
+	'If-Range': new IfRange('"abc123"'),
 })
 headers.set('If-Range', new IfRange('"abc123"'))
 ```
 
 ### Range
 
-Parse, manipulate and stringify [`Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range).
+Parse, manipulate and stringify
+[`Range` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range).
 
 ```ts
 import { Range } from 'remix/headers'
@@ -461,14 +497,18 @@ new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] })
 // Use class for type safety when setting Headers values
 // via Range's `.toString()` method
 let headers = new Headers({
-  Range: new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }),
+	Range: new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }),
 })
-headers.set('Range', new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }))
+headers.set(
+	'Range',
+	new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }),
+)
 ```
 
 ### Set-Cookie
 
-Parse, manipulate and stringify [`Set-Cookie` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie).
+Parse, manipulate and stringify
+[`Set-Cookie` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie).
 
 ```ts
 import { SetCookie } from 'remix/headers'
@@ -494,24 +534,32 @@ headers.set('Set-Cookie', setCookie)
 // Construct directly
 new SetCookie('session_id=abc; Path=/; HttpOnly; Secure')
 new SetCookie({
-  name: 'session_id',
-  value: 'abc',
-  path: '/',
-  httpOnly: true,
-  secure: true,
+	name: 'session_id',
+	value: 'abc',
+	path: '/',
+	httpOnly: true,
+	secure: true,
 })
 
 // Use class for type safety when setting Headers values
 // via SetCookie's `.toString()` method
 let headers = new Headers({
-  'Set-Cookie': new SetCookie({ name: 'session_id', value: 'abc', httpOnly: true }),
+	'Set-Cookie': new SetCookie({
+		name: 'session_id',
+		value: 'abc',
+		httpOnly: true,
+	}),
 })
-headers.set('Set-Cookie', new SetCookie({ name: 'session_id', value: 'abc', httpOnly: true }))
+headers.set(
+	'Set-Cookie',
+	new SetCookie({ name: 'session_id', value: 'abc', httpOnly: true }),
+)
 ```
 
 ### Vary
 
-Parse, manipulate and stringify [`Vary` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary).
+Parse, manipulate and stringify
+[`Vary` headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary).
 
 Implements `Set<headerName>`.
 
@@ -538,7 +586,7 @@ new Vary({ headerNames: ['Accept-Encoding', 'Accept-Language'] })
 // Use class for type safety when setting Headers values
 // via Vary's `.toString()` method
 let headers = new Headers({
-  Vary: new Vary(['Accept-Encoding', 'Accept-Language']),
+	Vary: new Vary(['Accept-Encoding', 'Accept-Language']),
 })
 headers.set('Vary', new Vary(['Accept-Encoding', 'Accept-Language']))
 ```
@@ -560,8 +608,10 @@ stringify(headers)
 
 ## Related Packages
 
-- [`fetch-proxy`](https://github.com/remix-run/remix/tree/main/packages/fetch-proxy) - Build HTTP proxy servers using the web fetch API
-- [`node-fetch-server`](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server) - Build HTTP servers on Node.js using the web fetch API
+- [`fetch-proxy`](https://github.com/remix-run/remix/tree/main/packages/fetch-proxy) -
+  Build HTTP proxy servers using the web fetch API
+- [`node-fetch-server`](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server) -
+  Build HTTP servers on Node.js using the web fetch API
 
 ## License
 

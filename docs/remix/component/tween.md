@@ -1,6 +1,7 @@
 # Tween API
 
-A generator-based tween function for animating values over time with cubic bezier easing.
+A generator-based tween function for animating values over time with cubic
+bezier easing.
 
 ## Basic Usage
 
@@ -8,19 +9,19 @@ A generator-based tween function for animating values over time with cubic bezie
 import { tween, easings } from 'remix/component'
 
 let animation = tween({
-  from: 0,
-  to: 100,
-  duration: 1000,
-  curve: easings.easeInOut,
+	from: 0,
+	to: 100,
+	duration: 1000,
+	curve: easings.easeInOut,
 })
 
 // Initialize generator
 animation.next()
 
 function animate(timestamp: number) {
-  let { value, done } = animation.next(timestamp)
-  element.style.transform = `translateX(${value}px)`
-  if (!done) requestAnimationFrame(animate)
+	let { value, done } = animation.next(timestamp)
+	element.style.transform = `translateX(${value}px)`
+	if (!done) requestAnimationFrame(animate)
 }
 
 requestAnimationFrame(animate)
@@ -34,7 +35,8 @@ The `tween` function returns a generator that:
 2. Receives the current timestamp via `next(timestamp)`
 3. Returns `done: true` when the duration has elapsed
 
-The generator uses cubic bezier curves to map linear time progress to eased value progress, matching CSS `cubic-bezier()` timing functions.
+The generator uses cubic bezier curves to map linear time progress to eased
+value progress, matching CSS `cubic-bezier()` timing functions.
 
 ## Easing Presets
 
@@ -56,17 +58,17 @@ Define custom bezier curves with control points:
 
 ```tsx
 let customCurve = {
-  x1: 0.68,
-  y1: -0.55,
-  x2: 0.265,
-  y2: 1.55,
+	x1: 0.68,
+	y1: -0.55,
+	x2: 0.265,
+	y2: 1.55,
 }
 
 let animation = tween({
-  from: 0,
-  to: 100,
-  duration: 500,
-  curve: customCurve,
+	from: 0,
+	to: 100,
+	duration: 500,
+	curve: customCurve,
 })
 ```
 
@@ -78,48 +80,48 @@ Use tween with `handle.signal` for automatic cleanup:
 
 ```tsx
 function AnimatedValue(handle: Handle) {
-  let value = 0
+	let value = 0
 
-  function animateTo(target: number) {
-    let animation = tween({
-      from: value,
-      to: target,
-      duration: 300,
-      curve: easings.easeOut,
-    })
+	function animateTo(target: number) {
+		let animation = tween({
+			from: value,
+			to: target,
+			duration: 300,
+			curve: easings.easeOut,
+		})
 
-    animation.next() // Initialize
+		animation.next() // Initialize
 
-    function tick(timestamp: number) {
-      if (handle.signal.aborted) return
+		function tick(timestamp: number) {
+			if (handle.signal.aborted) return
 
-      let result = animation.next(timestamp)
-      value = result.value
-      handle.update()
+			let result = animation.next(timestamp)
+			value = result.value
+			handle.update()
 
-      if (!result.done) {
-        requestAnimationFrame(tick)
-      }
-    }
+			if (!result.done) {
+				requestAnimationFrame(tick)
+			}
+		}
 
-    requestAnimationFrame(tick)
-  }
+		requestAnimationFrame(tick)
+	}
 
-  return () => (
-    <div>
-      <div style={{ transform: `translateX(${value}px)` }}>Moving</div>
-      <button
-        mix={[
-          pressEvents(),
-          on('press', () => {
-            animateTo(200)
-          }),
-        ]}
-      >
-        Animate
-      </button>
-    </div>
-  )
+	return () => (
+		<div>
+			<div style={{ transform: `translateX(${value}px)` }}>Moving</div>
+			<button
+				mix={[
+					pressEvents(),
+					on('press', () => {
+						animateTo(200)
+					}),
+				]}
+			>
+				Animate
+			</button>
+		</div>
+	)
 }
 ```
 
@@ -128,24 +130,39 @@ function AnimatedValue(handle: Handle) {
 Animate multiple values with separate tweens:
 
 ```tsx
-let xAnimation = tween({ from: 0, to: 100, duration: 500, curve: easings.easeOut })
-let yAnimation = tween({ from: 0, to: 50, duration: 500, curve: easings.easeOut })
-let scaleAnimation = tween({ from: 1, to: 1.5, duration: 500, curve: easings.easeOut })
+let xAnimation = tween({
+	from: 0,
+	to: 100,
+	duration: 500,
+	curve: easings.easeOut,
+})
+let yAnimation = tween({
+	from: 0,
+	to: 50,
+	duration: 500,
+	curve: easings.easeOut,
+})
+let scaleAnimation = tween({
+	from: 1,
+	to: 1.5,
+	duration: 500,
+	curve: easings.easeOut,
+})
 
 xAnimation.next()
 yAnimation.next()
 scaleAnimation.next()
 
 function animate(timestamp: number) {
-  let x = xAnimation.next(timestamp)
-  let y = yAnimation.next(timestamp)
-  let scale = scaleAnimation.next(timestamp)
+	let x = xAnimation.next(timestamp)
+	let y = yAnimation.next(timestamp)
+	let scale = scaleAnimation.next(timestamp)
 
-  element.style.transform = `translate(${x.value}px, ${y.value}px) scale(${scale.value})`
+	element.style.transform = `translate(${x.value}px, ${y.value}px) scale(${scale.value})`
 
-  if (!x.done || !y.done || !scale.done) {
-    requestAnimationFrame(animate)
-  }
+	if (!x.done || !y.done || !scale.done) {
+		requestAnimationFrame(animate)
+	}
 }
 
 requestAnimationFrame(animate)
@@ -159,21 +176,22 @@ Creates a generator that interpolates between values over time.
 
 ```ts
 interface TweenOptions {
-  from: number // Starting value
-  to: number // Ending value
-  duration: number // Duration in milliseconds
-  curve: BezierCurve // Easing curve
+	from: number // Starting value
+	to: number // Ending value
+	duration: number // Duration in milliseconds
+	curve: BezierCurve // Easing curve
 }
 
 interface BezierCurve {
-  x1: number // First control point X (0-1)
-  y1: number // First control point Y
-  x2: number // Second control point X (0-1)
-  y2: number // Second control point Y
+	x1: number // First control point X (0-1)
+	y1: number // First control point Y
+	x2: number // Second control point X (0-1)
+	y2: number // Second control point Y
 }
 ```
 
-**Returns:** `Generator<number, number, number>` - Yields current value, returns final value when done.
+**Returns:** `Generator<number, number, number>` - Yields current value, returns
+final value when done.
 
 ### `easings`
 
@@ -196,8 +214,8 @@ Use `tween` for:
 - Animating non-CSS properties
 - Complex sequenced animations
 
-For most UI animations, prefer animation mixins (`animateEntrance`, `animateExit`, `animateLayout`)
-or CSS transitions with [`spring`](./spring.md).
+For most UI animations, prefer animation mixins (`animateEntrance`,
+`animateExit`, `animateLayout`) or CSS transitions with [`spring`](./spring.md).
 
 ## See Also
 

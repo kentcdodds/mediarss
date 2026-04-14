@@ -1,6 +1,8 @@
 # session-middleware
 
-Session middleware for Remix using signed cookies. It loads session state from incoming requests, stores it in request context using `Session`, and persists updates automatically.
+Session middleware for Remix using signed cookies. It loads session state from
+incoming requests, stores it in request context using `Session`, and persists
+updates automatically.
 
 ## Features
 
@@ -24,22 +26,22 @@ import { createCookieSessionStorage } from 'remix/session/cookie-storage'
 import { session } from 'remix/session-middleware'
 
 let sessionCookie = createCookie('__session', {
-  secrets: ['s3cr3t'], // session cookies must be signed!
-  httpOnly: true,
-  secure: true,
-  sameSite: 'lax',
+	secrets: ['s3cr3t'], // session cookies must be signed!
+	httpOnly: true,
+	secure: true,
+	sameSite: 'lax',
 })
 
 let sessionStorage = createCookieSessionStorage()
 
 let router = createRouter({
-  middleware: [session(sessionCookie, sessionStorage)],
+	middleware: [session(sessionCookie, sessionStorage)],
 })
 
 router.get('/', (context) => {
-  let session = context.get(Session)
-  session.set('count', Number(session.get('count') ?? 0) + 1)
-  return new Response(`Count: ${session.get('count')}`)
+	let session = context.get(Session)
+	session.set('count', Number(session.get('count') ?? 0) + 1)
+	return new Response(`Count: ${session.get('count')}`)
 })
 ```
 
@@ -49,7 +51,8 @@ The middleware:
 - Makes it available as `context.get(Session)`
 - Automatically saves session changes and sets the cookie on responses
 
-Note: The session cookie must be signed for security. This prevents tampering with the session data on the client.
+Note: The session cookie must be signed for security. This prevents tampering
+with the session data on the client.
 
 ### Login/Logout Flow
 
@@ -104,9 +107,12 @@ router.post('/logout', ({ get }) => {
 
 ## Related Packages
 
-- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) - Router for the web Fetch API
-- [`session`](https://github.com/remix-run/remix/tree/main/packages/session) - Session management and storage
-- [`cookie`](https://github.com/remix-run/remix/tree/main/packages/cookie) - Cookie parsing and serialization
+- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
+  Router for the web Fetch API
+- [`session`](https://github.com/remix-run/remix/tree/main/packages/session) -
+  Session management and storage
+- [`cookie`](https://github.com/remix-run/remix/tree/main/packages/cookie) -
+  Cookie parsing and serialization
 
 ## License
 

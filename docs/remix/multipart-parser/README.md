@@ -1,15 +1,23 @@
 # multipart-parser
 
-Fast streaming multipart parsing for JavaScript. `multipart-parser` processes multipart bodies incrementally so large uploads can be handled without buffering the entire multipart payload in memory.
+Fast streaming multipart parsing for JavaScript. `multipart-parser` processes
+multipart bodies incrementally so large uploads can be handled without buffering
+the entire multipart payload in memory.
 
 ## Features
 
-- **File Upload Parsing** - Parse file uploads (`multipart/form-data`) with automatic field and file detection
-- **Full Multipart Support** - Support for all `multipart/*` content types (mixed, alternative, related, etc.)
-- **Convenient API** - `MultipartPart` API with `arrayBuffer`, `bytes`, `text`, `size`, and metadata access
-- **Built-in Limits** - Header, per-part, part-count, and aggregate-size limits to prevent abuse
-- **Node.js Support** - First-class Node.js support with native `http.IncomingMessage` compatibility
-- **Runtime Demos** - [Demos for every major runtime](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos)
+- **File Upload Parsing** - Parse file uploads (`multipart/form-data`) with
+  automatic field and file detection
+- **Full Multipart Support** - Support for all `multipart/*` content types
+  (mixed, alternative, related, etc.)
+- **Convenient API** - `MultipartPart` API with `arrayBuffer`, `bytes`, `text`,
+  `size`, and metadata access
+- **Built-in Limits** - Header, per-part, part-count, and aggregate-size limits
+  to prevent abuse
+- **Node.js Support** - First-class Node.js support with native
+  `http.IncomingMessage` compatibility
+- **Runtime Demos** -
+  [Demos for every major runtime](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos)
 
 ## Installation
 
@@ -19,102 +27,129 @@ npm i remix
 
 ## Usage
 
-The most common use case for `multipart-parser` is handling file uploads when you're building a web server. For this case, the `parseMultipartRequest` function is your friend. It automatically validates the request is `multipart/form-data`, extracts the multipart boundary from the `Content-Type` header, parses all fields and files in the `request.body` stream, and gives each one to you as a `MultipartPart` object with a rich API for accessing its metadata and content.
+The most common use case for `multipart-parser` is handling file uploads when
+you're building a web server. For this case, the `parseMultipartRequest`
+function is your friend. It automatically validates the request is
+`multipart/form-data`, extracts the multipart boundary from the `Content-Type`
+header, parses all fields and files in the `request.body` stream, and gives each
+one to you as a `MultipartPart` object with a rich API for accessing its
+metadata and content.
 
 ```ts
-import { MultipartParseError, parseMultipartRequest } from 'remix/multipart-parser'
+import {
+	MultipartParseError,
+	parseMultipartRequest,
+} from 'remix/multipart-parser'
 
 async function handleRequest(request: Request): void {
-  try {
-    for await (let part of parseMultipartRequest(request)) {
-      if (part.isFile) {
-        // Access file data in multiple formats
-        let buffer = part.arrayBuffer // ArrayBuffer
-        console.log(`File received: ${part.filename} (${buffer.byteLength} bytes)`)
-        console.log(`Content type: ${part.mediaType}`)
-        console.log(`Field name: ${part.name}`)
+	try {
+		for await (let part of parseMultipartRequest(request)) {
+			if (part.isFile) {
+				// Access file data in multiple formats
+				let buffer = part.arrayBuffer // ArrayBuffer
+				console.log(
+					`File received: ${part.filename} (${buffer.byteLength} bytes)`,
+				)
+				console.log(`Content type: ${part.mediaType}`)
+				console.log(`Field name: ${part.name}`)
 
-        // Save to disk, upload to cloud storage, etc.
-        await saveFile(part.filename, part.bytes)
-      } else {
-        let text = part.text // string
-        console.log(`Field received: ${part.name} = ${JSON.stringify(text)}`)
-      }
-    }
-  } catch (error) {
-    if (error instanceof MultipartParseError) {
-      console.error('Failed to parse multipart request:', error.message)
-    } else {
-      console.error('An unexpected error occurred:', error)
-    }
-  }
+				// Save to disk, upload to cloud storage, etc.
+				await saveFile(part.filename, part.bytes)
+			} else {
+				let text = part.text // string
+				console.log(`Field received: ${part.name} = ${JSON.stringify(text)}`)
+			}
+		}
+	} catch (error) {
+		if (error instanceof MultipartParseError) {
+			console.error('Failed to parse multipart request:', error.message)
+		} else {
+			console.error('An unexpected error occurred:', error)
+		}
+	}
 }
 ```
 
 ## Size Limits
 
-A common use case when handling file uploads is limiting the overall shape of incoming multipart bodies so malicious clients cannot force unbounded growth in memory. Use `maxFileSize` to limit each part, `maxParts` to limit how many parts are accepted, and `maxTotalSize` to limit aggregate part content across the entire request. `multipart-parser` applies finite defaults for each of these limits.
+A common use case when handling file uploads is limiting the overall shape of
+incoming multipart bodies so malicious clients cannot force unbounded growth in
+memory. Use `maxFileSize` to limit each part, `maxParts` to limit how many parts
+are accepted, and `maxTotalSize` to limit aggregate part content across the
+entire request. `multipart-parser` applies finite defaults for each of these
+limits.
 
 ```ts
 import {
-  MultipartParseError,
-  MaxFileSizeExceededError,
-  MaxPartsExceededError,
-  MaxTotalSizeExceededError,
-  parseMultipartRequest,
+	MultipartParseError,
+	MaxFileSizeExceededError,
+	MaxPartsExceededError,
+	MaxTotalSizeExceededError,
+	parseMultipartRequest,
 } from 'remix/multipart-parser/node'
 
 const oneMb = Math.pow(2, 20)
 const limits = {
-  maxFileSize: 10 * oneMb,
-  maxParts: 100,
-  maxTotalSize: 25 * oneMb,
+	maxFileSize: 10 * oneMb,
+	maxParts: 100,
+	maxTotalSize: 25 * oneMb,
 }
 
 async function handleRequest(request: Request): Promise<Response> {
-  try {
-    for await (let part of parseMultipartRequest(request, limits)) {
-      // ...
-    }
-  } catch (error) {
-    if (error instanceof MaxFileSizeExceededError) {
-      return new Response('File size limit exceeded', { status: 413 })
-    } else if (error instanceof MaxPartsExceededError) {
-      return new Response('Too many multipart parts', { status: 413 })
-    } else if (error instanceof MaxTotalSizeExceededError) {
-      return new Response('Multipart request is too large', { status: 413 })
-    } else if (error instanceof MultipartParseError) {
-      return new Response('Failed to parse multipart request', { status: 400 })
-    } else {
-      console.error(error)
-      return new Response('Internal Server Error', { status: 500 })
-    }
-  }
+	try {
+		for await (let part of parseMultipartRequest(request, limits)) {
+			// ...
+		}
+	} catch (error) {
+		if (error instanceof MaxFileSizeExceededError) {
+			return new Response('File size limit exceeded', { status: 413 })
+		} else if (error instanceof MaxPartsExceededError) {
+			return new Response('Too many multipart parts', { status: 413 })
+		} else if (error instanceof MaxTotalSizeExceededError) {
+			return new Response('Multipart request is too large', { status: 413 })
+		} else if (error instanceof MultipartParseError) {
+			return new Response('Failed to parse multipart request', { status: 400 })
+		} else {
+			console.error(error)
+			return new Response('Internal Server Error', { status: 500 })
+		}
+	}
 }
 ```
 
 ## Node.js Bindings
 
-The main module (`import {} from 'remix/multipart-parser'`) assumes you're working with [the fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) (`Request`, `ReadableStream`, etc). Support for these interfaces was added to Node.js by the [undici](https://github.com/nodejs/undici) project in [version 16.5.0](https://nodejs.org/en/blog/release/v16.5.0).
+The main module (`import {} from 'remix/multipart-parser'`) assumes you're
+working with
+[the fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+(`Request`, `ReadableStream`, etc). Support for these interfaces was added to
+Node.js by the [undici](https://github.com/nodejs/undici) project in
+[version 16.5.0](https://nodejs.org/en/blog/release/v16.5.0).
 
-If however you're building a server for Node.js that relies on node-specific APIs like `http.IncomingMessage`, `stream.Readable`, and `buffer.Buffer` (ala Express or `http.createServer`), `multipart-parser` ships with an additional module that works directly with these APIs.
+If however you're building a server for Node.js that relies on node-specific
+APIs like `http.IncomingMessage`, `stream.Readable`, and `buffer.Buffer` (ala
+Express or `http.createServer`), `multipart-parser` ships with an additional
+module that works directly with these APIs.
 
 ```ts
 import * as http from 'node:http'
-import { MultipartParseError, parseMultipartRequest } from 'remix/multipart-parser/node'
+import {
+	MultipartParseError,
+	parseMultipartRequest,
+} from 'remix/multipart-parser/node'
 
 let server = http.createServer(async (req, res) => {
-  try {
-    for await (let part of parseMultipartRequest(req)) {
-      // ...
-    }
-  } catch (error) {
-    if (error instanceof MultipartParseError) {
-      console.error('Failed to parse multipart request:', error.message)
-    } else {
-      console.error('An unexpected error occurred:', error)
-    }
-  }
+	try {
+		for await (let part of parseMultipartRequest(req)) {
+			// ...
+		}
+	} catch (error) {
+		if (error instanceof MultipartParseError) {
+			console.error('Failed to parse multipart request:', error.message)
+		} else {
+			console.error('An unexpected error occurred:', error)
+		}
+	}
 })
 
 server.listen(8080)
@@ -122,7 +157,9 @@ server.listen(8080)
 
 ## Low-level API
 
-If you're working directly with multipart boundaries and buffers/streams of multipart data that are not necessarily part of a request, `multipart-parser` provides a low-level `parseMultipart()` API that you can use directly:
+If you're working directly with multipart boundaries and buffers/streams of
+multipart data that are not necessarily part of a request, `multipart-parser`
+provides a low-level `parseMultipart()` API that you can use directly:
 
 ```ts
 import { parseMultipart } from 'remix/multipart-parser'
@@ -131,11 +168,12 @@ let message = new Uint8Array(/* ... */)
 let boundary = '----WebKitFormBoundary56eac3x'
 
 for (let part of parseMultipart(message, { boundary })) {
-  // ...
+	// ...
 }
 ```
 
-In addition, the `parseMultipartStream` function provides an `async` generator interface for multipart data in a `ReadableStream`:
+In addition, the `parseMultipartStream` function provides an `async` generator
+interface for multipart data in a `ReadableStream`:
 
 ```ts
 import { parseMultipartStream } from 'remix/multipart-parser'
@@ -144,22 +182,31 @@ let message = new ReadableStream(/* ... */)
 let boundary = '----WebKitFormBoundary56eac3x'
 
 for await (let part of parseMultipartStream(message, { boundary })) {
-  // ...
+	// ...
 }
 ```
 
 ## Demos
 
-The [`demos` directory](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos) contains a few working demos of how you can use this library:
+The
+[`demos` directory](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos)
+contains a few working demos of how you can use this library:
 
-- [`demos/bun`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/bun) - using multipart-parser in Bun
-- [`demos/cf-workers`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/cf-workers) - using multipart-parser in a Cloudflare Worker and storing file uploads in R2
-- [`demos/deno`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/deno) - using multipart-parser in Deno
-- [`demos/node`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/node) - using multipart-parser in Node.js
+- [`demos/bun`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/bun) -
+  using multipart-parser in Bun
+- [`demos/cf-workers`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/cf-workers) -
+  using multipart-parser in a Cloudflare Worker and storing file uploads in R2
+- [`demos/deno`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/deno) -
+  using multipart-parser in Deno
+- [`demos/node`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/node) -
+  using multipart-parser in Node.js
 
 ## Benchmark
 
-`multipart-parser` is designed to be as efficient as possible, operating on streams of data and rarely buffering in common usage. This design yields exceptional performance when handling multipart payloads of any size. In benchmarks, `multipart-parser` is as fast or faster than `busboy`.
+`multipart-parser` is designed to be as efficient as possible, operating on
+streams of data and rarely buffering in common usage. This design yields
+exceptional performance when handling multipart payloads of any size. In
+benchmarks, `multipart-parser` is as fast or faster than `busboy`.
 
 The results of running the benchmarks on my laptop:
 
@@ -215,12 +262,17 @@ Deno 2.3.6
 
 ## Related Packages
 
-- [`form-data-parser`](https://github.com/remix-run/remix/tree/main/packages/form-data-parser) - Uses `multipart-parser` internally to parse multipart requests and generate `FileUpload`s for storage
-- [`headers`](https://github.com/remix-run/remix/tree/main/packages/headers) - Used internally to parse HTTP headers and get metadata (filename, content type) for each `MultipartPart`
+- [`form-data-parser`](https://github.com/remix-run/remix/tree/main/packages/form-data-parser) -
+  Uses `multipart-parser` internally to parse multipart requests and generate
+  `FileUpload`s for storage
+- [`headers`](https://github.com/remix-run/remix/tree/main/packages/headers) -
+  Used internally to parse HTTP headers and get metadata (filename, content
+  type) for each `MultipartPart`
 
 ## Credits
 
-Thanks to Jacob Ebey who gave me several code reviews on this project prior to publishing.
+Thanks to Jacob Ebey who gave me several code reviews on this project prior to
+publishing.
 
 ## License
 

@@ -1,6 +1,8 @@
 # mime
 
-MIME type detection and content-type helpers for Remix. This package maps extensions to MIME types and provides utilities for charset and compressibility checks.
+MIME type detection and content-type helpers for Remix. This package maps
+extensions to MIME types and provides utilities for charset and compressibility
+checks.
 
 ## Features
 
@@ -33,7 +35,9 @@ detectMimeType('unknown') // undefined
 
 ### `detectContentType(extension)`
 
-Detects the Content-Type header value for a given file extension or filename, including `charset` for text-based types. See [`mimeTypeToContentType`](#mimetypetocontenttypemimetype) for charset logic.
+Detects the Content-Type header value for a given file extension or filename,
+including `charset` for text-based types. See
+[`mimeTypeToContentType`](#mimetypetocontenttypemimetype) for charset logic.
 
 ```ts
 import { detectContentType } from 'remix/mime'
@@ -70,7 +74,10 @@ isCompressibleMimeType('video/mp4; charset=utf-8') // false
 
 ### `mimeTypeToContentType(mimeType)`
 
-Converts a MIME type to a Content-Type header value, adding `; charset=utf-8` to text-based MIME types: `text/*` (except `text/xml` which has built-in encoding declarations), `application/json`, `application/javascript`, and all `+json` suffixed types. All other types are returned unchanged.
+Converts a MIME type to a Content-Type header value, adding `; charset=utf-8` to
+text-based MIME types: `text/*` (except `text/xml` which has built-in encoding
+declarations), `application/json`, `application/javascript`, and all `+json`
+suffixed types. All other types are returned unchanged.
 
 ```ts
 import { mimeTypeToContentType } from 'remix/mime'
@@ -89,19 +96,20 @@ Registers or overrides a MIME type for one or more file extensions.
 import { defineMimeType } from 'remix/mime'
 
 defineMimeType({
-  extensions: ['myformat'],
-  mimeType: 'application/x-myformat',
+	extensions: ['myformat'],
+	mimeType: 'application/x-myformat',
 })
 ```
 
-You can also optionally configure the charset and whether the MIME type is compressible:
+You can also optionally configure the charset and whether the MIME type is
+compressible:
 
 ```ts
 defineMimeType({
-  extensions: ['myformat'],
-  mimeType: 'application/x-myformat',
-  compressible: true,
-  charset: 'utf-8',
+	extensions: ['myformat'],
+	mimeType: 'application/x-myformat',
+	compressible: true,
+	charset: 'utf-8',
 })
 ```
 

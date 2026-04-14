@@ -24,9 +24,8 @@ async function createDcrTestServer() {
 
 	// Import handlers directly instead of full router to avoid MCP transport issues
 	const oauthRegisterHandlers = await import('#app/routes/oauth/register.ts')
-	const oauthServerMetadataHandlers = await import(
-		'#app/routes/oauth/server-metadata.ts'
-	)
+	const oauthServerMetadataHandlers =
+		await import('#app/routes/oauth/server-metadata.ts')
 	const oauthTokenHandlers = await import('#app/routes/oauth/token.ts')
 	const adminAuthorizeHandlers = await import('#app/routes/admin/authorize.tsx')
 

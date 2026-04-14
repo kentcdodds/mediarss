@@ -403,8 +403,8 @@ export function CreateFeed(handle: Handle) {
 	return () => {
 		const canSubmitDirectory = Boolean(
 			directoryForm.name.trim() &&
-				directoryForm.selectedDirectories.length > 0 &&
-				submitState.status !== 'submitting',
+			directoryForm.selectedDirectories.length > 0 &&
+			submitState.status !== 'submitting',
 		)
 
 		const canSubmitCurated = Boolean(

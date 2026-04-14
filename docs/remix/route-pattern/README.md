@@ -1,14 +1,20 @@
 # route-pattern
 
-Type-safe URL matching and href generation for JavaScript. `route-pattern` supports path params, wildcards, optionals, and full-URL patterns with predictable ranking.
+Type-safe URL matching and href generation for JavaScript. `route-pattern`
+supports path params, wildcards, optionals, and full-URL patterns with
+predictable ranking.
 
 ## Features
 
-- **Type-Safe Params** - Infer params from patterns for compile-time route correctness
-- **Flexible Pattern Syntax** - Variables, wildcards, optionals, and query constraints
+- **Type-Safe Params** - Infer params from patterns for compile-time route
+  correctness
+- **Flexible Pattern Syntax** - Variables, wildcards, optionals, and query
+  constraints
 - **Full URL Support** - Match protocol, host, pathname, and search params
-- **Deterministic Ranking** - Static segments beat params, and params beat wildcards
-- **Runtime Agnostic** - Works across Node.js, Bun, Deno, Cloudflare Workers, and browsers
+- **Deterministic Ranking** - Static segments beat params, and params beat
+  wildcards
+- **Runtime Agnostic** - Works across Node.js, Bun, Deno, Cloudflare Workers,
+  and browsers
 
 ## Installation
 
@@ -61,7 +67,11 @@ new RoutePattern('docs(/guides/:category)') // multiple segments optional: /docs
 new RoutePattern('api(/v:major(.:minor))') // nested optionals: /api, /api/v2, /api/v2.1
 ```
 
-**Search params** narrow matches using `?key`, `?key=`, or `?key=value`. Parsing and serialization follow `URLSearchParams` (`application/x-www-form-urlencoded`): `?key` and `?key=` are the same constraint (stored as an empty `Set` in `ast.search`: key must be present; empty value is OK), and spaces use `+` / `%20` like in real query strings.
+**Search params** narrow matches using `?key`, `?key=`, or `?key=value`. Parsing
+and serialization follow `URLSearchParams`
+(`application/x-www-form-urlencoded`): `?key` and `?key=` are the same
+constraint (stored as an empty `Set` in `ast.search`: key must be present; empty
+value is OK), and spaces use `+` / `%20` like in real query strings.
 
 ```ts
 new RoutePattern('search?q') // same constraint as ?q= — key must be present
@@ -78,7 +88,8 @@ new RoutePattern('search?q') // allows additional search params beyond ?q
 
 ## Matchers
 
-Match URLs against multiple patterns. Each pattern can have associated data (handlers, route IDs, metadata, etc.):
+Match URLs against multiple patterns. Each pattern can have associated data
+(handlers, route IDs, metadata, etc.):
 
 ```ts
 import { ArrayMatcher as Matcher } from 'remix/route-pattern'
@@ -102,7 +113,8 @@ matcher.match('https://example.com/api/v2/users/profile')
 - **ArrayMatcher**: Best for small apps (~80 routes or fewer)
 - **TrieMatcher**: Best for large apps (hundreds of routes)
 
-Note: Performance depends on your specific patterns—benchmark both to verify which is faster for your app.
+Note: Performance depends on your specific patterns—benchmark both to verify
+which is faster for your app.
 
 Both implement the `Matcher` API so you can swap them out easily:
 
@@ -146,7 +158,8 @@ router.match('https://example.com/search?q=hello')
 
 ## Benchmark
 
-To run benchmarks comparing `route-pattern` performance with comparable libraries:
+To run benchmarks comparing `route-pattern` performance with comparable
+libraries:
 
 ```sh
 pnpm bench bench/comparison.bench.ts

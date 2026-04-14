@@ -8,8 +8,8 @@
 </div>
 
 > **Note:** While MediaRSS is primarily designed and tested for audio files
-> (MP3, M4A, M4B, etc.), video files should also work. However, video support
-> is not the primary focus and may have limitations (especially with regard to
+> (MP3, M4A, M4B, etc.), video files should also work. However, video support is
+> not the primary focus and may have limitations (especially with regard to
 > performance) with certain formats.
 
 ## Remix Version Notes
@@ -25,7 +25,7 @@ router behavior expectations), see
 - Runtime: Node.js 24
 - Package manager: npm
 - Linter: `oxlint`
-- Formatter: Biome
+- Formatter: `oxfmt` (shared preset from `@epic-web/config`)
 
 Common commands:
 
@@ -98,24 +98,20 @@ If you're running this on a Synology NAS, follow these specific instructions:
 1. Install Docker from the Synology Package Center if you haven't already.
 
 2. Create a shared folder for the database files:
-
    - Open Control Panel → Shared Folder
    - Create a new shared folder named `docker-data` (or your preferred name)
    - Inside this folder, create a directory called `mediarss`
 
 3. Note your media locations:
-
    - Synology typically stores media files in `/volume1/[shared-folder-name]`
    - You can mount any number of media directories from your Synology
 
 4. Open Docker in Synology DSM:
-
    - Go to "Registry" and search for the mediarss image
    - Download the image
    - Go to "Container" and launch using the image
 
 5. When setting up the container in the Synology Docker UI:
-
    - In the "Advanced Settings" → "Volume" tab:
      - Add a volume mount for the database:
        - Mount path: `/data`
@@ -128,9 +124,9 @@ If you're running this on a Synology NAS, follow these specific instructions:
          `/media/personal`, etc.)
        - Local path: `/volume1/[your-folder]`
        - Check "Read-only" if you only need to serve existing files
-       - **Uncheck "Read-only"** if you want to upload media via the admin dashboard
+       - **Uncheck "Read-only"** if you want to upload media via the admin
+         dashboard
    - In the "Port Settings" tab:
-
      - Local Port: 22050 (or your preferred port)
      - Container Port: 22050 (or whatever you set PORT to in the env settings)
 
@@ -195,9 +191,10 @@ docker run -d \
 
 **Note on volume permissions:**
 
-- The `:ro` flag makes media volumes read-only, which is recommended for security
-  if you only need to serve existing files.
-- **To enable media uploads**, mount volumes read/write by removing the `:ro` flag:
+- The `:ro` flag makes media volumes read-only, which is recommended for
+  security if you only need to serve existing files.
+- **To enable media uploads**, mount volumes read/write by removing the `:ro`
+  flag:
   ```bash
   -v /path/to/audiobooks:/media/audiobooks \
   ```
@@ -208,18 +205,16 @@ docker run -d \
 The application requires these volume mounts:
 
 1. **Database Volume** (`/data`):
-
    - Purpose: Stores SQLite databases
    - Mount point: `/data`
    - Example: `-v /path/to/your/data:/data`
 
 2. **Artwork Volume** (`/app/data/artwork`):
-
    - Purpose: Stores uploaded feed artwork images
    - Mount point: `/app/data/artwork`
    - Example: `-v /path/to/your/data/artwork:/app/data/artwork`
-   - **Important:** Without this mount, uploaded artwork will be lost on container
-     restart
+   - **Important:** Without this mount, uploaded artwork will be lost on
+     container restart
 
 3. **Media Volumes** (any number allowed):
    - Purpose: Access to your audio files
@@ -277,27 +272,29 @@ The following environment variables can be configured:
 
 MediaRSS has two types of routes:
 
-- **Public routes** (`/feed/*`, `/media/*`, `/art/*`) - These are accessed by RSS
-  readers and podcast apps. They use secret tokens in URLs for access control.
+- **Public routes** (`/feed/*`, `/media/*`, `/art/*`) - These are accessed by
+  RSS readers and podcast apps. They use secret tokens in URLs for access
+  control.
 - **Admin routes** (`/`) - The dashboard for managing feeds. This should be
   protected.
 
-Since RSS readers need direct access to feed URLs without authentication prompts,
-we recommend using **Cloudflare Tunnel** to secure the admin dashboard rather
-than app-level authentication.
+Since RSS readers need direct access to feed URLs without authentication
+prompts, we recommend using **Cloudflare Tunnel** to secure the admin dashboard
+rather than app-level authentication.
 
 #### Why Cloudflare Tunnel?
 
 - **Free HTTPS** - Automatic SSL certificates, no configuration needed
-- **No port forwarding** - Outbound-only connection, your router stays locked down
+- **No port forwarding** - Outbound-only connection, your router stays locked
+  down
 - **Hidden IP** - Your home IP address is never exposed
 - **Access policies** - Add authentication at the edge (email OTP, SSO, etc.)
 - **Works with any DNS** - You don't need to move your domain to Cloudflare
 
 #### Setting Up Cloudflare Tunnel
 
-1. **Create a free Cloudflare account** and add your domain (you can use the free
-   plan).
+1. **Create a free Cloudflare account** and add your domain (you can use the
+   free plan).
 
 2. **Create a tunnel** in the Zero Trust dashboard:
    - Go to **Networks → Tunnels → Create a tunnel**
@@ -316,8 +313,8 @@ than app-level authentication.
      tunnel run --token YOUR_TUNNEL_TOKEN
    ```
 
-   > **Note:** The `--network host` flag is required so that cloudflared can reach
-   > MediaRSS via `localhost`. Without it, `localhost` would refer to the
+   > **Note:** The `--network host` flag is required so that cloudflared can
+   > reach MediaRSS via `localhost`. Without it, `localhost` would refer to the
    > cloudflared container itself, not your NAS.
 
 4. **Configure the public hostname** in the tunnel settings:

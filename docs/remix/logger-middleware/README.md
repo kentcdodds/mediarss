@@ -1,10 +1,12 @@
 # logger-middleware
 
-HTTP request/response logging middleware for Remix. It logs request metadata and response details with configurable output formats.
+HTTP request/response logging middleware for Remix. It logs request metadata and
+response details with configurable output formats.
 
 ## Features
 
-- **Request/Response Logging** - Logs method, path, status, and response metadata
+- **Request/Response Logging** - Logs method, path, status, and response
+  metadata
 - **Token-Based Formatting** - Customize log output with built-in placeholders
 - **Structured Timing Data** - Includes request duration and timestamps
 
@@ -21,7 +23,7 @@ import { createRouter } from 'remix/fetch-router'
 import { logger } from 'remix/logger-middleware'
 
 let router = createRouter({
-  middleware: [logger()],
+	middleware: [logger()],
 })
 
 // Logs: [19/Nov/2025:14:32:10 -0800] GET /users/123 200 1234
@@ -29,7 +31,8 @@ let router = createRouter({
 
 ### Custom Format
 
-You can use the `format` option to customize the log format. The following tokens are available:
+You can use the `format` option to customize the log format. The following
+tokens are available:
 
 - `%date` - Date and time in Apache/nginx format (dd/Mon/yyyy:HH:mm:ss ±zzzz)
 - `%dateISO` - Date and time in ISO format
@@ -52,11 +55,11 @@ You can use the `format` option to customize the log format. The following token
 
 ```ts
 let router = createRouter({
-  middleware: [
-    logger({
-      format: '%method %path - %status (%duration ms)',
-    }),
-  ],
+	middleware: [
+		logger({
+			format: '%method %path - %status (%duration ms)',
+		}),
+	],
 })
 // Logs: GET /users/123 - 200 (42 ms)
 ```
@@ -65,11 +68,12 @@ For Apache-style combined log format, you can use the following format:
 
 ```ts
 let router = createRouter({
-  middleware: [
-    logger({
-      format: '%host - - [%date] "%method %path" %status %contentLength "%referer" "%userAgent"',
-    }),
-  ],
+	middleware: [
+		logger({
+			format:
+				'%host - - [%date] "%method %path" %status %contentLength "%referer" "%userAgent"',
+		}),
+	],
 })
 ```
 
@@ -83,19 +87,20 @@ import { createWriteStream } from 'node:fs'
 let logStream = createWriteStream('access.log', { flags: 'a' })
 
 let router = createRouter({
-  middleware: [
-    logger({
-      log(message) {
-        logStream.write(message + '\n')
-      },
-    }),
-  ],
+	middleware: [
+		logger({
+			log(message) {
+				logStream.write(message + '\n')
+			},
+		}),
+	],
 })
 ```
 
 ## Related Packages
 
-- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) - Router for the web Fetch API
+- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
+  Router for the web Fetch API
 
 ## License
 

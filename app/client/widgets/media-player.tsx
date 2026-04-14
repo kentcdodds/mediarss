@@ -413,7 +413,6 @@ function MediaPlayerContent() {
 						]}
 					>
 						{isVideoFile ? (
-							// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
 							<video
 								src={media.streamUrl}
 								controls
@@ -429,7 +428,6 @@ function MediaPlayerContent() {
 								Your browser does not support video playback.
 							</video>
 						) : (
-							// biome-ignore lint/a11y/useMediaCaption: Media files don't include caption tracks
 							<audio
 								src={media.streamUrl}
 								controls

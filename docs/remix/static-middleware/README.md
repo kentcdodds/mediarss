@@ -1,12 +1,16 @@
 # static-middleware
 
-Static file serving middleware for Remix. Serves static files from a directory with support for ETags, range requests, and conditional requests.
+Static file serving middleware for Remix. Serves static files from a directory
+with support for ETags, range requests, and conditional requests.
 
 ## Features
 
-- [ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag) support (weak and strong)
-- [Range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests) support (HTTP 206 Partial Content)
-- [Conditional request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) support (If-None-Match, If-Modified-Since)
+- [ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag) support
+  (weak and strong)
+- [Range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests)
+  support (HTTP 206 Partial Content)
+- [Conditional request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests)
+  support (If-None-Match, If-Modified-Since)
 - Path traversal protection
 - Automatic fallback to next middleware/handler if file not found
 
@@ -25,7 +29,7 @@ import { createRouter } from 'remix/fetch-router'
 import { staticFiles } from 'remix/static-middleware'
 
 let router = createRouter({
-  middleware: [staticFiles('./public')],
+	middleware: [staticFiles('./public')],
 })
 
 router.get('/', () => new Response('Home'))
@@ -33,15 +37,18 @@ router.get('/', () => new Response('Home'))
 
 ### With Cache Control
 
-Internally, the `staticFiles()` middleware uses the [`createFileResponse()` helper from `@remix-run/response`](https://github.com/remix-run/remix/tree/main/packages/response/README.md#file-responses) to send files with full HTTP semantics. This means it also accepts the same options as the `createFileResponse()` helper.
+Internally, the `staticFiles()` middleware uses the
+[`createFileResponse()` helper from `@remix-run/response`](https://github.com/remix-run/remix/tree/main/packages/response/README.md#file-responses)
+to send files with full HTTP semantics. This means it also accepts the same
+options as the `createFileResponse()` helper.
 
 ```ts
 let router = createRouter({
-  middleware: [
-    staticFiles('./public', {
-      cacheControl: 'public, max-age=31536000, immutable', // 1 year
-    }),
-  ],
+	middleware: [
+		staticFiles('./public', {
+			cacheControl: 'public, max-age=31536000, immutable', // 1 year
+		}),
+	],
 })
 ```
 
@@ -49,14 +56,14 @@ let router = createRouter({
 
 ```ts
 let router = createRouter({
-  middleware: [
-    staticFiles('./public', {
-      filter(path) {
-        // Don't serve hidden files
-        return !path.startsWith('.')
-      },
-    }),
-  ],
+	middleware: [
+		staticFiles('./public', {
+			filter(path) {
+				// Don't serve hidden files
+				return !path.startsWith('.')
+			},
+		}),
+	],
 })
 ```
 
@@ -64,12 +71,12 @@ let router = createRouter({
 
 ```ts
 let router = createRouter({
-  middleware: [
-    staticFiles('./public'),
-    staticFiles('./assets', {
-      cacheControl: 'public, max-age=31536000',
-    }),
-  ],
+	middleware: [
+		staticFiles('./public'),
+		staticFiles('./assets', {
+			cacheControl: 'public, max-age=31536000',
+		}),
+	],
 })
 ```
 
@@ -81,8 +88,10 @@ let router = createRouter({
 
 ## Related Packages
 
-- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) - Router for the web Fetch API
-- [`lazy-file`](https://github.com/remix-run/remix/tree/main/packages/lazy-file) - Used internally for streaming file contents
+- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
+  Router for the web Fetch API
+- [`lazy-file`](https://github.com/remix-run/remix/tree/main/packages/lazy-file) -
+  Used internally for streaming file contents
 
 ## License
 

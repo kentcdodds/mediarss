@@ -1,21 +1,23 @@
 # Getting Started
 
-Create interactive UIs with Remix Component using a two-phase component model: setup runs once, render runs on every update.
+Create interactive UIs with Remix Component using a two-phase component model:
+setup runs once, render runs on every update.
 
 ## Client-Only Root
 
-To start using Remix Component on the client, create a root and render your top-level component:
+To start using Remix Component on the client, create a root and render your
+top-level component:
 
 ```tsx
 import { createRoot } from 'remix/component'
 import type { Handle } from 'remix/component'
 
 function App(handle: Handle) {
-  return () => (
-    <div>
-      <h1>Hello, World!</h1>
-    </div>
-  )
+	return () => (
+		<div>
+			<h1>Hello, World!</h1>
+		</div>
+	)
 }
 
 // Create a root attached to a DOM element
@@ -26,27 +28,29 @@ let root = createRoot(container)
 root.render(<App />)
 ```
 
-The `createRoot` function takes a DOM element (or `document.body`) and returns a root object with a `render` method. You can call `render` multiple times to update the app:
+The `createRoot` function takes a DOM element (or `document.body`) and returns a
+root object with a `render` method. You can call `render` multiple times to
+update the app:
 
 ```tsx
 function App(handle: Handle) {
-  let count = 0
+	let count = 0
 
-  return () => (
-    <div>
-      <h1>Count: {count}</h1>
-      <button
-        mix={[
-          on('click', () => {
-            count++
-            handle.update()
-          }),
-        ]}
-      >
-        Increment
-      </button>
-    </div>
-  )
+	return () => (
+		<div>
+			<h1>Count: {count}</h1>
+			<button
+				mix={[
+					on('click', () => {
+						count++
+						handle.update()
+					}),
+				]}
+			>
+				Increment
+			</button>
+		</div>
+	)
 }
 
 let root = createRoot(document.body)
@@ -76,7 +80,8 @@ root.dispose()
 
 ## Server-Rendered App
 
-For a server-rendered app, define your page as a component, render it with `renderToStream`, and hydrate client entries on the client:
+For a server-rendered app, define your page as a component, render it with
+`renderToStream`, and hydrate client entries on the client:
 
 ### Server
 
@@ -86,27 +91,27 @@ import { Frame } from 'remix/component'
 import { Counter } from './assets/counter.tsx'
 
 function App() {
-  return () => (
-    <html>
-      <head>
-        <title>My App</title>
-        <script async type="module" src="/assets/entry.js" />
-      </head>
-      <body>
-        <h1>Hello</h1>
-        <Counter setup={0} label="Clicks" />
-        <Frame src="/sidebar" fallback={<div>Loading...</div>} />
-      </body>
-    </html>
-  )
+	return () => (
+		<html>
+			<head>
+				<title>My App</title>
+				<script async type="module" src="/assets/entry.js" />
+			</head>
+			<body>
+				<h1>Hello</h1>
+				<Counter setup={0} label="Clicks" />
+				<Frame src="/sidebar" fallback={<div>Loading...</div>} />
+			</body>
+		</html>
+	)
 }
 
 let stream = renderToStream(<App />, {
-  resolveFrame: (src) => fetchFrameHtml(src),
+	resolveFrame: (src) => fetchFrameHtml(src),
 })
 
 return new Response(stream, {
-  headers: { 'Content-Type': 'text/html; charset=utf-8' },
+	headers: { 'Content-Type': 'text/html; charset=utf-8' },
 })
 ```
 
@@ -117,14 +122,14 @@ return new Response(stream, {
 import { run } from 'remix/component'
 
 let app = run({
-  async loadModule(moduleUrl, exportName) {
-    let mod = await import(moduleUrl)
-    return mod[exportName]
-  },
-  async resolveFrame(src, signal) {
-    let res = await fetch(src, { headers: { accept: 'text/html' }, signal })
-    return res.body ?? (await res.text())
-  },
+	async loadModule(moduleUrl, exportName) {
+		let mod = await import(moduleUrl)
+		return mod[exportName]
+	},
+	async resolveFrame(src, signal) {
+		let res = await fetch(src, { headers: { accept: 'text/html' }, signal })
+		return res.body ?? (await res.text())
+	},
 })
 
 await app.ready()
@@ -137,28 +142,28 @@ await app.ready()
 import { clientEntry, on, type Handle } from 'remix/component'
 
 export let Counter = clientEntry(
-  '/assets/counter.js#Counter',
-  function Counter(handle: Handle, setup: number) {
-    let count = setup
+	'/assets/counter.js#Counter',
+	function Counter(handle: Handle, setup: number) {
+		let count = setup
 
-    return (props: { label: string }) => (
-      <div>
-        <span>
-          {props.label}: {count}
-        </span>
-        <button
-          mix={[
-            on('click', () => {
-              count++
-              handle.update()
-            }),
-          ]}
-        >
-          +
-        </button>
-      </div>
-    )
-  },
+		return (props: { label: string }) => (
+			<div>
+				<span>
+					{props.label}: {count}
+				</span>
+				<button
+					mix={[
+						on('click', () => {
+							count++
+							handle.update()
+						}),
+					]}
+				>
+					+
+				</button>
+			</div>
+		)
+	},
 )
 ```
 
@@ -166,7 +171,8 @@ export let Counter = clientEntry(
 
 - [Components](./components.md) - Component structure and runtime behavior
 - [Handle API](./handle.md) - The component's interface to the framework
-- [Server Rendering](./server-rendering.md) - `renderToString` and `renderToStream`
+- [Server Rendering](./server-rendering.md) - `renderToString` and
+  `renderToStream`
 - [Hydration](./hydration.md) - `clientEntry` and `run`
 - [Frames](./frames.md) - Streaming partial server UI with `<Frame>`
 - [Styling](./styling.md) - CSS mixin for inline styling

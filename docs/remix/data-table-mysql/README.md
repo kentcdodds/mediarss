@@ -1,14 +1,19 @@
 # data-table-mysql
 
-MySQL adapter for [`remix/data-table`](https://github.com/remix-run/remix/tree/main/packages/data-table).
+MySQL adapter for
+[`remix/data-table`](https://github.com/remix-run/remix/tree/main/packages/data-table).
 Use this package when you want `data-table` APIs backed by `mysql2`.
 
 ## Features
 
-- **Native `mysql2` Integration**: Works with `mysql2/promise` `Pool` and `PoolConnection` instances
-- **Full `data-table` API Support**: Queries, relations, writes, and transactions
-- **Adapter-Owned Compiler**: SQL compilation lives in this adapter, with optional shared pure helpers from `data-table`
-- **Migration DDL Support**: Compiles and executes `DataMigrationOperation` operations for `remix/data-table/migrations`
+- **Native `mysql2` Integration**: Works with `mysql2/promise` `Pool` and
+  `PoolConnection` instances
+- **Full `data-table` API Support**: Queries, relations, writes, and
+  transactions
+- **Adapter-Owned Compiler**: SQL compilation lives in this adapter, with
+  optional shared pure helpers from `data-table`
+- **Migration DDL Support**: Compiles and executes `DataMigrationOperation`
+  operations for `remix/data-table/migrations`
 - **MySQL Capabilities Enabled By Default**:
   - `returning: false`
   - `savepoints: true`
@@ -50,47 +55,52 @@ Import any driver-specific types you need directly from `mysql2/promise`.
 
 ### Capability Overrides For Testing
 
-Capability overrides are mainly for tests where you want to force or disable specific behavior
-checks. In production, keep defaults so adapter behavior matches MySQL behavior.
+Capability overrides are mainly for tests where you want to force or disable
+specific behavior checks. In production, keep defaults so adapter behavior
+matches MySQL behavior.
 
 ```ts
 import { createMysqlDatabaseAdapter } from 'remix/data-table-mysql'
 
 let adapter = createMysqlDatabaseAdapter(pool, {
-  capabilities: {
-    upsert: false,
-  },
+	capabilities: {
+		upsert: false,
+	},
 })
 ```
 
 ### `returning` On MySQL
 
-MySQL does not natively support SQL `RETURNING`. In this adapter, using `returning` on write
-operations throws `DataTableQueryError`.
+MySQL does not natively support SQL `RETURNING`. In this adapter, using
+`returning` on write operations throws `DataTableQueryError`.
 
-Use write metadata (`affectedRows`, `insertId`) on MySQL, or switch adapters when returned rows
-are required.
+Use write metadata (`affectedRows`, `insertId`) on MySQL, or switch adapters
+when returned rows are required.
 
 ```ts
 import { DataTableQueryError } from 'remix/data-table'
 
 try {
-  await db
-    .query(Accounts)
-    .insert({ email: 'a@example.com', status: 'active' }, { returning: ['id'] })
+	await db
+		.query(Accounts)
+		.insert({ email: 'a@example.com', status: 'active' }, { returning: ['id'] })
 } catch (error) {
-  if (error instanceof DataTableQueryError) {
-    // insert() returning is not supported by this adapter
-  }
+	if (error instanceof DataTableQueryError) {
+		// insert() returning is not supported by this adapter
+	}
 }
 ```
 
 ## Related Packages
 
-- [`data-table`](https://github.com/remix-run/remix/tree/main/packages/data-table) - Core query/relations API
-- [`data-schema`](https://github.com/remix-run/remix/tree/main/packages/data-schema) - Schema parsing and validation
-- [`data-table-postgres`](https://github.com/remix-run/remix/tree/main/packages/data-table-postgres) - PostgreSQL adapter
-- [`data-table-sqlite`](https://github.com/remix-run/remix/tree/main/packages/data-table-sqlite) - SQLite adapter
+- [`data-table`](https://github.com/remix-run/remix/tree/main/packages/data-table) -
+  Core query/relations API
+- [`data-schema`](https://github.com/remix-run/remix/tree/main/packages/data-schema) -
+  Schema parsing and validation
+- [`data-table-postgres`](https://github.com/remix-run/remix/tree/main/packages/data-table-postgres) -
+  PostgreSQL adapter
+- [`data-table-sqlite`](https://github.com/remix-run/remix/tree/main/packages/data-table-sqlite) -
+  SQLite adapter
 
 ## License
 

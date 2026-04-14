@@ -1,27 +1,31 @@
 # Testing
 
-When writing tests, use `root.flush()` to synchronously execute all pending updates and tasks. This ensures the DOM and component state are fully synchronized before making assertions.
+When writing tests, use `root.flush()` to synchronously execute all pending
+updates and tasks. This ensures the DOM and component state are fully
+synchronized before making assertions.
 
 ## Basic Testing Pattern
 
-The main use case is flushing after events that call `handle.update()`. Since updates are asynchronous, you need to flush to ensure the DOM reflects the changes:
+The main use case is flushing after events that call `handle.update()`. Since
+updates are asynchronous, you need to flush to ensure the DOM reflects the
+changes:
 
 ```tsx
 function Counter(handle: Handle) {
-  let count = 0
+	let count = 0
 
-  return () => (
-    <button
-      mix={[
-        on('click', () => {
-          count++
-          handle.update()
-        }),
-      ]}
-    >
-      Count: {count}
-    </button>
-  )
+	return () => (
+		<button
+			mix={[
+				on('click', () => {
+					count++
+					handle.update()
+				}),
+			]}
+		>
+			Count: {count}
+		</button>
+	)
 }
 
 // In your test
@@ -40,7 +44,8 @@ expect(container.textContent).toBe('Count: 1')
 
 ## Why Flush After Initial Render?
 
-You should also flush after the initial `root.render()` to ensure event listeners are attached and the DOM is ready for interaction:
+You should also flush after the initial `root.render()` to ensure event
+listeners are attached and the DOM is ready for interaction:
 
 ```tsx
 let root = createRoot(container)
@@ -57,17 +62,17 @@ For components with async operations in `queueTask`, flush after each step:
 
 ```tsx
 function AsyncLoader(handle: Handle) {
-  let data: string | null = null
+	let data: string | null = null
 
-  handle.queueTask(async (signal) => {
-    let response = await fetch('/api/data', { signal })
-    let json = await response.json()
-    if (signal.aborted) return
-    data = json.value
-    handle.update()
-  })
+	handle.queueTask(async (signal) => {
+		let response = await fetch('/api/data', { signal })
+		let json = await response.json()
+		if (signal.aborted) return
+		data = json.value
+		handle.update()
+	})
 
-  return () => <div>{data ?? 'Loading...'}</div>
+	return () => <div>{data ?? 'Loading...'}</div>
 }
 
 // In your test (with mocked fetch)

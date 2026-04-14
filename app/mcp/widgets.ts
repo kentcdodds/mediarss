@@ -109,7 +109,9 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				<meta name="color-scheme" content="light dark" />
 				<title>Media Player</title>
-				${html.raw`<script type="importmap">${importmapJson}</script>`}
+				${html.raw`<script type="importmap">
+					${importmapJson}
+				</script>`}
 				${html.raw`${modulePreloads}`}
 				<style>
 					/* Reset and base styles */
@@ -122,7 +124,10 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 					body {
 						margin: 0;
 						padding: 0;
-						font-family: system-ui, -apple-system, sans-serif;
+						font-family:
+							system-ui,
+							-apple-system,
+							sans-serif;
 						font-size: 1rem;
 						line-height: 1.5;
 						color: #f9f9f9;

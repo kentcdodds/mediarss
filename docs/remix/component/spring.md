@@ -1,6 +1,7 @@
 # Spring API
 
-A physics-based spring animation function that returns an iterator with CSS easing.
+A physics-based spring animation function that returns an iterator with CSS
+easing.
 
 ## Basic Usage
 
@@ -22,9 +23,9 @@ spring({ duration: 400, bounce: 0.3 })
 
 ```ts
 interface SpringIterator extends IterableIterator<number> {
-  duration: number // CSS duration in ms (e.g., 550)
-  easing: string // CSS linear() function
-  toString(): string // "550ms linear(...)"
+	duration: number // CSS duration in ms (e.g., 550)
+	easing: string // CSS linear() function
+	toString(): string // "550ms linear(...)"
 }
 ```
 
@@ -106,9 +107,9 @@ spring('smooth', { duration: 800 }) // slower smooth
 
 ```tsx
 spring({
-  duration: 500, // perceived duration in milliseconds
-  bounce: 0.3, // -1 to 1 (negative = overdamped, 0 = critical, positive = bouncy)
-  velocity: 0, // initial velocity in units per second
+	duration: 500, // perceived duration in milliseconds
+	bounce: 0.3, // -1 to 1 (negative = overdamped, 0 = critical, positive = bouncy)
+	velocity: 0, // initial velocity in units per second
 })
 ```
 
@@ -154,7 +155,7 @@ The spring iterator yields position values from 0 to 1, one per frame (~60fps):
 let s = spring('bouncy')
 
 for (let t of s) {
-  console.log(t) // 0, 0.015, 0.058, 0.121, ... 1
+	console.log(t) // 0, 0.015, 0.058, 0.121, ... 1
 }
 ```
 
@@ -167,9 +168,9 @@ let from = 100
 let to = 500
 
 for (let t of spring('bouncy')) {
-  let value = from + (to - from) * t // 100 → 500
-  updateSomething(value)
-  await nextFrame()
+	let value = from + (to - from) * t // 100 → 500
+	updateSomething(value)
+	await nextFrame()
 }
 ```
 
@@ -179,14 +180,14 @@ for (let t of spring('bouncy')) {
 let s = spring('bouncy')
 
 function draw() {
-  let { value, done } = s.next()
+	let { value, done } = s.next()
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.beginPath()
-  ctx.arc(value * 400, 100, 20, 0, Math.PI * 2) // x: 0 → 400
-  ctx.fill()
+	ctx.clearRect(0, 0, canvas.width, canvas.height)
+	ctx.beginPath()
+	ctx.arc(value * 400, 100, 20, 0, Math.PI * 2) // x: 0 → 400
+	ctx.fill()
 
-  if (!done) requestAnimationFrame(draw)
+	if (!done) requestAnimationFrame(draw)
 }
 
 draw()
@@ -196,19 +197,19 @@ draw()
 
 ```tsx
 let fromX = 0,
-  toX = 200
+	toX = 200
 let fromY = 0,
-  toY = 100
+	toY = 100
 let fromScale = 0.5,
-  toScale = 1
+	toScale = 1
 
 for (let t of spring('bouncy')) {
-  let x = fromX + (toX - fromX) * t
-  let y = fromY + (toY - fromY) * t
-  let scale = fromScale + (toScale - fromScale) * t
+	let x = fromX + (toX - fromX) * t
+	let y = fromY + (toY - fromY) * t
+	let scale = fromScale + (toScale - fromScale) * t
 
-  render({ x, y, scale })
-  await nextFrame()
+	render({ x, y, scale })
+	await nextFrame()
 }
 ```
 
@@ -219,12 +220,12 @@ let fromRGB = [255, 0, 0] // red
 let toRGB = [0, 0, 255] // blue
 
 for (let t of spring('smooth')) {
-  let r = Math.round(fromRGB[0] + (toRGB[0] - fromRGB[0]) * t)
-  let g = Math.round(fromRGB[1] + (toRGB[1] - fromRGB[1]) * t)
-  let b = Math.round(fromRGB[2] + (toRGB[2] - fromRGB[2]) * t)
+	let r = Math.round(fromRGB[0] + (toRGB[0] - fromRGB[0]) * t)
+	let g = Math.round(fromRGB[1] + (toRGB[1] - fromRGB[1]) * t)
+	let b = Math.round(fromRGB[2] + (toRGB[2] - fromRGB[2]) * t)
 
-  element.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
-  await nextFrame()
+	element.style.backgroundColor = `rgb(${r}, ${g}, ${b})`
+	await nextFrame()
 }
 ```
 
@@ -252,7 +253,7 @@ spring.presets
 
 ```tsx
 element.animate(keyframes, {
-  ...spring('bouncy'),
+	...spring('bouncy'),
 })
 ```
 
@@ -260,26 +261,26 @@ element.animate(keyframes, {
 
 ```tsx
 function AnimatedCard(handle: Handle) {
-  let isExpanded = false
+	let isExpanded = false
 
-  return () => (
-    <div
-      mix={[
-        css({
-          transition: spring.transition(['width', 'height'], 'bouncy'),
-        }),
-        on('click', () => {
-          isExpanded = !isExpanded
-          handle.update()
-        }),
-      ]}
-      style={{
-        width: isExpanded ? '300px' : '100px',
-        height: isExpanded ? '200px' : '100px',
-      }}
-    >
-      Click me
-    </div>
-  )
+	return () => (
+		<div
+			mix={[
+				css({
+					transition: spring.transition(['width', 'height'], 'bouncy'),
+				}),
+				on('click', () => {
+					isExpanded = !isExpanded
+					handle.update()
+				}),
+			]}
+			style={{
+				width: isExpanded ? '300px' : '100px',
+				height: isExpanded ? '200px' : '100px',
+			}}
+		>
+			Click me
+		</div>
+	)
 }
 ```

@@ -1070,7 +1070,7 @@ export async function initializeTools(
 					content: [
 						{ type: 'text', text: lines.join('\n') },
 						uiResource,
-						// biome-ignore lint/suspicious/noExplicitAny: UIResource type from @mcp-ui/server is compatible at runtime but TypeScript can't verify cross-package type compatibility
+						// oxlint-disable-next-line typescript/no-explicit-any -- UIResource from @mcp-ui/server is compatible at runtime; TS cannot verify cross-package typing here
 					] as any,
 					structuredContent,
 				}

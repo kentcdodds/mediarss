@@ -1,8 +1,10 @@
 # MCP Server Best Practices
 
-*Learnings from analyzing high-quality MCP server implementations*
+_Learnings from analyzing high-quality MCP server implementations_
 
-This document summarizes best practices learned from analyzing the following MCP server implementations:
+This document summarizes best practices learned from analyzing the following MCP
+server implementations:
+
 - [Linear MCP Server](https://github.com/iceener/linear-streamable-mcp-server)
 - [Google Calendar MCP Server](https://github.com/iceener/google-calendar-streamable-mcp-server)
 - [Google Maps MCP Server](https://github.com/iceener/maps-streamable-mcp-server)
@@ -14,9 +16,11 @@ This document summarizes best practices learned from analyzing the following MCP
 
 ### What Great Servers Do
 
-Provide comprehensive server-level instructions that act as an "onboarding guide" for the AI. This is the first thing the AI reads when connecting.
+Provide comprehensive server-level instructions that act as an "onboarding
+guide" for the AI. This is the first thing the AI reads when connecting.
 
 **Best Practice Format:**
+
 ```
 Quick start
 - What to call first
@@ -38,6 +42,7 @@ Common patterns & examples
 ```
 
 **Example from Linear:**
+
 ```
 Quick start
 - Call 'workspace_metadata' first to fetch canonical identifiers you will reuse across tools.
@@ -53,7 +58,7 @@ Quick start
 
 ### What Great Servers Do
 
-Tools have *detailed, structured descriptions* that include:
+Tools have _detailed, structured descriptions_ that include:
 
 1. **What the tool does** (1-2 sentences)
 2. **Inputs** with examples and valid values
@@ -62,6 +67,7 @@ Tools have *detailed, structured descriptions* that include:
 5. **Examples** - concrete usage examples
 
 **Best Practice Format:**
+
 ```
 Brief description of what the tool does.
 
@@ -79,6 +85,7 @@ Next: Use tool_a to verify. Pass id to tool_b.
 ```
 
 **Example from Google Calendar:**
+
 ```
 Search events across ALL calendars by default. Returns merged results sorted by start time.
 
@@ -112,27 +119,34 @@ annotations: {
 }
 ```
 
-**Guidelines:**
-| Annotation | When to use `true` |
-|------------|-------------------|
-| `readOnlyHint` | GET/LIST operations |
-| `destructiveHint` | DELETE operations, irreversible changes |
-| `idempotentHint` | Same input always produces same result |
-| `openWorldHint` | Accesses external APIs/resources |
+**Guidelines:** | Annotation | When to use `true` |
+|------------|-------------------| | `readOnlyHint` | GET/LIST operations | |
+`destructiveHint` | DELETE operations, irreversible changes | | `idempotentHint`
+| Same input always produces same result | | `openWorldHint` | Accesses external
+APIs/resources |
 
-**Our Current State:** ✅ Annotations implemented using `server.registerTool()` API
+**Our Current State:** ✅ Annotations implemented using `server.registerTool()`
+API
 
-We use the newer `registerTool` API which supports both input schemas and annotations:
+We use the newer `registerTool` API which supports both input schemas and
+annotations:
+
 ```typescript
-server.registerTool('list_feeds', {
-  title: 'List Feeds',
-  description: '...',
-  inputSchema: { /* zod schema */ },
-  annotations: {
-    readOnlyHint: true,
-    destructiveHint: false,
-  },
-}, handler)
+server.registerTool(
+	'list_feeds',
+	{
+		title: 'List Feeds',
+		description: '...',
+		inputSchema: {
+			/* zod schema */
+		},
+		annotations: {
+			readOnlyHint: true,
+			destructiveHint: false,
+		},
+	},
+	handler,
+)
 ```
 
 ---
@@ -149,27 +163,32 @@ Rich, descriptive input schemas with:
 - **Format expectations** (dates, IDs, etc.)
 
 **Example:**
+
 ```typescript
 z.object({
-  calendarId: z
-    .union([z.literal('all'), z.string(), z.array(z.string())])
-    .optional()
-    .default('all')
-    .describe('Calendar ID(s). Use "all" (default) to search all calendars, a single ID, or array of IDs'),
-  
-  timeMin: z
-    .string()
-    .optional()
-    .describe('Start of time range (RFC3339 with timezone, e.g., 2025-12-06T19:00:00Z)'),
-  
-  maxResults: z
-    .number()
-    .int()
-    .min(1)
-    .max(250)
-    .optional()
-    .default(50)
-    .describe('Max events to return (1-250, default: 50)'),
+	calendarId: z
+		.union([z.literal('all'), z.string(), z.array(z.string())])
+		.optional()
+		.default('all')
+		.describe(
+			'Calendar ID(s). Use "all" (default) to search all calendars, a single ID, or array of IDs',
+		),
+
+	timeMin: z
+		.string()
+		.optional()
+		.describe(
+			'Start of time range (RFC3339 with timezone, e.g., 2025-12-06T19:00:00Z)',
+		),
+
+	maxResults: z
+		.number()
+		.int()
+		.min(1)
+		.max(250)
+		.optional()
+		.default(50)
+		.describe('Max events to return (1-250, default: 50)'),
 })
 ```
 
@@ -185,25 +204,29 @@ Return **both** human-readable text AND structured content:
 
 ```typescript
 return {
-  content: [{ 
-    type: 'text', 
-    text: `✓ Event created: [${title}](${htmlLink})\n  when: ${start}\n  meet: ${meetLink}` 
-  }],
-  structuredContent: {
-    id: event.id,
-    summary: event.summary,
-    // ... full structured data
-  },
+	content: [
+		{
+			type: 'text',
+			text: `✓ Event created: [${title}](${htmlLink})\n  when: ${start}\n  meet: ${meetLink}`,
+		},
+	],
+	structuredContent: {
+		id: event.id,
+		summary: event.summary,
+		// ... full structured data
+	},
 }
 ```
 
 **Human-readable text best practices:**
+
 - Use **markdown** formatting (links, bold, lists)
 - Use **emojis** for status (✓, ⚠️, 🟢, 🔴)
 - Include **context** (what calendar, which feed)
 - Provide **next steps** in the text
 
 **Example from Tesla:**
+
 ```
 ## Model 3
 
@@ -233,21 +256,22 @@ Keep tool/prompt/resource metadata in a centralized file:
 ```typescript
 // config/metadata.ts
 export const serverMetadata = {
-  title: 'Media Server',
-  instructions: `...comprehensive instructions...`,
+	title: 'Media Server',
+	instructions: `...comprehensive instructions...`,
 }
 
 export const toolsMetadata = {
-  list_feeds: {
-    name: 'list_feeds',
-    title: 'List Feeds',
-    description: '...detailed description...',
-  },
-  // ... more tools
+	list_feeds: {
+		name: 'list_feeds',
+		title: 'List Feeds',
+		description: '...detailed description...',
+	},
+	// ... more tools
 }
 ```
 
 **Benefits:**
+
 - Single source of truth for descriptions
 - Easy to review/update all metadata
 - Consistent naming and style
@@ -261,17 +285,18 @@ export const toolsMetadata = {
 
 ### What Great Servers Do
 
-| Pattern | Example | Use Case |
-|---------|---------|----------|
-| `list_*` | `list_feeds`, `list_users` | Get multiple items |
-| `get_*` | `get_feed`, `get_issue` | Get single item by ID |
-| `create_*` | `create_feed` | Create new item |
-| `update_*` | `update_feed` | Modify existing item |
-| `delete_*` | `delete_feed` | Remove item |
-| `browse_*` | `browse_media` | Navigate/explore |
-| `search_*` | `search_events` | Query with filters |
+| Pattern    | Example                    | Use Case              |
+| ---------- | -------------------------- | --------------------- |
+| `list_*`   | `list_feeds`, `list_users` | Get multiple items    |
+| `get_*`    | `get_feed`, `get_issue`    | Get single item by ID |
+| `create_*` | `create_feed`              | Create new item       |
+| `update_*` | `update_feed`              | Modify existing item  |
+| `delete_*` | `delete_feed`              | Remove item           |
+| `browse_*` | `browse_media`             | Navigate/explore      |
+| `search_*` | `search_events`            | Query with filters    |
 
 **Consistency rules:**
+
 - Use `snake_case` for tool names
 - Group related tools with common prefix
 - Use singular nouns for get/create, plural for list
@@ -288,17 +313,20 @@ Provide helpful, actionable error messages:
 
 ```typescript
 if (!feed) {
-  return {
-    content: [{
-      type: 'text',
-      text: `Feed "${feedId}" not found.\n\nNext: Use list_feeds to see available feeds.`,
-    }],
-    isError: true,
-  }
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `Feed "${feedId}" not found.\n\nNext: Use list_feeds to see available feeds.`,
+			},
+		],
+		isError: true,
+	}
 }
 ```
 
 **Best practices:**
+
 - Explain **what went wrong**
 - Suggest **how to fix it**
 - Reference **related tools** that can help
@@ -330,6 +358,7 @@ return {
 ```
 
 **In descriptions:**
+
 ```
 Returns: { items[], pagination: { hasMore, nextCursor } }
 
@@ -345,11 +374,13 @@ Pass nextCursor to fetch the next page.
 ### What Great Servers Do
 
 Resources provide **read-only data access** with:
+
 - Clear URI schemes (`media://feeds`, `media://feeds/{id}`)
 - Proper MIME types
 - Descriptions that explain the data structure
 
 **Good resource examples:**
+
 - `media://server` — Server info and statistics
 - `media://feeds` — All feeds list
 - `media://feeds/{id}` — Individual feed details
@@ -371,6 +402,7 @@ Prompts are **task-oriented conversation starters**:
 - Support **optional parameters** to customize the task
 
 **Example prompt:**
+
 ```
 I want to create a new feed. Please help me decide:
 
@@ -391,16 +423,20 @@ Please ask me some questions to understand what I'm trying to create, then help 
 ## Summary: Action Items for Our MCP Server
 
 ### High Priority
+
 1. ✅ Add comprehensive server instructions
 2. ✅ Enhance tool descriptions with examples, inputs, returns, next steps
-3. ✅ Tool annotations (readOnlyHint, destructiveHint, etc.) — Using `registerTool` API
+3. ✅ Tool annotations (readOnlyHint, destructiveHint, etc.) — Using
+   `registerTool` API
 4. ✅ Improve response formatting (human-readable + structured)
 
 ### Medium Priority
+
 5. ✅ Create centralized metadata file
 6. ✅ Add helpful error messages with suggestions
 7. ✅ Enhance input schema descriptions
 
 ### Lower Priority
+
 8. Consider adding pagination support
 9. Review naming consistency

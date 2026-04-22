@@ -28,3 +28,26 @@ test('admin media sort select reflects URL state across navigation', async ({
 	await expect(page).toHaveURL(/\/admin\/media\?q=demo&sort=title-az$/)
 	await expect(sortSelect).toHaveValue('title-az')
 })
+
+test('query-only replace navigation preserves scroll position', async ({
+	page,
+}) => {
+	await page.goto('/admin/media?q=demo')
+
+	await page.evaluate(() => {
+		const spacer = document.createElement('div')
+		spacer.id = 'playwright-scroll-spacer'
+		spacer.style.height = '3000px'
+		document.body.appendChild(spacer)
+	})
+
+	await page.evaluate(() => window.scrollTo(0, 1200))
+	await page.waitForTimeout(100)
+
+	const sortSelect = page.locator('#media-sort')
+	await sortSelect.selectOption('title-az')
+	await expect(page).toHaveURL(/\/admin\/media\?q=demo&sort=title-az$/)
+
+	const scrollY = await page.evaluate(() => window.scrollY)
+	expect(scrollY).toBeGreaterThanOrEqual(1100)
+})

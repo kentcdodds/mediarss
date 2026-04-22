@@ -111,10 +111,13 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 		const destination = new URL(event.destination.url)
 		if (!isRouterOwnedPath(destination.pathname)) return
+		const shouldNotify = shouldNotifyNavigationEvent(event.info)
 
 		event.intercept({
+			focusReset: shouldNotify ? 'after-transition' : 'manual',
+			scroll: shouldNotify ? 'after-transition' : 'manual',
 			handler: async () => {
-				this.#syncToUrl(destination, shouldNotifyNavigationEvent(event.info))
+				this.#syncToUrl(destination, shouldNotify)
 			},
 		})
 	}

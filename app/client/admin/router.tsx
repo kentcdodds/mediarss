@@ -13,6 +13,25 @@ import {
 	getWindowLocationHref,
 } from './router-navigation.ts'
 
+function writeAdminDebugLog(
+	hypothesisId: string,
+	location: string,
+	message: string,
+	data: Record<string, unknown>,
+) {
+	void fetch('/admin/api/debug-log', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			hypothesisId,
+			location,
+			message,
+			data,
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {})
+}
+
 type RouteMatch = {
 	path: string
 	params: Record<string, string>
@@ -95,6 +114,20 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	}
 
 	handleNavigation = (event: NavigateEvent) => {
+		// #region agent log
+		writeAdminDebugLog(
+			'C',
+			'app/client/admin/router.tsx:111',
+			'router handleNavigation entry',
+			{
+				currentHref: this.#currentHref,
+				destinationUrl: event.destination.url,
+				navigationType: event.navigationType,
+				canIntercept: event.canIntercept,
+				hashChange: event.hashChange,
+			},
+		)
+		// #endregion
 		if (
 			!shouldInterceptNavigationEvent({
 				canIntercept: event.canIntercept,
@@ -123,6 +156,19 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		if (!target) return
 		if (getRelativeHref(target) === getWindowLocationHref()) return
 
+		// #region agent log
+		writeAdminDebugLog(
+			'C',
+			'app/client/admin/router.tsx:144',
+			'router commitNavigation',
+			{
+				path,
+				historyMode,
+				targetHref: target.href,
+				currentHref: getWindowLocationHref(),
+			},
+		)
+		// #endregion
 		const transition = window.navigation.navigate(target.href, {
 			history: historyMode,
 		})
@@ -134,6 +180,19 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		const nextHref = getRelativeHref(url)
 		if (nextHref === this.#currentHref) return
 
+		// #region agent log
+		writeAdminDebugLog(
+			'C',
+			'app/client/admin/router.tsx:164',
+			'router syncToUrl',
+			{
+				previousHref: this.#currentHref,
+				nextHref,
+				nextPathname: url.pathname,
+				nextSearch: url.search,
+			},
+		)
+		// #endregion
 		this.#currentHref = nextHref
 		this.#currentPath = url.pathname
 		this.dispatchEvent(new Event('navigate'))

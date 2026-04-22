@@ -9,6 +9,7 @@ import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
 import adminApiBrowseHandlers from '#app/routes/admin/api/browse.ts'
+import adminApiDebugLogHandlers from '#app/routes/admin/api/debug-log.ts'
 import adminApiDirectoriesHandlers from '#app/routes/admin/api/directories.ts'
 import adminApiFeedAnalyticsHandlers from '#app/routes/admin/api/feeds.$id.analytics.ts'
 import adminApiFeedArtworkHandlers from '#app/routes/admin/api/feeds.$id.artwork.ts'
@@ -147,6 +148,7 @@ router.map(routes.mcpWidget, mcpWidgetHandlers)
 // Admin routes - API routes first (more specific), then catch-all
 router.map(routes.adminHealth, adminApiHealthHandlers)
 router.map(routes.adminApiVersion, adminApiVersionHandlers)
+router.map(routes.adminApiDebugLog, adminApiDebugLogHandlers)
 router.map(routes.adminAuthorize, adminAuthorizeHandlers)
 router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
 router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)

@@ -8,6 +8,7 @@ import {
 	isRouterOwnedPath,
 	normalizeNavigationTarget,
 	shouldInterceptNavigationEvent,
+	shouldNotifyNavigationEvent,
 	getNavigationSourceElement,
 	type NavigationHistoryBehavior,
 	getWindowLocationHref,
@@ -66,11 +67,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Navigate to a new path using the Navigation API.
 	 */
 	navigate(path: string) {
-		this.#commitNavigation(path, 'push')
+		this.#commitNavigation(path, 'push', true)
 	}
 
 	replace(path: string) {
-		this.#commitNavigation(path, 'replace')
+		this.#commitNavigation(path, 'replace', false)
 	}
 
 	/**
@@ -113,30 +114,37 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 		event.intercept({
 			handler: async () => {
-				this.#syncToUrl(destination)
+				this.#syncToUrl(destination, shouldNotifyNavigationEvent(event.info))
 			},
 		})
 	}
 
-	#commitNavigation(path: string, historyMode: NavigationHistoryBehavior) {
+	#commitNavigation(
+		path: string,
+		historyMode: NavigationHistoryBehavior,
+		notify: boolean,
+	) {
 		const target = normalizeNavigationTarget(path, window.location.origin)
 		if (!target) return
 		if (getRelativeHref(target) === getWindowLocationHref()) return
 
 		const transition = window.navigation.navigate(target.href, {
 			history: historyMode,
+			info: { notify },
 		})
 		void transition.committed.catch(() => {})
 		void transition.finished.catch(() => {})
 	}
 
-	#syncToUrl(url: URL) {
+	#syncToUrl(url: URL, notify: boolean = true) {
 		const nextHref = getRelativeHref(url)
 		if (nextHref === this.#currentHref) return
 
 		this.#currentHref = nextHref
 		this.#currentPath = url.pathname
-		this.dispatchEvent(new Event('navigate'))
+		if (notify) {
+			this.dispatchEvent(new Event('navigate'))
+		}
 	}
 }
 

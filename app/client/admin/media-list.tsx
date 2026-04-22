@@ -995,9 +995,15 @@ export function MediaList(handle: Handle) {
 									}),
 								]}
 							>
-								<option value="all">All directories</option>
+								<option value="all" selected={selectedDirectory === 'all'}>
+									All directories
+								</option>
 								{availableDirectories.map((directory) => (
-									<option key={directory} value={directory}>
+									<option
+										key={directory}
+										value={directory}
+										selected={directory === selectedDirectory}
+									>
 										{directory}
 									</option>
 								))}

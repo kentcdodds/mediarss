@@ -9,6 +9,8 @@ test('isRouterOwnedPath only matches admin SPA paths', () => {
 	expect(isRouterOwnedPath('/admin')).toBe(true)
 	expect(isRouterOwnedPath('/admin/feeds')).toBe(true)
 	expect(isRouterOwnedPath('/admin/media/library')).toBe(true)
+	expect(isRouterOwnedPath('/admin/api')).toBe(false)
+	expect(isRouterOwnedPath('/admin/api/feeds')).toBe(false)
 	expect(isRouterOwnedPath('/admin-api')).toBe(false)
 	expect(isRouterOwnedPath('/feed')).toBe(false)
 })

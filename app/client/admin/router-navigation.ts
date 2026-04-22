@@ -8,6 +8,10 @@ type ElementLike = {
 
 type NavigationSourceElement = ElementLike | null
 
+type NavigationInfo = {
+	notify?: boolean
+}
+
 export type RouterNavigateEventLike = {
 	canIntercept: boolean
 	hashChange: boolean
@@ -21,6 +25,7 @@ export type RouterNavigateEventLike = {
 export type NavigationHistoryBehavior = 'auto' | 'push' | 'replace'
 
 export const ROUTER_BASE_PATH = '/admin'
+const ROUTER_API_BASE_PATH = `${ROUTER_BASE_PATH}/api`
 
 export function getLocationHref(location: {
 	pathname: string
@@ -55,6 +60,12 @@ export function normalizeNavigationTarget(
 export function isRouterOwnedPath(pathname: string): boolean {
 	// Intentionally scope SPA interception to admin routes only.
 	// Non-admin links/forms should perform normal browser navigation.
+	if (
+		pathname === ROUTER_API_BASE_PATH ||
+		pathname.startsWith(`${ROUTER_API_BASE_PATH}/`)
+	) {
+		return false
+	}
 	return (
 		pathname === ROUTER_BASE_PATH || pathname.startsWith(`${ROUTER_BASE_PATH}/`)
 	)
@@ -80,6 +91,11 @@ export function shouldInterceptNavigationEvent(
 	if (shouldIgnoreRouterNavigation(sourceElement)) return false
 
 	return isSelfNavigationTarget(getSourceNavigationTarget(sourceElement))
+}
+
+export function shouldNotifyNavigationEvent(info: unknown): boolean {
+	if (!info || typeof info !== 'object') return true
+	return (info as NavigationInfo).notify !== false
 }
 
 function getSourceNavigationTarget(

@@ -26,25 +26,6 @@ import {
 } from '#app/styles/tokens.ts'
 import { router } from './router.tsx'
 
-const writeDebugLog = (
-	hypothesisId: string,
-	location: string,
-	message: string,
-	data: Record<string, unknown>,
-) => {
-	void fetch('/admin/api/debug-log', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({
-			hypothesisId,
-			location,
-			message,
-			data,
-			timestamp: Date.now(),
-		}),
-	}).catch(() => {})
-}
-
 type MediaRoot = {
 	name: string
 	path: string
@@ -216,8 +197,6 @@ export function MediaList(handle: Handle) {
 	let sortBy: MediaSortBy = 'recently-modified'
 	let currentPage = 1
 	let lastSyncedSearch = ''
-	let lastRenderedSortBy: MediaSortBy | null = null
-
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
@@ -246,23 +225,6 @@ export function MediaList(handle: Handle) {
 		const nextHref = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
 		const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`
 
-		// #region agent log
-		writeDebugLog(
-			'B',
-			'app/client/admin/media-list.tsx:syncUrlFromState',
-			'Sync URL from state',
-			{
-				searchQuery,
-				selectedDirectory,
-				sortBy,
-				currentPage,
-				nextHref,
-				currentHref,
-				lastSyncedSearch,
-			},
-		)
-		// #endregion
-
 		if (nextHref === currentHref) {
 			lastSyncedSearch = window.location.search
 			return
@@ -282,21 +244,6 @@ export function MediaList(handle: Handle) {
 		sortBy = parseMediaSortByParam(params.get('sort'))
 		currentPage = parsePositivePageParam(params.get('page'))
 		lastSyncedSearch = currentSearch
-
-		// #region agent log
-		writeDebugLog(
-			'A',
-			'app/client/admin/media-list.tsx:syncStateFromUrl',
-			'Parsed state from URL',
-			{
-				currentSearch,
-				searchQuery,
-				selectedDirectory,
-				sortBy,
-				currentPage,
-			},
-		)
-		// #endregion
 
 		// Canonicalize URL by dropping empty/default/unknown query params.
 		syncUrlFromState()
@@ -327,20 +274,6 @@ export function MediaList(handle: Handle) {
 	const setSortBy = (nextSortBy: MediaSortBy) => {
 		const shouldUpdate = sortBy !== nextSortBy || currentPage !== 1
 		if (!shouldUpdate) return
-
-		// #region agent log
-		writeDebugLog(
-			'C',
-			'app/client/admin/media-list.tsx:setSortBy',
-			'Sort changed from select input',
-			{
-				previousSortBy: sortBy,
-				nextSortBy,
-				currentPage,
-				windowSearch: window.location.search,
-			},
-		)
-		// #endregion
 
 		sortBy = nextSortBy
 		currentPage = 1
@@ -739,40 +672,6 @@ export function MediaList(handle: Handle) {
 	return () => {
 		syncStateFromUrl()
 
-		if (sortBy !== lastRenderedSortBy) {
-			lastRenderedSortBy = sortBy
-			// #region agent log
-			writeDebugLog(
-				'D',
-				'app/client/admin/media-list.tsx:render',
-				'Re-render with sort state',
-				{
-					sortBy,
-					windowSearch: window.location.search,
-					routerPath: router.currentPath,
-				},
-			)
-			queueMicrotask(() => {
-				const select = document.getElementById(
-					'media-sort',
-				) as HTMLSelectElement | null
-				if (!select) return
-				writeDebugLog(
-					'E',
-					'app/client/admin/media-list.tsx:render',
-					'Mounted sort select state',
-					{
-						propSortBy: sortBy,
-						domValue: select.value,
-						selectedIndex: select.selectedIndex,
-						selectedLabel: select.selectedOptions[0]?.textContent ?? null,
-						windowSearch: window.location.search,
-					},
-				)
-			})
-			// #endregion
-		}
-
 		if (state.status === 'loading') {
 			return <LoadingSpinner />
 		}
@@ -1149,18 +1048,6 @@ export function MediaList(handle: Handle) {
 										},
 									}),
 									rmxOn('input', (e) => {
-										// #region agent log
-										writeDebugLog(
-											'C',
-											'app/client/admin/media-list.tsx:media-sort input',
-											'Select input event observed',
-											{
-												eventValue: (e.currentTarget as HTMLSelectElement)
-													.value,
-												windowSearch: window.location.search,
-											},
-										)
-										// #endregion
 										setSortBy(
 											(e.currentTarget as HTMLSelectElement)
 												.value as MediaSortBy,

@@ -16,7 +16,6 @@ export default route({
 	// Admin routes
 	adminHealth: '/admin/health',
 	adminApiVersion: '/admin/api/version',
-	adminApiDebugLog: '/admin/api/debug-log',
 	adminAuthorize: '/admin/authorize',
 	admin: '/admin',
 	adminCatchAll: '/admin/*path',

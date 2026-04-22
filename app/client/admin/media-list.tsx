@@ -24,6 +24,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { router } from './router.tsx'
 
 type MediaRoot = {
 	name: string
@@ -196,7 +197,6 @@ export function MediaList(handle: Handle) {
 	let sortBy: MediaSortBy = 'recently-modified'
 	let currentPage = 1
 	let lastSyncedSearch = ''
-
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
@@ -230,7 +230,7 @@ export function MediaList(handle: Handle) {
 			return
 		}
 
-		history.replaceState(null, '', nextHref)
+		router.replace(nextHref)
 		lastSyncedSearch = window.location.search
 	}
 
@@ -971,6 +971,7 @@ export function MediaList(handle: Handle) {
 							</label>
 							<select
 								id="media-directory-filter"
+								key={`directory-filter-${selectedDirectory}`}
 								value={selectedDirectory}
 								mix={[
 									rmxCss({
@@ -994,9 +995,15 @@ export function MediaList(handle: Handle) {
 									}),
 								]}
 							>
-								<option value="all">All directories</option>
+								<option value="all" selected={selectedDirectory === 'all'}>
+									All directories
+								</option>
 								{availableDirectories.map((directory) => (
-									<option key={directory} value={directory}>
+									<option
+										key={directory}
+										value={directory}
+										selected={directory === selectedDirectory}
+									>
 										{directory}
 									</option>
 								))}
@@ -1031,6 +1038,7 @@ export function MediaList(handle: Handle) {
 							</label>
 							<select
 								id="media-sort"
+								key={`media-sort-${sortBy}`}
 								value={sortBy}
 								mix={[
 									rmxCss({
@@ -1056,7 +1064,11 @@ export function MediaList(handle: Handle) {
 								]}
 							>
 								{MEDIA_SORT_OPTIONS.map((option) => (
-									<option key={option.value} value={option.value}>
+									<option
+										key={option.value}
+										value={option.value}
+										selected={option.value === sortBy}
+									>
 										{option.label}
 									</option>
 								))}

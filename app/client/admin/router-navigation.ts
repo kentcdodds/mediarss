@@ -38,14 +38,6 @@ export function getRelativeHref(url: URL): string {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-export function getSearchFromHref(href: string): string {
-	try {
-		return new URL(href, 'https://router.local').search
-	} catch {
-		return ''
-	}
-}
-
 export function normalizeNavigationTarget(
 	path: string,
 	origin: string,
@@ -71,7 +63,7 @@ export function isRouterOwnedPath(pathname: string): boolean {
 export function shouldIgnoreRouterNavigation(
 	element: NavigationSourceElement,
 ): boolean {
-	return element?.closest?.('[data-router-ignore]') !== null
+	return element?.closest?.('[data-router-ignore]') != null
 }
 
 export function shouldInterceptNavigationEvent(
@@ -89,8 +81,6 @@ export function shouldInterceptNavigationEvent(
 
 	return isSelfNavigationTarget(getSourceNavigationTarget(sourceElement))
 }
-
-export const shouldInterceptNavigation = shouldInterceptNavigationEvent
 
 function getSourceNavigationTarget(
 	sourceElement: NavigationSourceElement,

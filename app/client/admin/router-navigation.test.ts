@@ -76,6 +76,19 @@ test('shouldInterceptNavigation rejects unsupported navigation types', () => {
 	).toBe(false)
 })
 
+test('shouldInterceptNavigation does not ignore missing source elements', () => {
+	expect(
+		shouldInterceptNavigationEvent({
+			canIntercept: true,
+			hashChange: false,
+			downloadRequest: null,
+			formData: null,
+			navigationType: 'push',
+			sourceElement: null,
+		}),
+	).toBe(true)
+})
+
 test('shouldInterceptNavigation respects router ignore markers', () => {
 	const regularLink = {
 		tagName: 'A',

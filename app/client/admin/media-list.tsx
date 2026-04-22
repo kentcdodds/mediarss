@@ -24,6 +24,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { router } from './router.tsx'
 
 type MediaRoot = {
 	name: string
@@ -230,7 +231,7 @@ export function MediaList(handle: Handle) {
 			return
 		}
 
-		history.replaceState(null, '', nextHref)
+		router.replace(nextHref)
 		lastSyncedSearch = window.location.search
 	}
 

@@ -18,6 +18,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { router } from './router.tsx'
 
 type DirectoryFeed = {
 	id: string
@@ -117,7 +118,7 @@ export function FeedList(handle: Handle) {
 			return
 		}
 
-		history.replaceState(null, '', nextHref)
+		router.replace(nextHref)
 		lastSyncedSearch = window.location.search
 	}
 

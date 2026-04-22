@@ -918,6 +918,7 @@ export function MediaList(handle: Handle) {
 								flex: '1 1 320px',
 								minWidth: 0,
 								[mq.mobile]: {
+									flex: 'none',
 									width: '100%',
 								},
 							}),

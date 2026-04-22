@@ -1032,6 +1032,8 @@ export function MediaList(handle: Handle) {
 							</label>
 							<select
 								id="media-sort"
+								key={`media-sort-${sortBy}`}
+								value={sortBy}
 								mix={[
 									rmxCss({
 										padding: `${spacing.xs} ${spacing.sm}`,

@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 import {
 	getRelativeHref,
 	isRouterOwnedPath,
+	shouldNotifyNavigationChange,
 	shouldInterceptNavigationEvent,
 } from './router-navigation.ts'
 
@@ -19,6 +20,15 @@ test('getRelativeHref returns pathname search and hash', () => {
 	const url = new URL('https://example.com/admin/media?q=test&page=2#detail')
 
 	expect(getRelativeHref(url)).toBe('/admin/media?q=test&page=2#detail')
+})
+
+test('replace navigation only skips notify for same-pathname updates', () => {
+	expect(
+		shouldNotifyNavigationChange('/admin/media', '/admin/media', false),
+	).toBe(false)
+	expect(
+		shouldNotifyNavigationChange('/admin/media', '/admin/version', false),
+	).toBe(true)
 })
 
 test('shouldInterceptNavigation rejects unsupported navigation types', () => {

@@ -8,6 +8,7 @@ import {
 	isRouterOwnedPath,
 	normalizeNavigationTarget,
 	shouldInterceptNavigationEvent,
+	shouldNotifyNavigationChange,
 	shouldNotifyNavigationEvent,
 	getNavigationSourceElement,
 	type NavigationHistoryBehavior,
@@ -71,7 +72,13 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	}
 
 	replace(path: string) {
-		this.#commitNavigation(path, 'replace', false)
+		const target = normalizeNavigationTarget(path, window.location.origin)
+		if (!target) return
+		this.#commitNavigation(
+			path,
+			'replace',
+			shouldNotifyNavigationChange(this.#currentPath, target.pathname, false),
+		)
 	}
 
 	/**
@@ -135,8 +142,17 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			history: historyMode,
 			info: { notify },
 		})
-		void transition.committed.catch(() => {})
-		void transition.finished.catch(() => {})
+		const navigationContext = {
+			targetHref: target.href,
+			historyMode,
+			notify,
+		}
+		void transition.committed.catch((error) => {
+			console.error('Navigation commit failed:', navigationContext, error)
+		})
+		void transition.finished.catch((error) => {
+			console.error('Navigation transition failed:', navigationContext, error)
+		})
 	}
 
 	#syncToUrl(url: URL, notify: boolean = true) {

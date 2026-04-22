@@ -98,6 +98,14 @@ export function shouldNotifyNavigationEvent(info: unknown): boolean {
 	return (info as NavigationInfo).notify !== false
 }
 
+export function shouldNotifyNavigationChange(
+	currentPathname: string,
+	targetPathname: string,
+	requestedNotify: boolean,
+): boolean {
+	return requestedNotify || currentPathname !== targetPathname
+}
+
 function getSourceNavigationTarget(
 	sourceElement: NavigationSourceElement,
 ): string | null {

@@ -11,21 +11,16 @@ import { renderUi } from '#app/helpers/render.ts'
  */
 const adminShellHandler = {
 	middleware: [],
-	handler({ request }: { request: Request }) {
+	handler() {
 		return renderUi(
 			<ServerDocument
 				title="MediaRSS Admin"
 				entryScript="/app/client/admin/entry.tsx"
 			>
-				<AdminApp initialHref={getRequestHref(request)} />
+				<AdminApp />
 			</ServerDocument>,
 		)
 	},
-}
-
-function getRequestHref(request: Request) {
-	const url = new URL(request.url)
-	return `${url.pathname}${url.search}`
 }
 
 export const adminHandler = adminShellHandler satisfies BuildAction<

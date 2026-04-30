@@ -30,10 +30,6 @@ type VersionResponse = {
 	commit: { shortHash: string } | null
 }
 
-type AdminAppProps = {
-	initialHref?: string
-}
-
 function AppFooter(handle: Handle) {
 	let displayVersion: string | null = null
 
@@ -85,11 +81,7 @@ function AppFooter(handle: Handle) {
 
 export const AdminApp = clientEntry(
 	'/app/client/admin/app.tsx#AdminApp',
-	function AdminApp(handle: Handle<AdminAppProps>) {
-		if (!isBrowser) {
-			router.setLocation(handle.props.initialHref ?? '/admin')
-		}
-
+	function AdminApp() {
 		return () => (
 			<div
 				mix={[

@@ -42,6 +42,16 @@ import {
 import { scanAllMediaRoots, scanDirectory } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
+import {
+	colors,
+	mq,
+	radius,
+	responsive,
+	shadows,
+	spacing,
+	transitions,
+	typography,
+} from '#app/styles/tokens.ts'
 import { ServerDocument } from '#app/components/server-document.tsx'
 import { renderUi } from '#app/helpers/render.ts'
 
@@ -72,127 +82,164 @@ type FormFeedData = {
 }
 
 const pageStyle = rmxCss({
-	fontFamily:
-		'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+	fontFamily: typography.fontFamily,
 	minHeight: '100vh',
-	backgroundColor: '#f8fafc',
-	color: '#0f172a',
+	backgroundColor: colors.background,
+	color: colors.text,
+	display: 'flex',
+	flexDirection: 'column',
 })
 
 const headerStyle = rmxCss({
 	display: 'flex',
 	alignItems: 'center',
-	justifyContent: 'space-between',
-	gap: '1rem',
-	padding: '1rem clamp(1rem, 3vw, 2rem)',
-	borderBottom: '1px solid #e2e8f0',
-	backgroundColor: '#ffffff',
-})
-
-const navStyle = rmxCss({
-	display: 'flex',
-	alignItems: 'center',
-	gap: '0.75rem',
-	flexWrap: 'wrap',
+	gap: spacing.md,
+	padding: `${spacing.md} ${responsive.spacingHeader}`,
+	borderBottom: `1px solid ${colors.border}`,
+	[mq.mobile]: {
+		gap: spacing.sm,
+	},
 })
 
 const mainStyle = rmxCss({
-	maxWidth: '1180px',
+	flex: 1,
+	maxWidth: '1200px',
+	width: '100%',
 	margin: '0 auto',
-	padding: 'clamp(1rem, 3vw, 2rem)',
+	padding: responsive.spacingPage,
+	boxSizing: 'border-box',
 })
 
 const cardStyle = rmxCss({
-	backgroundColor: '#ffffff',
-	border: '1px solid #e2e8f0',
-	borderRadius: '0.75rem',
-	padding: '1rem',
-	boxShadow: '0 1px 2px rgb(15 23 42 / 0.04)',
+	backgroundColor: colors.surface,
+	border: `1px solid ${colors.border}`,
+	borderRadius: radius.lg,
+	padding: spacing.lg,
+	boxShadow: shadows.sm,
 })
 
 const gridStyle = rmxCss({
 	display: 'grid',
-	gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-	gap: '1rem',
+	gridTemplateColumns: `repeat(auto-fill, minmax(${responsive.cardMinWidth}, 1fr))`,
+	gap: spacing.lg,
+	[mq.mobile]: {
+		gap: spacing.md,
+	},
 })
 
 const stackStyle = rmxCss({
 	display: 'flex',
 	flexDirection: 'column',
-	gap: '1rem',
+	gap: spacing.lg,
 })
 
 const rowStyle = rmxCss({
 	display: 'flex',
 	alignItems: 'center',
-	gap: '0.75rem',
+	gap: spacing.md,
 	flexWrap: 'wrap',
 })
 
 const labelStyle = rmxCss({
 	display: 'flex',
 	flexDirection: 'column',
-	gap: '0.35rem',
-	fontSize: '0.875rem',
-	fontWeight: '600',
+	gap: spacing.xs,
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.text,
 })
 
 const inputStyle = rmxCss({
 	width: '100%',
 	boxSizing: 'border-box',
-	border: '1px solid #cbd5e1',
-	borderRadius: '0.5rem',
-	padding: '0.65rem',
+	border: `1px solid ${colors.border}`,
+	borderRadius: radius.md,
+	padding: spacing.sm,
 	font: 'inherit',
-	backgroundColor: '#ffffff',
+	fontSize: typography.fontSize.sm,
+	color: colors.text,
+	backgroundColor: colors.background,
+	outline: 'none',
+	transition: `border-color ${transitions.fast}`,
+	'&:focus': {
+		borderColor: colors.primary,
+	},
+	'&::placeholder': {
+		color: colors.textMuted,
+	},
 })
 
 const buttonStyle = rmxCss({
 	display: 'inline-flex',
 	alignItems: 'center',
 	justifyContent: 'center',
-	border: '1px solid #2563eb',
-	borderRadius: '0.5rem',
-	padding: '0.55rem 0.85rem',
-	backgroundColor: '#2563eb',
-	color: '#ffffff',
+	gap: spacing.sm,
+	border: 'none',
+	borderRadius: radius.md,
+	padding: `${spacing.sm} ${spacing.lg}`,
+	backgroundColor: colors.primary,
+	color: colors.background,
 	font: 'inherit',
-	fontWeight: '600',
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
 	textDecoration: 'none',
 	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: colors.primaryHover,
+	},
 })
 
 const secondaryButtonStyle = rmxCss({
 	display: 'inline-flex',
 	alignItems: 'center',
 	justifyContent: 'center',
-	border: '1px solid #cbd5e1',
-	borderRadius: '0.5rem',
-	padding: '0.55rem 0.85rem',
-	backgroundColor: '#ffffff',
-	color: '#0f172a',
+	gap: spacing.sm,
+	border: `1px solid ${colors.primary}`,
+	borderRadius: radius.md,
+	padding: `${spacing.sm} ${spacing.lg}`,
+	backgroundColor: 'transparent',
+	color: colors.primary,
 	font: 'inherit',
-	fontWeight: '600',
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
 	textDecoration: 'none',
 	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: colors.primarySoft,
+	},
 })
 
 const dangerButtonStyle = rmxCss({
 	display: 'inline-flex',
 	alignItems: 'center',
 	justifyContent: 'center',
-	border: '1px solid #dc2626',
-	borderRadius: '0.5rem',
-	padding: '0.55rem 0.85rem',
-	backgroundColor: '#dc2626',
-	color: '#ffffff',
+	border: 'none',
+	borderRadius: radius.md,
+	padding: `${spacing.sm} ${spacing.lg}`,
+	backgroundColor: colors.error,
+	color: colors.background,
 	font: 'inherit',
-	fontWeight: '600',
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
 	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: colors.errorHover,
+	},
 })
 
 const mutedStyle = rmxCss({
-	color: '#64748b',
+	color: colors.textMuted,
+})
+
+const emptyStateStyle = rmxCss({
+	textAlign: 'center',
+	padding: spacing['2xl'],
+	backgroundColor: colors.surface,
+	borderRadius: radius.lg,
+	border: `1px dashed ${colors.border}`,
 })
 
 export async function handleAdminRequest(request: Request) {
@@ -301,6 +348,8 @@ async function handleAdminPost(request: Request) {
 }
 
 function renderAdminPage({ title, body, status = 200 }: AdminPageOptions) {
+	const isVersionPage = title === 'Version Information'
+
 	return renderUi(
 		<ServerDocument title={title} entryScript={false}>
 			<div mix={pageStyle}>
@@ -310,28 +359,58 @@ function renderAdminPage({ title, body, status = 200 }: AdminPageOptions) {
 						mix={rmxCss({
 							display: 'flex',
 							alignItems: 'center',
-							gap: '0.75rem',
-							color: '#0f172a',
+							gap: spacing.md,
 							textDecoration: 'none',
-							fontWeight: '700',
 						})}
 					>
 						<img src="/assets/logo.svg" alt="MediaRSS" width="36" height="36" />
-						<span>MediaRSS Admin</span>
+						<h1
+							mix={rmxCss({
+								fontSize: typography.fontSize.lg,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+							})}
+						>
+							MediaRSS
+						</h1>
+						<span
+							mix={rmxCss({
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								[mq.mobile]: {
+									display: 'none',
+								},
+							})}
+						>
+							Admin
+						</span>
 					</a>
-					<nav mix={navStyle} aria-label="Admin navigation">
-						<a href="/admin" mix={secondaryButtonStyle}>
-							Feeds
-						</a>
-						<a href="/admin/media" mix={secondaryButtonStyle}>
-							Media
-						</a>
-						<a href="/admin/version" mix={secondaryButtonStyle}>
-							Version
-						</a>
-					</nav>
 				</header>
 				<main mix={mainStyle}>{body}</main>
+				<footer
+					mix={rmxCss({
+						borderTop: `1px solid ${colors.border}`,
+						padding: `${spacing.md} ${responsive.spacingHeader}`,
+						display: 'flex',
+						justifyContent: 'center',
+						alignItems: 'center',
+					})}
+				>
+					<a
+						href="/admin/version"
+						mix={rmxCss({
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							textDecoration: 'none',
+							'&:hover': {
+								color: colors.primary,
+							},
+						})}
+					>
+						{isVersionPage ? '...' : 'Version'}
+					</a>
+				</footer>
 			</div>
 		</ServerDocument>,
 		{ status },
@@ -343,17 +422,83 @@ async function renderFeedIndex() {
 
 	return (
 		<div mix={stackStyle}>
-			<div mix={rowStyle}>
-				<h1 mix={rmxCss({ margin: 0 })}>Your Feeds</h1>
-				<a href="/admin/feeds/new" mix={buttonStyle}>
-					New Feed
-				</a>
+			<div
+				mix={rmxCss({
+					display: 'flex',
+					justifyContent: 'space-between',
+					alignItems: 'flex-start',
+					marginBottom: spacing.lg,
+					gap: spacing.md,
+					flexWrap: 'wrap',
+					[mq.mobile]: {
+						flexDirection: 'column',
+						alignItems: 'stretch',
+					},
+				})}
+			>
+				<div>
+					<h2
+						mix={rmxCss({
+							fontSize: typography.fontSize.xl,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+							[mq.mobile]: {
+								fontSize: typography.fontSize.lg,
+							},
+						})}
+					>
+						Your Feeds
+					</h2>
+					{feeds.length > 0 ? (
+						<p
+							mix={rmxCss({
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								margin: `${spacing.xs} 0 0 0`,
+							})}
+						>
+							{feeds.length} feed{feeds.length === 1 ? '' : 's'}
+						</p>
+					) : null}
+				</div>
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						gap: spacing.sm,
+						[mq.mobile]: {
+							flexDirection: 'column',
+						},
+					})}
+				>
+					<a href="/admin/media" mix={secondaryButtonStyle}>
+						Manage Access
+					</a>
+					<a href="/admin/feeds/new" mix={buttonStyle}>
+						+ New Feed
+					</a>
+				</div>
 			</div>
 			{feeds.length === 0 ? (
-				<section mix={cardStyle}>
-					<h2>No feeds yet</h2>
-					<p mix={mutedStyle}>
-						Create a directory or curated feed to start publishing media.
+				<section mix={emptyStateStyle}>
+					<p
+						mix={rmxCss({
+							color: colors.textMuted,
+							fontSize: typography.fontSize.lg,
+							margin: 0,
+							marginBottom: spacing.md,
+						})}
+					>
+						No feeds yet
+					</p>
+					<p
+						mix={rmxCss({
+							color: colors.textMuted,
+							fontSize: typography.fontSize.sm,
+							margin: 0,
+						})}
+					>
+						Create your first feed to get started
 					</p>
 				</section>
 			) : (

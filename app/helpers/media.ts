@@ -31,6 +31,11 @@ const metadataLimit = pLimit(10)
  */
 const statLimit = pLimit(50)
 
+function isMissingFileError(error: unknown): boolean {
+	const code = (error as NodeJS.ErrnoException).code
+	return code === 'ENOENT' || code === 'ENOTDIR'
+}
+
 /**
  * Directories to skip when scanning (Synology NAS junk, macOS metadata, etc.)
  */
@@ -902,6 +907,7 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 		// Validate parsed media metadata structure
 		return parse(MediaFileSchema, mediaFile)
 	} catch (error) {
+		if (isMissingFileError(error)) return null
 		console.error(`Error reading metadata for ${filepath}:`, error)
 		return null
 	}
@@ -956,6 +962,7 @@ export async function getFileMetadata(
 		const stat = await fs.promises.stat(absolutePath)
 		return getCachedFileMetadata(absolutePath, stat.mtimeMs)
 	} catch (error) {
+		if (isMissingFileError(error)) return null
 		console.error(`Error getting metadata for ${filepath}:`, error)
 		return null
 	}

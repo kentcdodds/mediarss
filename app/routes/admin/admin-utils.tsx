@@ -121,10 +121,20 @@ export async function parseAdminForm(request: Request) {
 	return request.formData()
 }
 
+export class AdminFormError extends Error {
+	constructor(
+		message: string,
+		readonly href: string = '/admin',
+	) {
+		super(message)
+		this.name = 'AdminFormError'
+	}
+}
+
 export function getRequiredString(formData: FormData, name: string) {
 	const value = formData.get(name)
 	if (typeof value !== 'string' || value.trim() === '') {
-		throw new Error(`Missing required form field "${name}"`)
+		throw new AdminFormError(`Missing required form field "${name}"`)
 	}
 	return value
 }
@@ -149,20 +159,4 @@ export function getLineValues(formData: FormData, name: string) {
 		.split(/\r?\n/)
 		.map((value) => value.trim())
 		.filter(Boolean)
-}
-
-export function invalidAdminForm({
-	message,
-	href,
-	body,
-}: {
-	message: string
-	href: string
-	body: (message: string, href: string) => RemixNode
-}) {
-	return renderAdminPage({
-		title: 'Invalid form',
-		body: body(message, href),
-		status: 400,
-	})
 }

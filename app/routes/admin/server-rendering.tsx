@@ -56,6 +56,7 @@ import {
 	stackStyle,
 } from './admin-styles.ts'
 import {
+	AdminFormError,
 	getAllStringValues,
 	getLineValues,
 	getOptionalString,
@@ -129,12 +130,27 @@ export async function handleAdminRequest(request: Request) {
 		})
 	}
 
-	const mediaMatch = /^\/admin\/media\/(.+)$/.exec(path)
+	const mediaMatch = /^\/admin\/media\/(.+?)(?:\/edit)?$/.exec(path)
 	if (mediaMatch?.[1]) {
-		return renderAdminPage({
-			title: 'Media Detail',
-			body: await renderMediaDetail(decodeURIComponent(mediaMatch[1])),
-		})
+		let mediaPath: string
+		try {
+			mediaPath = decodeURIComponent(mediaMatch[1])
+		} catch {
+			return renderAdminPage({
+				title: 'Invalid Media Path',
+				body: (
+					<section mix={cardStyle}>
+						<h1>Invalid media path</h1>
+						<p>The requested media path is not valid.</p>
+						<a href="/admin/media" mix={buttonStyle}>
+							Back to media
+						</a>
+					</section>
+				),
+				status: 400,
+			})
+		}
+		return renderMediaDetailPage(mediaPath)
 	}
 
 	return renderAdminPage({
@@ -153,40 +169,47 @@ export async function handleAdminRequest(request: Request) {
 }
 
 async function handleAdminPost(request: Request) {
-	const formData = await parseAdminForm(request)
-	const action = getRequiredString(formData, '_action')
+	try {
+		const formData = await parseAdminForm(request)
+		const action = getRequiredString(formData, '_action')
 
-	switch (action) {
-		case 'create-directory-feed':
-			return createDirectoryFeedFromForm(formData)
-		case 'create-curated-feed':
-			return createCuratedFeedFromForm(formData)
-		case 'update-feed':
-			return updateFeedFromForm(formData)
-		case 'delete-feed':
-			return deleteFeedFromForm(formData)
-		case 'create-token':
-			return createTokenFromForm(formData)
-		case 'add-item':
-			return addItemFromForm(formData)
-		case 'remove-item':
-			return removeItemFromForm(formData)
-		case 'clear-items':
-			return clearItemsFromForm(formData)
-		default:
-			return renderAdminPage({
-				title: 'Unsupported action',
-				body: (
-					<section mix={cardStyle}>
-						<h2>Unsupported action</h2>
-						<p>Unknown admin form action: {action}</p>
-						<a href="/admin" mix={buttonStyle}>
-							Back to admin
-						</a>
-					</section>
-				),
-				status: 400,
-			})
+		switch (action) {
+			case 'create-directory-feed':
+				return await createDirectoryFeedFromForm(formData)
+			case 'create-curated-feed':
+				return await createCuratedFeedFromForm(formData)
+			case 'update-feed':
+				return await updateFeedFromForm(formData)
+			case 'delete-feed':
+				return await deleteFeedFromForm(formData)
+			case 'create-token':
+				return await createTokenFromForm(formData)
+			case 'add-item':
+				return await addItemFromForm(formData)
+			case 'remove-item':
+				return await removeItemFromForm(formData)
+			case 'clear-items':
+				return await clearItemsFromForm(formData)
+			default:
+				return renderAdminPage({
+					title: 'Unsupported action',
+					body: (
+						<section mix={cardStyle}>
+							<h2>Unsupported action</h2>
+							<p>Unknown admin form action: {action}</p>
+							<a href="/admin" mix={buttonStyle}>
+								Back to admin
+							</a>
+						</section>
+					),
+					status: 400,
+				})
+		}
+	} catch (error) {
+		if (isAdminFormError(error)) {
+			return invalidForm(error.message, error.href)
+		}
+		throw error
 	}
 }
 
@@ -284,7 +307,7 @@ async function renderFeedIndex() {
 								<strong>{feed.type}</strong> · {feed.itemCount} item
 								{feed.itemCount === 1 ? '' : 's'}
 							</p>
-							<p mix={mutedStyle}>Updated {formatUnixDate(feed.updatedAt)}</p>
+							<p mix={mutedStyle}>Updated {formatDate(feed.updatedAt)}</p>
 							<a href={`/admin/feeds/${feed.id}`} mix={buttonStyle}>
 								Manage
 							</a>
@@ -391,11 +414,6 @@ async function renderFeedPage(feedId: string) {
 					>
 						<input type="hidden" name="_action" value="update-feed" />
 						<input type="hidden" name="feedId" value={feed.id} />
-						<input
-							type="hidden"
-							name="feedKind"
-							value={isDirectoryFeed(feed) ? 'directory' : 'curated'}
-						/>
 						<h2>Edit feed</h2>
 						{renderFeedFields(
 							feed.sortFields,
@@ -429,11 +447,6 @@ async function renderFeedPage(feedId: string) {
 						>
 							<input type="hidden" name="_action" value="create-token" />
 							<input type="hidden" name="feedId" value={feed.id} />
-							<input
-								type="hidden"
-								name="feedKind"
-								value={isDirectoryFeed(feed) ? 'directory' : 'curated'}
-							/>
 							<label mix={labelStyle}>
 								Token label
 								<input
@@ -457,11 +470,6 @@ async function renderFeedPage(feedId: string) {
 				<form method="post" action={`/admin/feeds/${feed.id}`} mix={cardStyle}>
 					<input type="hidden" name="_action" value="delete-feed" />
 					<input type="hidden" name="feedId" value={feed.id} />
-					<input
-						type="hidden"
-						name="feedKind"
-						value={isDirectoryFeed(feed) ? 'directory' : 'curated'}
-					/>
 					<h2>Danger zone</h2>
 					<button type="submit" mix={dangerButtonStyle}>
 						Delete feed
@@ -655,17 +663,7 @@ async function renderMediaDetail(mediaPath: string) {
 	const files = await scanAllMediaRoots()
 	const file = files.find((item) => item.path === mediaPath)
 
-	if (!file) {
-		return (
-			<section mix={cardStyle}>
-				<h1>Media not found</h1>
-				<p>{mediaPath}</p>
-				<a href="/admin/media" mix={buttonStyle}>
-					Back to media
-				</a>
-			</section>
-		)
-	}
+	if (!file) return null
 
 	return (
 		<div mix={stackStyle}>
@@ -693,6 +691,23 @@ async function renderMediaDetail(mediaPath: string) {
 			</section>
 		</div>
 	)
+}
+
+async function renderMediaDetailPage(mediaPath: string) {
+	const body = await renderMediaDetail(mediaPath)
+	return renderAdminPage({
+		title: body ? 'Media Detail' : 'Media Not Found',
+		body: body ?? (
+			<section mix={cardStyle}>
+				<h1>Media not found</h1>
+				<p>{mediaPath}</p>
+				<a href="/admin/media" mix={buttonStyle}>
+					Back to media
+				</a>
+			</section>
+		),
+		status: body ? 200 : 404,
+	})
 }
 
 function renderFeedFields(
@@ -820,6 +835,14 @@ async function getFeed(feedId: string): Promise<Feed | undefined> {
 	)
 }
 
+async function getFeedOrThrow(feedId: string): Promise<Feed> {
+	const feed = await getFeed(feedId)
+	if (!feed) {
+		throw new AdminFormError('Unknown feed.', '/admin')
+	}
+	return feed
+}
+
 async function createDirectoryFeedFromForm(formData: FormData) {
 	const feedData = getFormFeedData(formData, 'filename')
 	const directoryPaths = getLineValues(formData, 'directoryPaths')
@@ -844,10 +867,13 @@ async function createCuratedFeedFromForm(formData: FormData) {
 
 async function updateFeedFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
-	const feedKind = getRequiredString(formData, 'feedKind')
-	const feedData = getFormFeedData(formData, 'filename')
+	const feed = await getFeedOrThrow(feedId)
+	const feedData = getFormFeedData(
+		formData,
+		isDirectoryFeed(feed) ? 'filename' : 'position',
+	)
 
-	if (feedKind === 'directory') {
+	if (isDirectoryFeed(feed)) {
 		await updateDirectoryFeed(feedId, {
 			...feedData,
 			directoryPaths: getLineValues(formData, 'directoryPaths'),
@@ -861,9 +887,9 @@ async function updateFeedFromForm(formData: FormData) {
 
 async function deleteFeedFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
-	const feedKind = getRequiredString(formData, 'feedKind')
+	const feed = await getFeedOrThrow(feedId)
 
-	if (feedKind === 'directory') {
+	if (isDirectoryFeed(feed)) {
 		await deleteDirectoryFeed(feedId)
 	} else {
 		await deleteCuratedFeed(feedId)
@@ -874,10 +900,10 @@ async function deleteFeedFromForm(formData: FormData) {
 
 async function createTokenFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
-	const feedKind = getRequiredString(formData, 'feedKind')
+	const feed = await getFeedOrThrow(feedId)
 	const label = getOptionalString(formData, 'label') ?? 'Manual token'
 
-	if (feedKind === 'directory') {
+	if (isDirectoryFeed(feed)) {
 		await createDirectoryFeedToken({ feedId, label })
 	} else {
 		await createCuratedFeedToken({ feedId, label })
@@ -950,10 +976,13 @@ function invalidForm(message: string, href: string) {
 	})
 }
 
-function normalizePath(pathname: string) {
-	return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+function isAdminFormError(error: unknown): error is AdminFormError {
+	return (
+		error instanceof AdminFormError ||
+		(error instanceof Error && error.name === 'AdminFormError')
+	)
 }
 
-function formatUnixDate(value: number) {
-	return new Date(value * 1000).toLocaleString()
+function normalizePath(pathname: string) {
+	return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
 }

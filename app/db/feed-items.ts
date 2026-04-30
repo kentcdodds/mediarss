@@ -9,32 +9,35 @@ export async function addItemToFeed(
 	relativePath: string,
 	position?: number,
 ): Promise<FeedItem> {
-	const id = generateId()
 	const now = Math.floor(Date.now() / 1000)
-	const result = await dataTableDb.query(feedItemsTable).upsert(
-		{
-			id,
-			feed_id: feedId,
-			media_root: mediaRoot,
-			relative_path: relativePath,
+
+	const existing = await getItemByPath(feedId, mediaRoot, relativePath)
+	if (existing) {
+		await dataTableDb.update(feedItemsTable, existing.id, {
 			position: position ?? null,
 			added_at: now,
-		},
-		{
-			conflictTarget: ['feed_id', 'media_root', 'relative_path'],
-			update: {
-				position: position ?? null,
-				added_at: now,
-			},
-			returning: '*',
-		},
-	)
-
-	if (!('row' in result) || !result.row) {
-		throw new Error('Failed to upsert feed item')
+		})
+		const updated = await dataTableDb.find(feedItemsTable, existing.id)
+		if (!updated) {
+			throw new Error(`Failed to update feed item "${existing.id}"`)
+		}
+		return parseRow(FeedItemSchema, updated)
 	}
 
-	return parseRow(FeedItemSchema, result.row)
+	const id = generateId()
+	await dataTableDb.create(feedItemsTable, {
+		feed_id: feedId,
+		id,
+		media_root: mediaRoot,
+		relative_path: relativePath,
+		position: position ?? null,
+		added_at: now,
+	})
+	const created = await dataTableDb.find(feedItemsTable, id)
+	if (!created) {
+		throw new Error(`Failed to create feed item "${id}"`)
+	}
+	return parseRow(FeedItemSchema, created)
 }
 
 export async function removeItemFromFeed(

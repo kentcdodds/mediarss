@@ -12,8 +12,7 @@ and every package release linked from it.
 
 - Start with [alpha.6 release notes](./release-notes.md) for breaking changes
   and package bumps.
-- Use the package table to jump to the README, changelog, or package docs you
-  need.
+- Use the package table to jump to the README or package docs you need.
 - Use [`ui`](./ui/README.md) for component APIs; alpha.6 removes the old
   `remix/component` exports.
 - Use [`multipart-parser`](./multipart-parser/README.md) when handling multipart
@@ -50,48 +49,48 @@ and every package release linked from it.
 
 ## Mirrored packages
 
-| Package                      | Docs                                                                                                      |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `assert`                     | [README](./assert/README.md) / [changelog](./assert/CHANGELOG.md)                                         |
-| `assets`                     | [README](./assets/README.md) / [changelog](./assets/CHANGELOG.md)                                         |
-| `async-context-middleware`   | [README](./async-context-middleware/README.md) / [changelog](./async-context-middleware/CHANGELOG.md)     |
-| `auth`                       | [README](./auth/README.md) / [changelog](./auth/CHANGELOG.md)                                             |
-| `auth-middleware`            | [README](./auth-middleware/README.md) / [changelog](./auth-middleware/CHANGELOG.md)                       |
-| `cli`                        | [README](./cli/README.md) / [changelog](./cli/CHANGELOG.md)                                               |
-| `compression-middleware`     | [README](./compression-middleware/README.md) / [changelog](./compression-middleware/CHANGELOG.md)         |
-| `cookie`                     | [README](./cookie/README.md) / [changelog](./cookie/CHANGELOG.md)                                         |
-| `cop-middleware`             | [README](./cop-middleware/README.md) / [changelog](./cop-middleware/CHANGELOG.md)                         |
-| `cors-middleware`            | [README](./cors-middleware/README.md) / [changelog](./cors-middleware/CHANGELOG.md)                       |
-| `csrf-middleware`            | [README](./csrf-middleware/README.md) / [changelog](./csrf-middleware/CHANGELOG.md)                       |
-| `data-schema`                | [README](./data-schema/README.md) / [changelog](./data-schema/CHANGELOG.md)                               |
-| `data-table`                 | [README](./data-table/README.md) / [changelog](./data-table/CHANGELOG.md)                                 |
-| `data-table-mysql`           | [README](./data-table-mysql/README.md) / [changelog](./data-table-mysql/CHANGELOG.md)                     |
-| `data-table-postgres`        | [README](./data-table-postgres/README.md) / [changelog](./data-table-postgres/CHANGELOG.md)               |
-| `data-table-sqlite`          | [README](./data-table-sqlite/README.md) / [changelog](./data-table-sqlite/CHANGELOG.md)                   |
-| `fetch-proxy`                | [README](./fetch-proxy/README.md) / [changelog](./fetch-proxy/CHANGELOG.md)                               |
-| `fetch-router`               | [README](./fetch-router/README.md) / [changelog](./fetch-router/CHANGELOG.md)                             |
-| `file-storage`               | [README](./file-storage/README.md) / [changelog](./file-storage/CHANGELOG.md)                             |
-| `file-storage-s3`            | [README](./file-storage-s3/README.md) / [changelog](./file-storage-s3/CHANGELOG.md)                       |
-| `form-data-middleware`       | [README](./form-data-middleware/README.md) / [changelog](./form-data-middleware/CHANGELOG.md)             |
-| `form-data-parser`           | [README](./form-data-parser/README.md) / [changelog](./form-data-parser/CHANGELOG.md)                     |
-| `fs`                         | [README](./fs/README.md) / [changelog](./fs/CHANGELOG.md)                                                 |
-| `headers`                    | [README](./headers/README.md) / [changelog](./headers/CHANGELOG.md)                                       |
-| `html-template`              | [README](./html-template/README.md) / [changelog](./html-template/CHANGELOG.md)                           |
-| `lazy-file`                  | [README](./lazy-file/README.md) / [changelog](./lazy-file/CHANGELOG.md)                                   |
-| `logger-middleware`          | [README](./logger-middleware/README.md) / [changelog](./logger-middleware/CHANGELOG.md)                   |
-| `method-override-middleware` | [README](./method-override-middleware/README.md) / [changelog](./method-override-middleware/CHANGELOG.md) |
-| `mime`                       | [README](./mime/README.md) / [changelog](./mime/CHANGELOG.md)                                             |
-| `multipart-parser`           | [README](./multipart-parser/README.md) / [changelog](./multipart-parser/CHANGELOG.md)                     |
-| `node-fetch-server`          | [README](./node-fetch-server/README.md) / [changelog](./node-fetch-server/CHANGELOG.md)                   |
-| `remix`                      | [README](./remix/README.md) / [changelog](./remix/CHANGELOG.md)                                           |
-| `response`                   | [README](./response/README.md) / [changelog](./response/CHANGELOG.md)                                     |
-| `route-pattern`              | [README](./route-pattern/README.md) / [changelog](./route-pattern/CHANGELOG.md)                           |
-| `session`                    | [README](./session/README.md) / [changelog](./session/CHANGELOG.md)                                       |
-| `session-middleware`         | [README](./session-middleware/README.md) / [changelog](./session-middleware/CHANGELOG.md)                 |
-| `session-storage-memcache`   | [README](./session-storage-memcache/README.md) / [changelog](./session-storage-memcache/CHANGELOG.md)     |
-| `session-storage-redis`      | [README](./session-storage-redis/README.md) / [changelog](./session-storage-redis/CHANGELOG.md)           |
-| `static-middleware`          | [README](./static-middleware/README.md) / [changelog](./static-middleware/CHANGELOG.md)                   |
-| `tar-parser`                 | [README](./tar-parser/README.md) / [changelog](./tar-parser/CHANGELOG.md)                                 |
-| `terminal`                   | [README](./terminal/README.md) / [changelog](./terminal/CHANGELOG.md)                                     |
-| `test`                       | [README](./test/README.md) / [changelog](./test/CHANGELOG.md)                                             |
-| `ui`                         | [README](./ui/README.md) / [changelog](./ui/CHANGELOG.md) / [docs](./ui/docs/)                            |
+| Package                      | Docs                                             |
+| ---------------------------- | ------------------------------------------------ |
+| `assert`                     | [README](./assert/README.md)                     |
+| `assets`                     | [README](./assets/README.md)                     |
+| `async-context-middleware`   | [README](./async-context-middleware/README.md)   |
+| `auth`                       | [README](./auth/README.md)                       |
+| `auth-middleware`            | [README](./auth-middleware/README.md)            |
+| `cli`                        | [README](./cli/README.md)                        |
+| `compression-middleware`     | [README](./compression-middleware/README.md)     |
+| `cookie`                     | [README](./cookie/README.md)                     |
+| `cop-middleware`             | [README](./cop-middleware/README.md)             |
+| `cors-middleware`            | [README](./cors-middleware/README.md)            |
+| `csrf-middleware`            | [README](./csrf-middleware/README.md)            |
+| `data-schema`                | [README](./data-schema/README.md)                |
+| `data-table`                 | [README](./data-table/README.md)                 |
+| `data-table-mysql`           | [README](./data-table-mysql/README.md)           |
+| `data-table-postgres`        | [README](./data-table-postgres/README.md)        |
+| `data-table-sqlite`          | [README](./data-table-sqlite/README.md)          |
+| `fetch-proxy`                | [README](./fetch-proxy/README.md)                |
+| `fetch-router`               | [README](./fetch-router/README.md)               |
+| `file-storage`               | [README](./file-storage/README.md)               |
+| `file-storage-s3`            | [README](./file-storage-s3/README.md)            |
+| `form-data-middleware`       | [README](./form-data-middleware/README.md)       |
+| `form-data-parser`           | [README](./form-data-parser/README.md)           |
+| `fs`                         | [README](./fs/README.md)                         |
+| `headers`                    | [README](./headers/README.md)                    |
+| `html-template`              | [README](./html-template/README.md)              |
+| `lazy-file`                  | [README](./lazy-file/README.md)                  |
+| `logger-middleware`          | [README](./logger-middleware/README.md)          |
+| `method-override-middleware` | [README](./method-override-middleware/README.md) |
+| `mime`                       | [README](./mime/README.md)                       |
+| `multipart-parser`           | [README](./multipart-parser/README.md)           |
+| `node-fetch-server`          | [README](./node-fetch-server/README.md)          |
+| `remix`                      | [README](./remix/README.md)                      |
+| `response`                   | [README](./response/README.md)                   |
+| `route-pattern`              | [README](./route-pattern/README.md)              |
+| `session`                    | [README](./session/README.md)                    |
+| `session-middleware`         | [README](./session-middleware/README.md)         |
+| `session-storage-memcache`   | [README](./session-storage-memcache/README.md)   |
+| `session-storage-redis`      | [README](./session-storage-redis/README.md)      |
+| `static-middleware`          | [README](./static-middleware/README.md)          |
+| `tar-parser`                 | [README](./tar-parser/README.md)                 |
+| `terminal`                   | [README](./terminal/README.md)                   |
+| `test`                       | [README](./test/README.md)                       |
+| `ui`                         | [README](./ui/README.md) / [docs](./ui/docs/)    |

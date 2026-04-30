@@ -122,13 +122,9 @@ test('getFileMetadata extracts metadata from various media file types', async ()
 
 test('getFileMetadata returns null for non-existent and non-media files', async () => {
 	// Non-existent file
-	consoleError.mockImplementation(() => {})
 	const nonExistentMetadata = await getFileMetadata('/nonexistent/file.mp3')
 	expect(nonExistentMetadata).toBeNull()
-	expect(consoleError).toHaveBeenCalledTimes(1)
-	expect(consoleError.mock.calls[0]?.[0]).toBe(
-		'Error getting metadata for /nonexistent/file.mp3:',
-	)
+	expect(consoleError).not.toHaveBeenCalled()
 
 	// Reset mock for non-media file test
 	consoleError.mockClear()

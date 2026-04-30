@@ -8,6 +8,14 @@ const app = run({
 		const mod = await import(moduleUrl)
 		return mod[exportName]
 	},
+	async resolveFrame(src, signal, target) {
+		const headers = new Headers({ accept: 'text/html' })
+		if (target) headers.set('x-remix-target', target)
+		const response = await fetch(src, { headers, signal })
+		if (!response.ok)
+			throw new Error(`Failed to load ${src}: ${response.status}`)
+		return response.body ?? (await response.text())
+	},
 })
 
 app.addEventListener('error', (event) => {

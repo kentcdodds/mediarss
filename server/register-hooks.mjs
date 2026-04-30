@@ -32,7 +32,7 @@ registerHooks({
 			const transformed = transformSync(source, {
 				format: 'esm',
 				jsx: 'automatic',
-				jsxImportSource: 'remix/component',
+				jsxImportSource: 'remix/ui',
 				loader: url.endsWith('.tsx') ? 'tsx' : 'ts',
 				sourcefile: filename,
 				sourcemap: 'inline',

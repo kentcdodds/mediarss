@@ -100,8 +100,14 @@ To limit the overall shape of multipart requests, use the `maxHeaderSize`,
 `parseFormData()` uses `maxFiles = 20`, `maxParts = 1000`, and
 `maxTotalSize = maxFiles * maxFileSize + 1 MiB`.
 
+Known limit errors are thrown directly so you can handle them with `instanceof`
+checks. Other failures while parsing the request body are wrapped in
+`FormDataParseError`, with the original error available as `error.cause`. Errors
+thrown or rejected by your `uploadHandler` are not wrapped.
+
 ```ts
 import {
+	FormDataParseError,
 	MaxFilesExceededError,
 	MaxFileSizeExceededError,
 	MaxHeaderSizeExceededError,
@@ -130,8 +136,10 @@ try {
 		console.error(`Request may not contain more than 25 multipart parts`)
 	} else if (error instanceof MaxTotalSizeExceededError) {
 		console.error(`Multipart request may not exceed 12 MiB of total content`)
+	} else if (error instanceof FormDataParseError) {
+		console.error(`Could not parse form data:`, error.cause ?? error)
 	} else {
-		console.error(`An unknown error occurred:`, error)
+		throw error
 	}
 }
 ```

@@ -2,12 +2,14 @@
 
 SQLite adapter for
 [`remix/data-table`](https://github.com/remix-run/remix/tree/main/packages/data-table).
-Use this package when you want `data-table` APIs backed by `better-sqlite3`.
+Use this package when you want `data-table` APIs backed by a synchronous SQLite
+client.
 
 ## Features
 
-- **Native `better-sqlite3` Integration**: Works well for local and embedded
-  deployments
+- **Native Runtime SQLite Support**: Works with Node's `node:sqlite`
+  `DatabaseSync`, Bun's `bun:sqlite` `Database`, and compatible synchronous
+  SQLite clients
 - **Full `data-table` API Support**: Queries, relations, writes, and
   transactions
 - **Adapter-Owned Compiler**: SQL compilation lives in this adapter, with
@@ -24,13 +26,26 @@ Use this package when you want `data-table` APIs backed by `better-sqlite3`.
 ## Installation
 
 ```sh
-npm i remix better-sqlite3
+npm i remix
 ```
 
 ## Usage
 
+### Node
+
 ```ts
-import Database from 'better-sqlite3'
+import { DatabaseSync } from 'node:sqlite'
+import { createDatabase } from 'remix/data-table'
+import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
+
+let sqlite = new DatabaseSync('app.db')
+let db = createDatabase(createSqliteDatabaseAdapter(sqlite))
+```
+
+### Bun
+
+```ts
+import { Database } from 'bun:sqlite'
 import { createDatabase } from 'remix/data-table'
 import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
 
@@ -39,8 +54,8 @@ let db = createDatabase(createSqliteDatabaseAdapter(sqlite))
 ```
 
 This is a good fit for local development, embedded deployments, and single-node
-services. Import any driver-specific types you need directly from
-`better-sqlite3`.
+services. Import any driver-specific types you need directly from your runtime's
+SQLite module.
 
 ## Adapter Capabilities
 
@@ -57,24 +72,12 @@ services. Import any driver-specific types you need directly from
 ### In-Memory Database For Tests
 
 ```ts
-import Database from 'better-sqlite3'
+import { DatabaseSync } from 'node:sqlite'
 import { createDatabase } from 'remix/data-table'
 import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
 
-let sqlite = new Database(':memory:')
+let sqlite = new DatabaseSync(':memory:')
 let db = createDatabase(createSqliteDatabaseAdapter(sqlite))
-```
-
-### Capability Overrides For Fallback Testing
-
-```ts
-import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
-
-let adapter = createSqliteDatabaseAdapter(sqlite, {
-	capabilities: {
-		returning: false,
-	},
-})
 ```
 
 ## Related Packages

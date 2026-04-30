@@ -24,10 +24,10 @@ deep dives. Prefer those docs before guessing Remix APIs.
 
 ## No React
 
-This application does NOT use React. We use `remix/component` for UI components.
-Do not introduce React, Preact, or any other UI framework.
+This application does NOT use React. We use `remix/ui` for UI components. Do not
+introduce React, Preact, or any other UI framework.
 
-### Remix Components vs React Components
+### Remix UI Components vs React Components
 
 Remix components work differently from React. Here's how:
 
@@ -47,7 +47,7 @@ For components that need state, use `handle: Handle` and **return a function**
 that returns JSX. The closure above the return acts as your state container:
 
 ```tsx
-import type { Handle } from 'remix/component'
+import type { Handle } from 'remix/ui'
 
 function Counter(handle: Handle) {
 	// State lives in the closure
@@ -79,7 +79,7 @@ and **renderProps** for rendering:
 > may be stale.
 
 ```tsx
-import type { Handle } from 'remix/component'
+import type { Handle } from 'remix/ui'
 
 function UserCard(
 	handle: Handle,
@@ -257,7 +257,7 @@ A parent component provides context using `handle.context.set()`. The context
 type is declared as a generic parameter on `Handle`:
 
 ```tsx
-import type { Handle } from 'remix/component'
+import type { Handle } from 'remix/ui'
 
 function ThemeProvider(handle: Handle<{ theme: 'light' | 'dark' }>) {
 	// Set context value for all descendants
@@ -278,7 +278,7 @@ Descendant components retrieve context using `handle.context.get()`, passing the
 provider component as the key:
 
 ```tsx
-import type { Handle } from 'remix/component'
+import type { Handle } from 'remix/ui'
 
 function ThemedButton(handle: Handle) {
 	// Get context from nearest ancestor ThemeProvider
@@ -311,7 +311,7 @@ function ThemedButton(handle: Handle) {
 **Full Example with Multiple Consumers:**
 
 ```tsx
-import type { Handle } from 'remix/component'
+import type { Handle } from 'remix/ui'
 
 // Provider component with typed context
 function UserProvider(

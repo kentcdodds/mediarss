@@ -1,5 +1,5 @@
 import { matchSorter, rankings } from 'match-sorter'
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/component'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
 import { SearchInput } from '#app/components/search-input.tsx'
 import {
 	FEED_SORT_OPTIONS,

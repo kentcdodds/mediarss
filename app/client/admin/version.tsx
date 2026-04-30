@@ -1,4 +1,4 @@
-import { type Handle, type RemixNode, css as rmxCss } from 'remix/component'
+import { type Handle, type RemixNode, css as rmxCss } from 'remix/ui'
 import {
 	formatDate,
 	formatRelativeTime,

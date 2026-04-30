@@ -5,13 +5,12 @@ review.
 
 ## Suggested issues
 
-1. Adopt `remix/component` frame navigation for admin SPA links and modal/detail
-   flows.
+1. Adopt `remix/ui` frame navigation for admin SPA links and modal/detail flows.
    - Why: alpha.4 adds built-in navigation interception, `navigate()`, `link()`,
      and named frame targeting.
 2. Evaluate replacing custom admin History router with Remix frame-aware
    navigation/runtime APIs.
-   - Why: current router duplicates behavior now shipped by `remix/component`.
+   - Why: current router duplicates behavior now shipped by `remix/ui`.
 3. Add browser-origin protection to admin and OAuth endpoints with
    `remix/cop-middleware`.
    - Why: alpha.4 adds fetch-metadata/origin-aware request filtering for browser
@@ -33,7 +32,7 @@ review.
    validation and read shaping.
    - Why: alpha.4 adds `beforeWrite`, `afterWrite`, `beforeDelete`,
      `afterDelete`, and `afterRead`.
-9. Add runtime error listeners around `remix/component` app startup for
-   admin/client hydration visibility.
+9. Add runtime error listeners around `remix/ui` app startup for admin/client
+   hydration visibility.
    - Why: alpha.4 forwards runtime and frame reload errors to the top-level app
      target.

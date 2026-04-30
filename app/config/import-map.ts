@@ -10,10 +10,9 @@
  * Maps bare module specifiers to their bundling endpoints.
  */
 export const baseImportMap = {
-	'remix/component': '/node_modules/remix/component',
-	'remix/component/jsx-runtime': '/node_modules/remix/component/jsx-runtime',
-	'remix/component/jsx-dev-runtime':
-		'/node_modules/remix/component/jsx-dev-runtime',
+	'remix/ui': '/node_modules/remix/ui',
+	'remix/ui/jsx-runtime': '/node_modules/remix/ui/jsx-runtime',
+	'remix/ui/jsx-dev-runtime': '/node_modules/remix/ui/jsx-dev-runtime',
 	'remix/data-schema': '/node_modules/remix/data-schema',
 	'match-sorter': '/node_modules/match-sorter',
 } as const

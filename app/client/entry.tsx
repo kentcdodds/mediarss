@@ -1,4 +1,4 @@
-import { createRoot, css as rmxCss } from 'remix/component'
+import { createRoot, css as rmxCss } from 'remix/ui'
 import { colors, spacing, typography } from '#app/styles/tokens.ts'
 import { Counter } from './counter.tsx'
 
@@ -26,7 +26,7 @@ function App() {
 			>
 				Home
 			</h1>
-			<Counter setup={{ initial: 5 }} />
+			<Counter initial={5} />
 		</main>
 	)
 }

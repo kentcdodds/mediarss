@@ -8,7 +8,7 @@
  * Data is received via the MCP-UI initial-render-data protocol,
  * not embedded inline in the HTML.
  */
-import { createRoot, type Handle, css as rmxCss } from 'remix/component'
+import { createRoot, type Handle, css as rmxCss } from 'remix/ui'
 import {
 	array,
 	type InferOutput,

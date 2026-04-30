@@ -52,6 +52,7 @@ async function handleRequest(request: Request): void {
 				)
 				console.log(`Content type: ${part.mediaType}`)
 				console.log(`Field name: ${part.name}`)
+				console.log(`Content-Type header: ${part.headers['content-type']}`)
 
 				// Save to disk, upload to cloud storage, etc.
 				await saveFile(part.filename, part.bytes)
@@ -67,6 +68,22 @@ async function handleRequest(request: Request): void {
 			console.error('An unexpected error occurred:', error)
 		}
 	}
+}
+```
+
+## Part Headers
+
+Each `MultipartPart` exposes decoded part headers as a plain object keyed by
+lower-case header name. Values are strings, and repeated headers are joined with
+`, `. Multipart part headers are parsed metadata from the request body, not
+native `Headers` objects, so access them with bracket notation:
+
+```ts
+for await (let part of parseMultipartRequest(request)) {
+	let contentDisposition = part.headers['content-disposition']
+	let contentType = part.headers['content-type']
+
+	console.log(contentDisposition, contentType)
 }
 ```
 
@@ -266,8 +283,8 @@ Deno 2.3.6
   Uses `multipart-parser` internally to parse multipart requests and generate
   `FileUpload`s for storage
 - [`headers`](https://github.com/remix-run/remix/tree/main/packages/headers) -
-  Used internally to parse HTTP headers and get metadata (filename, content
-  type) for each `MultipartPart`
+  Used internally to parse `Content-Disposition` and `Content-Type` metadata for
+  each `MultipartPart`
 
 ## Credits
 

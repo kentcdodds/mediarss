@@ -1,4 +1,3 @@
-import { redirect } from 'remix/response/redirect'
 import { css as rmxCss, type RemixNode } from 'remix/ui'
 import {
 	getGitHubRepo,
@@ -42,24 +41,29 @@ import {
 import { scanAllMediaRoots, scanDirectory } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
+import { colors, mq, spacing, typography } from '#app/styles/tokens.ts'
 import {
-	colors,
-	mq,
-	radius,
-	responsive,
-	shadows,
-	spacing,
-	transitions,
-	typography,
-} from '#app/styles/tokens.ts'
-import { ServerDocument } from '#app/components/server-document.tsx'
-import { renderUi } from '#app/helpers/render.ts'
-
-type AdminPageOptions = {
-	title: string
-	body: RemixNode
-	status?: number
-}
+	buttonStyle,
+	cardStyle,
+	dangerButtonStyle,
+	emptyStateStyle,
+	gridStyle,
+	inputStyle,
+	labelStyle,
+	mutedStyle,
+	rowStyle,
+	secondaryButtonStyle,
+	stackStyle,
+} from './admin-styles.ts'
+import {
+	getAllStringValues,
+	getLineValues,
+	getOptionalString,
+	getRequiredString,
+	parseAdminForm,
+	redirect303,
+	renderAdminPage,
+} from './admin-utils.tsx'
 
 type FeedSummary = {
 	id: string
@@ -80,167 +84,6 @@ type FormFeedData = {
 	link: string | null
 	copyright: string | null
 }
-
-const pageStyle = rmxCss({
-	fontFamily: typography.fontFamily,
-	minHeight: '100vh',
-	backgroundColor: colors.background,
-	color: colors.text,
-	display: 'flex',
-	flexDirection: 'column',
-})
-
-const headerStyle = rmxCss({
-	display: 'flex',
-	alignItems: 'center',
-	gap: spacing.md,
-	padding: `${spacing.md} ${responsive.spacingHeader}`,
-	borderBottom: `1px solid ${colors.border}`,
-	[mq.mobile]: {
-		gap: spacing.sm,
-	},
-})
-
-const mainStyle = rmxCss({
-	flex: 1,
-	maxWidth: '1200px',
-	width: '100%',
-	margin: '0 auto',
-	padding: responsive.spacingPage,
-	boxSizing: 'border-box',
-})
-
-const cardStyle = rmxCss({
-	backgroundColor: colors.surface,
-	border: `1px solid ${colors.border}`,
-	borderRadius: radius.lg,
-	padding: spacing.lg,
-	boxShadow: shadows.sm,
-})
-
-const gridStyle = rmxCss({
-	display: 'grid',
-	gridTemplateColumns: `repeat(auto-fill, minmax(${responsive.cardMinWidth}, 1fr))`,
-	gap: spacing.lg,
-	[mq.mobile]: {
-		gap: spacing.md,
-	},
-})
-
-const stackStyle = rmxCss({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: spacing.lg,
-})
-
-const rowStyle = rmxCss({
-	display: 'flex',
-	alignItems: 'center',
-	gap: spacing.md,
-	flexWrap: 'wrap',
-})
-
-const labelStyle = rmxCss({
-	display: 'flex',
-	flexDirection: 'column',
-	gap: spacing.xs,
-	fontSize: typography.fontSize.sm,
-	fontWeight: typography.fontWeight.medium,
-	color: colors.text,
-})
-
-const inputStyle = rmxCss({
-	width: '100%',
-	boxSizing: 'border-box',
-	border: `1px solid ${colors.border}`,
-	borderRadius: radius.md,
-	padding: spacing.sm,
-	font: 'inherit',
-	fontSize: typography.fontSize.sm,
-	color: colors.text,
-	backgroundColor: colors.background,
-	outline: 'none',
-	transition: `border-color ${transitions.fast}`,
-	'&:focus': {
-		borderColor: colors.primary,
-	},
-	'&::placeholder': {
-		color: colors.textMuted,
-	},
-})
-
-const buttonStyle = rmxCss({
-	display: 'inline-flex',
-	alignItems: 'center',
-	justifyContent: 'center',
-	gap: spacing.sm,
-	border: 'none',
-	borderRadius: radius.md,
-	padding: `${spacing.sm} ${spacing.lg}`,
-	backgroundColor: colors.primary,
-	color: colors.background,
-	font: 'inherit',
-	fontSize: typography.fontSize.sm,
-	fontWeight: typography.fontWeight.medium,
-	textDecoration: 'none',
-	cursor: 'pointer',
-	transition: `all ${transitions.fast}`,
-	'&:hover': {
-		backgroundColor: colors.primaryHover,
-	},
-})
-
-const secondaryButtonStyle = rmxCss({
-	display: 'inline-flex',
-	alignItems: 'center',
-	justifyContent: 'center',
-	gap: spacing.sm,
-	border: `1px solid ${colors.primary}`,
-	borderRadius: radius.md,
-	padding: `${spacing.sm} ${spacing.lg}`,
-	backgroundColor: 'transparent',
-	color: colors.primary,
-	font: 'inherit',
-	fontSize: typography.fontSize.sm,
-	fontWeight: typography.fontWeight.medium,
-	textDecoration: 'none',
-	cursor: 'pointer',
-	transition: `all ${transitions.fast}`,
-	'&:hover': {
-		backgroundColor: colors.primarySoft,
-	},
-})
-
-const dangerButtonStyle = rmxCss({
-	display: 'inline-flex',
-	alignItems: 'center',
-	justifyContent: 'center',
-	border: 'none',
-	borderRadius: radius.md,
-	padding: `${spacing.sm} ${spacing.lg}`,
-	backgroundColor: colors.error,
-	color: colors.background,
-	font: 'inherit',
-	fontSize: typography.fontSize.sm,
-	fontWeight: typography.fontWeight.medium,
-	cursor: 'pointer',
-	transition: `all ${transitions.fast}`,
-	'&:hover': {
-		backgroundColor: colors.errorHover,
-	},
-})
-
-const mutedStyle = rmxCss({
-	color: colors.textMuted,
-})
-
-const emptyStateStyle = rmxCss({
-	textAlign: 'center',
-	padding: spacing['2xl'],
-	backgroundColor: colors.surface,
-	borderRadius: radius.lg,
-	border: `1px dashed ${colors.border}`,
-})
 
 export async function handleAdminRequest(request: Request) {
 	if (request.method === 'POST') {
@@ -310,7 +153,7 @@ export async function handleAdminRequest(request: Request) {
 }
 
 async function handleAdminPost(request: Request) {
-	const formData = await request.formData()
+	const formData = await parseAdminForm(request)
 	const action = getRequiredString(formData, '_action')
 
 	switch (action) {
@@ -345,76 +188,6 @@ async function handleAdminPost(request: Request) {
 				status: 400,
 			})
 	}
-}
-
-function renderAdminPage({ title, body, status = 200 }: AdminPageOptions) {
-	const isVersionPage = title === 'Version Information'
-
-	return renderUi(
-		<ServerDocument title={title} entryScript={false}>
-			<div mix={pageStyle}>
-				<header mix={headerStyle}>
-					<a
-						href="/admin"
-						mix={rmxCss({
-							display: 'flex',
-							alignItems: 'center',
-							gap: spacing.md,
-							textDecoration: 'none',
-						})}
-					>
-						<img src="/assets/logo.svg" alt="MediaRSS" width="36" height="36" />
-						<h1
-							mix={rmxCss({
-								fontSize: typography.fontSize.lg,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-							})}
-						>
-							MediaRSS
-						</h1>
-						<span
-							mix={rmxCss({
-								fontSize: typography.fontSize.sm,
-								color: colors.textMuted,
-								[mq.mobile]: {
-									display: 'none',
-								},
-							})}
-						>
-							Admin
-						</span>
-					</a>
-				</header>
-				<main mix={mainStyle}>{body}</main>
-				<footer
-					mix={rmxCss({
-						borderTop: `1px solid ${colors.border}`,
-						padding: `${spacing.md} ${responsive.spacingHeader}`,
-						display: 'flex',
-						justifyContent: 'center',
-						alignItems: 'center',
-					})}
-				>
-					<a
-						href="/admin/version"
-						mix={rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							textDecoration: 'none',
-							'&:hover': {
-								color: colors.primary,
-							},
-						})}
-					>
-						{isVersionPage ? '...' : 'Version'}
-					</a>
-				</footer>
-			</div>
-		</ServerDocument>,
-		{ status },
-	)
 }
 
 async function renderFeedIndex() {
@@ -1055,7 +828,7 @@ async function createDirectoryFeedFromForm(formData: FormData) {
 	}
 	const feed = await createDirectoryFeed({ ...feedData, directoryPaths })
 	await createDirectoryFeedToken({ feedId: feed.id, label: 'Default' })
-	return redirect(`/admin/feeds/${feed.id}`, 303)
+	return redirect303(`/admin/feeds/${feed.id}`)
 }
 
 async function createCuratedFeedFromForm(formData: FormData) {
@@ -1066,7 +839,7 @@ async function createCuratedFeedFromForm(formData: FormData) {
 		const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 		await addItemToFeed(feed.id, mediaRoot, relativePath)
 	}
-	return redirect(`/admin/feeds/${feed.id}`, 303)
+	return redirect303(`/admin/feeds/${feed.id}`)
 }
 
 async function updateFeedFromForm(formData: FormData) {
@@ -1083,7 +856,7 @@ async function updateFeedFromForm(formData: FormData) {
 		await updateCuratedFeed(feedId, feedData)
 	}
 
-	return redirect(`/admin/feeds/${feedId}`, 303)
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 async function deleteFeedFromForm(formData: FormData) {
@@ -1096,7 +869,7 @@ async function deleteFeedFromForm(formData: FormData) {
 		await deleteCuratedFeed(feedId)
 	}
 
-	return redirect('/admin', 303)
+	return redirect303('/admin')
 }
 
 async function createTokenFromForm(formData: FormData) {
@@ -1110,7 +883,7 @@ async function createTokenFromForm(formData: FormData) {
 		await createCuratedFeedToken({ feedId, label })
 	}
 
-	return redirect(`/admin/feeds/${feedId}`, 303)
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 async function addItemFromForm(formData: FormData) {
@@ -1118,7 +891,7 @@ async function addItemFromForm(formData: FormData) {
 	const mediaPath = getRequiredString(formData, 'mediaPath')
 	const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 	await addItemToFeed(feedId, mediaRoot, relativePath)
-	return redirect(`/admin/feeds/${feedId}`, 303)
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 async function removeItemFromForm(formData: FormData) {
@@ -1126,29 +899,13 @@ async function removeItemFromForm(formData: FormData) {
 	const mediaPath = getRequiredString(formData, 'mediaPath')
 	const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 	await removeItemFromFeed(feedId, mediaRoot, relativePath)
-	return redirect(`/admin/feeds/${feedId}`, 303)
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 async function clearItemsFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
 	await clearFeedItems(feedId)
-	return redirect(`/admin/feeds/${feedId}`, 303)
-}
-
-function invalidForm(message: string, href: string) {
-	return renderAdminPage({
-		title: 'Invalid form',
-		body: (
-			<section mix={cardStyle}>
-				<h1>Invalid form</h1>
-				<p>{message}</p>
-				<a href={href} mix={buttonStyle}>
-					Back
-				</a>
-			</section>
-		),
-		status: 400,
-	})
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 function getFormFeedData(
@@ -1177,34 +934,20 @@ function getFeedType(formData: FormData): FeedType {
 	return value === 'serial' ? 'serial' : 'episodic'
 }
 
-function getLineValues(formData: FormData, name: string) {
-	return (getOptionalString(formData, name) ?? '')
-		.split(/\r?\n/)
-		.map((value) => value.trim())
-		.filter(Boolean)
-}
-
-function getAllStringValues(formData: FormData, name: string) {
-	return formData
-		.getAll(name)
-		.filter(
-			(value): value is string => typeof value === 'string' && value !== '',
-		)
-}
-
-function getRequiredString(formData: FormData, name: string) {
-	const value = formData.get(name)
-	if (typeof value !== 'string' || value.trim() === '') {
-		throw new Error(`Missing required form field "${name}"`)
-	}
-	return value
-}
-
-function getOptionalString(formData: FormData, name: string) {
-	const value = formData.get(name)
-	if (typeof value !== 'string') return null
-	const trimmed = value.trim()
-	return trimmed || null
+function invalidForm(message: string, href: string) {
+	return renderAdminPage({
+		title: 'Invalid form',
+		body: (
+			<section mix={cardStyle}>
+				<h1>Invalid form</h1>
+				<p>{message}</p>
+				<a href={href} mix={buttonStyle}>
+					Back
+				</a>
+			</section>
+		),
+		status: 400,
+	})
 }
 
 function normalizePath(pathname: string) {

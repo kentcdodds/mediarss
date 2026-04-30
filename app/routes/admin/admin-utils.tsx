@@ -1,0 +1,168 @@
+import { redirect } from 'remix/response/redirect'
+import { css as rmxCss, type RemixNode } from 'remix/ui'
+import { ServerDocument } from '#app/components/server-document.tsx'
+import { renderUi } from '#app/helpers/render.ts'
+import {
+	colors,
+	mq,
+	responsive,
+	spacing,
+	typography,
+} from '#app/styles/tokens.ts'
+import { mainStyle, pageStyle } from './admin-styles.ts'
+
+export type AdminPageOptions = {
+	title: string
+	body: RemixNode
+	status?: number
+}
+
+export function renderAdminPage({
+	title,
+	body,
+	status = 200,
+}: AdminPageOptions) {
+	const isVersionPage = title === 'Version Information'
+
+	return renderUi(
+		<ServerDocument title={title} entryScript={false}>
+			<div mix={pageStyle}>
+				<header
+					mix={rmxCss({
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.md,
+						padding: `${spacing.md} ${responsive.spacingHeader}`,
+						borderBottom: `1px solid ${colors.border}`,
+						[mq.mobile]: {
+							gap: spacing.sm,
+						},
+					})}
+				>
+					<a
+						href="/admin"
+						mix={rmxCss({
+							display: 'flex',
+							alignItems: 'center',
+							gap: spacing.md,
+							textDecoration: 'none',
+						})}
+					>
+						<img src="/assets/logo.svg" alt="MediaRSS" width="36" height="36" />
+						<h1
+							mix={rmxCss({
+								fontSize: typography.fontSize.lg,
+								fontWeight: typography.fontWeight.semibold,
+								color: colors.text,
+								margin: 0,
+							})}
+						>
+							MediaRSS
+						</h1>
+						<span
+							mix={rmxCss({
+								fontSize: typography.fontSize.sm,
+								color: colors.textMuted,
+								[mq.mobile]: {
+									display: 'none',
+								},
+							})}
+						>
+							Admin
+						</span>
+					</a>
+				</header>
+				<main mix={mainStyle}>{body}</main>
+				<footer
+					mix={rmxCss({
+						borderTop: `1px solid ${colors.border}`,
+						padding: `${spacing.md} ${responsive.spacingHeader}`,
+						display: 'flex',
+						justifyContent: 'center',
+						alignItems: 'center',
+					})}
+				>
+					{isVersionPage ? (
+						<span
+							mix={rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+							})}
+						>
+							...
+						</span>
+					) : (
+						<a
+							href="/admin/version"
+							mix={rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								textDecoration: 'none',
+								'&:hover': {
+									color: colors.primary,
+								},
+							})}
+						>
+							...
+						</a>
+					)}
+				</footer>
+			</div>
+		</ServerDocument>,
+		{ status },
+	)
+}
+
+export function redirect303(href: string) {
+	return redirect(href, 303)
+}
+
+export async function parseAdminForm(request: Request) {
+	return request.formData()
+}
+
+export function getRequiredString(formData: FormData, name: string) {
+	const value = formData.get(name)
+	if (typeof value !== 'string' || value.trim() === '') {
+		throw new Error(`Missing required form field "${name}"`)
+	}
+	return value
+}
+
+export function getOptionalString(formData: FormData, name: string) {
+	const value = formData.get(name)
+	if (typeof value !== 'string') return null
+	const trimmed = value.trim()
+	return trimmed || null
+}
+
+export function getAllStringValues(formData: FormData, name: string) {
+	return formData
+		.getAll(name)
+		.filter(
+			(value): value is string => typeof value === 'string' && value !== '',
+		)
+}
+
+export function getLineValues(formData: FormData, name: string) {
+	return (getOptionalString(formData, name) ?? '')
+		.split(/\r?\n/)
+		.map((value) => value.trim())
+		.filter(Boolean)
+}
+
+export function invalidAdminForm({
+	message,
+	href,
+	body,
+}: {
+	message: string
+	href: string
+	body: (message: string, href: string) => RemixNode
+}) {
+	return renderAdminPage({
+		title: 'Invalid form',
+		body: body(message, href),
+		status: 400,
+	})
+}

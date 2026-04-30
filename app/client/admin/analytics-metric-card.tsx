@@ -1,4 +1,4 @@
-import { css as rmxCss } from 'remix/component'
+import { css as rmxCss } from 'remix/ui'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'
 
 export function AnalyticsMetricCard() {

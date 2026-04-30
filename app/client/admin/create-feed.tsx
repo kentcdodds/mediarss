@@ -3,7 +3,7 @@ import {
 	type RemixNode,
 	css as rmxCss,
 	on as rmxOn,
-} from 'remix/component'
+} from 'remix/ui'
 import {
 	colors,
 	mq,

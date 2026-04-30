@@ -1,4 +1,4 @@
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/component'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
 import {
 	Modal,
 	ModalAlert,

@@ -1,4 +1,4 @@
-import { createRoot, type Handle, css as rmxCss } from 'remix/component'
+import { createRoot, type Handle, css as rmxCss } from 'remix/ui'
 import {
 	colors,
 	mq,

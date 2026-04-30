@@ -1,8 +1,4 @@
-import {
-	addEventListeners,
-	type Handle,
-	TypedEventTarget,
-} from 'remix/component'
+import { addEventListeners, type Handle, TypedEventTarget } from 'remix/ui'
 import {
 	getRelativeHref,
 	isRouterOwnedPath,

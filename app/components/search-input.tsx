@@ -1,4 +1,4 @@
-import { css as rmxCss, on as rmxOn } from 'remix/component'
+import { css as rmxCss, on as rmxOn } from 'remix/ui'
 import {
 	colors,
 	mq,

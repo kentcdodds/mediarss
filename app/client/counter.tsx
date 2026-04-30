@@ -1,9 +1,4 @@
-import {
-	type Handle,
-	pressEvents,
-	css as rmxCss,
-	on as rmxOn,
-} from 'remix/component'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
 import {
 	colors,
 	radius,
@@ -14,8 +9,8 @@ import {
 
 type CounterSetup = { initial?: number }
 
-export function Counter(handle: Handle, setup: CounterSetup = {}) {
-	let count = setup.initial ?? 0
+export function Counter(handle: Handle<CounterSetup>) {
+	let count = handle.props.initial ?? 0
 	return () => (
 		<button
 			type="button"
@@ -38,8 +33,7 @@ export function Counter(handle: Handle, setup: CounterSetup = {}) {
 						backgroundColor: colors.primaryActive,
 					},
 				}),
-				pressEvents(),
-				rmxOn(pressEvents.press, () => {
+				rmxOn('click', () => {
 					count++
 					handle.update()
 				}),

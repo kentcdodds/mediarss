@@ -4,7 +4,7 @@ import {
 	css as rmxCss,
 	on as rmxOn,
 	ref as rmxRef,
-} from 'remix/component'
+} from 'remix/ui'
 import {
 	artworkLayout,
 	colors,

@@ -88,7 +88,7 @@ async function bundleEntrypoint(
 		entryPoints: [entrypoint],
 		format: 'esm',
 		jsx: 'automatic',
-		jsxImportSource: 'remix/component',
+		jsxImportSource: 'remix/ui',
 		logLevel: 'silent',
 		minify: isProduction,
 		platform: 'browser',
@@ -105,7 +105,7 @@ async function bundleEntrypoint(
 		tsconfigRaw: {
 			compilerOptions: {
 				jsx: 'react-jsx',
-				jsxImportSource: 'remix/component',
+				jsxImportSource: 'remix/ui',
 				verbatimModuleSyntax: true,
 			},
 		},

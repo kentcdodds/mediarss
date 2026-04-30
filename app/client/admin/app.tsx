@@ -86,7 +86,9 @@ function AppFooter(handle: Handle) {
 export const AdminApp = clientEntry(
 	'/app/client/admin/app.tsx#AdminApp',
 	function AdminApp(handle: Handle<AdminAppProps>) {
-		router.setLocation(handle.props.initialHref ?? '/admin')
+		if (!isBrowser) {
+			router.setLocation(handle.props.initialHref ?? '/admin')
+		}
 
 		return () => (
 			<div

@@ -1,9 +1,5 @@
 import { type Handle, type RemixNode } from 'remix/ui'
-import { baseImportMap } from '#app/config/import-map.ts'
-import {
-	versionedImportMap,
-	versionedUrl,
-} from '#app/helpers/bundle-version.ts'
+import { getDocumentAssets } from '#app/components/document-assets.ts'
 
 type ServerDocumentProps = {
 	children?: RemixNode
@@ -19,8 +15,8 @@ export function ServerDocument(handle: Handle<ServerDocumentProps>) {
 	} = handle.props
 
 	return () => {
-		const versionedImports = versionedImportMap(baseImportMap)
-		const importmapJson = JSON.stringify({ imports: versionedImports })
+		const { entryScriptUrl, importmapJson, modulePreloadUrls } =
+			getDocumentAssets(entryScript)
 
 		return (
 			<html lang="en">
@@ -32,14 +28,14 @@ export function ServerDocument(handle: Handle<ServerDocumentProps>) {
 					<link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
 					<link rel="stylesheet" href="/assets/styles.css" />
 					<script type="importmap" innerHTML={importmapJson} />
-					{Object.values(versionedImports).map((value) => (
+					{modulePreloadUrls.map((value) => (
 						<link key={value} rel="modulepreload" href={value} />
 					))}
 				</head>
 				<body>
 					<div id="root">{children}</div>
-					{entryScript ? (
-						<script type="module" src={versionedUrl(entryScript)} />
+					{entryScriptUrl ? (
+						<script type="module" src={entryScriptUrl} />
 					) : null}
 				</body>
 			</html>

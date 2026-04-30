@@ -357,7 +357,7 @@ function UserBadge(handle: Handle) {
 
 The historical client-router `insertBefore` instability that required manual
 refreshes should be treated as fixed for this project after upgrading to
-`remix@3.0.0-alpha.4`.
+`remix@3.0.0-beta.0`.
 
 If navigation regressions appear, debug the app code first (Link handling, route
 registration, and state updates) before assuming a framework bug.

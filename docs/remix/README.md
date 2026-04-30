@@ -1,51 +1,52 @@
 # Remix package docs
 
-MediaRSS runs on Remix v3 alpha APIs exposed through the unified `remix`
-package.
+MediaRSS runs on Remix v3 APIs exposed through the unified `remix` package.
 
 This directory mirrors upstream package documentation from the Remix monorepo at
-`remix@3.0.0-alpha.6`. Package docs are copied from the tagged source release,
+`remix@3.0.0-beta.0`. Package docs are copied from the tagged source release,
 and release notes are collected with `gh release view` for the umbrella release
-and every package release linked from it.
+and every package release linked from it. Upstream changelog files are
+intentionally omitted.
 
 ## Agent quick start
 
-- Start with [alpha.6 release notes](./release-notes.md) for breaking changes
-  and package bumps.
+- Start with [beta.0 release notes](./release-notes.md) for breaking changes and
+  package bumps.
 - Use the package table to jump to the README or package docs you need.
-- Use [`ui`](./ui/README.md) for component APIs; alpha.6 removes the old
+- Use [`ui`](./ui/README.md) for component APIs; v3 removes the old
   `remix/component` exports.
 - Use [`multipart-parser`](./multipart-parser/README.md) when handling multipart
-  parts; alpha.6 changes part headers to a decoded object keyed by lower-case
-  header name.
+  parts; v3 part headers are decoded objects keyed by lower-case header name.
 - Prefer these mirrored docs over ad-hoc web searches when changing Remix
   integrations in this repo.
 
 ## Release-note coverage
 
-- remix@3.0.0-alpha.6
-- assets@0.2.0
-- auth@0.2.0
-- cli@0.1.0
-- compression-middleware@0.1.6
-- data-schema@0.3.0
-- data-table-sqlite@0.4.0
-- fetch-proxy@0.8.0
-- file-storage@0.13.4
-- file-storage-s3@0.1.1
-- form-data-middleware@0.2.2
-- form-data-parser@0.17.0
-- fs@0.4.3
-- lazy-file@5.0.3
-- logger-middleware@0.2.0
-- mime@0.4.1
-- multipart-parser@0.16.0
-- response@0.3.3
-- static-middleware@0.4.7
-- tar-parser@0.7.1
-- terminal@0.1.0
-- test@0.2.0
-- ui@0.1.0
+- remix@3.0.0-beta.0
+- assert@0.2.0
+- assets@0.3.0
+- async-context-middleware@0.2.2
+- auth@0.2.1
+- auth-middleware@0.1.2
+- cli@0.2.0
+- compression-middleware@0.1.7
+- cop-middleware@0.1.2
+- cors-middleware@0.1.2
+- csrf-middleware@0.1.2
+- data-table@0.2.1
+- data-table-mysql@0.3.1
+- data-table-postgres@0.3.1
+- data-table-sqlite@0.4.1
+- fetch-router@0.18.2
+- form-data-middleware@0.2.3
+- logger-middleware@0.2.1
+- method-override-middleware@0.1.7
+- node-fetch-server@0.13.1
+- node-serve@0.1.0
+- session-middleware@0.2.2
+- static-middleware@0.4.8
+- test@0.3.0
+- ui@0.1.1
 
 ## Mirrored packages
 
@@ -82,6 +83,7 @@ and every package release linked from it.
 | `mime`                       | [README](./mime/README.md)                       |
 | `multipart-parser`           | [README](./multipart-parser/README.md)           |
 | `node-fetch-server`          | [README](./node-fetch-server/README.md)          |
+| `node-serve`                 | [README](./node-serve/README.md)                 |
 | `remix`                      | [README](./remix/README.md)                      |
 | `response`                   | [README](./response/README.md)                   |
 | `route-pattern`              | [README](./route-pattern/README.md)              |

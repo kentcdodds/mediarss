@@ -14,7 +14,7 @@
 
 ## Remix Version Notes
 
-MediaRSS currently targets `remix@3.0.0-alpha.4`.
+MediaRSS currently targets `remix@3.0.0-beta.0`.
 
 For migration details (including import rules, package adoption decisions, and
 router behavior expectations), see

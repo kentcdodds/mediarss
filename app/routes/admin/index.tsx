@@ -1,7 +1,8 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { Layout } from '#app/components/layout.tsx'
+import { AdminApp } from '#app/client/admin/app.tsx'
+import { ServerDocument } from '#app/components/server-document.tsx'
 import type routes from '#app/config/routes.ts'
-import { render } from '#app/helpers/render.ts'
+import { renderUi } from '#app/helpers/render.ts'
 
 /**
  * Admin shell handler.
@@ -10,14 +11,21 @@ import { render } from '#app/helpers/render.ts'
  */
 const adminShellHandler = {
 	middleware: [],
-	handler() {
-		return render(
-			Layout({
-				title: 'MediaRSS Admin',
-				entryScript: '/app/client/admin/entry.tsx',
-			}),
+	handler({ request }: { request: Request }) {
+		return renderUi(
+			<ServerDocument
+				title="MediaRSS Admin"
+				entryScript="/app/client/admin/entry.tsx"
+			>
+				<AdminApp initialHref={getRequestHref(request)} />
+			</ServerDocument>,
 		)
 	},
+}
+
+function getRequestHref(request: Request) {
+	const url = new URL(request.url)
+	return `${url.pathname}${url.search}`
 }
 
 export const adminHandler = adminShellHandler satisfies BuildAction<

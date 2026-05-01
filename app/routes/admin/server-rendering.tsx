@@ -31,11 +31,13 @@ import {
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import {
+	getFeedAnalyticsByToken,
 	getFeedAnalyticsSummary,
 	getFeedDailyAnalytics,
 	getFeedTopClientAnalytics,
 	getFeedTopMediaItemAnalytics,
 } from '#app/db/feed-analytics-events.ts'
+import { hasFeedArtwork } from '#app/helpers/feed-artwork.ts'
 import { scanAllMediaRoots, scanDirectory } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'
 import {
@@ -48,8 +50,10 @@ import {
 	colors,
 	mq,
 	radius,
+	responsive,
 	shadows,
 	spacing,
+	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
 import { handleAdminPost } from './admin-actions.tsx'
@@ -90,13 +94,25 @@ type FeedTokenSummary = {
 	revokedAt: number | null
 }
 
+type FeedTokenAnalytics = FeedTokenSummary & {
+	rssFetches: number
+	mediaRequests: number
+	downloadStarts: number
+	bytesServed: number
+	uniqueClients: number
+	firstSeenAt: number | null
+	lastSeenAt: number | null
+}
+
 type FeedDetailData = {
 	feed: Feed
 	isDirectory: boolean
 	tokens: Array<FeedTokenSummary>
 	items: Awaited<ReturnType<typeof getDirectoryFeedItems>>
+	hasUploadedArtwork: boolean
 	analytics: {
 		summary: ReturnType<typeof getFeedAnalyticsSummary>
+		byToken: Array<FeedTokenAnalytics>
 		topClients: ReturnType<typeof getFeedTopClientAnalytics>
 		topMediaItems: ReturnType<typeof getFeedTopMediaItemAnalytics>
 		daily: ReturnType<typeof getFeedDailyAnalytics>
@@ -752,14 +768,17 @@ async function getFeedDetailData(
 		? await getDirectoryFeedItems(feed)
 		: await getCuratedFeedItems(feed)
 	const since = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
+	const tokenMetrics = getFeedAnalyticsByToken(feed.id, since)
 
 	return {
 		feed,
 		isDirectory,
 		tokens,
 		items,
+		hasUploadedArtwork: await hasFeedArtwork(feed.id),
 		analytics: {
 			summary: getFeedAnalyticsSummary(feed.id, since),
+			byToken: buildTokenAnalytics(tokens, tokenMetrics),
 			topClients: getFeedTopClientAnalytics(feed.id, since),
 			topMediaItems: getFeedTopMediaItemAnalytics(feed.id, since),
 			daily: getFeedDailyAnalytics(feed.id, since),
@@ -767,100 +786,272 @@ async function getFeedDetailData(
 	}
 }
 
+function buildTokenAnalytics(
+	tokens: Array<FeedTokenSummary>,
+	tokenMetrics: ReturnType<typeof getFeedAnalyticsByToken>,
+): Array<FeedTokenAnalytics> {
+	const tokenMetadataByToken = new Map(
+		tokens.map((token) => [token.token, token]),
+	)
+	const tokenMetricsByToken = new Map(
+		tokenMetrics.map((metrics) => [metrics.token, metrics]),
+	)
+
+	const byToken = tokens.map((token): FeedTokenAnalytics => {
+		const metrics = tokenMetricsByToken.get(token.token)
+		return {
+			...token,
+			rssFetches: metrics?.rssFetches ?? 0,
+			mediaRequests: metrics?.mediaRequests ?? 0,
+			downloadStarts: metrics?.downloadStarts ?? 0,
+			bytesServed: metrics?.bytesServed ?? 0,
+			uniqueClients: metrics?.uniqueClients ?? 0,
+			firstSeenAt: metrics?.firstSeenAt ?? null,
+			lastSeenAt: metrics?.lastSeenAt ?? null,
+		}
+	})
+
+	for (const metrics of tokenMetrics) {
+		if (tokenMetadataByToken.has(metrics.token)) continue
+		byToken.push({
+			token: metrics.token,
+			label: 'Deleted token',
+			createdAt: 0,
+			lastUsedAt: null,
+			revokedAt: null,
+			rssFetches: metrics.rssFetches,
+			mediaRequests: metrics.mediaRequests,
+			downloadStarts: metrics.downloadStarts,
+			bytesServed: metrics.bytesServed,
+			uniqueClients: metrics.uniqueClients,
+			firstSeenAt: metrics.firstSeenAt,
+			lastSeenAt: metrics.lastSeenAt,
+		})
+	}
+
+	return byToken.sort((a, b) => {
+		if (b.downloadStarts !== a.downloadStarts) {
+			return b.downloadStarts - a.downloadStarts
+		}
+		if (b.mediaRequests !== a.mediaRequests) {
+			return b.mediaRequests - a.mediaRequests
+		}
+		return (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0)
+	})
+}
+
 function renderFeedDetail(detail: FeedDetailData) {
-	const { feed, isDirectory, items, tokens, analytics } = detail
+	const { feed, isDirectory, items, tokens, hasUploadedArtwork, analytics } =
+		detail
 	const directoryPaths = isDirectoryFeed(feed) ? parseDirectoryPaths(feed) : []
+	const activeTokens = tokens.filter((token) => !token.revokedAt)
 	return (
-		<div mix={stackStyle}>
+		<div mix={detailPageStyle}>
 			<div
 				mix={rmxCss({
 					display: 'flex',
 					alignItems: 'center',
-					justifyContent: 'space-between',
 					gap: spacing.md,
 					flexWrap: 'wrap',
+					[mq.mobile]: {
+						flexDirection: 'column',
+						alignItems: 'stretch',
+						gap: spacing.sm,
+					},
 				})}
 			>
-				<div mix={rowStyle}>
-					<a href="/admin" mix={secondaryButtonStyle}>
-						Back
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.md,
+						flex: 1,
+						minWidth: 0,
+						[mq.mobile]: {
+							flexWrap: 'wrap',
+						},
+					})}
+				>
+					<a
+						href="/admin"
+						mix={rmxCss({
+							color: colors.textMuted,
+							textDecoration: 'none',
+							fontSize: typography.fontSize.sm,
+							'&:hover': { color: colors.text },
+							flexShrink: 0,
+						})}
+					>
+						← Back
 					</a>
-					<h1 mix={rmxCss({ margin: 0 })}>{feed.name}</h1>
+					<h1
+						mix={rmxCss({
+							fontSize: typography.fontSize.xl,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+							flex: 1,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap',
+							[mq.mobile]: {
+								fontSize: typography.fontSize.lg,
+								flex: 'none',
+								width: '100%',
+								order: 2,
+							},
+						})}
+					>
+						{feed.name}
+					</h1>
+					<span
+						mix={rmxCss({
+							fontSize: typography.fontSize.xs,
+							fontWeight: typography.fontWeight.medium,
+							color: isDirectory ? '#3b82f6' : '#8b5cf6',
+							backgroundColor: isDirectory
+								? 'rgba(59, 130, 246, 0.1)'
+								: 'rgba(139, 92, 246, 0.1)',
+							padding: `${spacing.xs} ${spacing.sm}`,
+							borderRadius: radius.sm,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em',
+							flexShrink: 0,
+						})}
+					>
+						{isDirectory ? 'directory' : 'curated'}
+					</span>
 				</div>
-				<div mix={rowStyle}>
-					<a href={`/admin/feeds/${feed.id}/edit`} mix={secondaryButtonStyle}>
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						gap: spacing.sm,
+						[mq.mobile]: {
+							width: '100%',
+						},
+					})}
+				>
+					<a
+						href={`/admin/feeds/${feed.id}/edit`}
+						mix={compactOutlineButtonStyle}
+					>
 						Edit Feed
 					</a>
-					<form method="post" action={`/admin/feeds/${feed.id}`}>
+					<form
+						method="post"
+						action={`/admin/feeds/${feed.id}`}
+						mix={rmxCss({ display: 'contents' })}
+					>
 						<input type="hidden" name="_action" value="delete-feed" />
 						<input type="hidden" name="feedId" value={feed.id} />
-						<button type="submit" mix={dangerButtonStyle}>
+						<button type="submit" mix={compactDangerOutlineButtonStyle}>
 							Delete
 						</button>
 					</form>
 				</div>
 			</div>
 
-			<section mix={cardStyle}>
-				<h2 mix={sectionTitleStyle}>Feed Details</h2>
-				<p mix={rmxCss({ color: colors.textMuted, marginTop: 0 })}>
-					{feed.description || 'No description.'}
-				</p>
-				<div mix={detailGridStyle}>
-					{renderDescriptionRow('ID', feed.id)}
-					{renderDescriptionRow('Feed Type', feed.feedType ?? 'episodic')}
-					{renderDescriptionRow('Kind', isDirectory ? 'Directory' : 'Curated')}
-					{renderDescriptionRow('Sort', `${feed.sortOrder}:${feed.sortFields}`)}
-					{renderDescriptionRow('Author', feed.author ?? '—')}
-					{renderDescriptionRow('Language', feed.language)}
-					{renderDescriptionRow('Created', formatDate(feed.createdAt))}
-					{renderDescriptionRow('Updated', formatDate(feed.updatedAt))}
-					{renderDescriptionRow('Link', feed.link ?? '—')}
-					{renderDescriptionRow('Copyright', feed.copyright ?? '—')}
-				</div>
-				{isDirectory ? (
-					<div mix={rmxCss({ marginTop: spacing.md })}>
-						<strong>Directories</strong>
-						<ul>
-							{directoryPaths.map((path) => (
-								<li key={path}>
-									<code>{path}</code>
-								</li>
-							))}
-						</ul>
-					</div>
-				) : null}
-			</section>
-
-			<section mix={cardStyle}>
-				<h2 mix={sectionTitleStyle}>Feed Artwork</h2>
-				<div mix={rowStyle}>
-					<img
-						src={`/admin/api/feeds/${feed.id}/artwork`}
-						alt=""
-						width="120"
-						height="120"
-						mix={rmxCss({
-							width: '120px',
-							height: '120px',
-							borderRadius: radius.md,
-							...artworkLayout.centeredContain,
-							backgroundColor: colors.background,
-							border: `1px solid ${colors.border}`,
+			<div mix={detailSectionsStyle}>
+				<section mix={detailCardStyle}>
+					<h2 mix={sectionTitleStyle}>Feed Details</h2>
+					<p mix={rmxCss({ color: colors.textMuted, marginTop: 0 })}>
+						{feed.description || 'No description.'}
+					</p>
+					<dl mix={detailGridStyle}>
+						{isDirectory ? renderDirectoriesInfo(directoryPaths) : null}
+						{renderInfoItem(
+							'Feed Type',
+							feed.feedType === 'serial' ? 'Serial' : 'Episodic',
+						)}
+						{renderInfoItem('Subtitle', feed.subtitle ?? '—')}
+						{renderInfoItem('Author', feed.author ?? '—')}
+						{renderInfoItem('Owner Name', feed.ownerName ?? '—')}
+						{renderInfoItem('Owner Email', feed.ownerEmail ?? '—')}
+						{renderInfoItem('Website', feed.link ?? '—', {
+							mono: Boolean(feed.link),
+							href: feed.link ?? undefined,
 						})}
-					/>
-					<div>
-						<p mix={mutedStyle}>Current artwork for this feed.</p>
-						<p mix={mutedStyle}>
-							Artwork upload remains available through the enhanced admin UI.
-						</p>
-					</div>
-				</div>
-			</section>
+						{renderInfoItem('Copyright', feed.copyright ?? '—')}
+						{renderInfoItem(
+							'Sort',
+							feed.sortFields === 'position'
+								? 'position (manual)'
+								: `${feed.sortFields} (${feed.sortOrder})`,
+						)}
+						{renderInfoItem(
+							'Created',
+							formatDate(feed.createdAt, { style: 'short' }),
+						)}
+						{renderInfoItem(
+							'Updated',
+							formatDate(feed.updatedAt, { style: 'short' }),
+						)}
+					</dl>
+				</section>
 
-			{renderMediaItemsSection(items)}
-			{renderAnalyticsSection(analytics)}
-			{renderTokensSection(feed, tokens)}
+				<section mix={detailCardStyle}>
+					<h2 mix={sectionTitleStyle}>Feed Artwork</h2>
+					<div mix={rowStyle}>
+						<img
+							src={`/admin/api/feeds/${feed.id}/artwork?t=${feed.updatedAt}`}
+							alt="Feed artwork"
+							width="120"
+							height="120"
+							mix={rmxCss({
+								width: '120px',
+								height: '120px',
+								borderRadius: radius.md,
+								...artworkLayout.centeredContain,
+								backgroundColor: colors.background,
+								border: `1px solid ${colors.border}`,
+							})}
+						/>
+						<div>
+							<form
+								method="post"
+								action={`/admin/feeds/${feed.id}`}
+								enctype="multipart/form-data"
+								mix={artworkFormStyle}
+							>
+								<input type="hidden" name="_action" value="upload-artwork" />
+								<input type="hidden" name="feedId" value={feed.id} />
+								<input
+									type="file"
+									name="file"
+									accept="image/jpeg,image/png,image/webp"
+									required
+									mix={artworkFileInputStyle}
+								/>
+								<button type="submit" mix={compactPrimaryButtonStyle}>
+									Upload Artwork
+								</button>
+							</form>
+							<p
+								mix={rmxCss({
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									margin: `${spacing.xs} 0 ${hasUploadedArtwork ? spacing.md : 0} 0`,
+								})}
+							>
+								JPEG, PNG, or WebP. Max 5MB.
+							</p>
+							{hasUploadedArtwork ? (
+								<form method="post" action={`/admin/feeds/${feed.id}`}>
+									<input type="hidden" name="_action" value="delete-artwork" />
+									<input type="hidden" name="feedId" value={feed.id} />
+									<button type="submit" mix={compactDangerOutlineButtonStyle}>
+										Remove Uploaded
+									</button>
+								</form>
+							) : null}
+						</div>
+					</div>
+				</section>
+
+				{renderMediaItemsSection(items)}
+				{renderAnalyticsSection(analytics)}
+				{renderTokensSection(feed, activeTokens)}
+			</div>
 		</div>
 	)
 }
@@ -874,20 +1065,116 @@ const sectionTitleRules = {
 
 const sectionTitleStyle = rmxCss(sectionTitleRules)
 
+const detailCardStyle = rmxCss({
+	backgroundColor: colors.surface,
+	borderRadius: radius.lg,
+	border: `1px solid ${colors.border}`,
+	padding: responsive.spacingSection,
+	boxShadow: shadows.sm,
+})
+
+const detailPageStyle = rmxCss({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: spacing.xl,
+})
+
+const detailSectionsStyle = rmxCss({
+	display: 'flex',
+	flexDirection: 'column',
+	gap: spacing.lg,
+})
+
+const compactOutlineButtonStyle = rmxCss({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	padding: `${spacing.xs} ${spacing.md}`,
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.primary,
+	backgroundColor: 'transparent',
+	border: `1px solid ${colors.primary}`,
+	borderRadius: radius.md,
+	textDecoration: 'none',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: colors.primarySoft,
+	},
+	[mq.mobile]: {
+		flex: 1,
+	},
+})
+
+const compactPrimaryButtonStyle = rmxCss({
+	display: 'inline-flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	padding: `${spacing.xs} ${spacing.md}`,
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.background,
+	backgroundColor: colors.primary,
+	border: 'none',
+	borderRadius: radius.md,
+	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: colors.primaryHover,
+	},
+})
+
+const compactDangerOutlineButtonStyle = rmxCss({
+	padding: `${spacing.xs} ${spacing.md}`,
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.error,
+	backgroundColor: 'transparent',
+	border: `1px solid ${colors.error}`,
+	borderRadius: radius.md,
+	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	'&:hover': {
+		backgroundColor: 'rgba(239, 68, 68, 0.1)',
+	},
+	[mq.mobile]: {
+		flex: 1,
+	},
+})
+
+const artworkFormStyle = rmxCss({
+	display: 'flex',
+	alignItems: 'center',
+	gap: spacing.sm,
+	flexWrap: 'wrap',
+})
+
+const artworkFileInputStyle = rmxCss({
+	fontSize: typography.fontSize.sm,
+	color: colors.textMuted,
+	maxWidth: '100%',
+})
+
 const detailGridStyle = rmxCss({
 	display: 'grid',
-	gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+	gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
 	gap: spacing.md,
 })
 
 function renderMediaItemsSection(items: FeedDetailData['items']) {
 	return (
-		<section mix={cardStyle}>
+		<section mix={detailCardStyle}>
 			<h2 mix={sectionTitleStyle}>Media Items ({items.length})</h2>
 			{items.length === 0 ? (
 				<p mix={mutedStyle}>No media items yet.</p>
 			) : (
-				<div mix={rmxCss({ overflowX: 'auto' })}>
+				<div
+					mix={rmxCss({
+						overflowX: 'auto',
+						overflowY: 'auto',
+						maxHeight: '400px',
+					})}
+				>
 					<table
 						mix={rmxCss({
 							width: '100%',
@@ -895,31 +1182,77 @@ function renderMediaItemsSection(items: FeedDetailData['items']) {
 							fontSize: typography.fontSize.sm,
 						})}
 					>
-						<thead>
-							<tr>
+						<thead
+							mix={rmxCss({
+								position: 'sticky',
+								top: 0,
+								backgroundColor: colors.surface,
+								zIndex: 1,
+							})}
+						>
+							<tr mix={rmxCss({ borderBottom: `1px solid ${colors.border}` })}>
 								<th mix={tableHeaderStyle}>#</th>
+								<th mix={tableIconHeaderStyle} />
 								<th mix={tableHeaderStyle}>Title</th>
-								<th mix={tableHeaderStyle}>Author</th>
-								<th mix={tableHeaderStyle}>Duration</th>
-								<th mix={tableHeaderStyle}>Size</th>
-								<th mix={tableHeaderStyle}>Modified</th>
+								<th mix={responsiveTableHeaderStyle}>Author</th>
+								<th mix={numericTableHeaderStyle}>Duration</th>
+								<th mix={numericTableHeaderStyle}>Size</th>
+								<th mix={tableIconHeaderStyle} />
 							</tr>
 						</thead>
 						<tbody>
-							{items.slice(0, 100).map((item, index) => (
-								<tr key={item.path}>
-									<td mix={tableCellStyle}>{index + 1}</td>
-									<td mix={tableCellStyle}>{item.title}</td>
-									<td mix={tableCellStyle}>{item.author ?? '—'}</td>
-									<td mix={tableCellStyle}>
-										{item.duration ? formatDuration(item.duration) : '—'}
-									</td>
-									<td mix={tableCellStyle}>{formatFileSize(item.sizeBytes)}</td>
-									<td mix={tableCellStyle}>
-										{formatDate(item.fileModifiedAt)}
-									</td>
-								</tr>
-							))}
+							{items.slice(0, 100).map((item, index) => {
+								const { mediaRoot, relativePath } = parseMediaPath(item.path)
+								return (
+									<tr
+										key={item.path}
+										mix={rmxCss({
+											borderBottom: `1px solid ${colors.border}`,
+											'&:last-child': { borderBottom: 'none' },
+											'&:hover': { backgroundColor: colors.background },
+										})}
+									>
+										<td mix={indexTableCellStyle}>{index + 1}</td>
+										<td mix={artworkTableCellStyle}>
+											<img
+												src={`/admin/api/artwork/${encodeURIComponent(mediaRoot)}/${encodeURIComponent(relativePath)}`}
+												alt=""
+												loading="lazy"
+												mix={rmxCss({
+													width: '32px',
+													height: '32px',
+													borderRadius: radius.sm,
+													...artworkLayout.centeredContain,
+													backgroundColor: colors.background,
+												})}
+											/>
+										</td>
+										<td title={item.title} mix={titleTableCellStyle}>
+											{item.title}
+										</td>
+										<td
+											title={item.author ?? undefined}
+											mix={responsiveTableCellStyle}
+										>
+											{item.author || '—'}
+										</td>
+										<td mix={numericTableCellStyle}>
+											{item.duration ? formatDuration(item.duration) : '—'}
+										</td>
+										<td mix={numericTableCellStyle}>
+											{formatFileSize(item.sizeBytes)}
+										</td>
+										<td mix={actionTableCellStyle}>
+											<a
+												href={`/admin/media/${encodeURIComponent(mediaRoot)}/${encodeURIComponent(relativePath)}`}
+												mix={smallPillLinkStyle}
+											>
+												View
+											</a>
+										</td>
+									</tr>
+								)
+							})}
 						</tbody>
 					</table>
 				</div>
@@ -930,74 +1263,166 @@ function renderMediaItemsSection(items: FeedDetailData['items']) {
 
 const tableHeaderStyle = rmxCss({
 	textAlign: 'left',
-	padding: spacing.sm,
+	padding: `${spacing.sm} ${spacing.md}`,
 	color: colors.textMuted,
-	borderBottom: `1px solid ${colors.border}`,
 	fontWeight: typography.fontWeight.medium,
+	fontSize: typography.fontSize.xs,
+	textTransform: 'uppercase',
+	letterSpacing: '0.05em',
 })
 
-const tableCellStyle = rmxCss({
+const responsiveTableHeaderStyle = rmxCss({
+	textAlign: 'left',
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.textMuted,
+	fontWeight: typography.fontWeight.medium,
+	fontSize: typography.fontSize.xs,
+	textTransform: 'uppercase',
+	letterSpacing: '0.05em',
+	[mq.mobile]: { display: 'none' },
+})
+
+const numericTableHeaderStyle = rmxCss({
+	textAlign: 'right',
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.textMuted,
+	fontWeight: typography.fontWeight.medium,
+	fontSize: typography.fontSize.xs,
+	textTransform: 'uppercase',
+	letterSpacing: '0.05em',
+	width: '80px',
+	[mq.mobile]: { display: 'none' },
+})
+
+const tableIconHeaderStyle = rmxCss({
+	width: '48px',
 	padding: spacing.sm,
-	borderBottom: `1px solid ${colors.border}`,
-	verticalAlign: 'top',
+})
+
+const indexTableCellStyle = rmxCss({
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.textMuted,
+	fontFamily: 'monospace',
+	fontSize: typography.fontSize.xs,
+})
+
+const artworkTableCellStyle = rmxCss({
+	padding: spacing.sm,
+	textAlign: 'center',
+})
+
+const titleTableCellStyle = rmxCss({
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.text,
+	maxWidth: '300px',
+	overflow: 'hidden',
+	textOverflow: 'ellipsis',
+	whiteSpace: 'nowrap',
+})
+
+const responsiveTableCellStyle = rmxCss({
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.textMuted,
+	maxWidth: '200px',
+	overflow: 'hidden',
+	textOverflow: 'ellipsis',
+	whiteSpace: 'nowrap',
+	[mq.mobile]: { display: 'none' },
+})
+
+const numericTableCellStyle = rmxCss({
+	padding: `${spacing.sm} ${spacing.md}`,
+	color: colors.textMuted,
+	textAlign: 'right',
+	fontFamily: 'monospace',
+	fontSize: typography.fontSize.xs,
+	[mq.mobile]: { display: 'none' },
+})
+
+const actionTableCellStyle = rmxCss({
+	padding: `${spacing.sm} ${spacing.md}`,
+	textAlign: 'center',
+})
+
+const smallPillLinkStyle = rmxCss({
+	display: 'inline-block',
+	padding: `${spacing.xs} ${spacing.sm}`,
+	fontSize: typography.fontSize.xs,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.primary,
+	backgroundColor: colors.primarySoft,
+	borderRadius: radius.sm,
+	textDecoration: 'none',
+	'&:hover': {
+		backgroundColor: colors.primarySoftHover,
+	},
 })
 
 function renderAnalyticsSection(analytics: FeedDetailData['analytics']) {
 	return (
-		<section mix={cardStyle}>
+		<section mix={detailCardStyle}>
 			<div
 				mix={rmxCss({
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'space-between',
-					gap: spacing.md,
+					gap: spacing.sm,
 					marginBottom: spacing.md,
+					flexWrap: 'wrap',
 				})}
 			>
 				<h2 mix={rmxCss({ ...sectionTitleRules, margin: 0 })}>
 					Analytics (last 30 days)
 				</h2>
-				<span mix={buttonStyle}>30d</span>
-			</div>
-			<div mix={detailGridStyle}>
-				{renderStatCard('RSS fetches', analytics.summary.rssFetches)}
-				{renderStatCard('Media requests', analytics.summary.mediaRequests)}
-				{renderStatCard('Downloads', analytics.summary.downloadStarts)}
-				{renderStatCard('Unique clients', analytics.summary.uniqueClients)}
-				{renderStatCard(
-					'Bytes served',
-					formatFileSize(analytics.summary.bytesServed),
-				)}
+				<span
+					mix={rmxCss({
+						padding: `${spacing.xs} ${spacing.sm}`,
+						fontSize: typography.fontSize.xs,
+						fontWeight: typography.fontWeight.medium,
+						color: colors.background,
+						backgroundColor: colors.primary,
+						border: `1px solid ${colors.primary}`,
+						borderRadius: radius.sm,
+					})}
+				>
+					30d
+				</span>
 			</div>
 			<div
 				mix={rmxCss({
-					display: 'grid',
-					gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+					display: 'flex',
+					flexDirection: 'column',
 					gap: spacing.lg,
-					marginTop: spacing.lg,
 				})}
 			>
-				{renderAnalyticsList(
-					'Top clients',
-					analytics.topClients.map((client) => ({
-						label: client.clientName,
-						value: `${client.mediaRequests} requests`,
-					})),
-				)}
-				{renderAnalyticsList(
-					'Top media items',
-					analytics.topMediaItems.map((item) => ({
-						label: createMediaKey(item.mediaRoot, item.relativePath),
-						value: `${item.mediaRequests} requests`,
-					})),
-				)}
-				{renderAnalyticsList(
-					'Daily activity',
-					analytics.daily.map((day) => ({
-						label: day.day,
-						value: `${day.mediaRequests} requests`,
-					})),
-				)}
+				<div
+					mix={rmxCss({
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+						gap: spacing.sm,
+					})}
+				>
+					{renderStatCard('RSS fetches', analytics.summary.rssFetches)}
+					{renderStatCard('Media requests', analytics.summary.mediaRequests)}
+					{renderStatCard('Downloads', analytics.summary.downloadStarts)}
+					{renderStatCard('Unique clients', analytics.summary.uniqueClients)}
+					{renderStatCard(
+						'Bytes served',
+						formatFileSize(analytics.summary.bytesServed),
+					)}
+				</div>
+				{renderTokenAnalyticsTable(analytics.byToken)}
+				<div
+					mix={rmxCss({
+						display: 'grid',
+						gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+						gap: spacing.lg,
+					})}
+				>
+					{renderTopClientsList(analytics.topClients)}
+					{renderTopMediaItemsList(analytics.topMediaItems)}
+					{renderDailyActivityChart(analytics.daily)}
+				</div>
 			</div>
 		</section>
 	)
@@ -1007,9 +1432,9 @@ function renderStatCard(label: string, value: string | number) {
 	return (
 		<div
 			mix={rmxCss({
-				border: `1px solid ${colors.border}`,
+				padding: spacing.sm,
 				borderRadius: radius.md,
-				padding: spacing.md,
+				border: `1px solid ${colors.border}`,
 				backgroundColor: colors.background,
 			})}
 		>
@@ -1017,39 +1442,132 @@ function renderStatCard(label: string, value: string | number) {
 				mix={rmxCss({
 					fontSize: typography.fontSize.xs,
 					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
 				})}
 			>
 				{label}
 			</div>
-			<strong>{value}</strong>
+			<div
+				mix={rmxCss({
+					fontSize: typography.fontSize.base,
+					fontWeight: typography.fontWeight.semibold,
+					color: colors.text,
+				})}
+			>
+				{value}
+			</div>
 		</div>
 	)
 }
 
-function renderAnalyticsList(
-	title: string,
-	rows: Array<{ label: string; value: string }>,
+function renderTokenAnalyticsTable(
+	byToken: FeedDetailData['analytics']['byToken'],
 ) {
 	return (
 		<div>
-			<h3 mix={rmxCss({ fontSize: typography.fontSize.sm })}>{title}</h3>
-			{rows.length === 0 ? (
-				<p mix={mutedStyle}>No data yet.</p>
+			<h3 mix={analyticsSectionHeadingStyle}>By Token</h3>
+			{byToken.length === 0 ? (
+				<p mix={analyticsEmptyStyle}>No token analytics yet.</p>
 			) : (
-				<ul mix={rmxCss({ padding: 0, listStyle: 'none' })}>
-					{rows.slice(0, 8).map((row) => (
+				<div mix={rmxCss({ overflowX: 'auto' })}>
+					<table
+						mix={rmxCss({
+							width: '100%',
+							borderCollapse: 'collapse',
+							fontSize: typography.fontSize.xs,
+						})}
+					>
+						<thead>
+							<tr mix={rmxCss({ borderBottom: `1px solid ${colors.border}` })}>
+								<th mix={analyticsCellHeaderStyle}>Token</th>
+								<th mix={analyticsCellHeaderStyle}>RSS</th>
+								<th mix={analyticsCellHeaderStyle}>Requests</th>
+								<th mix={analyticsCellHeaderStyle}>Starts</th>
+								<th mix={analyticsCellHeaderStyle}>Clients</th>
+								<th mix={analyticsCellHeaderStyle}>Bytes</th>
+								<th mix={analyticsCellHeaderStyle}>Last Seen</th>
+							</tr>
+						</thead>
+						<tbody>
+							{byToken.map((token) => (
+								<tr
+									key={token.token}
+									mix={rmxCss({ borderBottom: `1px solid ${colors.border}` })}
+								>
+									<td mix={analyticsCellStyle}>
+										<div>
+											<div>{token.label || 'Unlabeled token'}</div>
+											<div
+												mix={rmxCss({
+													color: colors.textMuted,
+													fontFamily: 'monospace',
+													fontSize: typography.fontSize.xs,
+												})}
+											>
+												{token.token.slice(0, 10)}...
+											</div>
+										</div>
+									</td>
+									<td mix={analyticsCellStyle}>
+										{token.rssFetches.toLocaleString()}
+									</td>
+									<td mix={analyticsCellStyle}>
+										{token.mediaRequests.toLocaleString()}
+									</td>
+									<td mix={analyticsCellStyle}>
+										{token.downloadStarts.toLocaleString()}
+									</td>
+									<td mix={analyticsCellStyle}>
+										{token.uniqueClients.toLocaleString()}
+									</td>
+									<td mix={analyticsCellStyle}>
+										{formatFileSize(token.bytesServed)}
+									</td>
+									<td mix={analyticsCellStyle}>
+										{formatRelativeTime(token.lastSeenAt)}
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			)}
+		</div>
+	)
+}
+
+function renderTopClientsList(
+	clients: FeedDetailData['analytics']['topClients'],
+) {
+	return (
+		<div>
+			<h3 mix={analyticsSectionHeadingStyle}>Top Clients</h3>
+			{clients.length === 0 ? (
+				<p mix={analyticsEmptyStyle}>No client analytics yet.</p>
+			) : (
+				<ul mix={analyticsCardListStyle}>
+					{clients.slice(0, 8).map((client, index) => (
 						<li
-							key={`${row.label}:${row.value}`}
-							mix={rmxCss({
-								display: 'flex',
-								justifyContent: 'space-between',
-								gap: spacing.md,
-								padding: `${spacing.xs} 0`,
-								borderBottom: `1px solid ${colors.border}`,
-							})}
+							key={`${client.clientName}-${client.lastSeenAt ?? 0}-${index}`}
+							mix={analyticsCardListItemStyle}
 						>
-							<span>{row.label}</span>
-							<span mix={mutedStyle}>{row.value}</span>
+							<div
+								mix={rmxCss({
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+								})}
+							>
+								{client.clientName}
+							</div>
+							<div mix={analyticsMetaStyle}>
+								<span>{client.downloadStarts} starts</span>
+								<span>{client.mediaRequests} requests</span>
+								<span>{client.uniqueClients} clients</span>
+								<span>{formatFileSize(client.bytesServed)}</span>
+							</div>
 						</li>
 					))}
 				</ul>
@@ -1058,9 +1576,174 @@ function renderAnalyticsList(
 	)
 }
 
+function renderTopMediaItemsList(
+	items: FeedDetailData['analytics']['topMediaItems'],
+) {
+	return (
+		<div>
+			<h3 mix={analyticsSectionHeadingStyle}>Top Media Items</h3>
+			{items.length === 0 ? (
+				<p mix={analyticsEmptyStyle}>No media request analytics yet.</p>
+			) : (
+				<ul mix={analyticsCardListStyle}>
+					{items.slice(0, 8).map((item) => (
+						<li
+							key={`${item.mediaRoot}:${item.relativePath}`}
+							mix={analyticsCardListItemStyle}
+						>
+							<a
+								href={`/admin/media/${encodeURIComponent(item.mediaRoot)}/${encodeURIComponent(item.relativePath)}`}
+								mix={rmxCss({
+									color: colors.primary,
+									textDecoration: 'none',
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+								})}
+							>
+								{item.relativePath.split('/').at(-1) ?? item.relativePath}
+							</a>
+							<div mix={analyticsMetaStyle}>
+								<span>{item.downloadStarts} starts</span>
+								<span>{item.mediaRequests} requests</span>
+								<span>{formatFileSize(item.bytesServed)}</span>
+							</div>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	)
+}
+
+function renderDailyActivityChart(daily: FeedDetailData['analytics']['daily']) {
+	const visibleDaily = daily.slice(-14)
+	const maxDailyRequests = Math.max(
+		1,
+		...visibleDaily.map((point) => point.mediaRequests),
+	)
+
+	return (
+		<div>
+			<h3 mix={analyticsSectionHeadingStyle}>Daily Activity</h3>
+			{daily.length === 0 ? (
+				<p mix={analyticsEmptyStyle}>No daily activity yet.</p>
+			) : (
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: spacing.xs,
+					})}
+				>
+					{visibleDaily.map((point) => (
+						<div
+							key={point.day}
+							mix={rmxCss({
+								display: 'grid',
+								gridTemplateColumns: '68px 1fr 52px',
+								alignItems: 'center',
+								gap: spacing.sm,
+							})}
+						>
+							<span
+								mix={rmxCss({
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									fontFamily: 'monospace',
+								})}
+							>
+								{point.day.slice(5)}
+							</span>
+							<div
+								mix={rmxCss({
+									height: '8px',
+									borderRadius: radius.sm,
+									backgroundColor: colors.background,
+									overflow: 'hidden',
+								})}
+							>
+								<div
+									mix={rmxCss({
+										height: '100%',
+										width: `${Math.max(2, (point.mediaRequests / maxDailyRequests) * 100)}%`,
+										backgroundColor: colors.primary,
+									})}
+								/>
+							</div>
+							<span
+								mix={rmxCss({
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									textAlign: 'right',
+								})}
+							>
+								{point.mediaRequests}
+							</span>
+						</div>
+					))}
+				</div>
+			)}
+		</div>
+	)
+}
+
+const analyticsSectionHeadingStyle = rmxCss({
+	fontSize: typography.fontSize.sm,
+	fontWeight: typography.fontWeight.semibold,
+	margin: `0 0 ${spacing.sm} 0`,
+	color: colors.text,
+})
+
+const analyticsEmptyStyle = rmxCss({
+	margin: 0,
+	fontSize: typography.fontSize.sm,
+	color: colors.textMuted,
+})
+
+const analyticsCardListStyle = rmxCss({
+	listStyle: 'none',
+	padding: 0,
+	margin: 0,
+	display: 'flex',
+	flexDirection: 'column',
+	gap: spacing.sm,
+})
+
+const analyticsCardListItemStyle = rmxCss({
+	padding: spacing.sm,
+	borderRadius: radius.md,
+	border: `1px solid ${colors.border}`,
+	backgroundColor: colors.background,
+})
+
+const analyticsMetaStyle = rmxCss({
+	marginTop: spacing.xs,
+	fontSize: typography.fontSize.xs,
+	color: colors.textMuted,
+	display: 'flex',
+	gap: spacing.sm,
+	flexWrap: 'wrap',
+})
+
+const analyticsCellHeaderStyle = rmxCss({
+	textAlign: 'left',
+	padding: `${spacing.xs} ${spacing.sm}`,
+	color: colors.textMuted,
+	fontWeight: typography.fontWeight.medium,
+	fontSize: typography.fontSize.xs,
+	textTransform: 'uppercase',
+	letterSpacing: '0.05em',
+})
+
+const analyticsCellStyle = rmxCss({
+	padding: `${spacing.xs} ${spacing.sm}`,
+	fontSize: typography.fontSize.xs,
+	color: colors.text,
+})
+
 function renderTokensSection(feed: Feed, tokens: Array<FeedTokenSummary>) {
 	return (
-		<section mix={cardStyle}>
+		<section mix={detailCardStyle}>
 			<div
 				mix={rmxCss({
 					display: 'flex',
@@ -1081,34 +1764,69 @@ function renderTokensSection(feed: Feed, tokens: Array<FeedTokenSummary>) {
 				</form>
 			</div>
 			{tokens.length === 0 ? (
-				<p mix={mutedStyle}>No access tokens yet.</p>
+				<div
+					mix={rmxCss({
+						textAlign: 'center',
+						padding: spacing.xl,
+						color: colors.textMuted,
+					})}
+				>
+					<p mix={rmxCss({ margin: 0 })}>
+						No tokens yet. Create one to share this feed.
+					</p>
+				</div>
 			) : (
-				<div mix={stackStyle}>
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						flexDirection: 'column',
+						gap: spacing.sm,
+					})}
+				>
 					{tokens.map((token) => (
 						<div
 							key={token.token}
 							mix={rmxCss({
 								display: 'flex',
-								justifyContent: 'space-between',
+								alignItems: 'center',
 								gap: spacing.md,
+								backgroundColor: colors.background,
 								padding: spacing.md,
 								border: `1px solid ${colors.border}`,
 								borderRadius: radius.md,
 							})}
 						>
-							<div>
-								<strong>{token.label || 'Default'}</strong>
-								<div mix={mutedStyle}>
-									Created {formatDate(token.createdAt)}
-									{' · '}
-									{token.lastUsedAt
-										? `Last used ${formatRelativeTime(token.lastUsedAt)}`
-										: 'Never used'}
+							<div mix={rmxCss({ flex: 1, minWidth: 0 })}>
+								<div
+									mix={rmxCss({
+										fontSize: typography.fontSize.sm,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.text,
+										marginBottom: spacing.xs,
+									})}
+								>
+									{token.label || 'Unlabeled token'}
+								</div>
+								<div
+									mix={rmxCss({
+										fontSize: typography.fontSize.xs,
+										color: colors.textMuted,
+										display: 'flex',
+										gap: spacing.md,
+										flexWrap: 'wrap',
+									})}
+								>
+									<span>
+										Created {formatDate(token.createdAt, { style: 'short' })}
+									</span>
+									<span>Last used: {formatRelativeTime(token.lastUsedAt)}</span>
 								</div>
 							</div>
-							<a href={`/feed/${token.token}`} mix={secondaryButtonStyle}>
-								Open URL
-							</a>
+							<div mix={rmxCss({ display: 'flex', gap: spacing.sm })}>
+								<a href={`/feed/${token.token}`} mix={tokenActionStyle}>
+									Open URL
+								</a>
+							</div>
 						</div>
 					))}
 				</div>
@@ -1116,6 +1834,22 @@ function renderTokensSection(feed: Feed, tokens: Array<FeedTokenSummary>) {
 		</section>
 	)
 }
+
+const tokenActionStyle = rmxCss({
+	padding: `${spacing.xs} ${spacing.sm}`,
+	fontSize: typography.fontSize.xs,
+	fontWeight: typography.fontWeight.medium,
+	color: colors.primary,
+	backgroundColor: 'transparent',
+	border: `1px solid ${colors.primary}`,
+	borderRadius: radius.sm,
+	cursor: 'pointer',
+	transition: `all ${transitions.fast}`,
+	textDecoration: 'none',
+	'&:hover': {
+		backgroundColor: colors.primarySoft,
+	},
+})
 
 function renderDirectoryFeedDetails(feed: DirectoryFeed) {
 	const paths = parseDirectoryPaths(feed)
@@ -1431,6 +2165,130 @@ function renderFeedFields(
 					mix={inputStyle}
 				/>
 			</label>
+		</div>
+	)
+}
+
+function renderInfoItem(
+	label: string,
+	value: string,
+	options: { mono?: boolean; href?: string } = {},
+) {
+	const { mono = false, href } = options
+	return (
+		<div key={label}>
+			<dt
+				mix={rmxCss({
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
+				})}
+			>
+				{label}
+			</dt>
+			<dd
+				mix={rmxCss({
+					fontSize: typography.fontSize.sm,
+					color: colors.text,
+					margin: 0,
+					fontFamily: mono ? 'monospace' : 'inherit',
+					wordBreak: mono ? 'break-all' : 'normal',
+				})}
+			>
+				{href ? (
+					<a
+						href={href}
+						target="_blank"
+						rel="noreferrer"
+						mix={rmxCss({
+							color: colors.primary,
+							textDecoration: 'none',
+							fontFamily: mono ? 'monospace' : 'inherit',
+							wordBreak: mono ? 'break-all' : 'normal',
+							'&:hover': { textDecoration: 'underline' },
+						})}
+					>
+						{value}
+					</a>
+				) : (
+					value
+				)}
+			</dd>
+		</div>
+	)
+}
+
+function renderDirectoriesInfo(paths: Array<string>) {
+	return (
+		<div
+			key="directories"
+			mix={rmxCss({ gridColumn: paths.length > 1 ? '1 / -1' : undefined })}
+		>
+			<dt
+				mix={rmxCss({
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+					textTransform: 'uppercase',
+					letterSpacing: '0.05em',
+					marginBottom: spacing.xs,
+				})}
+			>
+				{paths.length === 1 ? 'Directory' : `Directories (${paths.length})`}
+			</dt>
+			<dd mix={rmxCss({ margin: 0 })}>
+				{paths.length === 0 ? (
+					<span
+						mix={rmxCss({
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+						})}
+					>
+						No directories configured
+					</span>
+				) : paths.length === 1 ? (
+					<span
+						mix={rmxCss({
+							fontSize: typography.fontSize.sm,
+							color: colors.text,
+							fontFamily: 'monospace',
+							wordBreak: 'break-all',
+						})}
+					>
+						{paths[0]}
+					</span>
+				) : (
+					<ul
+						mix={rmxCss({
+							listStyle: 'none',
+							padding: 0,
+							margin: 0,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: spacing.xs,
+						})}
+					>
+						{paths.map((path) => (
+							<li
+								key={path}
+								mix={rmxCss({
+									fontSize: typography.fontSize.sm,
+									color: colors.text,
+									fontFamily: 'monospace',
+									wordBreak: 'break-all',
+									padding: `${spacing.xs} ${spacing.sm}`,
+									backgroundColor: colors.background,
+									borderRadius: radius.sm,
+									border: `1px solid ${colors.border}`,
+								})}
+							>
+								{path}
+							</li>
+						))}
+					</ul>
+				)}
+			</dd>
 		</div>
 	)
 }

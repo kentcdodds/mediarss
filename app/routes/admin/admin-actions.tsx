@@ -17,6 +17,10 @@ import {
 	removeItemFromFeed,
 } from '#app/db/feed-items.ts'
 import { isDirectoryFeed, type Feed, type FeedType } from '#app/db/types.ts'
+import {
+	deleteFeedArtwork,
+	saveFeedArtwork,
+} from '#app/helpers/feed-artwork.ts'
 import { buttonStyle, cardStyle } from './admin-styles.ts'
 import {
 	AdminFormError,
@@ -60,6 +64,10 @@ export async function handleAdminPost(request: Request) {
 				return await updateFeedFromForm(formData)
 			case 'delete-feed':
 				return await deleteFeedFromForm(formData)
+			case 'upload-artwork':
+				return await uploadArtworkFromForm(formData)
+			case 'delete-artwork':
+				return await deleteArtworkFromForm(formData)
 			case 'create-token':
 				return await createTokenFromForm(formData)
 			case 'add-item':
@@ -150,12 +158,52 @@ async function deleteFeedFromForm(formData: FormData) {
 	const feed = await getFeedOrThrow(feedId)
 
 	if (isDirectoryFeed(feed)) {
+		await deleteFeedArtwork(feedId)
 		await deleteDirectoryFeed(feedId)
 	} else {
+		await deleteFeedArtwork(feedId)
 		await deleteCuratedFeed(feedId)
 	}
 
 	return redirect303('/admin')
+}
+
+async function touchFeedUpdatedAt(feed: Feed) {
+	if (isDirectoryFeed(feed)) {
+		await updateDirectoryFeed(feed.id, {})
+	} else {
+		await updateCuratedFeed(feed.id, {})
+	}
+}
+
+async function uploadArtworkFromForm(formData: FormData) {
+	const feedId = getRequiredString(formData, 'feedId')
+	const feed = await getFeedOrThrow(feedId)
+	const file = formData.get('file')
+
+	if (!file || !(file instanceof File) || file.size === 0) {
+		throw new AdminFormError(
+			'Choose an artwork file to upload.',
+			`/admin/feeds/${feedId}`,
+		)
+	}
+
+	const result = await saveFeedArtwork(feedId, file)
+	if (result.error) {
+		throw new AdminFormError(result.error, `/admin/feeds/${feedId}`)
+	}
+
+	await touchFeedUpdatedAt(feed)
+	return redirect303(`/admin/feeds/${feedId}`)
+}
+
+async function deleteArtworkFromForm(formData: FormData) {
+	const feedId = getRequiredString(formData, 'feedId')
+	const feed = await getFeedOrThrow(feedId)
+
+	await deleteFeedArtwork(feedId)
+	await touchFeedUpdatedAt(feed)
+	return redirect303(`/admin/feeds/${feedId}`)
 }
 
 async function createTokenFromForm(formData: FormData) {

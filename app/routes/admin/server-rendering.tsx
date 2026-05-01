@@ -83,7 +83,23 @@ export async function handleAdminRequest(request: Request) {
 	if (path === '/admin/feeds/new') {
 		return renderAdminPage({
 			title: 'New Feed',
-			body: await renderNewFeedPage(),
+			body: renderNewFeedPage(),
+			...pageOptions,
+		})
+	}
+
+	if (path === '/admin/feeds/new/directory') {
+		return renderAdminPage({
+			title: 'New Directory Feed',
+			body: renderNewDirectoryFeedPage(),
+			...pageOptions,
+		})
+	}
+
+	if (path === '/admin/feeds/new/curated') {
+		return renderAdminPage({
+			title: 'New Curated Feed',
+			body: await renderNewCuratedFeedPage(),
 			...pageOptions,
 		})
 	}
@@ -247,10 +263,17 @@ async function renderFeedIndex() {
 	)
 }
 
-async function renderNewFeedPage() {
-	const media = await scanAllMediaRoots()
-	const mediaOptions = media.slice(0, 200)
+const cardLinkStyle = {
+	display: 'flex',
+	flexDirection: 'column',
+	gap: spacing.md,
+	color: colors.text,
+	textDecoration: 'none',
+	borderColor: colors.primary,
+	backgroundColor: colors.surface,
+}
 
+function renderNewFeedPage() {
 	return (
 		<div mix={stackStyle}>
 			<div mix={rowStyle}>
@@ -258,6 +281,38 @@ async function renderNewFeedPage() {
 					Back
 				</a>
 				<h1 mix={rmxCss({ margin: 0 })}>New Feed</h1>
+			</div>
+			<p mix={mutedStyle}>Choose the kind of feed you want to create.</p>
+			<section mix={gridStyle}>
+				<a href="/admin/feeds/new/directory" mix={rmxCss(cardLinkStyle)}>
+					<h2 mix={rmxCss({ marginTop: 0 })}>Directory feed</h2>
+					<p mix={rmxCss({ flex: 1 })}>
+						Publish a feed from one or more media folders. New matching files
+						are picked up from those directories.
+					</p>
+					<span mix={buttonStyle}>Create directory feed</span>
+				</a>
+				<a href="/admin/feeds/new/curated" mix={rmxCss(cardLinkStyle)}>
+					<h2 mix={rmxCss({ marginTop: 0 })}>Curated feed</h2>
+					<p mix={rmxCss({ flex: 1 })}>
+						Hand-pick specific media files for a feed and manage the item list
+						manually.
+					</p>
+					<span mix={buttonStyle}>Create curated feed</span>
+				</a>
+			</section>
+		</div>
+	)
+}
+
+function renderNewDirectoryFeedPage() {
+	return (
+		<div mix={stackStyle}>
+			<div mix={rowStyle}>
+				<a href="/admin/feeds/new" mix={secondaryButtonStyle}>
+					Back
+				</a>
+				<h1 mix={rmxCss({ margin: 0 })}>New Directory Feed</h1>
 			</div>
 			<section mix={gridStyle}>
 				<form method="post" action="/admin/feeds/new" mix={cardStyle}>
@@ -281,6 +336,24 @@ async function renderNewFeedPage() {
 						Create directory feed
 					</button>
 				</form>
+			</section>
+		</div>
+	)
+}
+
+async function renderNewCuratedFeedPage() {
+	const media = await scanAllMediaRoots()
+	const mediaOptions = media.slice(0, 200)
+
+	return (
+		<div mix={stackStyle}>
+			<div mix={rowStyle}>
+				<a href="/admin/feeds/new" mix={secondaryButtonStyle}>
+					Back
+				</a>
+				<h1 mix={rmxCss({ margin: 0 })}>New Curated Feed</h1>
+			</div>
+			<section mix={gridStyle}>
 				<form method="post" action="/admin/feeds/new" mix={cardStyle}>
 					<input type="hidden" name="_action" value="create-curated-feed" />
 					<h2>Curated feed</h2>

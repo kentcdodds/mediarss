@@ -1,8 +1,4 @@
-import { clientEntry, type Handle, type RemixNode } from 'remix/ui'
-
-type AdminEnhancementProps = {
-	children?: RemixNode
-}
+import { clientEntry, type Handle } from 'remix/ui'
 
 type EnhancedFormFrame = {
 	replace(content: string): Promise<void>
@@ -120,28 +116,27 @@ export async function handleEnhancedFormSubmit(
 
 export const AdminEnhancement = clientEntry(
 	'/app/client/admin/enhanced-form.tsx#AdminEnhancement',
-	function AdminEnhancement(handle: Handle<AdminEnhancementProps>) {
-		handle.queueTask((signal) => {
+	function AdminEnhancement(handle: Handle) {
+		if (typeof document !== 'undefined') {
 			const frame = document.querySelector('[data-admin-frame]')
-			if (!frame) return
 
 			const submit = async (event: Event) => {
 				await handleEnhancedFormSubmit(event, {
 					createFormData: (submittedForm) => new FormData(submittedForm),
 					fetch,
-					frame: handle.frame,
+					frame: handle.frames.get('admin-main') ?? handle.frame,
 					location: window.location,
 					onFetchError: submitFormNativelyOnNextSubmit,
-					signal,
+					signal: handle.signal,
 				})
 			}
 
-			frame.addEventListener('submit', submit)
-			signal.addEventListener('abort', () => {
-				frame.removeEventListener('submit', submit)
+			frame?.addEventListener('submit', submit)
+			handle.signal.addEventListener('abort', () => {
+				frame?.removeEventListener('submit', submit)
 			})
-		})
+		}
 
-		return () => <div data-admin-frame>{handle.props.children}</div>
+		return () => null
 	},
 )

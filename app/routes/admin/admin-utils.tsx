@@ -127,9 +127,12 @@ export function renderAdminPage({
 
 function renderAdminFrameContent(body: RemixNode) {
 	return (
-		<AdminEnhancement>
-			<div key="admin-frame-content">{body}</div>
-		</AdminEnhancement>
+		<>
+			<AdminEnhancement />
+			<div key="admin-frame-content" data-admin-frame>
+				{body}
+			</div>
+		</>
 	)
 }
 

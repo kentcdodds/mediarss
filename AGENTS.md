@@ -98,3 +98,37 @@ gitignored.
 We limit the number of frontend dependencies to the bare minimum. Each
 `node_modules` package needs to be explicitly listed in the import map in the
 `layout.tsx` file.
+
+## Cursor Cloud specific instructions
+
+### Runtime requirements
+
+- Node.js >= 24.12.0 is required (`node:sqlite` and `node:module` registerHooks).
+- FFmpeg is available for metadata editing features but the app starts without it.
+
+### Running the dev server
+
+Use `npm run dev:test` for local development. It creates test media at
+`local-test/1/audio/` and uses separate SQLite databases at `./data/test.db` and
+`./data/test-cache.db`. The server listens on port 22050.
+
+If `local-test/1/audio/` is empty, generate sample files with:
+
+```bash
+ffmpeg -f lavfi -i "sine=frequency=440:duration=3" -metadata title="Test Episode 1" -metadata artist="Test Author" local-test/1/audio/test-episode-1.mp3 -y
+```
+
+### No external services needed
+
+SQLite is embedded via `node:sqlite` (no Postgres/MySQL). No Docker, Redis, or
+other infrastructure is required for development.
+
+### Key gotchas
+
+- The `dev:test` script currently only mounts `audio:./local-test/1/audio` (not
+  video). If you need video testing, add files and extend `MEDIA_PATHS`.
+- There is no build step; TypeScript runs directly via loader hooks. Do not run
+  `tsc` to compile — only `tsc --noEmit` for type checking.
+- The admin UI is a single-page app that hydrates client-side. Curl requests to
+  admin HTML routes return the SPA shell; use `/admin/api/*` endpoints for data.
+- Port 22050 is the default; override with `PORT` env var if it conflicts.

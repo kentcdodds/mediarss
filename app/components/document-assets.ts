@@ -6,10 +6,11 @@ import {
 
 export function getDocumentAssets(entryScript: string | false) {
 	const versionedImports = versionedImportMap(baseImportMap)
+	const entryScriptUrl = entryScript ? versionedUrl(entryScript) : null
 
 	return {
-		entryScriptUrl: entryScript ? versionedUrl(entryScript) : null,
+		entryScriptUrl,
 		importmapJson: JSON.stringify({ imports: versionedImports }),
-		modulePreloadUrls: Object.values(versionedImports),
+		modulePreloadUrls: entryScriptUrl ? Object.values(versionedImports) : [],
 	}
 }

@@ -108,6 +108,7 @@ export async function handleAdminRequest(request: Request) {
 		return renderAdminPage({
 			title: 'Version Information',
 			body: await renderVersionPage(),
+			isVersionPage: true,
 		})
 	}
 
@@ -393,8 +394,9 @@ async function renderFeedPage(feedId: string) {
 		})
 	}
 
-	const items = isDirectoryFeed(feed) ? [] : await getItemsForFeed(feed.id)
-	const media = await scanAllMediaRoots()
+	const isDirectory = isDirectoryFeed(feed)
+	const items = isDirectory ? [] : await getItemsForFeed(feed.id)
+	const media = isDirectory ? [] : await scanAllMediaRoots()
 
 	return renderAdminPage({
 		title: feed.name,
@@ -464,7 +466,7 @@ async function renderFeedPage(feedId: string) {
 						</p>
 					</section>
 				</section>
-				{isDirectoryFeed(feed)
+				{isDirectory
 					? renderDirectoryFeedDetails(feed)
 					: renderCuratedItems(feed, items, media)}
 				<form method="post" action={`/admin/feeds/${feed.id}`} mix={cardStyle}>
@@ -845,10 +847,10 @@ async function getFeedOrThrow(feedId: string): Promise<Feed> {
 
 async function createDirectoryFeedFromForm(formData: FormData) {
 	const feedData = getFormFeedData(formData, 'filename')
-	const directoryPaths = getLineValues(formData, 'directoryPaths')
-	if (directoryPaths.length === 0) {
-		return invalidForm('Directory paths are required.', '/admin/feeds/new')
-	}
+	const directoryPaths = validateDirectoryPaths(
+		getLineValues(formData, 'directoryPaths'),
+		'/admin/feeds/new',
+	)
 	const feed = await createDirectoryFeed({ ...feedData, directoryPaths })
 	await createDirectoryFeedToken({ feedId: feed.id, label: 'Default' })
 	return redirect303(`/admin/feeds/${feed.id}`)
@@ -876,7 +878,10 @@ async function updateFeedFromForm(formData: FormData) {
 	if (isDirectoryFeed(feed)) {
 		await updateDirectoryFeed(feedId, {
 			...feedData,
-			directoryPaths: getLineValues(formData, 'directoryPaths'),
+			directoryPaths: validateDirectoryPaths(
+				getLineValues(formData, 'directoryPaths'),
+				`/admin/feeds/${feedId}`,
+			),
 		})
 	} else {
 		await updateCuratedFeed(feedId, feedData)
@@ -958,6 +963,25 @@ function getSortOrder(formData: FormData): 'asc' | 'desc' {
 function getFeedType(formData: FormData): FeedType {
 	const value = getOptionalString(formData, 'feedType')
 	return value === 'serial' ? 'serial' : 'episodic'
+}
+
+function validateDirectoryPaths(paths: Array<string>, href: string) {
+	if (paths.length === 0) {
+		throw new AdminFormError('Directory paths are required.', href)
+	}
+	for (const path of paths) {
+		const { mediaRoot } = parseMediaPath(path)
+		if (!mediaRoot.trim()) {
+			throw new AdminFormError(
+				'Each directory path must include a media root name.',
+				href,
+			)
+		}
+		if (!toAbsolutePath(mediaRoot, '')) {
+			throw new AdminFormError(`Unknown media root "${mediaRoot}".`, href)
+		}
+	}
+	return paths
 }
 
 function invalidForm(message: string, href: string) {

@@ -15,15 +15,15 @@ export type AdminPageOptions = {
 	title: string
 	body: RemixNode
 	status?: number
+	isVersionPage?: boolean
 }
 
 export function renderAdminPage({
 	title,
 	body,
 	status = 200,
+	isVersionPage = false,
 }: AdminPageOptions) {
-	const isVersionPage = title === 'Version Information'
-
 	return renderUi(
 		<ServerDocument title={title} entryScript={false}>
 			<div mix={pageStyle}>

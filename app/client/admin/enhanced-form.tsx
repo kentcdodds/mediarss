@@ -1,4 +1,4 @@
-import { clientEntry, type Handle, type RemixNode } from 'remix/ui'
+import { clientEntry, on, type Handle, type RemixNode } from 'remix/ui'
 
 type AdminEnhancementProps = {
 	children?: RemixNode
@@ -41,7 +41,7 @@ export const AdminEnhancement = clientEntry(
 		}
 
 		return () => (
-			<div data-admin-frame on={{ submit }}>
+			<div data-admin-frame mix={on('submit', submit)}>
 				{handle.props.children}
 			</div>
 		)

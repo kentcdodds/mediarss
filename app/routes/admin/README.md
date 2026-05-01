@@ -36,7 +36,6 @@ the UI is genuinely a small polling widget or external API consumer.
 ## Utilities
 
 - `renderAdminPage(...)` wraps the shared admin shell and document.
-- `parseAdminForm(...)` reads request `FormData`.
 - `getRequiredString(...)`, `getOptionalString(...)`, `getAllStringValues(...)`,
   and `getLineValues(...)` keep form parsing consistent.
 - `redirect303(...)` enforces POST-redirect-GET.

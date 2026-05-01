@@ -106,10 +106,6 @@ export function redirect303(href: string) {
 	return redirect(href, 303)
 }
 
-export async function parseAdminForm(request: Request) {
-	return request.formData()
-}
-
 export class AdminFormError extends Error {
 	constructor(
 		message: string,

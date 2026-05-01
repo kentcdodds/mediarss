@@ -20,6 +20,7 @@ import { isDirectoryFeed, type Feed, type FeedType } from '#app/db/types.ts'
 import { buttonStyle, cardStyle } from './admin-styles.ts'
 import {
 	AdminFormError,
+	type AdminPageOptions,
 	getAllStringValues,
 	getAdminFeed,
 	getLineValues,
@@ -41,6 +42,11 @@ type FormFeedData = {
 }
 
 export async function handleAdminPost(request: Request) {
+	const pageOptions = {
+		request,
+		target: request.headers.get('x-remix-target'),
+	}
+
 	try {
 		const formData = await request.formData()
 		const action = getRequiredString(formData, '_action')
@@ -75,11 +81,12 @@ export async function handleAdminPost(request: Request) {
 						</section>
 					),
 					status: 400,
+					...pageOptions,
 				})
 		}
 	} catch (error) {
 		if (isAdminFormError(error)) {
-			return invalidForm(error.message, error.href)
+			return invalidForm(error.message, error.href, pageOptions)
 		}
 		throw error
 	}
@@ -232,7 +239,11 @@ function validateDirectoryPaths(paths: Array<string>, href: string) {
 	return paths
 }
 
-function invalidForm(message: string, href: string) {
+function invalidForm(
+	message: string,
+	href: string,
+	pageOptions: Pick<AdminPageOptions, 'request' | 'target'>,
+) {
 	return renderAdminPage({
 		title: 'Invalid form',
 		body: (
@@ -245,6 +256,7 @@ function invalidForm(message: string, href: string) {
 			</section>
 		),
 		status: 400,
+		...pageOptions,
 	})
 }
 

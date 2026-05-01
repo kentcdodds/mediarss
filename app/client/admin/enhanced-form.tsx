@@ -50,10 +50,6 @@ export const AdminEnhancement = clientEntry(
 			})
 		})
 
-		return () => (
-			<div data-admin-frame>
-				{handle.props.children}
-			</div>
-		)
+		return () => <div data-admin-frame>{handle.props.children}</div>
 	},
 )

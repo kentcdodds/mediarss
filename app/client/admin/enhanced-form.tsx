@@ -41,7 +41,7 @@ export const AdminEnhancement = clientEntry(
 		}
 
 		return () => (
-			<div data-admin-frame mix={on('submit', submit)}>
+			<div data-admin-frame mix={on<HTMLElement>('submit', submit)}>
 				{handle.props.children}
 			</div>
 		)

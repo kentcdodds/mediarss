@@ -1,49 +1,49 @@
-import { clientEntry, on, type Handle, type RemixNode } from 'remix/ui'
-
-type AdminEnhancementProps = {
-	children?: RemixNode
-}
+import { clientEntry, type Handle } from 'remix/ui'
 
 export const AdminEnhancement = clientEntry(
 	'/app/client/admin/enhanced-form.tsx#AdminEnhancement',
-	function AdminEnhancement(handle: Handle<AdminEnhancementProps>) {
-		return () => (
-			<div
-				data-admin-frame
-				mix={on<HTMLDivElement, 'submit'>('submit', async (event, signal) => {
-					const frame = event.currentTarget
-					const form = event.target
-					if (!(form instanceof HTMLFormElement)) return
-					if (form.method.toLowerCase() !== 'post') return
+	function AdminEnhancement(handle: Handle) {
+		handle.queueTask((signal) => {
+			const frame = document.querySelector('[data-admin-frame]')
+			if (!frame) return
 
-					event.preventDefault()
+			const submit = async (event: Event) => {
+				const form = event.target
+				if (!(form instanceof HTMLFormElement)) return
+				if (form.method.toLowerCase() !== 'post') return
 
-					const response = await fetch(form.action, {
-						method: 'POST',
-						body: new FormData(form),
-						signal,
-					})
-					if (signal.aborted) return
+				event.preventDefault()
 
-					const location = response.headers.get('Location') ?? response.url
-					const nextUrl = new URL(location, window.location.href)
-					const frameResponse = await fetch(nextUrl, {
-						headers: { 'x-remix-target': 'admin-main' },
-						signal,
-					})
-					if (signal.aborted) return
+				const response = await fetch(form.action, {
+					method: 'POST',
+					body: new FormData(form),
+					signal,
+				})
+				if (signal.aborted) return
 
-					if (!frameResponse.ok && frameResponse.status >= 500) {
-						window.location.assign(nextUrl)
-						return
-					}
+				const location = response.headers.get('Location') ?? response.url
+				const nextUrl = new URL(location, window.location.href)
+				const frameResponse = await fetch(nextUrl, {
+					headers: { 'x-remix-target': 'admin-main' },
+					signal,
+				})
+				if (signal.aborted) return
 
-					window.history.pushState(null, '', nextUrl)
-					frame.innerHTML = await frameResponse.text()
-				})}
-			>
-				{handle.props.children}
-			</div>
-		)
+				if (!frameResponse.ok && frameResponse.status >= 500) {
+					window.location.assign(nextUrl)
+					return
+				}
+
+				window.history.pushState(null, '', nextUrl)
+				frame.innerHTML = await frameResponse.text()
+			}
+
+			frame.addEventListener('submit', submit)
+			signal.addEventListener('abort', () => {
+				frame.removeEventListener('submit', submit)
+			})
+		})
+
+		return () => null
 	},
 )

@@ -31,13 +31,13 @@ export function renderAdminPage({
 	target,
 }: AdminPageOptions) {
 	if (target === 'admin-main') {
-		return renderUi(<AdminEnhancement>{body}</AdminEnhancement>, { status })
+		return renderUi(body, { status })
 	}
 
 	return renderUi(
 		<ServerDocument
 			title={title}
-			entryScript="/app/client/admin/enhanced-form.tsx"
+			entryScript="/app/client/admin/admin-entry.ts"
 		>
 			<div mix={pageStyle}>
 				<header mix={headerStyle}>
@@ -75,7 +75,8 @@ export function renderAdminPage({
 					</a>
 				</header>
 				<main mix={mainStyle}>
-					<AdminEnhancement>{body}</AdminEnhancement>
+					<AdminEnhancement />
+					<div data-admin-frame>{body}</div>
 				</main>
 				<footer
 					mix={rmxCss({

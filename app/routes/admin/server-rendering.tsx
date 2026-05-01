@@ -4,7 +4,9 @@ import {
 	parseMediaPath,
 	toAbsolutePath,
 } from '#app/config/env.ts'
+import { listActiveCuratedFeedTokens } from '#app/db/curated-feed-tokens.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
+import { listActiveDirectoryFeedTokens } from '#app/db/directory-feed-tokens.ts'
 import {
 	listDirectoryFeeds,
 	parseDirectoryPaths,
@@ -20,11 +22,20 @@ import {
 	formatDate,
 	formatDuration,
 	formatFileSize,
+	formatRelativeTime,
 } from '#app/helpers/format.ts'
 import { scanAllMediaRoots, scanDirectory } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
-import { colors, mq, spacing, typography } from '#app/styles/tokens.ts'
+import {
+	artworkLayout,
+	colors,
+	mq,
+	radius,
+	shadows,
+	spacing,
+	typography,
+} from '#app/styles/tokens.ts'
 import { handleAdminPost } from './admin-actions.tsx'
 import {
 	buttonStyle,
@@ -49,7 +60,10 @@ type FeedSummary = {
 	description: string
 	type: 'directory' | 'curated'
 	itemCount: number
+	tokenCount: number
+	lastAccessedAt: number | null
 	updatedAt: number
+	directoryPaths?: Array<string>
 }
 
 export async function handleAdminRequest(request: Request) {
@@ -250,23 +264,190 @@ async function renderFeedIndex() {
 			) : (
 				<section mix={gridStyle}>
 					{feeds.map((feed) => (
-						<article key={feed.id} mix={cardStyle}>
-							<h2>{feed.name}</h2>
-							<p mix={mutedStyle}>{feed.description || 'No description.'}</p>
-							<p>
-								<strong>{feed.type}</strong> · {feed.itemCount} item
-								{feed.itemCount === 1 ? '' : 's'}
-							</p>
-							<p mix={mutedStyle}>Updated {formatDate(feed.updatedAt)}</p>
-							<a href={`/admin/feeds/${feed.id}`} mix={buttonStyle}>
-								Manage
-							</a>
-						</article>
+						<FeedSummaryCard key={feed.id} feed={feed} />
 					))}
 				</section>
 			)}
 		</div>
 	)
+}
+
+function FeedSummaryCard() {
+	return ({ feed }: { feed: FeedSummary }) => {
+		const isDirectory = feed.type === 'directory'
+		return (
+			<article
+				mix={rmxCss({
+					backgroundColor: colors.surface,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					padding: spacing.lg,
+					display: 'flex',
+					flexDirection: 'column',
+					gap: spacing.md,
+					transition: `all var(--transition-fast)`,
+					boxShadow: shadows.sm,
+					'&:hover': {
+						boxShadow: shadows.md,
+						borderColor: colors.primary,
+					},
+				})}
+			>
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						gap: spacing.md,
+						alignItems: 'flex-start',
+					})}
+				>
+					<img
+						src={`/admin/api/feeds/${feed.id}/artwork`}
+						alt=""
+						width="64"
+						height="64"
+						mix={rmxCss({
+							width: '64px',
+							height: '64px',
+							borderRadius: radius.md,
+							...artworkLayout.centeredContain,
+							backgroundColor: colors.background,
+							border: `1px solid ${colors.border}`,
+							flexShrink: 0,
+						})}
+					/>
+					<div mix={rmxCss({ flex: 1, minWidth: 0 })}>
+						<div
+							mix={rmxCss({
+								display: 'flex',
+								alignItems: 'flex-start',
+								justifyContent: 'space-between',
+								gap: spacing.sm,
+								marginBottom: spacing.xs,
+							})}
+						>
+							<a
+								href={`/admin/feeds/${feed.id}`}
+								mix={rmxCss({
+									fontSize: typography.fontSize.base,
+									fontWeight: typography.fontWeight.semibold,
+									color: colors.text,
+									textDecoration: 'none',
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+									'&:hover': {
+										color: colors.primary,
+									},
+								})}
+							>
+								{feed.name}
+							</a>
+							<span
+								mix={rmxCss({
+									fontSize: typography.fontSize.xs,
+									fontWeight: typography.fontWeight.medium,
+									color: isDirectory ? '#3b82f6' : '#8b5cf6',
+									backgroundColor: isDirectory
+										? 'rgba(59, 130, 246, 0.1)'
+										: 'rgba(139, 92, 246, 0.1)',
+									padding: `${spacing.xs} ${spacing.sm}`,
+									borderRadius: radius.sm,
+									textTransform: 'uppercase',
+									letterSpacing: '0.05em',
+									flexShrink: 0,
+								})}
+							>
+								{feed.type}
+							</span>
+						</div>
+						{feed.description ? (
+							<p
+								mix={rmxCss({
+									fontSize: typography.fontSize.xs,
+									color: colors.textMuted,
+									margin: 0,
+									display: '-webkit-box',
+									WebkitLineClamp: 2,
+									WebkitBoxOrient: 'vertical',
+									overflow: 'hidden',
+								})}
+							>
+								{feed.description}
+							</p>
+						) : null}
+					</div>
+				</div>
+
+				{feed.directoryPaths && feed.directoryPaths.length > 0 ? (
+					<div
+						mix={rmxCss({
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+							fontFamily: 'monospace',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: spacing.xs,
+						})}
+					>
+						{feed.directoryPaths.map((path) => (
+							<span
+								key={path}
+								mix={rmxCss({
+									overflow: 'hidden',
+									textOverflow: 'ellipsis',
+									whiteSpace: 'nowrap',
+								})}
+							>
+								{path}
+							</span>
+						))}
+					</div>
+				) : null}
+
+				<div
+					mix={rmxCss({
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						marginTop: 'auto',
+						paddingTop: spacing.sm,
+						borderTop: `1px solid ${colors.border}`,
+						gap: spacing.md,
+						flexWrap: 'wrap',
+					})}
+				>
+					<span
+						mix={rmxCss({
+							fontSize: typography.fontSize.sm,
+							color: colors.textMuted,
+						})}
+					>
+						{feed.itemCount === 0 ? (
+							<span mix={rmxCss({ color: '#f59e0b' })}>No files</span>
+						) : (
+							<>
+								{feed.itemCount} file{feed.itemCount !== 1 ? 's' : ''}
+							</>
+						)}
+						{' · '}
+						{feed.tokenCount} token{feed.tokenCount !== 1 ? 's' : ''}
+					</span>
+					<span
+						mix={rmxCss({
+							fontSize: typography.fontSize.xs,
+							color: colors.textMuted,
+						})}
+					>
+						{feed.lastAccessedAt ? (
+							<>Accessed {formatRelativeTime(feed.lastAccessedAt)}</>
+						) : (
+							<span mix={rmxCss({ fontStyle: 'italic' })}>Never accessed</span>
+						)}
+					</span>
+				</div>
+			</article>
+		)
+	}
 }
 
 const cardLinkStyle = {
@@ -834,8 +1015,10 @@ function renderDescriptionRow(label: string, value: RemixNode) {
 async function getFeedSummaries(): Promise<Array<FeedSummary>> {
 	const directoryFeeds = await Promise.all(
 		(await listDirectoryFeeds()).map(async (feed) => {
+			const tokens = await listActiveDirectoryFeedTokens(feed.id)
+			const directoryPaths = parseDirectoryPaths(feed)
 			let itemCount = 0
-			for (const mediaPath of parseDirectoryPaths(feed)) {
+			for (const mediaPath of directoryPaths) {
 				const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 				const absolutePath = toAbsolutePath(mediaRoot, relativePath)
 				if (!absolutePath) continue
@@ -847,23 +1030,37 @@ async function getFeedSummaries(): Promise<Array<FeedSummary>> {
 				description: feed.description,
 				type: 'directory' as const,
 				itemCount,
+				tokenCount: tokens.length,
+				lastAccessedAt: getLastAccessedAt(tokens),
 				updatedAt: feed.updatedAt,
+				directoryPaths,
 			}
 		}),
 	)
 	const curatedFeeds = await Promise.all(
-		(await listCuratedFeeds()).map(async (feed) => ({
-			id: feed.id,
-			name: feed.name,
-			description: feed.description,
-			type: 'curated' as const,
-			itemCount: (await getItemsForFeed(feed.id)).length,
-			updatedAt: feed.updatedAt,
-		})),
+		(await listCuratedFeeds()).map(async (feed) => {
+			const tokens = await listActiveCuratedFeedTokens(feed.id)
+			return {
+				id: feed.id,
+				name: feed.name,
+				description: feed.description,
+				type: 'curated' as const,
+				itemCount: (await getItemsForFeed(feed.id)).length,
+				tokenCount: tokens.length,
+				lastAccessedAt: getLastAccessedAt(tokens),
+				updatedAt: feed.updatedAt,
+			}
+		}),
 	)
 	return [...directoryFeeds, ...curatedFeeds].sort(
 		(a, b) => b.updatedAt - a.updatedAt,
 	)
+}
+
+function getLastAccessedAt(tokens: Array<{ lastUsedAt: number | null }>) {
+	const usedTokens = tokens.filter((token) => token.lastUsedAt !== null)
+	if (usedTokens.length === 0) return null
+	return Math.max(...usedTokens.map((token) => token.lastUsedAt!))
 }
 
 function normalizePath(pathname: string) {

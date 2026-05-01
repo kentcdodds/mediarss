@@ -12,37 +12,37 @@ export const AdminEnhancement = clientEntry(
 			if (!frame) return
 
 			const submit = async (event: Event) => {
-			const form = event.target
-			if (!(form instanceof HTMLFormElement)) return
-			if (form.method.toLowerCase() !== 'post') return
+				const form = event.target
+				if (!(form instanceof HTMLFormElement)) return
+				if (form.method.toLowerCase() !== 'post') return
 
-			event.preventDefault()
+				event.preventDefault()
 
-			const response = await fetch(form.action, {
-				method: 'POST',
-				body: new FormData(form),
-				signal,
-			})
-			if (signal.aborted) return
+				const response = await fetch(form.action, {
+					method: 'POST',
+					body: new FormData(form),
+					signal,
+				})
+				if (signal.aborted) return
 
-			if (!response.redirected) {
-				if (response.status >= 500) {
-					window.location.assign(response.url)
+				if (!response.redirected) {
+					if (response.status >= 500) {
+						window.location.assign(response.url)
+						return
+					}
+					const content = await response.text()
+					if (signal.aborted) return
+					await handle.frame.replace(content)
 					return
 				}
-				const content = await response.text()
-				if (signal.aborted) return
-				await handle.frame.replace(content)
-				return
+
+				const location = response.headers.get('Location') ?? response.url
+				const nextUrl = new URL(location, window.location.href)
+
+				handle.frame.src = nextUrl.href
+				window.history.pushState(null, '', nextUrl)
+				await handle.frame.reload()
 			}
-
-			const location = response.headers.get('Location') ?? response.url
-			const nextUrl = new URL(location, window.location.href)
-
-			handle.frame.src = nextUrl.href
-			window.history.pushState(null, '', nextUrl)
-			await handle.frame.reload()
-		}
 
 			frame.addEventListener('submit', submit)
 			signal.addEventListener('abort', () => {

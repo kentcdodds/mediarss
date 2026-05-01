@@ -10,14 +10,24 @@ type EnhancedFormFrame = {
 	src: string
 }
 
+type NativeSubmitOptions = {
+	submitter?: HTMLElement | null
+}
+
 type EnhancedFormSubmitOptions = {
 	createFormData: (form: HTMLFormElement) => FormData
 	fetch: typeof fetch
 	frame: EnhancedFormFrame
 	location: Pick<Location, 'assign'>
-	onFetchError: (form: HTMLFormElement) => void
+	onFetchError: (form: HTMLFormElement, options?: NativeSubmitOptions) => void
 	signal: AbortSignal
+	submitter?: HTMLElement | null
 }
+
+type EnhancedFormSubmitHandlerOptions = Omit<
+	EnhancedFormSubmitOptions,
+	'submitter'
+>
 
 export async function submitEnhancedForm(
 	form: HTMLFormElement,
@@ -33,7 +43,7 @@ export async function submitEnhancedForm(
 		})
 	} catch {
 		if (options.signal.aborted) return
-		options.onFetchError(form)
+		options.onFetchError(form, { submitter: options.submitter })
 		return
 	}
 	if (options.signal.aborted) return
@@ -57,8 +67,56 @@ export async function submitEnhancedForm(
 	await options.frame.reload()
 }
 
-function submitNatively(form: HTMLFormElement) {
-	HTMLFormElement.prototype.submit.call(form)
+function getSubmitter(event: Event) {
+	return typeof HTMLElement !== 'undefined' &&
+		'submitter' in event &&
+		event.submitter instanceof HTMLElement
+		? event.submitter
+		: null
+}
+
+function submitNatively(
+	form: HTMLFormElement,
+	options: NativeSubmitOptions = {},
+) {
+	if (
+		typeof HTMLElement !== 'undefined' &&
+		options.submitter instanceof HTMLElement
+	) {
+		form.requestSubmit(options.submitter)
+		return
+	}
+	form.requestSubmit()
+}
+
+const nativeSubmitForms = new WeakSet<HTMLFormElement>()
+
+export function submitFormNativelyOnNextSubmit(
+	form: HTMLFormElement,
+	options?: NativeSubmitOptions,
+) {
+	nativeSubmitForms.add(form)
+	submitNatively(form, options)
+}
+
+export async function handleEnhancedFormSubmit(
+	event: Event,
+	options: EnhancedFormSubmitHandlerOptions,
+) {
+	const form = event.target
+	if (!(form instanceof HTMLFormElement)) return
+	if (form.method.toLowerCase() !== 'post') return
+	if (nativeSubmitForms.has(form)) {
+		nativeSubmitForms.delete(form)
+		return
+	}
+
+	event.preventDefault()
+
+	await submitEnhancedForm(form, {
+		...options,
+		submitter: getSubmitter(event),
+	})
 }
 
 export const AdminEnhancement = clientEntry(
@@ -69,18 +127,12 @@ export const AdminEnhancement = clientEntry(
 			if (!frame) return
 
 			const submit = async (event: Event) => {
-				const form = event.target
-				if (!(form instanceof HTMLFormElement)) return
-				if (form.method.toLowerCase() !== 'post') return
-
-				event.preventDefault()
-
-				await submitEnhancedForm(form, {
+				await handleEnhancedFormSubmit(event, {
 					createFormData: (submittedForm) => new FormData(submittedForm),
 					fetch,
 					frame: handle.frame,
 					location: window.location,
-					onFetchError: submitNatively,
+					onFetchError: submitFormNativelyOnNextSubmit,
 					signal,
 				})
 			}

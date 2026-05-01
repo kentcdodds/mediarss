@@ -104,7 +104,7 @@ async function createDirectoryFeedFromForm(formData: FormData) {
 	const feedData = getFormFeedData(formData, 'filename')
 	const directoryPaths = validateDirectoryPaths(
 		getLineValues(formData, 'directoryPaths'),
-		'/admin/feeds/new',
+		'/admin/feeds/new/directory',
 	)
 	const feed = await createDirectoryFeed({ ...feedData, directoryPaths })
 	await createDirectoryFeedToken({ feedId: feed.id, label: 'Default' })
@@ -174,6 +174,7 @@ async function createTokenFromForm(formData: FormData) {
 
 async function addItemFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
+	await getFeedOrThrow(feedId)
 	const mediaPath = getRequiredString(formData, 'mediaPath')
 	const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 	await addItemToFeed(feedId, mediaRoot, relativePath)
@@ -182,6 +183,7 @@ async function addItemFromForm(formData: FormData) {
 
 async function removeItemFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
+	await getFeedOrThrow(feedId)
 	const mediaPath = getRequiredString(formData, 'mediaPath')
 	const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
 	await removeItemFromFeed(feedId, mediaRoot, relativePath)
@@ -190,6 +192,7 @@ async function removeItemFromForm(formData: FormData) {
 
 async function clearItemsFromForm(formData: FormData) {
 	const feedId = getRequiredString(formData, 'feedId')
+	await getFeedOrThrow(feedId)
 	await clearFeedItems(feedId)
 	return redirect303(`/admin/feeds/${feedId}`)
 }

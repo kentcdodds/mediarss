@@ -1,11 +1,33 @@
 import { expect, test } from 'vitest'
 
-import { submitEnhancedForm } from './enhanced-form.tsx'
+import {
+	handleEnhancedFormSubmit,
+	submitEnhancedForm,
+	submitFormNativelyOnNextSubmit,
+} from './enhanced-form.tsx'
+
+class TestForm extends EventTarget {
+	action = 'https://example.com/admin/test'
+	method = 'post'
+
+	requestSubmit() {
+		this.dispatchEvent(createSubmitEvent(this as unknown as HTMLFormElement))
+	}
+}
+
+Object.defineProperty(globalThis, 'HTMLFormElement', {
+	value: TestForm,
+	configurable: true,
+})
 
 function createForm() {
-	return {
-		action: 'https://example.com/admin/test',
-	} as HTMLFormElement
+	return new TestForm() as HTMLFormElement
+}
+
+function createSubmitEvent(form: HTMLFormElement) {
+	const event = new Event('submit', { cancelable: true })
+	Object.defineProperty(event, 'target', { value: form })
+	return event
 }
 
 function createFrame() {
@@ -71,4 +93,39 @@ test('does not fall back when the enhanced fetch is aborted', async () => {
 	})
 
 	expect(submitted).toBe(false)
+})
+
+test('enhanced form submit fallback lets the retried submit continue uncancelled', async () => {
+	const form = createForm()
+	let retriedEvent: Event | undefined
+	const event = createSubmitEvent(form)
+	form.addEventListener('submit', (retryEvent) => {
+		retriedEvent = retryEvent
+		void handleEnhancedFormSubmit(retryEvent, {
+			createFormData: () => new FormData(),
+			fetch: async () => {
+				throw new Error('second enhanced submit should not run')
+			},
+			frame: createFrame(),
+			location: createLocation(),
+			onFetchError() {
+				throw new Error('second enhanced fallback should not run')
+			},
+			signal: new AbortController().signal,
+		})
+	})
+
+	await handleEnhancedFormSubmit(event, {
+		createFormData: () => new FormData(),
+		fetch: async () => {
+			throw new TypeError('NetworkError')
+		},
+		frame: createFrame(),
+		location: createLocation(),
+		onFetchError: submitFormNativelyOnNextSubmit,
+		signal: new AbortController().signal,
+	})
+
+	expect(event.defaultPrevented).toBe(true)
+	expect(retriedEvent?.defaultPrevented).toBe(false)
 })

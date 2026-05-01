@@ -42,16 +42,6 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		return this.#currentPath
 	}
 
-	setLocation(href: string) {
-		const url = normalizeNavigationTarget(
-			href,
-			isBrowser ? window.location.origin : 'http://localhost',
-		)
-		if (!url) return
-		this.#currentPath = url.pathname
-		this.#currentHref = getRelativeHref(url)
-	}
-
 	/**
 	 * Register a route with a pattern and component.
 	 * Pattern supports :param syntax for dynamic segments.
@@ -179,10 +169,6 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 // Singleton router instance
 export const router = new RouterState()
-
-export function setAdminRouterPath(href: string) {
-	router.setLocation(href)
-}
 
 // The admin SPA intentionally requires the Navigation API, matching the Remix
 // website's client-side navigation model.

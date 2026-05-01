@@ -9,7 +9,7 @@ import {
 	spacing,
 	typography,
 } from '#app/styles/tokens.ts'
-import { mainStyle, pageStyle } from './admin-styles.ts'
+import { headerStyle, mainStyle, pageStyle } from './admin-styles.ts'
 
 export type AdminPageOptions = {
 	title: string
@@ -27,18 +27,7 @@ export function renderAdminPage({
 	return renderUi(
 		<ServerDocument title={title} entryScript={false}>
 			<div mix={pageStyle}>
-				<header
-					mix={rmxCss({
-						display: 'flex',
-						alignItems: 'center',
-						gap: spacing.md,
-						padding: `${spacing.md} ${responsive.spacingHeader}`,
-						borderBottom: `1px solid ${colors.border}`,
-						[mq.mobile]: {
-							gap: spacing.sm,
-						},
-					})}
-				>
+				<header mix={headerStyle}>
 					<a
 						href="/admin"
 						mix={rmxCss({

@@ -706,7 +706,7 @@ function renderDescriptionRow(label: string, value: RemixNode) {
 				gridTemplateColumns: 'minmax(8rem, 12rem) 1fr',
 				gap: '1rem',
 				padding: '0.5rem 0',
-				borderBottom: '1px solid #e2e8f0',
+				borderBottom: `1px solid ${colors.border}`,
 			})}
 		>
 			<dt mix={rmxCss({ fontWeight: '700' })}>{label}</dt>

@@ -143,10 +143,10 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			historyMode,
 			notify,
 		}
-		void transition.committed.catch((error) => {
+		void transition.committed?.catch((error) => {
 			console.error('Navigation commit failed:', navigationContext, error)
 		})
-		void transition.finished.catch((error) => {
+		void transition.finished?.catch((error) => {
 			console.error('Navigation transition failed:', navigationContext, error)
 		})
 	}

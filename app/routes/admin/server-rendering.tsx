@@ -41,6 +41,8 @@ import {
 } from './admin-styles.ts'
 import { getAdminFeed, renderAdminPage } from './admin-utils.tsx'
 
+const EDIT_SUFFIX = '/edit'
+
 type FeedSummary = {
 	id: string
 	name: string
@@ -117,7 +119,7 @@ export async function handleAdminRequest(request: Request) {
 		})
 	}
 
-	const mediaMatch = /^\/admin\/media\/(.+?)(?:\/edit)?$/.exec(path)
+	const mediaMatch = /^\/admin\/media\/(.+)$/.exec(path)
 	if (mediaMatch?.[1]) {
 		let mediaPath: string
 		try {
@@ -138,7 +140,11 @@ export async function handleAdminRequest(request: Request) {
 				...pageOptions,
 			})
 		}
-		return renderMediaDetailPage(mediaPath, pageOptions)
+		return renderMediaDetailPage(
+			mediaPath,
+			pageOptions,
+			getEditFallback(mediaPath),
+		)
 	}
 
 	return renderAdminPage({
@@ -668,8 +674,20 @@ async function renderMediaIndex(url: URL) {
 	)
 }
 
-async function renderMediaDetail(mediaPath: string) {
-	const files = await scanAllMediaRoots()
+function getEditFallback(mediaPath: string) {
+	if (
+		!mediaPath.endsWith(EDIT_SUFFIX) ||
+		mediaPath.length <= EDIT_SUFFIX.length
+	) {
+		return null
+	}
+	return mediaPath.slice(0, -EDIT_SUFFIX.length)
+}
+
+function renderMediaDetailFromFiles(
+	files: Awaited<ReturnType<typeof scanAllMediaRoots>>,
+	mediaPath: string,
+) {
 	const file = files.find((item) => item.path === mediaPath)
 
 	if (!file) return null
@@ -705,8 +723,14 @@ async function renderMediaDetail(mediaPath: string) {
 async function renderMediaDetailPage(
 	mediaPath: string,
 	pageOptions: { request: Request; target: string | null },
+	fallbackMediaPath: string | null = null,
 ) {
-	const body = await renderMediaDetail(mediaPath)
+	const files = await scanAllMediaRoots()
+	const body =
+		renderMediaDetailFromFiles(files, mediaPath) ??
+		(fallbackMediaPath
+			? renderMediaDetailFromFiles(files, fallbackMediaPath)
+			: null)
 	return renderAdminPage({
 		title: body ? 'Media Detail' : 'Media Not Found',
 		body: body ?? (

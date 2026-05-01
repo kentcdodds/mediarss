@@ -98,3 +98,40 @@ gitignored.
 We limit the number of frontend dependencies to the bare minimum. Each
 `node_modules` package needs to be explicitly listed in the import map in the
 `layout.tsx` file.
+
+## Cursor Cloud specific instructions
+
+### Runtime
+
+This project requires **Node.js >= 24.12.0** (uses `node:sqlite` and
+`registerHooks`). nvm is installed at `~/.nvm`; source it before running node
+commands:
+
+```bash
+export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+```
+
+### Running the dev server
+
+Use `npm run dev:test` for local development. It creates test SQLite databases
+(`./data/test.db`, `./data/test-cache.db`) and points at
+`./local-test/1/audio`. The `local-test/` directory is gitignored — create
+sample `.mp3` files there with ffmpeg if none exist:
+
+```bash
+mkdir -p local-test/1/audio
+ffmpeg -f lavfi -i "sine=frequency=440:duration=5" -metadata title="Test" local-test/1/audio/test.mp3 -y
+```
+
+The server listens on port **22050** by default.
+
+### Key caveats
+
+- There is **no build step**. TypeScript is loaded at runtime via esbuild hooks.
+- The `--watch` flag in `npm run dev:test` triggers a full process restart on
+  file change (Node's native watch mode), so newly installed packages are picked
+  up automatically.
+- SQLite migrations run automatically on startup; no manual migration step
+  needed.
+- `npm run validate` is the full CI gate (format check + lint + typecheck +
+  tests). Run before committing.

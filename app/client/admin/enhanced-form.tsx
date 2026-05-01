@@ -4,6 +4,63 @@ type AdminEnhancementProps = {
 	children?: RemixNode
 }
 
+type EnhancedFormFrame = {
+	replace(content: string): Promise<void>
+	reload(): Promise<unknown>
+	src: string
+}
+
+type EnhancedFormSubmitOptions = {
+	createFormData: (form: HTMLFormElement) => FormData
+	fetch: typeof fetch
+	frame: EnhancedFormFrame
+	location: Pick<Location, 'assign'>
+	onFetchError: (form: HTMLFormElement) => void
+	signal: AbortSignal
+}
+
+export async function submitEnhancedForm(
+	form: HTMLFormElement,
+	options: EnhancedFormSubmitOptions,
+) {
+	let response: Response
+	try {
+		response = await options.fetch(form.action, {
+			method: 'POST',
+			body: options.createFormData(form),
+			headers: { 'x-remix-target': 'admin-main' },
+			signal: options.signal,
+		})
+	} catch {
+		if (options.signal.aborted) return
+		options.onFetchError(form)
+		return
+	}
+	if (options.signal.aborted) return
+
+	if (!response.redirected) {
+		if (response.status >= 500) {
+			options.location.assign(response.url)
+			return
+		}
+		const content = await response.text()
+		if (options.signal.aborted) return
+		await options.frame.replace(content)
+		return
+	}
+
+	const location = response.headers.get('Location') ?? response.url
+	const nextUrl = new URL(location, window.location.href)
+
+	options.frame.src = nextUrl.href
+	window.history.pushState(null, '', nextUrl)
+	await options.frame.reload()
+}
+
+function submitNatively(form: HTMLFormElement) {
+	HTMLFormElement.prototype.submit.call(form)
+}
+
 export const AdminEnhancement = clientEntry(
 	'/app/client/admin/enhanced-form.tsx#AdminEnhancement',
 	function AdminEnhancement(handle: Handle<AdminEnhancementProps>) {
@@ -18,31 +75,14 @@ export const AdminEnhancement = clientEntry(
 
 				event.preventDefault()
 
-				const response = await fetch(form.action, {
-					method: 'POST',
-					body: new FormData(form),
-					headers: { 'x-remix-target': 'admin-main' },
+				await submitEnhancedForm(form, {
+					createFormData: (submittedForm) => new FormData(submittedForm),
+					fetch,
+					frame: handle.frame,
+					location: window.location,
+					onFetchError: submitNatively,
 					signal,
 				})
-				if (signal.aborted) return
-
-				if (!response.redirected) {
-					if (response.status >= 500) {
-						window.location.assign(response.url)
-						return
-					}
-					const content = await response.text()
-					if (signal.aborted) return
-					await handle.frame.replace(content)
-					return
-				}
-
-				const location = response.headers.get('Location') ?? response.url
-				const nextUrl = new URL(location, window.location.href)
-
-				handle.frame.src = nextUrl.href
-				window.history.pushState(null, '', nextUrl)
-				await handle.frame.reload()
 			}
 
 			frame.addEventListener('submit', submit)

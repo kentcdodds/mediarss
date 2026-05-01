@@ -21,6 +21,15 @@ export const AdminEnhancement = clientEntry(
 				})
 				if (signal.aborted) return
 
+				if (!response.redirected) {
+					if (response.status >= 500) {
+						window.location.assign(response.url)
+						return
+					}
+					frame.innerHTML = await response.text()
+					return
+				}
+
 				const location = response.headers.get('Location') ?? response.url
 				const nextUrl = new URL(location, window.location.href)
 				const frameResponse = await fetch(nextUrl, {

@@ -1,6 +1,9 @@
 import { redirect } from 'remix/response/redirect'
 import { css as rmxCss, type RemixNode } from 'remix/ui'
 import { ServerDocument } from '#app/components/server-document.tsx'
+import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
+import { getDirectoryFeedById } from '#app/db/directory-feeds.ts'
+import { type Feed } from '#app/db/types.ts'
 import { renderUi } from '#app/helpers/render.ts'
 import {
 	colors,
@@ -104,6 +107,12 @@ export function renderAdminPage({
 
 export function redirect303(href: string) {
 	return redirect(href, 303)
+}
+
+export async function getAdminFeed(feedId: string): Promise<Feed | undefined> {
+	return (
+		(await getDirectoryFeedById(feedId)) ?? (await getCuratedFeedById(feedId))
+	)
 }
 
 export class AdminFormError extends Error {

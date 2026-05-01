@@ -3,14 +3,12 @@ import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import {
 	createCuratedFeed,
 	deleteCuratedFeed,
-	getCuratedFeedById,
 	updateCuratedFeed,
 } from '#app/db/curated-feeds.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import {
 	createDirectoryFeed,
 	deleteDirectoryFeed,
-	getDirectoryFeedById,
 	updateDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import {
@@ -23,6 +21,7 @@ import { buttonStyle, cardStyle } from './admin-styles.ts'
 import {
 	AdminFormError,
 	getAllStringValues,
+	getAdminFeed,
 	getLineValues,
 	getOptionalString,
 	getRequiredString,
@@ -86,14 +85,8 @@ export async function handleAdminPost(request: Request) {
 	}
 }
 
-async function getFeed(feedId: string): Promise<Feed | undefined> {
-	return (
-		(await getDirectoryFeedById(feedId)) ?? (await getCuratedFeedById(feedId))
-	)
-}
-
 async function getFeedOrThrow(feedId: string): Promise<Feed> {
-	const feed = await getFeed(feedId)
+	const feed = await getAdminFeed(feedId)
 	if (!feed) {
 		throw new AdminFormError('Unknown feed.', '/admin')
 	}

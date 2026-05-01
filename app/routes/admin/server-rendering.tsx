@@ -4,9 +4,8 @@ import {
 	parseMediaPath,
 	toAbsolutePath,
 } from '#app/config/env.ts'
-import { getCuratedFeedById, listCuratedFeeds } from '#app/db/curated-feeds.ts'
+import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
-	getDirectoryFeedById,
 	listDirectoryFeeds,
 	parseDirectoryPaths,
 } from '#app/db/directory-feeds.ts'
@@ -40,7 +39,7 @@ import {
 	secondaryButtonStyle,
 	stackStyle,
 } from './admin-styles.ts'
-import { renderAdminPage } from './admin-utils.tsx'
+import { getAdminFeed, renderAdminPage } from './admin-utils.tsx'
 
 type FeedSummary = {
 	id: string
@@ -298,7 +297,7 @@ async function renderNewFeedPage() {
 }
 
 async function renderFeedPage(feedId: string) {
-	const feed = await getFeed(feedId)
+	const feed = await getAdminFeed(feedId)
 	if (!feed) {
 		return renderAdminPage({
 			title: 'Feed Not Found',
@@ -748,12 +747,6 @@ async function getFeedSummaries(): Promise<Array<FeedSummary>> {
 	)
 	return [...directoryFeeds, ...curatedFeeds].sort(
 		(a, b) => b.updatedAt - a.updatedAt,
-	)
-}
-
-async function getFeed(feedId: string): Promise<Feed | undefined> {
-	return (
-		(await getDirectoryFeedById(feedId)) ?? (await getCuratedFeedById(feedId))
 	)
 }
 

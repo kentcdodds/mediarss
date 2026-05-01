@@ -267,9 +267,11 @@ const cardLinkStyle = {
 	display: 'flex',
 	flexDirection: 'column',
 	gap: spacing.md,
+	padding: spacing.lg,
 	color: colors.text,
 	textDecoration: 'none',
 	border: `1px solid ${colors.primary}`,
+	borderRadius: 'var(--radius-lg)',
 	backgroundColor: colors.surface,
 }
 

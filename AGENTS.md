@@ -98,3 +98,18 @@ gitignored.
 We limit the number of frontend dependencies to the bare minimum. Each
 `node_modules` package needs to be explicitly listed in the import map in the
 `layout.tsx` file.
+
+## Cursor Cloud specific instructions
+
+- **Runtime**: Node.js 24 is installed via nvm (`~/.nvm`). Bun is installed at
+  `~/.bun/bin/bun` and used for dependency installation (`bun install`).
+- **Dev server**: Run `npm run dev:test` to start with a test SQLite database and
+  sample media from `local-test/1/audio/`. The server listens on port 22050.
+- **No build step**: TypeScript is transpiled at runtime via esbuild hooks. There
+  is no separate build command.
+- **Test media**: The `local-test/` directory is gitignored. If it doesn't exist,
+  create `local-test/1/audio/` and add an `.mp3` file before running `dev:test`.
+- **SQLite**: Uses `node:sqlite` (built-in to Node 24). Databases are
+  auto-created and migrations run on startup. No external DB needed.
+- **Validate before commit**: `npm run validate` runs format check, lint,
+  typecheck, and tests in sequence. See `package.json` scripts for details.

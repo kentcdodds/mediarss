@@ -60,11 +60,14 @@ export async function handleAdminRequest(request: Request) {
 
 	const url = new URL(request.url)
 	const path = normalizePath(url.pathname)
+	const target = request.headers.get('x-remix-target')
+	const pageOptions = { target }
 
 	if (path === '/admin') {
 		return renderAdminPage({
 			title: 'MediaRSS Admin',
 			body: await renderFeedIndex(),
+			...pageOptions,
 		})
 	}
 
@@ -73,6 +76,7 @@ export async function handleAdminRequest(request: Request) {
 			title: 'Version Information',
 			body: await renderVersionPage(),
 			isVersionPage: true,
+			...pageOptions,
 		})
 	}
 
@@ -80,18 +84,20 @@ export async function handleAdminRequest(request: Request) {
 		return renderAdminPage({
 			title: 'New Feed',
 			body: await renderNewFeedPage(),
+			...pageOptions,
 		})
 	}
 
 	const feedMatch = /^\/admin\/feeds\/([^/]+)(?:\/edit)?$/.exec(path)
 	if (feedMatch?.[1]) {
-		return renderFeedPage(feedMatch[1])
+		return renderFeedPage(feedMatch[1], pageOptions)
 	}
 
 	if (path === '/admin/media') {
 		return renderAdminPage({
 			title: 'Media',
 			body: await renderMediaIndex(url),
+			...pageOptions,
 		})
 	}
 
@@ -113,9 +119,10 @@ export async function handleAdminRequest(request: Request) {
 					</section>
 				),
 				status: 400,
+				...pageOptions,
 			})
 		}
-		return renderMediaDetailPage(mediaPath)
+		return renderMediaDetailPage(mediaPath, pageOptions)
 	}
 
 	return renderAdminPage({
@@ -130,6 +137,7 @@ export async function handleAdminRequest(request: Request) {
 			</section>
 		),
 		status: 404,
+		...pageOptions,
 	})
 }
 
@@ -296,7 +304,10 @@ async function renderNewFeedPage() {
 	)
 }
 
-async function renderFeedPage(feedId: string) {
+async function renderFeedPage(
+	feedId: string,
+	pageOptions: { target: string | null },
+) {
 	const feed = await getAdminFeed(feedId)
 	if (!feed) {
 		return renderAdminPage({
@@ -310,6 +321,7 @@ async function renderFeedPage(feedId: string) {
 				</section>
 			),
 			status: 404,
+			...pageOptions,
 		})
 	}
 
@@ -398,6 +410,7 @@ async function renderFeedPage(feedId: string) {
 				</form>
 			</div>
 		),
+		...pageOptions,
 	})
 }
 
@@ -614,7 +627,10 @@ async function renderMediaDetail(mediaPath: string) {
 	)
 }
 
-async function renderMediaDetailPage(mediaPath: string) {
+async function renderMediaDetailPage(
+	mediaPath: string,
+	pageOptions: { target: string | null },
+) {
 	const body = await renderMediaDetail(mediaPath)
 	return renderAdminPage({
 		title: body ? 'Media Detail' : 'Media Not Found',
@@ -628,6 +644,7 @@ async function renderMediaDetailPage(mediaPath: string) {
 			</section>
 		),
 		status: body ? 200 : 404,
+		...pageOptions,
 	})
 }
 

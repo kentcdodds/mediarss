@@ -1,5 +1,5 @@
 import { redirect } from 'remix/response/redirect'
-import { css as rmxCss, type RemixNode } from 'remix/ui'
+import { type RemixNode, css as rmxCss } from 'remix/ui'
 import { ServerDocument } from '#app/components/server-document.tsx'
 import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
 import { getDirectoryFeedById } from '#app/db/directory-feeds.ts'
@@ -12,6 +12,7 @@ import {
 	spacing,
 	typography,
 } from '#app/styles/tokens.ts'
+import { AdminEnhancement } from '#app/client/admin/enhanced-form.tsx'
 import { headerStyle, mainStyle, pageStyle } from './admin-styles.ts'
 
 export type AdminPageOptions = {
@@ -19,6 +20,7 @@ export type AdminPageOptions = {
 	body: RemixNode
 	status?: number
 	isVersionPage?: boolean
+	target?: string | null
 }
 
 export function renderAdminPage({
@@ -26,9 +28,17 @@ export function renderAdminPage({
 	body,
 	status = 200,
 	isVersionPage = false,
+	target,
 }: AdminPageOptions) {
+	if (target === 'admin-main') {
+		return renderUi(<AdminEnhancement>{body}</AdminEnhancement>, { status })
+	}
+
 	return renderUi(
-		<ServerDocument title={title} entryScript={false}>
+		<ServerDocument
+			title={title}
+			entryScript="/app/client/admin/enhanced-form.tsx"
+		>
 			<div mix={pageStyle}>
 				<header mix={headerStyle}>
 					<a
@@ -64,7 +74,9 @@ export function renderAdminPage({
 						</span>
 					</a>
 				</header>
-				<main mix={mainStyle}>{body}</main>
+				<main mix={mainStyle}>
+					<AdminEnhancement>{body}</AdminEnhancement>
+				</main>
 				<footer
 					mix={rmxCss({
 						borderTop: `1px solid ${colors.border}`,

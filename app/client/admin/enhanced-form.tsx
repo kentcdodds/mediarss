@@ -21,6 +21,7 @@ export const AdminEnhancement = clientEntry(
 				const response = await fetch(form.action, {
 					method: 'POST',
 					body: new FormData(form),
+					headers: { 'x-remix-target': 'admin-main' },
 					signal,
 				})
 				if (signal.aborted) return

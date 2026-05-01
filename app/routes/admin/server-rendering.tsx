@@ -269,7 +269,7 @@ const cardLinkStyle = {
 	gap: spacing.md,
 	color: colors.text,
 	textDecoration: 'none',
-	borderColor: colors.primary,
+	border: `1px solid ${colors.primary}`,
 	backgroundColor: colors.surface,
 }
 

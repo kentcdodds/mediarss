@@ -1,5 +1,6 @@
 import { redirect } from 'remix/response/redirect'
-import { type RemixNode, css as rmxCss } from 'remix/ui'
+import { Frame, type RemixNode, css as rmxCss } from 'remix/ui'
+import { renderToStream } from 'remix/ui/server'
 import { ServerDocument } from '#app/components/server-document.tsx'
 import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
 import { getDirectoryFeedById } from '#app/db/directory-feeds.ts'
@@ -21,6 +22,7 @@ export type AdminPageOptions = {
 	status?: number
 	isVersionPage?: boolean
 	target?: string | null
+	request?: Request
 }
 
 export function renderAdminPage({
@@ -29,9 +31,10 @@ export function renderAdminPage({
 	status = 200,
 	isVersionPage = false,
 	target,
+	request,
 }: AdminPageOptions) {
 	if (target === 'admin-main') {
-		return renderUi(body, { status })
+		return renderUi(renderAdminFrameContent(body), { status })
 	}
 
 	return renderUi(
@@ -75,8 +78,7 @@ export function renderAdminPage({
 					</a>
 				</header>
 				<main mix={mainStyle}>
-					<AdminEnhancement />
-					<div data-admin-frame>{body}</div>
+					<Frame name="admin-main" src={request?.url ?? '/admin'} />
 				</main>
 				<footer
 					mix={rmxCss({
@@ -115,7 +117,21 @@ export function renderAdminPage({
 			</div>
 		</ServerDocument>,
 		{ status },
+		{
+			resolveFrame() {
+				return renderToStream(renderAdminFrameContent(body))
+			},
+		},
 	)
+}
+
+function renderAdminFrameContent(body: RemixNode) {
+	return [
+		<AdminEnhancement key="admin-enhancement" />,
+		<div key="admin-frame-content" data-admin-frame>
+			{body}
+		</div>,
+	]
 }
 
 export function redirect303(href: string) {

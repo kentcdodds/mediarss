@@ -61,7 +61,7 @@ export async function handleAdminRequest(request: Request) {
 	const url = new URL(request.url)
 	const path = normalizePath(url.pathname)
 	const target = request.headers.get('x-remix-target')
-	const pageOptions = { target }
+	const pageOptions = { request, target }
 
 	if (path === '/admin') {
 		return renderAdminPage({
@@ -379,7 +379,7 @@ async function renderNewCuratedFeedPage() {
 
 async function renderFeedPage(
 	feedId: string,
-	pageOptions: { target: string | null },
+	pageOptions: { request: Request; target: string | null },
 ) {
 	const feed = await getAdminFeed(feedId)
 	if (!feed) {
@@ -702,7 +702,7 @@ async function renderMediaDetail(mediaPath: string) {
 
 async function renderMediaDetailPage(
 	mediaPath: string,
-	pageOptions: { target: string | null },
+	pageOptions: { request: Request; target: string | null },
 ) {
 	const body = await renderMediaDetail(mediaPath)
 	return renderAdminPage({

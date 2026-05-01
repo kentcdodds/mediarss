@@ -59,8 +59,7 @@ export async function submitEnhancedForm(
 		return
 	}
 
-	const location = response.headers.get('Location') ?? response.url
-	const nextUrl = new URL(location, window.location.href)
+	const nextUrl = new URL(response.url, window.location.href)
 
 	options.frame.src = nextUrl.href
 	window.history.pushState(null, '', nextUrl)

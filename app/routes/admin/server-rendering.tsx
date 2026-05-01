@@ -4,9 +4,15 @@ import {
 	parseMediaPath,
 	toAbsolutePath,
 } from '#app/config/env.ts'
-import { listActiveCuratedFeedTokens } from '#app/db/curated-feed-tokens.ts'
+import {
+	listActiveCuratedFeedTokens,
+	listCuratedFeedTokens,
+} from '#app/db/curated-feed-tokens.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import { listActiveDirectoryFeedTokens } from '#app/db/directory-feed-tokens.ts'
+import {
+	listActiveDirectoryFeedTokens,
+	listDirectoryFeedTokens,
+} from '#app/db/directory-feed-tokens.ts'
 import {
 	listDirectoryFeeds,
 	parseDirectoryPaths,
@@ -24,8 +30,18 @@ import {
 	formatFileSize,
 	formatRelativeTime,
 } from '#app/helpers/format.ts'
+import {
+	getFeedAnalyticsSummary,
+	getFeedDailyAnalytics,
+	getFeedTopClientAnalytics,
+	getFeedTopMediaItemAnalytics,
+} from '#app/db/feed-analytics-events.ts'
 import { scanAllMediaRoots, scanDirectory } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'
+import {
+	getCuratedFeedItems,
+	getDirectoryFeedItems,
+} from '#app/helpers/feed-items.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
 import {
 	artworkLayout,
@@ -64,6 +80,27 @@ type FeedSummary = {
 	lastAccessedAt: number | null
 	updatedAt: number
 	directoryPaths?: Array<string>
+}
+
+type FeedTokenSummary = {
+	token: string
+	label: string
+	createdAt: number
+	lastUsedAt: number | null
+	revokedAt: number | null
+}
+
+type FeedDetailData = {
+	feed: Feed
+	isDirectory: boolean
+	tokens: Array<FeedTokenSummary>
+	items: Awaited<ReturnType<typeof getDirectoryFeedItems>>
+	analytics: {
+		summary: ReturnType<typeof getFeedAnalyticsSummary>
+		topClients: ReturnType<typeof getFeedTopClientAnalytics>
+		topMediaItems: ReturnType<typeof getFeedTopMediaItemAnalytics>
+		daily: ReturnType<typeof getFeedDailyAnalytics>
+	}
 }
 
 export async function handleAdminRequest(request: Request) {
@@ -120,9 +157,11 @@ export async function handleAdminRequest(request: Request) {
 		})
 	}
 
-	const feedMatch = /^\/admin\/feeds\/([^/]+)(?:\/edit)?$/.exec(path)
+	const feedMatch = /^\/admin\/feeds\/([^/]+)(\/edit)?$/.exec(path)
 	if (feedMatch?.[1]) {
-		return renderFeedPage(feedMatch[1], pageOptions)
+		return feedMatch[2]
+			? renderFeedEditPage(feedMatch[1], pageOptions)
+			: renderFeedDetailPage(feedMatch[1], pageOptions)
 	}
 
 	if (path === '/admin/media') {
@@ -566,25 +605,29 @@ async function renderNewCuratedFeedPage() {
 	)
 }
 
-async function renderFeedPage(
+async function renderFeedDetailPage(
+	feedId: string,
+	pageOptions: { request: Request; target: string | null },
+) {
+	const detail = await getFeedDetailData(feedId)
+	if (!detail) {
+		return renderFeedNotFound(pageOptions)
+	}
+
+	return renderAdminPage({
+		title: detail.feed.name,
+		body: renderFeedDetail(detail),
+		...pageOptions,
+	})
+}
+
+async function renderFeedEditPage(
 	feedId: string,
 	pageOptions: { request: Request; target: string | null },
 ) {
 	const feed = await getAdminFeed(feedId)
 	if (!feed) {
-		return renderAdminPage({
-			title: 'Feed Not Found',
-			body: (
-				<section mix={cardStyle}>
-					<h1>Feed not found</h1>
-					<a href="/admin" mix={buttonStyle}>
-						Back to feeds
-					</a>
-				</section>
-			),
-			status: 404,
-			...pageOptions,
-		})
+		return renderFeedNotFound(pageOptions)
 	}
 
 	const isDirectory = isDirectoryFeed(feed)
@@ -674,6 +717,404 @@ async function renderFeedPage(
 		),
 		...pageOptions,
 	})
+}
+
+function renderFeedNotFound(pageOptions: {
+	request: Request
+	target: string | null
+}) {
+	return renderAdminPage({
+		title: 'Feed Not Found',
+		body: (
+			<section mix={cardStyle}>
+				<h1>Feed not found</h1>
+				<a href="/admin" mix={buttonStyle}>
+					Back to feeds
+				</a>
+			</section>
+		),
+		status: 404,
+		...pageOptions,
+	})
+}
+
+async function getFeedDetailData(
+	feedId: string,
+): Promise<FeedDetailData | null> {
+	const feed = await getAdminFeed(feedId)
+	if (!feed) return null
+
+	const isDirectory = isDirectoryFeed(feed)
+	const tokens = isDirectory
+		? await listDirectoryFeedTokens(feed.id)
+		: await listCuratedFeedTokens(feed.id)
+	const items = isDirectory
+		? await getDirectoryFeedItems(feed)
+		: await getCuratedFeedItems(feed)
+	const since = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
+
+	return {
+		feed,
+		isDirectory,
+		tokens,
+		items,
+		analytics: {
+			summary: getFeedAnalyticsSummary(feed.id, since),
+			topClients: getFeedTopClientAnalytics(feed.id, since),
+			topMediaItems: getFeedTopMediaItemAnalytics(feed.id, since),
+			daily: getFeedDailyAnalytics(feed.id, since),
+		},
+	}
+}
+
+function renderFeedDetail(detail: FeedDetailData) {
+	const { feed, isDirectory, items, tokens, analytics } = detail
+	const directoryPaths = isDirectoryFeed(feed) ? parseDirectoryPaths(feed) : []
+	return (
+		<div mix={stackStyle}>
+			<div
+				mix={rmxCss({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: spacing.md,
+					flexWrap: 'wrap',
+				})}
+			>
+				<div mix={rowStyle}>
+					<a href="/admin" mix={secondaryButtonStyle}>
+						Back
+					</a>
+					<h1 mix={rmxCss({ margin: 0 })}>{feed.name}</h1>
+				</div>
+				<div mix={rowStyle}>
+					<a href={`/admin/feeds/${feed.id}/edit`} mix={secondaryButtonStyle}>
+						Edit Feed
+					</a>
+					<form method="post" action={`/admin/feeds/${feed.id}`}>
+						<input type="hidden" name="_action" value="delete-feed" />
+						<input type="hidden" name="feedId" value={feed.id} />
+						<button type="submit" mix={dangerButtonStyle}>
+							Delete
+						</button>
+					</form>
+				</div>
+			</div>
+
+			<section mix={cardStyle}>
+				<h2 mix={sectionTitleStyle}>Feed Details</h2>
+				<p mix={rmxCss({ color: colors.textMuted, marginTop: 0 })}>
+					{feed.description || 'No description.'}
+				</p>
+				<div mix={detailGridStyle}>
+					{renderDescriptionRow('ID', feed.id)}
+					{renderDescriptionRow('Feed Type', feed.feedType ?? 'episodic')}
+					{renderDescriptionRow('Kind', isDirectory ? 'Directory' : 'Curated')}
+					{renderDescriptionRow('Sort', `${feed.sortOrder}:${feed.sortFields}`)}
+					{renderDescriptionRow('Author', feed.author ?? '—')}
+					{renderDescriptionRow('Language', feed.language)}
+					{renderDescriptionRow('Created', formatDate(feed.createdAt))}
+					{renderDescriptionRow('Updated', formatDate(feed.updatedAt))}
+					{renderDescriptionRow('Link', feed.link ?? '—')}
+					{renderDescriptionRow('Copyright', feed.copyright ?? '—')}
+				</div>
+				{isDirectory ? (
+					<div mix={rmxCss({ marginTop: spacing.md })}>
+						<strong>Directories</strong>
+						<ul>
+							{directoryPaths.map((path) => (
+								<li key={path}>
+									<code>{path}</code>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+			</section>
+
+			<section mix={cardStyle}>
+				<h2 mix={sectionTitleStyle}>Feed Artwork</h2>
+				<div mix={rowStyle}>
+					<img
+						src={`/admin/api/feeds/${feed.id}/artwork`}
+						alt=""
+						width="120"
+						height="120"
+						mix={rmxCss({
+							width: '120px',
+							height: '120px',
+							borderRadius: radius.md,
+							...artworkLayout.centeredContain,
+							backgroundColor: colors.background,
+							border: `1px solid ${colors.border}`,
+						})}
+					/>
+					<div>
+						<p mix={mutedStyle}>Current artwork for this feed.</p>
+						<p mix={mutedStyle}>
+							Artwork upload remains available through the enhanced admin UI.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			{renderMediaItemsSection(items)}
+			{renderAnalyticsSection(analytics)}
+			{renderTokensSection(feed, tokens)}
+		</div>
+	)
+}
+
+const sectionTitleRules = {
+	fontSize: typography.fontSize.base,
+	fontWeight: typography.fontWeight.semibold,
+	color: colors.text,
+	margin: `0 0 ${spacing.md} 0`,
+}
+
+const sectionTitleStyle = rmxCss(sectionTitleRules)
+
+const detailGridStyle = rmxCss({
+	display: 'grid',
+	gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+	gap: spacing.md,
+})
+
+function renderMediaItemsSection(items: FeedDetailData['items']) {
+	return (
+		<section mix={cardStyle}>
+			<h2 mix={sectionTitleStyle}>Media Items ({items.length})</h2>
+			{items.length === 0 ? (
+				<p mix={mutedStyle}>No media items yet.</p>
+			) : (
+				<div mix={rmxCss({ overflowX: 'auto' })}>
+					<table
+						mix={rmxCss({
+							width: '100%',
+							borderCollapse: 'collapse',
+							fontSize: typography.fontSize.sm,
+						})}
+					>
+						<thead>
+							<tr>
+								<th mix={tableHeaderStyle}>#</th>
+								<th mix={tableHeaderStyle}>Title</th>
+								<th mix={tableHeaderStyle}>Author</th>
+								<th mix={tableHeaderStyle}>Duration</th>
+								<th mix={tableHeaderStyle}>Size</th>
+								<th mix={tableHeaderStyle}>Modified</th>
+							</tr>
+						</thead>
+						<tbody>
+							{items.slice(0, 100).map((item, index) => (
+								<tr key={item.path}>
+									<td mix={tableCellStyle}>{index + 1}</td>
+									<td mix={tableCellStyle}>{item.title}</td>
+									<td mix={tableCellStyle}>{item.author ?? '—'}</td>
+									<td mix={tableCellStyle}>
+										{item.duration ? formatDuration(item.duration) : '—'}
+									</td>
+									<td mix={tableCellStyle}>{formatFileSize(item.sizeBytes)}</td>
+									<td mix={tableCellStyle}>
+										{formatDate(item.fileModifiedAt)}
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			)}
+		</section>
+	)
+}
+
+const tableHeaderStyle = rmxCss({
+	textAlign: 'left',
+	padding: spacing.sm,
+	color: colors.textMuted,
+	borderBottom: `1px solid ${colors.border}`,
+	fontWeight: typography.fontWeight.medium,
+})
+
+const tableCellStyle = rmxCss({
+	padding: spacing.sm,
+	borderBottom: `1px solid ${colors.border}`,
+	verticalAlign: 'top',
+})
+
+function renderAnalyticsSection(analytics: FeedDetailData['analytics']) {
+	return (
+		<section mix={cardStyle}>
+			<div
+				mix={rmxCss({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: spacing.md,
+					marginBottom: spacing.md,
+				})}
+			>
+				<h2 mix={rmxCss({ ...sectionTitleRules, margin: 0 })}>
+					Analytics (last 30 days)
+				</h2>
+				<span mix={buttonStyle}>30d</span>
+			</div>
+			<div mix={detailGridStyle}>
+				{renderStatCard('RSS fetches', analytics.summary.rssFetches)}
+				{renderStatCard('Media requests', analytics.summary.mediaRequests)}
+				{renderStatCard('Downloads', analytics.summary.downloadStarts)}
+				{renderStatCard('Unique clients', analytics.summary.uniqueClients)}
+				{renderStatCard(
+					'Bytes served',
+					formatFileSize(analytics.summary.bytesServed),
+				)}
+			</div>
+			<div
+				mix={rmxCss({
+					display: 'grid',
+					gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+					gap: spacing.lg,
+					marginTop: spacing.lg,
+				})}
+			>
+				{renderAnalyticsList(
+					'Top clients',
+					analytics.topClients.map((client) => ({
+						label: client.clientName,
+						value: `${client.mediaRequests} requests`,
+					})),
+				)}
+				{renderAnalyticsList(
+					'Top media items',
+					analytics.topMediaItems.map((item) => ({
+						label: createMediaKey(item.mediaRoot, item.relativePath),
+						value: `${item.mediaRequests} requests`,
+					})),
+				)}
+				{renderAnalyticsList(
+					'Daily activity',
+					analytics.daily.map((day) => ({
+						label: day.day,
+						value: `${day.mediaRequests} requests`,
+					})),
+				)}
+			</div>
+		</section>
+	)
+}
+
+function renderStatCard(label: string, value: string | number) {
+	return (
+		<div
+			mix={rmxCss({
+				border: `1px solid ${colors.border}`,
+				borderRadius: radius.md,
+				padding: spacing.md,
+				backgroundColor: colors.background,
+			})}
+		>
+			<div
+				mix={rmxCss({
+					fontSize: typography.fontSize.xs,
+					color: colors.textMuted,
+				})}
+			>
+				{label}
+			</div>
+			<strong>{value}</strong>
+		</div>
+	)
+}
+
+function renderAnalyticsList(
+	title: string,
+	rows: Array<{ label: string; value: string }>,
+) {
+	return (
+		<div>
+			<h3 mix={rmxCss({ fontSize: typography.fontSize.sm })}>{title}</h3>
+			{rows.length === 0 ? (
+				<p mix={mutedStyle}>No data yet.</p>
+			) : (
+				<ul mix={rmxCss({ padding: 0, listStyle: 'none' })}>
+					{rows.slice(0, 8).map((row) => (
+						<li
+							key={`${row.label}:${row.value}`}
+							mix={rmxCss({
+								display: 'flex',
+								justifyContent: 'space-between',
+								gap: spacing.md,
+								padding: `${spacing.xs} 0`,
+								borderBottom: `1px solid ${colors.border}`,
+							})}
+						>
+							<span>{row.label}</span>
+							<span mix={mutedStyle}>{row.value}</span>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	)
+}
+
+function renderTokensSection(feed: Feed, tokens: Array<FeedTokenSummary>) {
+	return (
+		<section mix={cardStyle}>
+			<div
+				mix={rmxCss({
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: spacing.md,
+					marginBottom: spacing.lg,
+				})}
+			>
+				<h2 mix={rmxCss({ ...sectionTitleRules, margin: 0 })}>
+					Access Tokens ({tokens.length})
+				</h2>
+				<form method="post" action={`/admin/feeds/${feed.id}`}>
+					<input type="hidden" name="_action" value="create-token" />
+					<button type="submit" mix={buttonStyle}>
+						+ New Token
+					</button>
+				</form>
+			</div>
+			{tokens.length === 0 ? (
+				<p mix={mutedStyle}>No access tokens yet.</p>
+			) : (
+				<div mix={stackStyle}>
+					{tokens.map((token) => (
+						<div
+							key={token.token}
+							mix={rmxCss({
+								display: 'flex',
+								justifyContent: 'space-between',
+								gap: spacing.md,
+								padding: spacing.md,
+								border: `1px solid ${colors.border}`,
+								borderRadius: radius.md,
+							})}
+						>
+							<div>
+								<strong>{token.label || 'Default'}</strong>
+								<div mix={mutedStyle}>
+									Created {formatDate(token.createdAt)}
+									{' · '}
+									{token.lastUsedAt
+										? `Last used ${formatRelativeTime(token.lastUsedAt)}`
+										: 'Never used'}
+								</div>
+							</div>
+							<a href={`/feed/${token.token}`} mix={secondaryButtonStyle}>
+								Open URL
+							</a>
+						</div>
+					))}
+				</div>
+			)}
+		</section>
+	)
 }
 
 function renderDirectoryFeedDetails(feed: DirectoryFeed) {

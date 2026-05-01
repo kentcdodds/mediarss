@@ -11,6 +11,8 @@ import {
 	getWindowLocationHref,
 } from './router-navigation.ts'
 
+const isBrowser = typeof window !== 'undefined'
+
 type RouteMatch = {
 	path: string
 	params: Record<string, string>
@@ -33,8 +35,8 @@ type Route = {
  */
 class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
-	#currentPath: string = window.location.pathname
-	#currentHref: string = getWindowLocationHref()
+	#currentPath: string = isBrowser ? window.location.pathname : '/admin'
+	#currentHref: string = isBrowser ? getWindowLocationHref() : '/admin'
 
 	get currentPath() {
 		return this.#currentPath
@@ -64,10 +66,12 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Navigate to a new path using the Navigation API.
 	 */
 	navigate(path: string) {
+		if (!isBrowser) return
 		this.#commitNavigation(path, 'push', true)
 	}
 
 	replace(path: string) {
+		if (!isBrowser) return
 		const target = normalizeNavigationTarget(path, window.location.origin)
 		if (!target) return
 		this.#commitNavigation(
@@ -168,13 +172,19 @@ export const router = new RouterState()
 
 // The admin SPA intentionally requires the Navigation API, matching the Remix
 // website's client-side navigation model.
-window.navigation.addEventListener('navigate', router.handleNavigation)
+if (isBrowser) {
+	window.navigation.addEventListener('navigate', router.handleNavigation)
+}
 
 /**
  * Router outlet component.
  * Renders the matched route's component.
  */
 export function RouterOutlet(handle: Handle) {
+	if (!isBrowser) {
+		return () => <div>Loading...</div>
+	}
+
 	// Subscribe to navigation events
 	addEventListeners(router, handle.signal, {
 		navigate: () => {

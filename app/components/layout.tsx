@@ -1,9 +1,5 @@
 import { html, type SafeHtml } from 'remix/html-template'
-import { baseImportMap } from '#app/config/import-map.ts'
-import {
-	versionedImportMap,
-	versionedUrl,
-} from '#app/helpers/bundle-version.ts'
+import { getDocumentAssets } from './document-assets.ts'
 
 export function Layout({
 	children,
@@ -14,15 +10,12 @@ export function Layout({
 	title?: string
 	entryScript?: string | false
 }) {
-	// Apply cache-busting version to all import map URLs
-	const versionedImports = versionedImportMap(baseImportMap)
-	const importmap = { imports: versionedImports }
-
-	const importmapJson = JSON.stringify(importmap)
+	const { entryScriptUrl, importmapJson, modulePreloadUrls } =
+		getDocumentAssets(entryScript)
 	const importmapScript = html.raw`<script type="importmap">
 		${importmapJson}
 	</script>`
-	const modulePreloads = Object.values(versionedImports).map(
+	const modulePreloads = modulePreloadUrls.map(
 		(value) => html`<link rel="modulepreload" href="${value}" />`,
 	)
 
@@ -38,11 +31,8 @@ export function Layout({
 		</head>
 		<body>
 			<div id="root">${children ?? ''}</div>
-			${entryScript
-				? html`<script
-						type="module"
-						src="${versionedUrl(entryScript)}"
-					></script>`
+			${entryScriptUrl
+				? html`<script type="module" src="${entryScriptUrl}"></script>`
 				: ''}
 		</body>
 	</html>`

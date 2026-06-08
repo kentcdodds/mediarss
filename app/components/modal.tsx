@@ -81,6 +81,15 @@ const sizeMap: Record<ModalSize, string> = {
 	xl: '800px',
 }
 
+function getModalIdBase(title: string) {
+	const slug = title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+
+	return slug || 'modal'
+}
+
 /**
  * A reusable, accessible modal component.
  *
@@ -118,11 +127,6 @@ export function Modal(handle: Handle<ModalProps>) {
 	// Store reference to the modal container for focus management
 	let modalRef: HTMLElement | null = null
 	let previouslyFocusedElement: Element | null = null
-
-	// Generate unique IDs for accessibility
-	const titleId = `modal-title-${Math.random().toString(36).slice(2, 9)}`
-	const subtitleId = `modal-subtitle-${Math.random().toString(36).slice(2, 9)}`
-	const descriptionId = `modal-description-${Math.random().toString(36).slice(2, 9)}`
 
 	return renderProps(
 		handle,
@@ -179,6 +183,10 @@ export function Modal(handle: Handle<ModalProps>) {
 			}
 
 			const maxWidth = sizeMap[size]
+			const idBase = getModalIdBase(title)
+			const titleId = `modal-title-${idBase}`
+			const subtitleId = `modal-subtitle-${idBase}`
+			const descriptionId = `modal-description-${idBase}`
 			const describedBy =
 				[
 					subtitle ? subtitleId : undefined,

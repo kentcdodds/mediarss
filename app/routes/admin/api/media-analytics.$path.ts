@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import {
@@ -339,7 +339,4 @@ export default {
 			daily,
 		})
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiMediaAnalytics.method,
-	typeof routes.adminApiMediaAnalytics.pattern
->
+} satisfies Action<typeof routes.adminApiMediaAnalytics>

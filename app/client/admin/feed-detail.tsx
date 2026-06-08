@@ -1,4 +1,5 @@
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,
 	ModalAlert,
@@ -272,7 +273,7 @@ type BrowseState =
 /**
  * FeedDetail component - displays feed information and manages tokens.
  */
-export function FeedDetail(handle: Handle) {
+export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: AnalyticsLoadingState = { status: 'loading' }
 	let analyticsRequestId = 0
@@ -814,9 +815,9 @@ export function FeedDetail(handle: Handle) {
 		}
 	}
 
-	return (renderProps: { params: Record<string, string> }) => {
+	return renderProps(handle, ({ params }) => {
 		// Fetch on first render or if id changes
-		const paramId = renderProps.params.id
+		const paramId = params.id
 		if (paramId && paramId !== feedId) {
 			// Use setTimeout to avoid updating during render
 			setTimeout(() => fetchFeed(paramId), 0)
@@ -2443,7 +2444,7 @@ export function FeedDetail(handle: Handle) {
 				</div>
 			</div>
 		)
-	}
+	})
 }
 
 function LoadingSpinner() {
@@ -2477,8 +2478,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage() {
-	return ({ message }: { message: string }) => (
+function ErrorMessage(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -2515,21 +2516,18 @@ function ErrorMessage() {
 				← Back to feeds
 			</a>
 		</div>
-	)
+	))
 }
 
-function InfoItem() {
-	return ({
-		label,
-		value,
-		mono,
-		href,
-	}: {
+function InfoItem(
+	handle: Handle<{
 		label: string
 		value: string
 		mono?: boolean
 		href?: string
-	}) => (
+	}>,
+) {
+	return renderProps(handle, ({ label, value, mono, href }) => (
 		<div>
 			<dt
 				mix={[
@@ -2577,11 +2575,11 @@ function InfoItem() {
 				)}
 			</dd>
 		</div>
-	)
+	))
 }
 
-function DirectoriesInfo() {
-	return ({ directoryPaths }: { directoryPaths: string }) => {
+function DirectoriesInfo(handle: Handle<{ directoryPaths: string }>) {
+	return renderProps(handle, ({ directoryPaths }) => {
 		let paths: Array<string> = []
 		try {
 			paths = JSON.parse(directoryPaths) as Array<string>
@@ -2668,21 +2666,18 @@ function DirectoriesInfo() {
 				</dd>
 			</div>
 		)
-	}
+	})
 }
 
-function TokenCard() {
-	return ({
-		token,
-		isCopied,
-		onCopy,
-		onRevoke,
-	}: {
+function TokenCard(
+	handle: Handle<{
 		token: Token
 		isCopied: boolean
 		onCopy: () => void
 		onRevoke: () => void
-	}) => (
+	}>,
+) {
+	return renderProps(handle, ({ token, isCopied, onCopy, onRevoke }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -2773,7 +2768,7 @@ function TokenCard() {
 				</button>
 			</div>
 		</div>
-	)
+	))
 }
 
 const inputStyles = {
@@ -2796,26 +2791,8 @@ const inputStyles = {
 
 type MetadataField = 'author' | 'ownerName' | 'ownerEmail'
 
-function EditForm() {
-	return ({
-		form,
-		isDirectory,
-		isLoading,
-		error,
-		onNameChange,
-		onDescriptionChange,
-		onSubtitleChange,
-		onMetadataChange,
-		onSortFieldsChange,
-		onSortOrderChange,
-		onFeedTypeChange,
-		onLinkChange,
-		onCopyrightChange,
-		onDirectoryPathsChange,
-		rootsState,
-		onSave,
-		onCancel,
-	}: {
+function EditForm(
+	handle: Handle<{
 		form: EditFormState
 		isDirectory: boolean
 		isLoading: boolean
@@ -2833,399 +2810,33 @@ function EditForm() {
 		rootsState: RootsState
 		onSave: () => void
 		onCancel: () => void
-	}) => (
-		<div>
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-name"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Name <span mix={[rmxCss({ color: '#ef4444' })]}>*</span>
-				</label>
-				<input
-					id="edit-feed-name"
-					type="text"
-					value={form.name}
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onNameChange((e.target as HTMLInputElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-description"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Description
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					Falls back to subtitle if not provided.
-				</p>
-				<textarea
-					id="edit-feed-description"
-					value={form.description}
-					rows={3}
-					mix={[
-						rmxCss({ ...inputStyles, resize: 'vertical', minHeight: '80px' }),
-						rmxOn('input', (e) =>
-							onDescriptionChange((e.target as HTMLTextAreaElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-subtitle"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Subtitle
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					A short tagline shown in podcast apps (max 255 characters). Falls back
-					to a truncated description if not provided.
-				</p>
-				<input
-					id="edit-feed-subtitle"
-					type="text"
-					value={form.subtitle}
-					placeholder="Optional short tagline"
-					maxLength={255}
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onSubtitleChange((e.target as HTMLInputElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-author"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Author
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					Shown under the podcast title in most apps. Falls back to owner name
-					if not provided.
-				</p>
-				<input
-					id="edit-feed-author"
-					type="text"
-					value={form.author}
-					placeholder="Author or publisher name"
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onMetadataChange('author', (e.target as HTMLInputElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-owner-name"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Owner Name
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					iTunes owner metadata for contact name.
-				</p>
-				<input
-					id="edit-feed-owner-name"
-					type="text"
-					value={form.ownerName}
-					placeholder="Owner or publisher name"
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onMetadataChange(
-								'ownerName',
-								(e.target as HTMLInputElement).value,
-							),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-owner-email"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Owner Email
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					iTunes owner contact email (not shown in podcast apps).
-				</p>
-				<input
-					id="edit-feed-owner-email"
-					type="email"
-					value={form.ownerEmail}
-					placeholder="owner@example.com"
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onMetadataChange(
-								'ownerEmail',
-								(e.target as HTMLInputElement).value,
-							),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-type"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Feed Type
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					Episodic: Episodes can be listened to in any order (default for most
-					podcasts). Serial: Episodes should be listened to in sequence (like
-					audiobooks or story-driven series).
-				</p>
-				<select
-					id="edit-feed-type"
-					value={form.feedType}
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onFeedTypeChange(
-								(e.target as HTMLSelectElement).value as 'episodic' | 'serial',
-							),
-						),
-					]}
-				>
-					<option value="episodic">Episodic</option>
-					<option value="serial">Serial</option>
-				</select>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-link"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Website Link
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					A link to the podcast's website. Defaults to the feed page if not
-					provided.
-				</p>
-				<input
-					id="edit-feed-link"
-					type="url"
-					value={form.link}
-					placeholder="https://example.com"
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onLinkChange((e.target as HTMLInputElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			<div mix={[rmxCss({ marginBottom: spacing.md })]}>
-				<label
-					for="edit-feed-copyright"
-					mix={[
-						rmxCss({
-							display: 'block',
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							marginBottom: spacing.xs,
-						}),
-					]}
-				>
-					Copyright
-				</label>
-				<p
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
-						}),
-					]}
-				>
-					Copyright notice for the feed content.
-				</p>
-				<input
-					id="edit-feed-copyright"
-					type="text"
-					value={form.copyright}
-					placeholder="© 2024 Your Name"
-					mix={[
-						rmxCss(inputStyles),
-						rmxOn('input', (e) =>
-							onCopyrightChange((e.target as HTMLInputElement).value),
-						),
-					]}
-				/>
-			</div>
-
-			{isDirectory && onDirectoryPathsChange && (
-				<DirectoryPathsEditor
-					paths={form.directoryPaths}
-					rootsState={rootsState}
-					onPathsChange={onDirectoryPathsChange}
-				/>
-			)}
-
-			<div
-				mix={[
-					rmxCss({
-						display: 'grid',
-						gridTemplateColumns: '1fr 1fr',
-						gap: spacing.md,
-						marginBottom: spacing.md,
-					}),
-				]}
-			>
-				<div>
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			form,
+			isDirectory,
+			isLoading,
+			error,
+			onNameChange,
+			onDescriptionChange,
+			onSubtitleChange,
+			onMetadataChange,
+			onSortFieldsChange,
+			onSortOrderChange,
+			onFeedTypeChange,
+			onLinkChange,
+			onCopyrightChange,
+			onDirectoryPathsChange,
+			rootsState,
+			onSave,
+			onCancel,
+		}) => (
+			<div>
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
 					<label
-						for="edit-feed-sort-fields"
+						for="edit-feed-name"
 						mix={[
 							rmxCss({
 								display: 'block',
@@ -3236,48 +2847,24 @@ function EditForm() {
 							}),
 						]}
 					>
-						Sort By
+						Name <span mix={[rmxCss({ color: '#ef4444' })]}>*</span>
 					</label>
-					<select
-						id="edit-feed-sort-fields"
-						value={form.sortFields}
+					<input
+						id="edit-feed-name"
+						type="text"
+						value={form.name}
 						mix={[
 							rmxCss(inputStyles),
 							rmxOn('input', (e) =>
-								onSortFieldsChange((e.target as HTMLSelectElement).value),
+								onNameChange((e.target as HTMLInputElement).value),
 							),
 						]}
-					>
-						{isDirectory ? (
-							<>
-								<option value="publicationDate">Publication Date</option>
-								<option value="title">Title</option>
-								<option value="author">Author</option>
-								<option value="trackNumber">Track Number</option>
-								<option value="duration">Duration</option>
-								<option value="filename">Filename</option>
-								<option value="fileModifiedAt">Date Modified</option>
-								<option value="size">File Size</option>
-							</>
-						) : (
-							<>
-								<option value="publicationDate">Publication Date</option>
-								<option value="title">Title</option>
-								<option value="author">Author</option>
-								<option value="trackNumber">Track Number</option>
-								<option value="duration">Duration</option>
-								<option value="position">Manual Order</option>
-								<option value="filename">Filename</option>
-								<option value="fileModifiedAt">Date Modified</option>
-								<option value="size">File Size</option>
-							</>
-						)}
-					</select>
+					/>
 				</div>
 
-				<div>
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
 					<label
-						for="edit-feed-sort-order"
+						for="edit-feed-description"
 						mix={[
 							rmxCss({
 								display: 'block',
@@ -3288,112 +2875,536 @@ function EditForm() {
 							}),
 						]}
 					>
-						Order
+						Description
 					</label>
-					<select
-						id="edit-feed-sort-order"
-						value={form.sortOrder}
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						Falls back to subtitle if not provided.
+					</p>
+					<textarea
+						id="edit-feed-description"
+						value={form.description}
+						rows={3}
+						mix={[
+							rmxCss({ ...inputStyles, resize: 'vertical', minHeight: '80px' }),
+							rmxOn('input', (e) =>
+								onDescriptionChange((e.target as HTMLTextAreaElement).value),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-subtitle"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Subtitle
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						A short tagline shown in podcast apps (max 255 characters). Falls
+						back to a truncated description if not provided.
+					</p>
+					<input
+						id="edit-feed-subtitle"
+						type="text"
+						value={form.subtitle}
+						placeholder="Optional short tagline"
+						maxLength={255}
 						mix={[
 							rmxCss(inputStyles),
 							rmxOn('input', (e) =>
-								onSortOrderChange(
-									(e.target as HTMLSelectElement).value as 'asc' | 'desc',
+								onSubtitleChange((e.target as HTMLInputElement).value),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-author"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Author
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						Shown under the podcast title in most apps. Falls back to owner name
+						if not provided.
+					</p>
+					<input
+						id="edit-feed-author"
+						type="text"
+						value={form.author}
+						placeholder="Author or publisher name"
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onMetadataChange(
+									'author',
+									(e.target as HTMLInputElement).value,
+								),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-owner-name"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Owner Name
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						iTunes owner metadata for contact name.
+					</p>
+					<input
+						id="edit-feed-owner-name"
+						type="text"
+						value={form.ownerName}
+						placeholder="Owner or publisher name"
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onMetadataChange(
+									'ownerName',
+									(e.target as HTMLInputElement).value,
+								),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-owner-email"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Owner Email
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						iTunes owner contact email (not shown in podcast apps).
+					</p>
+					<input
+						id="edit-feed-owner-email"
+						type="email"
+						value={form.ownerEmail}
+						placeholder="owner@example.com"
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onMetadataChange(
+									'ownerEmail',
+									(e.target as HTMLInputElement).value,
+								),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-type"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Feed Type
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						Episodic: Episodes can be listened to in any order (default for most
+						podcasts). Serial: Episodes should be listened to in sequence (like
+						audiobooks or story-driven series).
+					</p>
+					<select
+						id="edit-feed-type"
+						value={form.feedType}
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onFeedTypeChange(
+									(e.target as HTMLSelectElement).value as
+										| 'episodic'
+										| 'serial',
 								),
 							),
 						]}
 					>
-						<option value="desc">Descending</option>
-						<option value="asc">Ascending</option>
+						<option value="episodic">Episodic</option>
+						<option value="serial">Serial</option>
 					</select>
 				</div>
-			</div>
 
-			{error && (
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-link"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Website Link
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						A link to the podcast's website. Defaults to the feed page if not
+						provided.
+					</p>
+					<input
+						id="edit-feed-link"
+						type="url"
+						value={form.link}
+						placeholder="https://example.com"
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onLinkChange((e.target as HTMLInputElement).value),
+							),
+						]}
+					/>
+				</div>
+
+				<div mix={[rmxCss({ marginBottom: spacing.md })]}>
+					<label
+						for="edit-feed-copyright"
+						mix={[
+							rmxCss({
+								display: 'block',
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								marginBottom: spacing.xs,
+							}),
+						]}
+					>
+						Copyright
+					</label>
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						Copyright notice for the feed content.
+					</p>
+					<input
+						id="edit-feed-copyright"
+						type="text"
+						value={form.copyright}
+						placeholder="© 2024 Your Name"
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn('input', (e) =>
+								onCopyrightChange((e.target as HTMLInputElement).value),
+							),
+						]}
+					/>
+				</div>
+
+				{isDirectory && onDirectoryPathsChange && (
+					<DirectoryPathsEditor
+						paths={form.directoryPaths}
+						rootsState={rootsState}
+						onPathsChange={onDirectoryPathsChange}
+					/>
+				)}
+
 				<div
 					mix={[
 						rmxCss({
-							padding: spacing.sm,
-							backgroundColor: 'rgba(239, 68, 68, 0.1)',
-							borderRadius: radius.md,
-							border: '1px solid rgba(239, 68, 68, 0.3)',
+							display: 'grid',
+							gridTemplateColumns: '1fr 1fr',
+							gap: spacing.md,
 							marginBottom: spacing.md,
 						}),
 					]}
 				>
-					<p
+					<div>
+						<label
+							for="edit-feed-sort-fields"
+							mix={[
+								rmxCss({
+									display: 'block',
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									marginBottom: spacing.xs,
+								}),
+							]}
+						>
+							Sort By
+						</label>
+						<select
+							id="edit-feed-sort-fields"
+							value={form.sortFields}
+							mix={[
+								rmxCss(inputStyles),
+								rmxOn('input', (e) =>
+									onSortFieldsChange((e.target as HTMLSelectElement).value),
+								),
+							]}
+						>
+							{isDirectory ? (
+								<>
+									<option value="publicationDate">Publication Date</option>
+									<option value="title">Title</option>
+									<option value="author">Author</option>
+									<option value="trackNumber">Track Number</option>
+									<option value="duration">Duration</option>
+									<option value="filename">Filename</option>
+									<option value="fileModifiedAt">Date Modified</option>
+									<option value="size">File Size</option>
+								</>
+							) : (
+								<>
+									<option value="publicationDate">Publication Date</option>
+									<option value="title">Title</option>
+									<option value="author">Author</option>
+									<option value="trackNumber">Track Number</option>
+									<option value="duration">Duration</option>
+									<option value="position">Manual Order</option>
+									<option value="filename">Filename</option>
+									<option value="fileModifiedAt">Date Modified</option>
+									<option value="size">File Size</option>
+								</>
+							)}
+						</select>
+					</div>
+
+					<div>
+						<label
+							for="edit-feed-sort-order"
+							mix={[
+								rmxCss({
+									display: 'block',
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									marginBottom: spacing.xs,
+								}),
+							]}
+						>
+							Order
+						</label>
+						<select
+							id="edit-feed-sort-order"
+							value={form.sortOrder}
+							mix={[
+								rmxCss(inputStyles),
+								rmxOn('input', (e) =>
+									onSortOrderChange(
+										(e.target as HTMLSelectElement).value as 'asc' | 'desc',
+									),
+								),
+							]}
+						>
+							<option value="desc">Descending</option>
+							<option value="asc">Ascending</option>
+						</select>
+					</div>
+				</div>
+
+				{error && (
+					<div
 						mix={[
 							rmxCss({
-								color: '#ef4444',
-								margin: 0,
-								fontSize: typography.fontSize.sm,
+								padding: spacing.sm,
+								backgroundColor: 'rgba(239, 68, 68, 0.1)',
+								borderRadius: radius.md,
+								border: '1px solid rgba(239, 68, 68, 0.3)',
+								marginBottom: spacing.md,
 							}),
 						]}
 					>
-						{error}
-					</p>
-				</div>
-			)}
+						<p
+							mix={[
+								rmxCss({
+									color: '#ef4444',
+									margin: 0,
+									fontSize: typography.fontSize.sm,
+								}),
+							]}
+						>
+							{error}
+						</p>
+					</div>
+				)}
 
-			<div
-				mix={[
-					rmxCss({
-						display: 'flex',
-						gap: spacing.sm,
-						justifyContent: 'flex-end',
-					}),
-				]}
-			>
-				<button
-					type="button"
+				<div
 					mix={[
 						rmxCss({
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.text,
-							backgroundColor: 'transparent',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							cursor: 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': {
-								backgroundColor: colors.background,
-							},
+							display: 'flex',
+							gap: spacing.sm,
+							justifyContent: 'flex-end',
 						}),
-						rmxOn('click', onCancel),
 					]}
 				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					disabled={isLoading}
-					mix={[
-						rmxCss({
-							padding: `${spacing.sm} ${spacing.lg}`,
-							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
-							color: colors.background,
-							backgroundColor: isLoading ? colors.border : colors.primary,
-							border: 'none',
-							borderRadius: radius.md,
-							cursor: isLoading ? 'not-allowed' : 'pointer',
-							transition: `all ${transitions.fast}`,
-							'&:hover': isLoading
-								? {}
-								: { backgroundColor: colors.primaryHover },
-						}),
-						rmxOn('click', onSave),
-					]}
-				>
-					{isLoading ? 'Saving...' : 'Save Changes'}
-				</button>
+					<button
+						type="button"
+						mix={[
+							rmxCss({
+								padding: `${spacing.sm} ${spacing.lg}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								backgroundColor: 'transparent',
+								border: `1px solid ${colors.border}`,
+								borderRadius: radius.md,
+								cursor: 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': {
+									backgroundColor: colors.background,
+								},
+							}),
+							rmxOn('click', onCancel),
+						]}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						disabled={isLoading}
+						mix={[
+							rmxCss({
+								padding: `${spacing.sm} ${spacing.lg}`,
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.background,
+								backgroundColor: isLoading ? colors.border : colors.primary,
+								border: 'none',
+								borderRadius: radius.md,
+								cursor: isLoading ? 'not-allowed' : 'pointer',
+								transition: `all ${transitions.fast}`,
+								'&:hover': isLoading
+									? {}
+									: { backgroundColor: colors.primaryHover },
+							}),
+							rmxOn('click', onSave),
+						]}
+					>
+						{isLoading ? 'Saving...' : 'Save Changes'}
+					</button>
+				</div>
 			</div>
-		</div>
+		),
 	)
 }
 
-function DirectoryPathsEditor(handle: Handle) {
+function DirectoryPathsEditor(
+	handle: Handle<{
+		paths: Array<string>
+		rootsState: RootsState
+		onPathsChange: (paths: Array<string>) => void
+	}>,
+) {
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''
@@ -3444,13 +3455,7 @@ function DirectoryPathsEditor(handle: Handle) {
 		}
 	}
 
-	return (renderProps: {
-		paths: Array<string>
-		rootsState: RootsState
-		onPathsChange: (paths: Array<string>) => void
-	}) => {
-		const { paths, rootsState, onPathsChange } = renderProps
-
+	return renderProps(handle, ({ paths, rootsState, onPathsChange }) => {
 		const addCurrentDirectory = () => {
 			if (!selectedRoot) return
 			const mediaPath = currentPath
@@ -3791,97 +3796,80 @@ function DirectoryPathsEditor(handle: Handle) {
 				)}
 			</div>
 		)
-	}
+	})
 }
 
-function DeleteConfirmModal() {
-	return ({
-		feedName,
-		tokenCount,
-		itemCount,
-		isLoading,
-		onConfirm,
-		onCancel,
-	}: {
+function DeleteConfirmModal(
+	handle: Handle<{
 		feedName: string
 		tokenCount: number
 		itemCount: number
 		isLoading: boolean
 		onConfirm: () => void
 		onCancel: () => void
-	}) => (
-		<Modal
-			title="Delete Feed"
-			subtitle={`Are you sure you want to delete ${feedName}?`}
-			size="sm"
-			onClose={onCancel}
-			showHeaderBorder={false}
-			footer={
-				<ModalFooter>
-					<ModalButton
-						variant="secondary"
-						disabled={isLoading}
-						onClick={onCancel}
+	}>,
+) {
+	return renderProps(
+		handle,
+		({ feedName, tokenCount, itemCount, isLoading, onConfirm, onCancel }) => (
+			<Modal
+				title="Delete Feed"
+				subtitle={`Are you sure you want to delete ${feedName}?`}
+				size="sm"
+				onClose={onCancel}
+				showHeaderBorder={false}
+				footer={
+					<ModalFooter>
+						<ModalButton
+							variant="secondary"
+							disabled={isLoading}
+							onClick={onCancel}
+						>
+							Cancel
+						</ModalButton>
+						<ModalButton
+							variant="danger"
+							disabled={isLoading}
+							onClick={onConfirm}
+						>
+							{isLoading ? 'Deleting...' : 'Delete Feed'}
+						</ModalButton>
+					</ModalFooter>
+				}
+			>
+				<ModalAlert type="error">
+					<p mix={[rmxCss({ margin: 0 })]}>
+						This action cannot be undone. The following will be permanently
+						deleted:
+					</p>
+					<ul
+						mix={[
+							rmxCss({
+								margin: `${spacing.sm} 0 0 0`,
+								paddingLeft: spacing.lg,
+							}),
+						]}
 					>
-						Cancel
-					</ModalButton>
-					<ModalButton
-						variant="danger"
-						disabled={isLoading}
-						onClick={onConfirm}
-					>
-						{isLoading ? 'Deleting...' : 'Delete Feed'}
-					</ModalButton>
-				</ModalFooter>
-			}
-		>
-			<ModalAlert type="error">
-				<p mix={[rmxCss({ margin: 0 })]}>
-					This action cannot be undone. The following will be permanently
-					deleted:
-				</p>
-				<ul
-					mix={[
-						rmxCss({
-							margin: `${spacing.sm} 0 0 0`,
-							paddingLeft: spacing.lg,
-						}),
-					]}
-				>
-					<li>The feed and all its settings</li>
-					{tokenCount > 0 && (
-						<li>
-							{tokenCount} access token{tokenCount !== 1 ? 's' : ''}
-						</li>
-					)}
-					{itemCount > 0 && (
-						<li>
-							{itemCount} media item reference{itemCount !== 1 ? 's' : ''}
-						</li>
-					)}
-				</ul>
-			</ModalAlert>
-		</Modal>
+						<li>The feed and all its settings</li>
+						{tokenCount > 0 && (
+							<li>
+								{tokenCount} access token{tokenCount !== 1 ? 's' : ''}
+							</li>
+						)}
+						{itemCount > 0 && (
+							<li>
+								{itemCount} media item reference{itemCount !== 1 ? 's' : ''}
+							</li>
+						)}
+					</ul>
+				</ModalAlert>
+			</Modal>
+		),
 	)
 }
 
-function AddFilesModal() {
-	return ({
-		rootsState,
-		browseState,
-		pickerRoot,
-		pickerPath,
-		selectedCount,
-		isLoading,
-		onSelectRoot,
-		onNavigateToDir,
-		onNavigateUp,
-		onToggleFile,
-		isFileSelected,
-		isFileInFeed,
-		onConfirm,
-		onCancel,
-	}: {
+function AddFilesModal(
+	handle: Handle<{
 		rootsState: RootsState
 		browseState: BrowseState
 		pickerRoot: string | null
@@ -3896,464 +3884,491 @@ function AddFilesModal() {
 		isFileInFeed: (filename: string) => boolean
 		onConfirm: () => void
 		onCancel: () => void
-	}) => {
-		const pathParts = pickerPath ? pickerPath.split('/') : []
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			rootsState,
+			browseState,
+			pickerRoot,
+			pickerPath,
+			selectedCount,
+			isLoading,
+			onSelectRoot,
+			onNavigateToDir,
+			onNavigateUp,
+			onToggleFile,
+			isFileSelected,
+			isFileInFeed,
+			onConfirm,
+			onCancel,
+		}) => {
+			const pathParts = pickerPath ? pickerPath.split('/') : []
 
-		return (
-			<Modal
-				title="Add Files to Feed"
-				subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
-				size="lg"
-				onClose={onCancel}
-				footer={
-					<div
-						mix={[
-							rmxCss({
-								display: 'flex',
-								gap: spacing.sm,
-								justifyContent: 'space-between',
-								alignItems: 'center',
-								width: '100%',
-							}),
-						]}
-					>
-						<span
-							mix={[
-								rmxCss({
-									fontSize: typography.fontSize.sm,
-									color: colors.textMuted,
-								}),
-							]}
-						>
-							{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
-						</span>
-						<ModalFooter>
-							<ModalButton
-								variant="secondary"
-								disabled={isLoading}
-								onClick={onCancel}
-							>
-								Cancel
-							</ModalButton>
-							<ModalButton
-								variant="primary"
-								disabled={isLoading || selectedCount === 0}
-								onClick={onConfirm}
-							>
-								{isLoading
-									? 'Adding...'
-									: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
-							</ModalButton>
-						</ModalFooter>
-					</div>
-				}
-			>
-				{/* File picker */}
-				<div
-					mix={[
-						rmxCss({
-							minHeight: '250px',
-							border: `1px solid ${colors.border}`,
-							borderRadius: radius.md,
-							overflow: 'hidden',
-							display: 'flex',
-							flexDirection: 'column',
-						}),
-					]}
-				>
-					{/* Root selector */}
-					{rootsState.status === 'loading' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: colors.textMuted })]}>
-								Loading media roots...
-							</span>
-						</div>
-					)}
-
-					{rootsState.status === 'error' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: '#ef4444' })]}>
-								Error: {rootsState.message}
-							</span>
-						</div>
-					)}
-
-					{rootsState.status === 'success' && rootsState.roots.length === 0 && (
+			return (
+				<Modal
+					title="Add Files to Feed"
+					subtitle="Select media files to add to this feed. Files already in the feed are shown but disabled."
+					size="lg"
+					onClose={onCancel}
+					footer={
 						<div
 							mix={[
 								rmxCss({
-									padding: spacing.xl,
-									textAlign: 'center',
-									color: colors.textMuted,
+									display: 'flex',
+									gap: spacing.sm,
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									width: '100%',
 								}),
 							]}
 						>
-							<div
-								mix={[
-									rmxCss({
-										width: '48px',
-										height: '48px',
-										margin: `0 auto ${spacing.md}`,
-										borderRadius: radius.md,
-										backgroundColor: colors.background,
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										fontSize: '24px',
-									}),
-								]}
-							>
-								📂
-							</div>
-							<p
-								mix={[
-									rmxCss({
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.medium,
-										color: colors.text,
-										margin: `0 0 ${spacing.sm} 0`,
-									}),
-								]}
-							>
-								No media files available
-							</p>
-							<p
+							<span
 								mix={[
 									rmxCss({
 										fontSize: typography.fontSize.sm,
 										color: colors.textMuted,
-										margin: 0,
-										maxWidth: '400px',
-										marginLeft: 'auto',
-										marginRight: 'auto',
 									}),
 								]}
 							>
-								To add files to this feed, first add media files to one of your
-								configured media path directories. Check your{' '}
-								<code
+								{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
+							</span>
+							<ModalFooter>
+								<ModalButton
+									variant="secondary"
+									disabled={isLoading}
+									onClick={onCancel}
+								>
+									Cancel
+								</ModalButton>
+								<ModalButton
+									variant="primary"
+									disabled={isLoading || selectedCount === 0}
+									onClick={onConfirm}
+								>
+									{isLoading
+										? 'Adding...'
+										: `Add ${selectedCount} File${selectedCount !== 1 ? 's' : ''}`}
+								</ModalButton>
+							</ModalFooter>
+						</div>
+					}
+				>
+					{/* File picker */}
+					<div
+						mix={[
+							rmxCss({
+								minHeight: '250px',
+								border: `1px solid ${colors.border}`,
+								borderRadius: radius.md,
+								overflow: 'hidden',
+								display: 'flex',
+								flexDirection: 'column',
+							}),
+						]}
+					>
+						{/* Root selector */}
+						{rootsState.status === 'loading' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: colors.textMuted })]}>
+									Loading media roots...
+								</span>
+							</div>
+						)}
+
+						{rootsState.status === 'error' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: '#ef4444' })]}>
+									Error: {rootsState.message}
+								</span>
+							</div>
+						)}
+
+						{rootsState.status === 'success' &&
+							rootsState.roots.length === 0 && (
+								<div
 									mix={[
 										rmxCss({
-											fontSize: typography.fontSize.xs,
-											backgroundColor: colors.background,
-											padding: `${spacing.xs} ${spacing.xs}`,
-											borderRadius: radius.sm,
-											fontFamily: 'monospace',
+											padding: spacing.xl,
+											textAlign: 'center',
+											color: colors.textMuted,
 										}),
 									]}
 								>
-									MEDIA_PATHS
-								</code>{' '}
-								environment variable to see where media should be stored.
-							</p>
-						</div>
-					)}
-
-					{rootsState.status === 'success' && rootsState.roots.length > 0 && (
-						<>
-							<div
-								mix={[
-									rmxCss({
-										padding: spacing.sm,
-										backgroundColor: colors.background,
-										borderBottom: `1px solid ${colors.border}`,
-										display: 'flex',
-										gap: spacing.sm,
-										flexWrap: 'wrap',
-									}),
-								]}
-							>
-								{rootsState.roots.map((root) => (
-									<button
-										key={root.name}
-										type="button"
+									<div
 										mix={[
 											rmxCss({
-												padding: `${spacing.xs} ${spacing.sm}`,
-												fontSize: typography.fontSize.xs,
-												borderRadius: radius.sm,
-												border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-												backgroundColor:
-													pickerRoot === root.name
-														? colors.primary
-														: 'transparent',
-												color:
-													pickerRoot === root.name
-														? colors.background
-														: colors.text,
-												cursor: 'pointer',
-												transition: `all ${transitions.fast}`,
-												'&:hover': {
-													borderColor: colors.primary,
-												},
+												width: '48px',
+												height: '48px',
+												margin: `0 auto ${spacing.md}`,
+												borderRadius: radius.md,
+												backgroundColor: colors.background,
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												fontSize: '24px',
 											}),
-											rmxOn('click', () => onSelectRoot(root.name)),
 										]}
 									>
-										{root.name}
-									</button>
-								))}
-							</div>
+										📂
+									</div>
+									<p
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.base,
+												fontWeight: typography.fontWeight.medium,
+												color: colors.text,
+												margin: `0 0 ${spacing.sm} 0`,
+											}),
+										]}
+									>
+										No media files available
+									</p>
+									<p
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.sm,
+												color: colors.textMuted,
+												margin: 0,
+												maxWidth: '400px',
+												marginLeft: 'auto',
+												marginRight: 'auto',
+											}),
+										]}
+									>
+										To add files to this feed, first add media files to one of
+										your configured media path directories. Check your{' '}
+										<code
+											mix={[
+												rmxCss({
+													fontSize: typography.fontSize.xs,
+													backgroundColor: colors.background,
+													padding: `${spacing.xs} ${spacing.xs}`,
+													borderRadius: radius.sm,
+													fontFamily: 'monospace',
+												}),
+											]}
+										>
+											MEDIA_PATHS
+										</code>{' '}
+										environment variable to see where media should be stored.
+									</p>
+								</div>
+							)}
 
-							{/* Path breadcrumb */}
-							{pickerRoot && (
+						{rootsState.status === 'success' && rootsState.roots.length > 0 && (
+							<>
 								<div
 									mix={[
 										rmxCss({
 											padding: spacing.sm,
 											backgroundColor: colors.background,
 											borderBottom: `1px solid ${colors.border}`,
-											fontSize: typography.fontSize.sm,
-											fontFamily: 'monospace',
-											color: colors.textMuted,
 											display: 'flex',
-											alignItems: 'center',
-											gap: spacing.xs,
+											gap: spacing.sm,
+											flexWrap: 'wrap',
 										}),
 									]}
 								>
-									<span mix={[rmxCss({ color: colors.primary })]}>
-										{pickerRoot}
-									</span>
-									{pathParts.map((part, i) => (
-										<span key={i}>
-											<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-											<span>{part}</span>
-										</span>
+									{rootsState.roots.map((root) => (
+										<button
+											key={root.name}
+											type="button"
+											mix={[
+												rmxCss({
+													padding: `${spacing.xs} ${spacing.sm}`,
+													fontSize: typography.fontSize.xs,
+													borderRadius: radius.sm,
+													border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+													backgroundColor:
+														pickerRoot === root.name
+															? colors.primary
+															: 'transparent',
+													color:
+														pickerRoot === root.name
+															? colors.background
+															: colors.text,
+													cursor: 'pointer',
+													transition: `all ${transitions.fast}`,
+													'&:hover': {
+														borderColor: colors.primary,
+													},
+												}),
+												rmxOn('click', () => onSelectRoot(root.name)),
+											]}
+										>
+											{root.name}
+										</button>
 									))}
-									{!pickerPath && (
-										<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-									)}
 								</div>
-							)}
 
-							{/* File listing */}
-							<div
-								mix={[
-									rmxCss({
-										flex: 1,
-										minHeight: '150px',
-										maxHeight: '300px',
-										overflowY: 'auto',
-										backgroundColor: colors.surface,
-									}),
-								]}
-							>
-								{!pickerRoot && (
+								{/* Path breadcrumb */}
+								{pickerRoot && (
 									<div
 										mix={[
 											rmxCss({
-												padding: spacing.lg,
-												textAlign: 'center',
+												padding: spacing.sm,
+												backgroundColor: colors.background,
+												borderBottom: `1px solid ${colors.border}`,
+												fontSize: typography.fontSize.sm,
+												fontFamily: 'monospace',
 												color: colors.textMuted,
+												display: 'flex',
+												alignItems: 'center',
+												gap: spacing.xs,
 											}),
 										]}
 									>
-										Select a media root to browse files
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'loading' && (
-									<div
-										mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}
-									>
-										<span mix={[rmxCss({ color: colors.textMuted })]}>
-											Loading...
+										<span mix={[rmxCss({ color: colors.primary })]}>
+											{pickerRoot}
 										</span>
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'error' && (
-									<div
-										mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}
-									>
-										<span mix={[rmxCss({ color: '#ef4444' })]}>
-											{browseState.message}
-										</span>
-									</div>
-								)}
-
-								{pickerRoot && browseState.status === 'success' && (
-									<div>
-										{pickerPath && (
-											<button
-												type="button"
-												mix={[
-													rmxCss(fileItemStyles),
-													rmxOn('click', onNavigateUp),
-												]}
-											>
-												<span mix={[rmxCss({ marginRight: spacing.sm })]}>
-													📁
+										{pathParts.map((part, i) => (
+											<span key={i}>
+												<span mix={[rmxCss({ color: colors.textMuted })]}>
+													/
 												</span>
-												<span>..</span>
-											</button>
+												<span>{part}</span>
+											</span>
+										))}
+										{!pickerPath && (
+											<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
 										)}
+									</div>
+								)}
 
-										{browseState.entries.length === 0 && !pickerPath && (
-											<div
-												mix={[
-													rmxCss({
-														padding: spacing.xl,
-														textAlign: 'center',
-														color: colors.textMuted,
-													}),
-												]}
-											>
-												<div
-													mix={[
-														rmxCss({
-															width: '40px',
-															height: '40px',
-															margin: `0 auto ${spacing.sm}`,
-															borderRadius: radius.md,
-															backgroundColor: colors.background,
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															fontSize: '20px',
-														}),
-													]}
-												>
-													📂
-												</div>
-												<p
-													mix={[
-														rmxCss({
-															fontSize: typography.fontSize.sm,
-															fontWeight: typography.fontWeight.medium,
-															color: colors.text,
-															margin: `0 0 ${spacing.xs} 0`,
-														}),
-													]}
-												>
-													No files in this directory
-												</p>
-												<p
-													mix={[
-														rmxCss({
-															fontSize: typography.fontSize.xs,
-															color: colors.textMuted,
-															margin: 0,
-														}),
-													]}
-												>
-													Add media files to{' '}
-													<code
-														mix={[
-															rmxCss({
-																fontFamily: 'monospace',
-																backgroundColor: colors.background,
-																padding: `0 ${spacing.xs}`,
-																borderRadius: radius.sm,
-															}),
-														]}
-													>
-														{pickerRoot}
-													</code>{' '}
-													to see them here.
-												</p>
-											</div>
-										)}
+								{/* File listing */}
+								<div
+									mix={[
+										rmxCss({
+											flex: 1,
+											minHeight: '150px',
+											maxHeight: '300px',
+											overflowY: 'auto',
+											backgroundColor: colors.surface,
+										}),
+									]}
+								>
+									{!pickerRoot && (
+										<div
+											mix={[
+												rmxCss({
+													padding: spacing.lg,
+													textAlign: 'center',
+													color: colors.textMuted,
+												}),
+											]}
+										>
+											Select a media root to browse files
+										</div>
+									)}
 
-										{/* Directories */}
-										{browseState.entries
-											.filter((e) => e.type === 'directory')
-											.map((entry) => (
+									{pickerRoot && browseState.status === 'loading' && (
+										<div
+											mix={[
+												rmxCss({ padding: spacing.lg, textAlign: 'center' }),
+											]}
+										>
+											<span mix={[rmxCss({ color: colors.textMuted })]}>
+												Loading...
+											</span>
+										</div>
+									)}
+
+									{pickerRoot && browseState.status === 'error' && (
+										<div
+											mix={[
+												rmxCss({ padding: spacing.lg, textAlign: 'center' }),
+											]}
+										>
+											<span mix={[rmxCss({ color: '#ef4444' })]}>
+												{browseState.message}
+											</span>
+										</div>
+									)}
+
+									{pickerRoot && browseState.status === 'success' && (
+										<div>
+											{pickerPath && (
 												<button
-													key={entry.name}
 													type="button"
 													mix={[
 														rmxCss(fileItemStyles),
-														rmxOn('click', () => onNavigateToDir(entry.name)),
+														rmxOn('click', onNavigateUp),
 													]}
 												>
 													<span mix={[rmxCss({ marginRight: spacing.sm })]}>
 														📁
 													</span>
-													<span>{entry.name}</span>
+													<span>..</span>
 												</button>
-											))}
+											)}
 
-										{/* Files with checkboxes */}
-										{browseState.entries
-											.filter((e) => e.type === 'file')
-											.map((entry) => {
-												const selected = isFileSelected(entry.name)
-												const inFeed = isFileInFeed(entry.name)
-												return (
-													<button
-														key={entry.name}
-														type="button"
-														disabled={inFeed}
+											{browseState.entries.length === 0 && !pickerPath && (
+												<div
+													mix={[
+														rmxCss({
+															padding: spacing.xl,
+															textAlign: 'center',
+															color: colors.textMuted,
+														}),
+													]}
+												>
+													<div
 														mix={[
 															rmxCss({
-																...fileItemStyles,
-																backgroundColor: selected
-																	? colors.primarySoft
-																	: inFeed
-																		? 'rgba(128, 128, 128, 0.05)'
-																		: 'transparent',
-																opacity: inFeed ? 0.5 : 1,
-																cursor: inFeed ? 'not-allowed' : 'pointer',
-															}),
-															rmxOn('click', () => {
-																if (!inFeed) onToggleFile(entry.name)
+																width: '40px',
+																height: '40px',
+																margin: `0 auto ${spacing.sm}`,
+																borderRadius: radius.md,
+																backgroundColor: colors.background,
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																fontSize: '20px',
 															}),
 														]}
 													>
-														<span
+														📂
+													</div>
+													<p
+														mix={[
+															rmxCss({
+																fontSize: typography.fontSize.sm,
+																fontWeight: typography.fontWeight.medium,
+																color: colors.text,
+																margin: `0 0 ${spacing.xs} 0`,
+															}),
+														]}
+													>
+														No files in this directory
+													</p>
+													<p
+														mix={[
+															rmxCss({
+																fontSize: typography.fontSize.xs,
+																color: colors.textMuted,
+																margin: 0,
+															}),
+														]}
+													>
+														Add media files to{' '}
+														<code
 															mix={[
 																rmxCss({
-																	marginRight: spacing.sm,
-																	width: '16px',
-																	height: '16px',
-																	border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
+																	fontFamily: 'monospace',
+																	backgroundColor: colors.background,
+																	padding: `0 ${spacing.xs}`,
 																	borderRadius: radius.sm,
-																	backgroundColor: inFeed
-																		? colors.border
-																		: selected
-																			? colors.primary
-																			: 'transparent',
-																	display: 'inline-flex',
-																	alignItems: 'center',
-																	justifyContent: 'center',
-																	fontSize: '12px',
-																	color: colors.background,
 																}),
 															]}
 														>
-															{(selected || inFeed) && '✓'}
-														</span>
+															{pickerRoot}
+														</code>{' '}
+														to see them here.
+													</p>
+												</div>
+											)}
+
+											{/* Directories */}
+											{browseState.entries
+												.filter((e) => e.type === 'directory')
+												.map((entry) => (
+													<button
+														key={entry.name}
+														type="button"
+														mix={[
+															rmxCss(fileItemStyles),
+															rmxOn('click', () => onNavigateToDir(entry.name)),
+														]}
+													>
 														<span mix={[rmxCss({ marginRight: spacing.sm })]}>
-															📄
+															📁
 														</span>
 														<span>{entry.name}</span>
-														{inFeed && (
+													</button>
+												))}
+
+											{/* Files with checkboxes */}
+											{browseState.entries
+												.filter((e) => e.type === 'file')
+												.map((entry) => {
+													const selected = isFileSelected(entry.name)
+													const inFeed = isFileInFeed(entry.name)
+													return (
+														<button
+															key={entry.name}
+															type="button"
+															disabled={inFeed}
+															mix={[
+																rmxCss({
+																	...fileItemStyles,
+																	backgroundColor: selected
+																		? colors.primarySoft
+																		: inFeed
+																			? 'rgba(128, 128, 128, 0.05)'
+																			: 'transparent',
+																	opacity: inFeed ? 0.5 : 1,
+																	cursor: inFeed ? 'not-allowed' : 'pointer',
+																}),
+																rmxOn('click', () => {
+																	if (!inFeed) onToggleFile(entry.name)
+																}),
+															]}
+														>
 															<span
 																mix={[
 																	rmxCss({
-																		marginLeft: 'auto',
-																		fontSize: typography.fontSize.xs,
-																		color: colors.textMuted,
+																		marginRight: spacing.sm,
+																		width: '16px',
+																		height: '16px',
+																		border: `1px solid ${inFeed ? colors.border : selected ? colors.primary : colors.border}`,
+																		borderRadius: radius.sm,
+																		backgroundColor: inFeed
+																			? colors.border
+																			: selected
+																				? colors.primary
+																				: 'transparent',
+																		display: 'inline-flex',
+																		alignItems: 'center',
+																		justifyContent: 'center',
+																		fontSize: '12px',
+																		color: colors.background,
 																	}),
 																]}
 															>
-																Already in feed
+																{(selected || inFeed) && '✓'}
 															</span>
-														)}
-													</button>
-												)
-											})}
-									</div>
-								)}
-							</div>
-						</>
-					)}
-				</div>
-			</Modal>
-		)
-	}
+															<span mix={[rmxCss({ marginRight: spacing.sm })]}>
+																📄
+															</span>
+															<span>{entry.name}</span>
+															{inFeed && (
+																<span
+																	mix={[
+																		rmxCss({
+																			marginLeft: 'auto',
+																			fontSize: typography.fontSize.xs,
+																			color: colors.textMuted,
+																		}),
+																	]}
+																>
+																	Already in feed
+																</span>
+															)}
+														</button>
+													)
+												})}
+										</div>
+									)}
+								</div>
+							</>
+						)}
+					</div>
+				</Modal>
+			)
+		},
+	)
 }
 
 const fileItemStyles = {
@@ -4377,8 +4392,10 @@ const fileItemStyles = {
 	},
 }
 
-function FeedAnalyticsSection() {
-	return ({ analyticsState }: { analyticsState: AnalyticsLoadingState }) => {
+function FeedAnalyticsSection(
+	handle: Handle<{ analyticsState: AnalyticsLoadingState }>,
+) {
+	return renderProps(handle, ({ analyticsState }) => {
 		if (analyticsState.status === 'loading') {
 			return (
 				<p
@@ -4655,7 +4672,7 @@ function FeedAnalyticsSection() {
 				</div>
 			</div>
 		)
-	}
+	})
 }
 
 const analyticsCellHeaderStyle = {

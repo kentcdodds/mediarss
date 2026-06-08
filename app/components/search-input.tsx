@@ -1,4 +1,5 @@
-import { css as rmxCss, on as rmxOn } from 'remix/ui'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	colors,
 	mq,
@@ -19,8 +20,8 @@ type SearchInputProps = {
  * A simple search input with a clear button.
  * Handles only the UI - filtering logic stays in the parent component.
  */
-export function SearchInput() {
-	return ({ placeholder, value, onInput, onClear }: SearchInputProps) => (
+export function SearchInput(handle: Handle<SearchInputProps>) {
+	return renderProps(handle, ({ placeholder, value, onInput, onClear }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -109,5 +110,5 @@ export function SearchInput() {
 				</button>
 			)}
 		</div>
-	)
+	))
 }

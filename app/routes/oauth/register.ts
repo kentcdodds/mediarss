@@ -3,7 +3,7 @@
  * This endpoint allows clients to dynamically register with the authorization server.
  */
 
-import { type BuildAction, type RequestContext } from 'remix/fetch-router'
+import { type Action, type RequestContext } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { REGISTRATION_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createClient } from '#app/oauth/clients.ts'
@@ -231,7 +231,4 @@ export default {
 			return handlePost(context)
 		},
 	}),
-} satisfies BuildAction<
-	typeof routes.oauthRegister.method,
-	typeof routes.oauthRegister.pattern
->
+} satisfies Action<typeof routes.oauthRegister>

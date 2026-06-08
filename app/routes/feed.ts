@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { type CuratedFeed, isDirectoryFeed } from '#app/db/types.ts'
@@ -84,4 +84,4 @@ export default {
 
 		return response
 	},
-} satisfies BuildAction<typeof routes.feed.method, typeof routes.feed.pattern>
+} satisfies Action<typeof routes.feed>

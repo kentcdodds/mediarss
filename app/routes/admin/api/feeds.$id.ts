@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import {
 	getMediaRootByName,
 	parseMediaPath,
@@ -90,10 +90,7 @@ export default {
 
 		return Response.json({ error: 'Method not allowed' }, { status: 405 })
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiFeed.method,
-	typeof routes.adminApiFeed.pattern
->
+} satisfies Action<typeof routes.adminApiFeed>
 
 async function handleGet(id: string) {
 	// Try directory feed first

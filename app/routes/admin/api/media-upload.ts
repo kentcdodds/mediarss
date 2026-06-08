@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import nodePath from 'node:path'
 import { fileTypeFromFile } from 'file-type'
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import {
 	MaxFileSizeExceededError,
 	MaxFilesExceededError,
@@ -384,7 +384,4 @@ export default {
 			{ status: 201 },
 		)
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiMediaUpload.method,
-	typeof routes.adminApiMediaUpload.pattern
->
+} satisfies Action<typeof routes.adminApiMediaUpload>

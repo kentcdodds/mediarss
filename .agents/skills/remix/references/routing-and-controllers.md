@@ -17,7 +17,7 @@ and middleware ordering, see `middleware-and-server.md`.
 
 ## Route Builders
 
-Import all route builders from `remix/fetch-router/routes`.
+Import all route builders from `remix/routes`.
 
 ### `route(prefix, map)` — nested route group
 
@@ -27,7 +27,7 @@ a `route('prefix', { ... })` call (when you want a shared URL prefix) or a plain
 object literal (when each leaf already owns its absolute path).
 
 ```typescript
-import { route, get, post } from 'remix/fetch-router/routes'
+import { route, get, post } from 'remix/routes'
 
 export const routes = route({
 	home: '/',
@@ -93,18 +93,18 @@ redirect(routes.account.orders.show.href({ orderId: '42' }))
 
 ## Actions
 
-An action is a handler for a single leaf route. Type it with `BuildAction`:
+An action is a handler for a single leaf route. Type it with `Action`:
 
 ```typescript
-import type { BuildAction } from 'remix/fetch-router'
+import type { Action } from 'remix/router'
 
-export const search: BuildAction<'GET', typeof routes.search> = {
+export const search = {
   async handler({ url }) {
     let query = url.searchParams.get('q') ?? ''
     let results = await searchIndex(query)
     return render(<SearchPage query={query} results={results} />)
   },
-}
+} satisfies Action<typeof routes.search>
 ```
 
 The handler receives a context object with:
@@ -226,7 +226,7 @@ route definition. Pass `AppContext` as the second generic to `Controller` so
 middleware stack.
 
 ```typescript
-import type { Controller } from 'remix/fetch-router'
+import type { Controller } from 'remix/router'
 import type { AppContext } from '../router.ts'
 
 export default {
@@ -312,11 +312,7 @@ Define an `AppContext` type from your middleware stack for use in actions and
 controllers:
 
 ```typescript
-import type {
-	MiddlewareContext,
-	WithParams,
-	AnyParams,
-} from 'remix/fetch-router'
+import type { MiddlewareContext, WithParams, AnyParams } from 'remix/router'
 
 type RootMiddleware = [
 	ReturnType<typeof formData>,

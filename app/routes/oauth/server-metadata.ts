@@ -1,4 +1,4 @@
-import { type BuildAction, type RequestContext } from 'remix/fetch-router'
+import { type Action, type RequestContext } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
@@ -64,7 +64,4 @@ export default {
 			return handleGet(context)
 		},
 	}),
-} satisfies BuildAction<
-	typeof routes.oauthServerMetadata.method,
-	typeof routes.oauthServerMetadata.pattern
->
+} satisfies Action<typeof routes.oauthServerMetadata>

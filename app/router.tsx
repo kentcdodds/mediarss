@@ -1,8 +1,13 @@
 import path from 'node:path'
-import { createRouter, type Middleware } from 'remix/fetch-router'
+import { createRouter, type Middleware } from 'remix/router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
-import routes from '#app/config/routes.ts'
+import routes, {
+	adminApiRoutes,
+	adminRoutes,
+	mcpRoutes,
+	oauthRoutes,
+} from '#app/config/routes.ts'
 import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
 import { render } from '#app/helpers/render.ts'
 import { logger } from '#app/middleware/logger.ts'
@@ -133,44 +138,58 @@ router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)
 
-// OAuth routes (public, before admin routes)
-router.map(routes.oauthToken, oauthTokenHandlers)
-router.map(routes.oauthJwks, oauthJwksHandlers)
-router.map(routes.oauthRegister, oauthRegisterHandlers)
 router.map(routes.oauthServerMetadata, oauthServerMetadataHandlers)
 
-// MCP routes (public, require OAuth token)
 router.map(routes.mcpProtectedResource, mcpProtectedResourceHandlers)
-router.map(routes.mcp, mcpHandlers)
-router.map(routes.mcpWidget, mcpWidgetHandlers)
 
-// Admin routes - API routes first (more specific), then catch-all
-router.map(routes.adminHealth, adminApiHealthHandlers)
-router.map(routes.adminApiVersion, adminApiVersionHandlers)
-router.map(routes.adminAuthorize, adminAuthorizeHandlers)
-router.map(routes.adminApiFeeds, adminApiFeedsHandlers)
-router.map(routes.adminApiDirectories, adminApiDirectoriesHandlers)
-router.map(routes.adminApiBrowse, adminApiBrowseHandlers)
-router.map(
-	routes.adminApiCreateDirectoryFeed,
-	adminApiCreateDirectoryFeedHandlers,
-)
-router.map(routes.adminApiCreateCuratedFeed, adminApiCreateCuratedFeedHandlers)
-router.map(routes.adminApiFeedAnalytics, adminApiFeedAnalyticsHandlers)
-router.map(routes.adminApiFeedTokens, adminApiFeedTokensHandlers)
-router.map(routes.adminApiFeedItems, adminApiFeedItemsHandlers)
-router.map(routes.adminApiFeedArtwork, adminApiFeedArtworkHandlers)
-router.map(routes.adminApiFeed, adminApiFeedHandlers)
-router.map(routes.adminApiToken, adminApiTokenHandlers)
-router.map(routes.adminApiMediaAnalytics, adminApiMediaAnalyticsHandlers)
-router.map(routes.adminApiMedia, adminApiMediaHandlers)
-router.map(routes.adminApiMediaAssignments, adminApiMediaAssignmentsHandlers)
-router.map(routes.adminApiMediaUpload, adminApiMediaUploadHandlers)
-router.map(routes.adminApiMediaMetadata, adminApiMediaMetadataHandlers)
-router.map(routes.adminApiMediaDetail, adminApiMediaDetailHandlers)
-router.map(routes.adminApiMediaStream, adminApiMediaStreamHandlers)
-router.map(routes.adminApiArtwork, adminApiArtworkHandlers)
-router.map(routes.admin, adminHandler)
-router.map(routes.adminCatchAll, adminCatchAllHandler)
+router.mount('/oauth', (oauth) => {
+	oauth.map(oauthRoutes.token, oauthTokenHandlers)
+	oauth.map(oauthRoutes.jwks, oauthJwksHandlers)
+	oauth.map(oauthRoutes.register, oauthRegisterHandlers)
+})
+
+router.mount('/mcp', (mcp) => {
+	mcp.map(mcpRoutes.index, mcpHandlers)
+	mcp.map(mcpRoutes.widget, mcpWidgetHandlers)
+})
+
+router.mount('/admin/api', (adminApi) => {
+	adminApi.map(adminApiRoutes.version, adminApiVersionHandlers)
+	adminApi.map(adminApiRoutes.feeds, adminApiFeedsHandlers)
+	adminApi.map(adminApiRoutes.directories, adminApiDirectoriesHandlers)
+	adminApi.map(adminApiRoutes.browse, adminApiBrowseHandlers)
+	adminApi.map(
+		adminApiRoutes.createDirectoryFeed,
+		adminApiCreateDirectoryFeedHandlers,
+	)
+	adminApi.map(
+		adminApiRoutes.createCuratedFeed,
+		adminApiCreateCuratedFeedHandlers,
+	)
+	adminApi.map(adminApiRoutes.feedAnalytics, adminApiFeedAnalyticsHandlers)
+	adminApi.map(adminApiRoutes.feedTokens, adminApiFeedTokensHandlers)
+	adminApi.map(adminApiRoutes.feedItems, adminApiFeedItemsHandlers)
+	adminApi.map(adminApiRoutes.feedArtwork, adminApiFeedArtworkHandlers)
+	adminApi.map(adminApiRoutes.feed, adminApiFeedHandlers)
+	adminApi.map(adminApiRoutes.token, adminApiTokenHandlers)
+	adminApi.map(adminApiRoutes.mediaAnalytics, adminApiMediaAnalyticsHandlers)
+	adminApi.map(adminApiRoutes.media, adminApiMediaHandlers)
+	adminApi.map(
+		adminApiRoutes.mediaAssignments,
+		adminApiMediaAssignmentsHandlers,
+	)
+	adminApi.map(adminApiRoutes.mediaUpload, adminApiMediaUploadHandlers)
+	adminApi.map(adminApiRoutes.mediaMetadata, adminApiMediaMetadataHandlers)
+	adminApi.map(adminApiRoutes.mediaDetail, adminApiMediaDetailHandlers)
+	adminApi.map(adminApiRoutes.mediaStream, adminApiMediaStreamHandlers)
+	adminApi.map(adminApiRoutes.artwork, adminApiArtworkHandlers)
+})
+
+router.mount('/admin', (admin) => {
+	admin.map(adminRoutes.health, adminApiHealthHandlers)
+	admin.map(adminRoutes.authorize, adminAuthorizeHandlers)
+	admin.map(adminRoutes.index, adminHandler)
+	admin.map(adminRoutes.catchAll, adminCatchAllHandler)
+})
 
 export default router

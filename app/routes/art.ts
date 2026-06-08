@@ -1,5 +1,5 @@
 import nodePath from 'node:path'
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
@@ -170,4 +170,4 @@ export default {
 			},
 		})
 	},
-} satisfies BuildAction<typeof routes.art.method, typeof routes.art.pattern>
+} satisfies Action<typeof routes.art>

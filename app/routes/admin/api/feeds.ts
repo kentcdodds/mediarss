@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listActiveCuratedFeedTokens } from '#app/db/curated-feed-tokens.ts'
@@ -79,7 +79,4 @@ export default {
 			curatedFeeds,
 		})
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiFeeds.method,
-	typeof routes.adminApiFeeds.pattern
->
+} satisfies Action<typeof routes.adminApiFeeds>

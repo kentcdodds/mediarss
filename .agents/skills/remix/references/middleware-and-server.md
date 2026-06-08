@@ -22,7 +22,7 @@ files) early and request-enriching middleware (session, auth) later.
 Recommended ordering:
 
 ```typescript
-import { createRouter } from 'remix/fetch-router'
+import { createRouter } from 'remix/router'
 import { compression } from 'remix/compression-middleware'
 import { formData } from 'remix/form-data-middleware'
 import { logger } from 'remix/logger-middleware'
@@ -133,7 +133,7 @@ Use `context.set(key, value)` to add typed values accessible downstream via
 `context.get(key)`.
 
 ```typescript
-import type { Middleware } from 'remix/fetch-router'
+import type { Middleware } from 'remix/router'
 import { Database } from 'remix/data-table'
 
 export function loadDatabase(): Middleware {

@@ -1,5 +1,5 @@
 import { number, object, optional, parseSafe, string } from 'remix/data-schema'
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
@@ -387,7 +387,4 @@ export default {
 
 		return Response.json(response)
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiMediaMetadata.method,
-	typeof routes.adminApiMediaMetadata.pattern
->
+} satisfies Action<typeof routes.adminApiMediaMetadata>

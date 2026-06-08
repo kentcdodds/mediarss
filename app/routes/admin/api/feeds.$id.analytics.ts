@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeedTokens } from '#app/db/curated-feed-tokens.ts'
 import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
@@ -173,7 +173,4 @@ export default {
 			daily,
 		})
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiFeedAnalytics.method,
-	typeof routes.adminApiFeedAnalytics.pattern
->
+} satisfies Action<typeof routes.adminApiFeedAnalytics>

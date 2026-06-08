@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { revokeCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { revokeDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
@@ -30,7 +30,4 @@ export default {
 
 		return Response.json({ error: 'Token not found' }, { status: 404 })
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiToken.method,
-	typeof routes.adminApiToken.pattern
->
+} satisfies Action<typeof routes.adminApiToken>

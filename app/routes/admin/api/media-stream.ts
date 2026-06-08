@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
@@ -43,7 +43,4 @@ export default {
 			'private, max-age=3600',
 		)
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiMediaStream.method,
-	typeof routes.adminApiMediaStream.pattern
->
+} satisfies Action<typeof routes.adminApiMediaStream>

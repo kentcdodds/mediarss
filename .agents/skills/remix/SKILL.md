@@ -269,10 +269,10 @@ full examples.
 
 ### Routing, Server, and Responses
 
-- `remix/fetch-router` — the router itself. Use for `createRouter`, controller
-  and middleware types, and registering routes
-- `remix/fetch-router/routes` — declarative route builders. Use for `route`,
-  `get`, `post`, `put`, `del`, `form`, `resources` when defining `app/routes.ts`
+- `remix/router` — the router itself. Use for `createRouter`, controller and
+  middleware types, and registering routes
+- `remix/routes` — declarative route builders. Use for `route`, `get`, `post`,
+  `put`, `del`, `form`, `resources` when defining `app/routes.ts`
 - `remix/node-fetch-server` — adapter from Node's `http` module to a Fetch-style
   router. Use for `createRequestListener` in `server.ts`
 - `remix/assets` — browser asset server. Use for `createAssetServer` when
@@ -414,7 +414,7 @@ full examples.
 ### Define routes first
 
 ```typescript
-import { form, get, post, resources, route } from 'remix/fetch-router/routes'
+import { form, get, post, resources, route } from 'remix/routes'
 
 export const routes = route({
 	home: '/',
@@ -437,7 +437,7 @@ export const routes = route({
 ### Type controllers against the route contract
 
 ```typescript
-import type { Controller } from 'remix/fetch-router'
+import type { Controller } from 'remix/router'
 
 import type { AppContext } from '../router.ts'
 import { routes } from '../routes.ts'
@@ -467,7 +467,7 @@ import {
 	type AnyParams,
 	type MiddlewareContext,
 	type WithParams,
-} from 'remix/fetch-router'
+} from 'remix/router'
 
 export type RootMiddleware = [
 	ReturnType<typeof formData>,

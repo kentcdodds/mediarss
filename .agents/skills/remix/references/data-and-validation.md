@@ -133,7 +133,7 @@ assuming `better-sqlite3` is required.
 ### Database middleware
 
 ```typescript
-import type { Middleware } from 'remix/fetch-router'
+import type { Middleware } from 'remix/router'
 import { Database } from 'remix/data-table'
 
 export function loadDatabase(): Middleware {

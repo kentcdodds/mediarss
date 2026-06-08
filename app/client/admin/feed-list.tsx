@@ -1,5 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import { SearchInput } from '#app/components/search-input.tsx'
 import {
 	FEED_SORT_OPTIONS,
@@ -525,8 +526,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage() {
-	return ({ message }: { message: string }) => (
+function ErrorMessage(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -549,7 +550,7 @@ function ErrorMessage() {
 				Failed to load feeds: {message}
 			</p>
 		</div>
-	)
+	))
 }
 
 function EmptyState() {
@@ -592,14 +593,13 @@ function EmptyState() {
 	)
 }
 
-function NoResults() {
-	return ({
-		searchQuery,
-		filterType,
-	}: {
+function NoResults(
+	handle: Handle<{
 		searchQuery: string
 		filterType: FilterType
-	}) => {
+	}>,
+) {
+	return renderProps(handle, ({ searchQuery, filterType }) => {
 		const filterLabel = filterType !== 'all' ? ` ${filterType}` : ''
 		const hasSearch = searchQuery.trim().length > 0
 
@@ -646,7 +646,7 @@ function NoResults() {
 				</p>
 			</div>
 		)
-	}
+	})
 }
 
 /**
@@ -660,18 +660,15 @@ function parseDirectoryPaths(pathsJson: string): Array<string> {
 	}
 }
 
-function FilterButton() {
-	return ({
-		active,
-		onClick,
-		color,
-		children,
-	}: {
+function FilterButton(
+	handle: Handle<{
 		active: boolean
 		onClick: () => void
 		color?: string
 		children: string
-	}) => {
+	}>,
+) {
+	return renderProps(handle, ({ active, onClick, color, children }) => {
 		const activeColor = color ?? colors.primary
 		return (
 			<button
@@ -699,11 +696,11 @@ function FilterButton() {
 				{children}
 			</button>
 		)
-	}
+	})
 }
 
-function FeedCard() {
-	return ({ feed }: { feed: Feed }) => {
+function FeedCard(handle: Handle<{ feed: Feed }>) {
+	return renderProps(handle, ({ feed }) => {
 		const isDirectory = feed.type === 'directory'
 		const directoryPaths = isDirectory
 			? parseDirectoryPaths((feed as DirectoryFeed).directoryPaths)
@@ -925,5 +922,5 @@ function FeedCard() {
 				</div>
 			</div>
 		)
-	}
+	})
 }

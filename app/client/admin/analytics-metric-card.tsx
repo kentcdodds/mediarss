@@ -1,8 +1,11 @@
-import { css as rmxCss } from 'remix/ui'
+import { type Handle, css as rmxCss } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'
 
-export function AnalyticsMetricCard() {
-	return ({ label, value }: { label: string; value: string }) => (
+export function AnalyticsMetricCard(
+	handle: Handle<{ label: string; value: string }>,
+) {
+	return renderProps(handle, ({ label, value }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -38,5 +41,5 @@ export function AnalyticsMetricCard() {
 				{value}
 			</div>
 		</div>
-	)
+	))
 }

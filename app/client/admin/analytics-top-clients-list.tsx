@@ -1,4 +1,5 @@
-import { css as rmxCss } from 'remix/ui'
+import { type Handle, css as rmxCss } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import { formatFileSize } from '#app/helpers/format.ts'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'
 
@@ -11,8 +12,10 @@ type TopClientSummary = {
 	lastSeenAt: number | null
 }
 
-export function AnalyticsTopClientsList() {
-	return ({ clients }: { clients: Array<TopClientSummary> }) => (
+export function AnalyticsTopClientsList(
+	handle: Handle<{ clients: Array<TopClientSummary> }>,
+) {
+	return renderProps(handle, ({ clients }) => (
 		<div>
 			<h4
 				mix={[
@@ -96,5 +99,5 @@ export function AnalyticsTopClientsList() {
 				</ul>
 			)}
 		</div>
-	)
+	))
 }

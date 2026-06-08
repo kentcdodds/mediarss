@@ -14,6 +14,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { renderProps } from '#app/components/props-component.ts'
 import { router } from './router.tsx'
 
 type FeedType = 'directory' | 'curated'
@@ -1082,18 +1083,68 @@ const inputStyles = {
 
 // === Helper Components ===
 
-function FeedTypeButton() {
-	return ({
-		selected,
-		onClick,
-		title,
-		description,
-	}: {
-		selected: boolean
-		onClick: () => void
-		title: string
-		description: string
-	}) => (
+type FeedTypeButtonProps = {
+	selected: boolean
+	onClick: () => void
+	title: string
+	description: string
+}
+
+type FormFieldProps = {
+	id?: string
+	label: string
+	required?: boolean
+	description?: string
+	children: RemixNode
+}
+
+type FormActionsProps = {
+	canSubmit: boolean
+	isSubmitting: boolean
+	onSubmit: () => void
+}
+
+type DirectoryBrowserWithAddProps = {
+	rootName: string
+	currentPath: string
+	browseState: BrowseState
+	onNavigateUp: () => void
+	onNavigateToDir: (name: string) => void
+	onAddDirectory: () => void
+	isCurrentSelected: boolean
+}
+
+type SelectedDirectoriesListProps = {
+	directories: Array<SelectedDirectory>
+	onRemove: (index: number) => void
+}
+
+type FilePickerProps = {
+	roots: Array<MediaRoot>
+	pickerRoot: string | null
+	pickerPath: string
+	browseState: BrowseState
+	searchFilter: string
+	onSearchChange: (value: string) => void
+	onSelectRoot: (name: string) => void
+	onNavigateToDir: (name: string) => void
+	onNavigateUp: () => void
+	onToggleFile: (filename: string) => void
+	isFileSelected: (filename: string) => boolean
+}
+
+type SelectedFilesListProps = {
+	files: Array<{
+		rootName: string
+		relativePath: string
+		mediaPath: string
+		filename: string
+	}>
+	onRemove: (mediaPath: string) => void
+}
+
+function FeedTypeButton(handle: Handle<FeedTypeButtonProps>) {
+	return renderProps(handle, ({ selected, onClick, title, description }) => (
 		<button
 			type="button"
 			mix={[
@@ -1136,62 +1187,55 @@ function FeedTypeButton() {
 				{description}
 			</div>
 		</button>
-	)
+	))
 }
 
-function FormField() {
-	return ({
-		id,
-		label,
-		required,
-		description,
-		children,
-	}: {
-		id?: string
-		label: string
-		required?: boolean
-		description?: string
-		children: RemixNode
-	}) => (
-		<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
-			<label
-				for={id}
-				mix={[
-					rmxCss({
-						display: 'block',
-						fontSize: typography.fontSize.sm,
-						fontWeight: typography.fontWeight.medium,
-						color: colors.text,
-						marginBottom: spacing.xs,
-					}),
-				]}
-			>
-				{label}
-				{required && (
-					<span mix={[rmxCss({ color: '#ef4444', marginLeft: '4px' })]}>*</span>
-				)}
-			</label>
-			{description && (
-				<p
+function FormField(handle: Handle<FormFieldProps>) {
+	return renderProps(
+		handle,
+		({ id, label, required, description, children }) => (
+			<div mix={[rmxCss({ marginBottom: spacing.lg })]}>
+				<label
+					for={id}
 					mix={[
 						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-							margin: `0 0 ${spacing.sm} 0`,
-							lineHeight: 1.5,
+							display: 'block',
+							fontSize: typography.fontSize.sm,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+							marginBottom: spacing.xs,
 						}),
 					]}
 				>
-					{description}
-				</p>
-			)}
-			{children}
-		</div>
+					{label}
+					{required && (
+						<span mix={[rmxCss({ color: '#ef4444', marginLeft: '4px' })]}>
+							*
+						</span>
+					)}
+				</label>
+				{description && (
+					<p
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+								margin: `0 0 ${spacing.sm} 0`,
+								lineHeight: 1.5,
+							}),
+						]}
+					>
+						{description}
+					</p>
+				)}
+				{children}
+			</div>
+		),
 	)
 }
 
-function ErrorBox() {
-	return ({ message }: { message: string }) => (
+function ErrorBox(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -1205,19 +1249,11 @@ function ErrorBox() {
 		>
 			<p mix={[rmxCss({ color: '#ef4444', margin: 0 })]}>{message}</p>
 		</div>
-	)
+	))
 }
 
-function FormActions() {
-	return ({
-		canSubmit,
-		isSubmitting,
-		onSubmit,
-	}: {
-		canSubmit: boolean
-		isSubmitting: boolean
-		onSubmit: () => void
-	}) => (
+function FormActions(handle: Handle<FormActionsProps>) {
+	return renderProps(handle, ({ canSubmit, isSubmitting, onSubmit }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -1281,219 +1317,210 @@ function FormActions() {
 				{isSubmitting ? 'Creating...' : 'Create Feed'}
 			</button>
 		</div>
-	)
+	))
 }
 
-function DirectoryBrowserWithAdd() {
-	return ({
-		rootName,
-		currentPath,
-		browseState,
-		onNavigateUp,
-		onNavigateToDir,
-		onAddDirectory,
-		isCurrentSelected,
-	}: {
-		rootName: string
-		currentPath: string
-		browseState: BrowseState
-		onNavigateUp: () => void
-		onNavigateToDir: (name: string) => void
-		onAddDirectory: () => void
-		isCurrentSelected: boolean
-	}) => {
-		const pathParts = currentPath ? currentPath.split('/') : []
+function DirectoryBrowserWithAdd(handle: Handle<DirectoryBrowserWithAddProps>) {
+	return renderProps(
+		handle,
+		({
+			rootName,
+			currentPath,
+			browseState,
+			onNavigateUp,
+			onNavigateToDir,
+			onAddDirectory,
+			isCurrentSelected,
+		}) => {
+			const pathParts = currentPath ? currentPath.split('/') : []
 
-		return (
-			<div
-				mix={[
-					rmxCss({
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						overflow: 'hidden',
-					}),
-				]}
-			>
+			return (
 				<div
 					mix={[
 						rmxCss({
-							padding: spacing.sm,
-							backgroundColor: colors.background,
-							borderBottom: `1px solid ${colors.border}`,
-							fontSize: typography.fontSize.sm,
-							fontFamily: 'monospace',
-							color: colors.textMuted,
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'space-between',
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							overflow: 'hidden',
 						}),
 					]}
 				>
 					<div
 						mix={[
 							rmxCss({
+								padding: spacing.sm,
+								backgroundColor: colors.background,
+								borderBottom: `1px solid ${colors.border}`,
+								fontSize: typography.fontSize.sm,
+								fontFamily: 'monospace',
+								color: colors.textMuted,
 								display: 'flex',
 								alignItems: 'center',
-								gap: spacing.xs,
+								justifyContent: 'space-between',
 							}),
 						]}
 					>
-						<span mix={[rmxCss({ color: colors.primary })]}>{rootName}</span>
-						{pathParts.map((part, i) => (
-							<span key={i}>
+						<div
+							mix={[
+								rmxCss({
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.xs,
+								}),
+							]}
+						>
+							<span mix={[rmxCss({ color: colors.primary })]}>{rootName}</span>
+							{pathParts.map((part, i) => (
+								<span key={i}>
+									<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
+									<span>{part}</span>
+								</span>
+							))}
+							{!currentPath && (
 								<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-								<span>{part}</span>
-							</span>
-						))}
-						{!currentPath && (
-							<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-						)}
+							)}
+						</div>
+						<button
+							type="button"
+							disabled={isCurrentSelected}
+							mix={[
+								rmxCss({
+									padding: `${spacing.xs} ${spacing.sm}`,
+									fontSize: typography.fontSize.xs,
+									fontWeight: typography.fontWeight.medium,
+									borderRadius: radius.sm,
+									border: 'none',
+									backgroundColor: isCurrentSelected
+										? colors.border
+										: colors.primary,
+									color: colors.background,
+									cursor: isCurrentSelected ? 'not-allowed' : 'pointer',
+									transition: `all ${transitions.fast}`,
+									'&:hover': isCurrentSelected
+										? {}
+										: { backgroundColor: colors.primaryHover },
+								}),
+								rmxOn('click', onAddDirectory),
+							]}
+						>
+							{isCurrentSelected ? 'Added' : '+ Add This Directory'}
+						</button>
 					</div>
-					<button
-						type="button"
-						disabled={isCurrentSelected}
+
+					<div
 						mix={[
 							rmxCss({
-								padding: `${spacing.xs} ${spacing.sm}`,
-								fontSize: typography.fontSize.xs,
-								fontWeight: typography.fontWeight.medium,
-								borderRadius: radius.sm,
-								border: 'none',
-								backgroundColor: isCurrentSelected
-									? colors.border
-									: colors.primary,
-								color: colors.background,
-								cursor: isCurrentSelected ? 'not-allowed' : 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': isCurrentSelected
-									? {}
-									: { backgroundColor: colors.primaryHover },
+								maxHeight: '300px',
+								overflowY: 'auto',
+								backgroundColor: colors.surface,
 							}),
-							rmxOn('click', onAddDirectory),
 						]}
 					>
-						{isCurrentSelected ? 'Added' : '+ Add This Directory'}
-					</button>
-				</div>
+						{browseState.status === 'loading' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: colors.textMuted })]}>
+									Loading...
+								</span>
+							</div>
+						)}
 
-				<div
-					mix={[
-						rmxCss({
-							maxHeight: '300px',
-							overflowY: 'auto',
-							backgroundColor: colors.surface,
-						}),
-					]}
-				>
-					{browseState.status === 'loading' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: colors.textMuted })]}>
-								Loading...
-							</span>
-						</div>
-					)}
+						{browseState.status === 'error' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: '#ef4444' })]}>
+									{browseState.message}
+								</span>
+							</div>
+						)}
 
-					{browseState.status === 'error' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: '#ef4444' })]}>
-								{browseState.message}
-							</span>
-						</div>
-					)}
-
-					{browseState.status === 'success' && (
-						<div>
-							{currentPath && (
-								<button
-									type="button"
-									mix={[
-										rmxCss(directoryItemStyles),
-										rmxOn('click', onNavigateUp),
-									]}
-								>
-									<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
-									<span>..</span>
-								</button>
-							)}
-
-							{browseState.entries.length === 0 && !currentPath && (
-								<div
-									mix={[
-										rmxCss({
-											padding: spacing.lg,
-											textAlign: 'center',
-											color: colors.textMuted,
-										}),
-									]}
-								>
-									Empty directory
-								</div>
-							)}
-
-							{browseState.entries
-								.filter((e) => e.type === 'directory')
-								.map((entry) => (
+						{browseState.status === 'success' && (
+							<div>
+								{currentPath && (
 									<button
-										key={entry.name}
 										type="button"
 										mix={[
 											rmxCss(directoryItemStyles),
-											rmxOn('click', () => onNavigateToDir(entry.name)),
+											rmxOn('click', onNavigateUp),
 										]}
 									>
 										<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
-										<span>{entry.name}</span>
+										<span>..</span>
 									</button>
-								))}
+								)}
 
-							{browseState.stats.totalFiles > 0 && (
-								<div
-									mix={[
-										rmxCss({
-											padding: `${spacing.sm} ${spacing.md}`,
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-											borderTop: `1px solid ${colors.border}`,
-										}),
-									]}
-								>
-									{browseState.stats.filesInDirectory > 0 &&
-									browseState.stats.filesInSubdirectories > 0 ? (
-										<span>
-											{browseState.stats.totalFiles} file(s) total (
-											{browseState.stats.filesInDirectory} here,{' '}
-											{browseState.stats.filesInSubdirectories} in
-											subdirectories)
-										</span>
-									) : browseState.stats.filesInDirectory > 0 ? (
-										<span>
-											{browseState.stats.filesInDirectory} file(s) in this
-											directory
-										</span>
-									) : (
-										<span>
-											{browseState.stats.filesInSubdirectories} file(s) in
-											subdirectories
-										</span>
-									)}
-								</div>
-							)}
-						</div>
-					)}
+								{browseState.entries.length === 0 && !currentPath && (
+									<div
+										mix={[
+											rmxCss({
+												padding: spacing.lg,
+												textAlign: 'center',
+												color: colors.textMuted,
+											}),
+										]}
+									>
+										Empty directory
+									</div>
+								)}
+
+								{browseState.entries
+									.filter((e) => e.type === 'directory')
+									.map((entry) => (
+										<button
+											key={entry.name}
+											type="button"
+											mix={[
+												rmxCss(directoryItemStyles),
+												rmxOn('click', () => onNavigateToDir(entry.name)),
+											]}
+										>
+											<span mix={[rmxCss({ marginRight: spacing.sm })]}>
+												📁
+											</span>
+											<span>{entry.name}</span>
+										</button>
+									))}
+
+								{browseState.stats.totalFiles > 0 && (
+									<div
+										mix={[
+											rmxCss({
+												padding: `${spacing.sm} ${spacing.md}`,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												borderTop: `1px solid ${colors.border}`,
+											}),
+										]}
+									>
+										{browseState.stats.filesInDirectory > 0 &&
+										browseState.stats.filesInSubdirectories > 0 ? (
+											<span>
+												{browseState.stats.totalFiles} file(s) total (
+												{browseState.stats.filesInDirectory} here,{' '}
+												{browseState.stats.filesInSubdirectories} in
+												subdirectories)
+											</span>
+										) : browseState.stats.filesInDirectory > 0 ? (
+											<span>
+												{browseState.stats.filesInDirectory} file(s) in this
+												directory
+											</span>
+										) : (
+											<span>
+												{browseState.stats.filesInSubdirectories} file(s) in
+												subdirectories
+											</span>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+					</div>
 				</div>
-			</div>
-		)
-	}
+			)
+		},
+	)
 }
 
-function SelectedDirectoriesList() {
-	return ({
-		directories,
-		onRemove,
-	}: {
-		directories: Array<SelectedDirectory>
-		onRemove: (index: number) => void
-	}) => (
+function SelectedDirectoriesList(handle: Handle<SelectedDirectoriesListProps>) {
+	return renderProps(handle, ({ directories, onRemove }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -1578,356 +1605,342 @@ function SelectedDirectoriesList() {
 				</div>
 			))}
 		</div>
-	)
+	))
 }
 
-function FilePicker() {
-	return ({
-		roots,
-		pickerRoot,
-		pickerPath,
-		browseState,
-		searchFilter,
-		onSearchChange,
-		onSelectRoot,
-		onNavigateToDir,
-		onNavigateUp,
-		onToggleFile,
-		isFileSelected,
-	}: {
-		roots: Array<MediaRoot>
-		pickerRoot: string | null
-		pickerPath: string
-		browseState: BrowseState
-		searchFilter: string
-		onSearchChange: (value: string) => void
-		onSelectRoot: (name: string) => void
-		onNavigateToDir: (name: string) => void
-		onNavigateUp: () => void
-		onToggleFile: (filename: string) => void
-		isFileSelected: (filename: string) => boolean
-	}) => {
-		const pathParts = pickerPath ? pickerPath.split('/') : []
-		const searchLower = searchFilter.toLowerCase()
+function FilePicker(handle: Handle<FilePickerProps>) {
+	return renderProps(
+		handle,
+		({
+			roots,
+			pickerRoot,
+			pickerPath,
+			browseState,
+			searchFilter,
+			onSearchChange,
+			onSelectRoot,
+			onNavigateToDir,
+			onNavigateUp,
+			onToggleFile,
+			isFileSelected,
+		}) => {
+			const pathParts = pickerPath ? pickerPath.split('/') : []
+			const searchLower = searchFilter.toLowerCase()
 
-		return (
-			<div
-				mix={[
-					rmxCss({
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						overflow: 'hidden',
-					}),
-				]}
-			>
-				{/* Root selector */}
+			return (
 				<div
 					mix={[
 						rmxCss({
-							padding: spacing.sm,
-							backgroundColor: colors.background,
-							borderBottom: `1px solid ${colors.border}`,
-							display: 'flex',
-							gap: spacing.sm,
-							flexWrap: 'wrap',
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.md,
+							overflow: 'hidden',
 						}),
 					]}
 				>
-					{roots.map((root) => (
-						<button
-							key={root.name}
-							type="button"
-							mix={[
-								rmxCss({
-									padding: `${spacing.xs} ${spacing.sm}`,
-									fontSize: typography.fontSize.xs,
-									borderRadius: radius.sm,
-									border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
-									backgroundColor:
-										pickerRoot === root.name ? colors.primary : 'transparent',
-									color:
-										pickerRoot === root.name ? colors.background : colors.text,
-									cursor: 'pointer',
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										borderColor: colors.primary,
-									},
-								}),
-								rmxOn('click', () => onSelectRoot(root.name)),
-							]}
-						>
-							{root.name}
-						</button>
-					))}
-				</div>
-
-				{/* Path breadcrumb */}
-				{pickerRoot && (
+					{/* Root selector */}
 					<div
 						mix={[
 							rmxCss({
 								padding: spacing.sm,
 								backgroundColor: colors.background,
 								borderBottom: `1px solid ${colors.border}`,
-								fontSize: typography.fontSize.sm,
-								fontFamily: 'monospace',
-								color: colors.textMuted,
 								display: 'flex',
-								alignItems: 'center',
-								gap: spacing.xs,
+								gap: spacing.sm,
+								flexWrap: 'wrap',
 							}),
 						]}
 					>
-						<span mix={[rmxCss({ color: colors.primary })]}>{pickerRoot}</span>
-						{pathParts.map((part, i) => (
-							<span key={i}>
-								<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-								<span>{part}</span>
-							</span>
+						{roots.map((root) => (
+							<button
+								key={root.name}
+								type="button"
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.xs,
+										borderRadius: radius.sm,
+										border: `1px solid ${pickerRoot === root.name ? colors.primary : colors.border}`,
+										backgroundColor:
+											pickerRoot === root.name ? colors.primary : 'transparent',
+										color:
+											pickerRoot === root.name
+												? colors.background
+												: colors.text,
+										cursor: 'pointer',
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											borderColor: colors.primary,
+										},
+									}),
+									rmxOn('click', () => onSelectRoot(root.name)),
+								]}
+							>
+								{root.name}
+							</button>
 						))}
-						{!pickerPath && (
-							<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
-						)}
 					</div>
-				)}
 
-				{/* Search input */}
-				{pickerRoot && browseState.status === 'success' && (
-					<div
-						mix={[
-							rmxCss({
-								padding: spacing.sm,
-								backgroundColor: colors.background,
-								borderBottom: `1px solid ${colors.border}`,
-							}),
-						]}
-					>
-						<input
-							type="text"
-							placeholder="Search files..."
-							value={searchFilter}
-							mix={[
-								rmxCss({
-									width: '100%',
-									padding: spacing.sm,
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-									backgroundColor: colors.surface,
-									border: `1px solid ${colors.border}`,
-									borderRadius: radius.md,
-									outline: 'none',
-									transition: `border-color ${transitions.fast}`,
-									'&:focus': {
-										borderColor: colors.primary,
-									},
-									'&::placeholder': {
-										color: colors.textMuted,
-									},
-								}),
-								rmxOn('input', (e) =>
-									onSearchChange((e.target as HTMLInputElement).value),
-								),
-							]}
-						/>
-					</div>
-				)}
-
-				{/* File listing */}
-				<div
-					mix={[
-						rmxCss({
-							maxHeight: '300px',
-							overflowY: 'auto',
-							backgroundColor: colors.surface,
-						}),
-					]}
-				>
-					{!pickerRoot && (
+					{/* Path breadcrumb */}
+					{pickerRoot && (
 						<div
 							mix={[
 								rmxCss({
-									padding: spacing.lg,
-									textAlign: 'center',
+									padding: spacing.sm,
+									backgroundColor: colors.background,
+									borderBottom: `1px solid ${colors.border}`,
+									fontSize: typography.fontSize.sm,
+									fontFamily: 'monospace',
 									color: colors.textMuted,
+									display: 'flex',
+									alignItems: 'center',
+									gap: spacing.xs,
 								}),
 							]}
 						>
-							Select a media root to browse files
-						</div>
-					)}
-
-					{pickerRoot && browseState.status === 'loading' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: colors.textMuted })]}>
-								Loading...
+							<span mix={[rmxCss({ color: colors.primary })]}>
+								{pickerRoot}
 							</span>
+							{pathParts.map((part, i) => (
+								<span key={i}>
+									<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
+									<span>{part}</span>
+								</span>
+							))}
+							{!pickerPath && (
+								<span mix={[rmxCss({ color: colors.textMuted })]}>/</span>
+							)}
 						</div>
 					)}
 
-					{pickerRoot && browseState.status === 'error' && (
-						<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
-							<span mix={[rmxCss({ color: '#ef4444' })]}>
-								{browseState.message}
-							</span>
-						</div>
-					)}
-
+					{/* Search input */}
 					{pickerRoot && browseState.status === 'success' && (
-						<div>
-							{pickerPath && (
-								<button
-									type="button"
-									mix={[
-										rmxCss(directoryItemStyles),
-										rmxOn('click', onNavigateUp),
-									]}
-								>
-									<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
-									<span>..</span>
-								</button>
-							)}
-
-							{browseState.entries.length === 0 && !pickerPath && (
-								<div
-									mix={[
-										rmxCss({
-											padding: spacing.lg,
-											textAlign: 'center',
+						<div
+							mix={[
+								rmxCss({
+									padding: spacing.sm,
+									backgroundColor: colors.background,
+									borderBottom: `1px solid ${colors.border}`,
+								}),
+							]}
+						>
+							<input
+								type="text"
+								placeholder="Search files..."
+								value={searchFilter}
+								mix={[
+									rmxCss({
+										width: '100%',
+										padding: spacing.sm,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
+										backgroundColor: colors.surface,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.md,
+										outline: 'none',
+										transition: `border-color ${transitions.fast}`,
+										'&:focus': {
+											borderColor: colors.primary,
+										},
+										'&::placeholder': {
 											color: colors.textMuted,
-										}),
-									]}
-								>
-									Empty directory
-								</div>
-							)}
+										},
+									}),
+									rmxOn('input', (e) =>
+										onSearchChange((e.target as HTMLInputElement).value),
+									),
+								]}
+							/>
+						</div>
+					)}
 
-							{/* Directories */}
-							{browseState.entries
-								.filter(
-									(e) =>
-										e.type === 'directory' &&
-										e.name.toLowerCase().includes(searchLower),
-								)
-								.map((entry) => (
+					{/* File listing */}
+					<div
+						mix={[
+							rmxCss({
+								maxHeight: '300px',
+								overflowY: 'auto',
+								backgroundColor: colors.surface,
+							}),
+						]}
+					>
+						{!pickerRoot && (
+							<div
+								mix={[
+									rmxCss({
+										padding: spacing.lg,
+										textAlign: 'center',
+										color: colors.textMuted,
+									}),
+								]}
+							>
+								Select a media root to browse files
+							</div>
+						)}
+
+						{pickerRoot && browseState.status === 'loading' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: colors.textMuted })]}>
+									Loading...
+								</span>
+							</div>
+						)}
+
+						{pickerRoot && browseState.status === 'error' && (
+							<div mix={[rmxCss({ padding: spacing.lg, textAlign: 'center' })]}>
+								<span mix={[rmxCss({ color: '#ef4444' })]}>
+									{browseState.message}
+								</span>
+							</div>
+						)}
+
+						{pickerRoot && browseState.status === 'success' && (
+							<div>
+								{pickerPath && (
 									<button
-										key={entry.name}
 										type="button"
 										mix={[
 											rmxCss(directoryItemStyles),
-											rmxOn('click', () => onNavigateToDir(entry.name)),
+											rmxOn('click', onNavigateUp),
 										]}
 									>
 										<span mix={[rmxCss({ marginRight: spacing.sm })]}>📁</span>
-										<span>{entry.name}</span>
+										<span>..</span>
 									</button>
-								))}
+								)}
 
-							{/* Files with checkboxes */}
-							{browseState.entries
-								.filter(
-									(e) =>
-										e.type === 'file' &&
-										e.name.toLowerCase().includes(searchLower),
-								)
-								.map((entry) => {
-									const selected = isFileSelected(entry.name)
-									return (
+								{browseState.entries.length === 0 && !pickerPath && (
+									<div
+										mix={[
+											rmxCss({
+												padding: spacing.lg,
+												textAlign: 'center',
+												color: colors.textMuted,
+											}),
+										]}
+									>
+										Empty directory
+									</div>
+								)}
+
+								{/* Directories */}
+								{browseState.entries
+									.filter(
+										(e) =>
+											e.type === 'directory' &&
+											e.name.toLowerCase().includes(searchLower),
+									)
+									.map((entry) => (
 										<button
 											key={entry.name}
 											type="button"
 											mix={[
-												rmxCss({
-													...directoryItemStyles,
-													backgroundColor: selected
-														? colors.primarySoft
-														: 'transparent',
-												}),
-												rmxOn('click', () => onToggleFile(entry.name)),
+												rmxCss(directoryItemStyles),
+												rmxOn('click', () => onNavigateToDir(entry.name)),
 											]}
 										>
-											<span
-												mix={[
-													rmxCss({
-														marginRight: spacing.sm,
-														width: '16px',
-														height: '16px',
-														border: `1px solid ${selected ? colors.primary : colors.border}`,
-														borderRadius: radius.sm,
-														backgroundColor: selected
-															? colors.primary
-															: 'transparent',
-														display: 'inline-flex',
-														alignItems: 'center',
-														justifyContent: 'center',
-														fontSize: '12px',
-														color: colors.background,
-													}),
-												]}
-											>
-												{selected && '✓'}
-											</span>
 											<span mix={[rmxCss({ marginRight: spacing.sm })]}>
-												📄
+												📁
 											</span>
 											<span>{entry.name}</span>
 										</button>
-									)
-								})}
+									))}
 
-							{/* File count stats */}
-							{browseState.stats.totalFiles > 0 && (
-								<div
-									mix={[
-										rmxCss({
-											padding: `${spacing.sm} ${spacing.md}`,
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-											borderTop: `1px solid ${colors.border}`,
-										}),
-									]}
-								>
-									{browseState.stats.filesInDirectory > 0 &&
-									browseState.stats.filesInSubdirectories > 0 ? (
-										<span>
-											{browseState.stats.totalFiles} file(s) total (
-											{browseState.stats.filesInDirectory} here,{' '}
-											{browseState.stats.filesInSubdirectories} in
-											subdirectories)
-										</span>
-									) : browseState.stats.filesInDirectory > 0 ? (
-										<span>
-											{browseState.stats.filesInDirectory} file(s) in this
-											directory
-										</span>
-									) : (
-										<span>
-											{browseState.stats.filesInSubdirectories} file(s) in
-											subdirectories
-										</span>
-									)}
-								</div>
-							)}
-						</div>
-					)}
+								{/* Files with checkboxes */}
+								{browseState.entries
+									.filter(
+										(e) =>
+											e.type === 'file' &&
+											e.name.toLowerCase().includes(searchLower),
+									)
+									.map((entry) => {
+										const selected = isFileSelected(entry.name)
+										return (
+											<button
+												key={entry.name}
+												type="button"
+												mix={[
+													rmxCss({
+														...directoryItemStyles,
+														backgroundColor: selected
+															? colors.primarySoft
+															: 'transparent',
+													}),
+													rmxOn('click', () => onToggleFile(entry.name)),
+												]}
+											>
+												<span
+													mix={[
+														rmxCss({
+															marginRight: spacing.sm,
+															width: '16px',
+															height: '16px',
+															border: `1px solid ${selected ? colors.primary : colors.border}`,
+															borderRadius: radius.sm,
+															backgroundColor: selected
+																? colors.primary
+																: 'transparent',
+															display: 'inline-flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															fontSize: '12px',
+															color: colors.background,
+														}),
+													]}
+												>
+													{selected && '✓'}
+												</span>
+												<span mix={[rmxCss({ marginRight: spacing.sm })]}>
+													📄
+												</span>
+												<span>{entry.name}</span>
+											</button>
+										)
+									})}
+
+								{/* File count stats */}
+								{browseState.stats.totalFiles > 0 && (
+									<div
+										mix={[
+											rmxCss({
+												padding: `${spacing.sm} ${spacing.md}`,
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												borderTop: `1px solid ${colors.border}`,
+											}),
+										]}
+									>
+										{browseState.stats.filesInDirectory > 0 &&
+										browseState.stats.filesInSubdirectories > 0 ? (
+											<span>
+												{browseState.stats.totalFiles} file(s) total (
+												{browseState.stats.filesInDirectory} here,{' '}
+												{browseState.stats.filesInSubdirectories} in
+												subdirectories)
+											</span>
+										) : browseState.stats.filesInDirectory > 0 ? (
+											<span>
+												{browseState.stats.filesInDirectory} file(s) in this
+												directory
+											</span>
+										) : (
+											<span>
+												{browseState.stats.filesInSubdirectories} file(s) in
+												subdirectories
+											</span>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+					</div>
 				</div>
-			</div>
-		)
-	}
+			)
+		},
+	)
 }
 
-function SelectedFilesList() {
-	return ({
-		files,
-		onRemove,
-	}: {
-		files: Array<{
-			rootName: string
-			relativePath: string
-			mediaPath: string
-			filename: string
-		}>
-		onRemove: (mediaPath: string) => void
-	}) => (
+function SelectedFilesList(handle: Handle<SelectedFilesListProps>) {
+	return renderProps(handle, ({ files, onRemove }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -2012,7 +2025,7 @@ function SelectedFilesList() {
 				</div>
 			))}
 		</div>
-	)
+	))
 }
 
 const directoryItemStyles = {

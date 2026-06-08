@@ -1,5 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,
 	ModalButton,
@@ -1561,16 +1562,14 @@ export function MediaList(handle: Handle) {
 	}
 }
 
-function Pagination() {
-	return ({
-		currentPage,
-		totalPages,
-		onPageChange,
-	}: {
+function Pagination(
+	handle: Handle<{
 		currentPage: number
 		totalPages: number
 		onPageChange: (page: number) => void
-	}) => {
+	}>,
+) {
+	return renderProps(handle, ({ currentPage, totalPages, onPageChange }) => {
 		// Generate page numbers to display
 		const getPageNumbers = () => {
 			const pages: Array<number | 'ellipsis'> = []
@@ -1750,7 +1749,7 @@ function Pagination() {
 				</button>
 			</div>
 		)
-	}
+	})
 }
 
 function LoadingSpinner() {
@@ -1784,8 +1783,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage() {
-	return ({ message }: { message: string }) => (
+function ErrorMessage(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -1822,21 +1821,18 @@ function ErrorMessage() {
 				← Back to feeds
 			</a>
 		</div>
-	)
+	))
 }
 
-function Checkbox() {
-	return ({
-		checked,
-		indeterminate,
-		onChange,
-		title,
-	}: {
+function Checkbox(
+	handle: Handle<{
 		checked: boolean
 		indeterminate?: boolean
 		onChange: () => void
 		title?: string
-	}) => (
+	}>,
+) {
+	return renderProps(handle, ({ checked, indeterminate, onChange, title }) => (
 		<label
 			title={title}
 			mix={[
@@ -1937,20 +1933,11 @@ function Checkbox() {
 				</svg>
 			)}
 		</label>
-	)
+	))
 }
 
-function FloatingActionBar() {
-	return ({
-		selectedCount,
-		filteredCount,
-		allFilteredSelected,
-		feedsWithSelectedItems,
-		onSelectAllFiltered,
-		onClearSelection,
-		onAssign,
-		onUnassign,
-	}: {
+function FloatingActionBar(
+	handle: Handle<{
 		selectedCount: number
 		filteredCount: number
 		allFilteredSelected: boolean
@@ -1959,136 +1946,125 @@ function FloatingActionBar() {
 		onClearSelection: () => void
 		onAssign: () => void
 		onUnassign: () => void
-	}) => {
-		const hasAssignedItems = feedsWithSelectedItems.length > 0
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			selectedCount,
+			filteredCount,
+			allFilteredSelected,
+			feedsWithSelectedItems,
+			onSelectAllFiltered,
+			onClearSelection,
+			onAssign,
+			onUnassign,
+		}) => {
+			const hasAssignedItems = feedsWithSelectedItems.length > 0
 
-		return (
-			<div
-				mix={[
-					rmxCss({
-						position: 'fixed',
-						bottom: spacing.xl,
-						left: '50%',
-						transform: 'translateX(-50%)',
-						backgroundColor: colors.surface,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.lg,
-						boxShadow: shadows.lg,
-						padding: `${spacing.sm} ${spacing.lg}`,
-						display: 'flex',
-						alignItems: 'center',
-						gap: spacing.md,
-						zIndex: 100,
-						[mq.mobile]: {
-							left: spacing.md,
-							right: spacing.md,
-							bottom: spacing.md,
-							transform: 'none',
-							flexDirection: 'column',
-							alignItems: 'stretch',
-							padding: spacing.md,
-							gap: spacing.sm,
-						},
-					}),
-				]}
-			>
+			return (
 				<div
 					mix={[
 						rmxCss({
+							position: 'fixed',
+							bottom: spacing.xl,
+							left: '50%',
+							transform: 'translateX(-50%)',
+							backgroundColor: colors.surface,
+							border: `1px solid ${colors.border}`,
+							borderRadius: radius.lg,
+							boxShadow: shadows.lg,
+							padding: `${spacing.sm} ${spacing.lg}`,
 							display: 'flex',
 							alignItems: 'center',
 							gap: spacing.md,
+							zIndex: 100,
 							[mq.mobile]: {
-								justifyContent: 'space-between',
-							},
-						}),
-					]}
-				>
-					<span
-						mix={[
-							rmxCss({
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.text,
-								whiteSpace: 'nowrap',
-							}),
-						]}
-					>
-						{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
-					</span>
-
-					{!allFilteredSelected && filteredCount > selectedCount && (
-						<button
-							type="button"
-							mix={[
-								rmxCss({
-									padding: `${spacing.xs} ${spacing.sm}`,
-									fontSize: typography.fontSize.sm,
-									color: colors.primary,
-									backgroundColor: 'transparent',
-									border: 'none',
-									cursor: 'pointer',
-									textDecoration: 'underline',
-									'&:hover': {
-										color: colors.primaryHover,
-									},
-								}),
-								rmxOn('click', onSelectAllFiltered),
-							]}
-						>
-							Select all {filteredCount}
-						</button>
-					)}
-				</div>
-
-				<div
-					mix={[
-						rmxCss({
-							width: '1px',
-							height: '24px',
-							backgroundColor: colors.border,
-							[mq.mobile]: {
-								display: 'none',
-							},
-						}),
-					]}
-				/>
-
-				<div
-					mix={[
-						rmxCss({
-							display: 'flex',
-							gap: spacing.sm,
-							[mq.mobile]: {
+								left: spacing.md,
+								right: spacing.md,
+								bottom: spacing.md,
+								transform: 'none',
 								flexDirection: 'column',
+								alignItems: 'stretch',
+								padding: spacing.md,
+								gap: spacing.sm,
 							},
 						}),
 					]}
 				>
-					<button
-						type="button"
+					<div
 						mix={[
 							rmxCss({
-								padding: `${spacing.sm} ${spacing.md}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.background,
-								backgroundColor: colors.primary,
-								border: 'none',
-								borderRadius: radius.md,
-								cursor: 'pointer',
-								transition: `background-color ${transitions.fast}`,
-								'&:hover': {
-									backgroundColor: colors.primaryHover,
+								display: 'flex',
+								alignItems: 'center',
+								gap: spacing.md,
+								[mq.mobile]: {
+									justifyContent: 'space-between',
 								},
 							}),
-							rmxOn('click', onAssign),
 						]}
 					>
-						Assign to Feed
-					</button>
+						<span
+							mix={[
+								rmxCss({
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.text,
+									whiteSpace: 'nowrap',
+								}),
+							]}
+						>
+							{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
+						</span>
 
-					{hasAssignedItems && (
+						{!allFilteredSelected && filteredCount > selectedCount && (
+							<button
+								type="button"
+								mix={[
+									rmxCss({
+										padding: `${spacing.xs} ${spacing.sm}`,
+										fontSize: typography.fontSize.sm,
+										color: colors.primary,
+										backgroundColor: 'transparent',
+										border: 'none',
+										cursor: 'pointer',
+										textDecoration: 'underline',
+										'&:hover': {
+											color: colors.primaryHover,
+										},
+									}),
+									rmxOn('click', onSelectAllFiltered),
+								]}
+							>
+								Select all {filteredCount}
+							</button>
+						)}
+					</div>
+
+					<div
+						mix={[
+							rmxCss({
+								width: '1px',
+								height: '24px',
+								backgroundColor: colors.border,
+								[mq.mobile]: {
+									display: 'none',
+								},
+							}),
+						]}
+					/>
+
+					<div
+						mix={[
+							rmxCss({
+								display: 'flex',
+								gap: spacing.sm,
+								[mq.mobile]: {
+									flexDirection: 'column',
+								},
+							}),
+						]}
+					>
 						<button
 							type="button"
 							mix={[
@@ -2096,62 +2072,79 @@ function FloatingActionBar() {
 									padding: `${spacing.sm} ${spacing.md}`,
 									fontSize: typography.fontSize.sm,
 									fontWeight: typography.fontWeight.medium,
-									color: colors.error,
+									color: colors.background,
+									backgroundColor: colors.primary,
+									border: 'none',
+									borderRadius: radius.md,
+									cursor: 'pointer',
+									transition: `background-color ${transitions.fast}`,
+									'&:hover': {
+										backgroundColor: colors.primaryHover,
+									},
+								}),
+								rmxOn('click', onAssign),
+							]}
+						>
+							Assign to Feed
+						</button>
+
+						{hasAssignedItems && (
+							<button
+								type="button"
+								mix={[
+									rmxCss({
+										padding: `${spacing.sm} ${spacing.md}`,
+										fontSize: typography.fontSize.sm,
+										fontWeight: typography.fontWeight.medium,
+										color: colors.error,
+										backgroundColor: 'transparent',
+										border: `1px solid ${colors.error}`,
+										borderRadius: radius.md,
+										cursor: 'pointer',
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											backgroundColor: 'rgba(239, 68, 68, 0.1)',
+										},
+									}),
+									rmxOn('click', onUnassign),
+								]}
+							>
+								Remove from Feed
+							</button>
+						)}
+
+						<button
+							type="button"
+							mix={[
+								rmxCss({
+									padding: `${spacing.sm} ${spacing.md}`,
+									fontSize: typography.fontSize.sm,
+									fontWeight: typography.fontWeight.medium,
+									color: colors.textMuted,
 									backgroundColor: 'transparent',
-									border: `1px solid ${colors.error}`,
+									border: `1px solid ${colors.border}`,
 									borderRadius: radius.md,
 									cursor: 'pointer',
 									transition: `all ${transitions.fast}`,
 									'&:hover': {
-										backgroundColor: 'rgba(239, 68, 68, 0.1)',
+										color: colors.text,
+										backgroundColor: colors.background,
 									},
 								}),
-								rmxOn('click', onUnassign),
+								rmxOn('click', onClearSelection),
 							]}
 						>
-							Remove from Feed
+							Clear
 						</button>
-					)}
-
-					<button
-						type="button"
-						mix={[
-							rmxCss({
-								padding: `${spacing.sm} ${spacing.md}`,
-								fontSize: typography.fontSize.sm,
-								fontWeight: typography.fontWeight.medium,
-								color: colors.textMuted,
-								backgroundColor: 'transparent',
-								border: `1px solid ${colors.border}`,
-								borderRadius: radius.md,
-								cursor: 'pointer',
-								transition: `all ${transitions.fast}`,
-								'&:hover': {
-									color: colors.text,
-									backgroundColor: colors.background,
-								},
-							}),
-							rmxOn('click', onClearSelection),
-						]}
-					>
-						Clear
-					</button>
+					</div>
 				</div>
-			</div>
-		)
-	}
+			)
+		},
+	)
 }
 
-function BulkAssignModal() {
-	return ({
-		selectedCount,
-		curatedFeeds,
-		selectedFeedIds,
-		saving,
-		onToggleFeed,
-		onSave,
-		onCancel,
-	}: {
+function BulkAssignModal(
+	handle: Handle<{
 		selectedCount: number
 		curatedFeeds: Array<CuratedFeed>
 		selectedFeedIds: Set<string>
@@ -2159,14 +2152,106 @@ function BulkAssignModal() {
 		onToggleFeed: (feedId: string) => void
 		onSave: () => void
 		onCancel: () => void
-	}) => {
-		const feedCount = selectedFeedIds.size
-		const noFeedsSelected = feedCount === 0
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			selectedCount,
+			curatedFeeds,
+			selectedFeedIds,
+			saving,
+			onToggleFeed,
+			onSave,
+			onCancel,
+		}) => {
+			const feedCount = selectedFeedIds.size
+			const noFeedsSelected = feedCount === 0
 
-		return (
+			return (
+				<Modal
+					title="Assign to Feeds"
+					subtitle={`Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to curated feeds`}
+					size="sm"
+					onClose={onCancel}
+					footer={
+						<ModalFooter>
+							<ModalButton
+								variant="secondary"
+								disabled={saving}
+								onClick={onCancel}
+							>
+								Cancel
+							</ModalButton>
+							<ModalButton
+								variant="primary"
+								disabled={saving || noFeedsSelected}
+								onClick={onSave}
+							>
+								{saving
+									? 'Assigning...'
+									: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
+							</ModalButton>
+						</ModalFooter>
+					}
+				>
+					{curatedFeeds.length > 0 ? (
+						<ModalList>
+							{curatedFeeds.map((feed) => (
+								<FeedCheckboxRow
+									key={feed.id}
+									feedId={feed.id}
+									name={feed.name}
+									updatedAt={feed.updatedAt}
+									isSelected={selectedFeedIds.has(feed.id)}
+									onToggle={() => onToggleFeed(feed.id)}
+								/>
+							))}
+						</ModalList>
+					) : (
+						<p
+							mix={[
+								rmxCss({
+									textAlign: 'center',
+									color: colors.textMuted,
+									fontSize: typography.fontSize.sm,
+								}),
+							]}
+						>
+							No curated feeds available. Create a feed first.
+						</p>
+					)}
+				</Modal>
+			)
+		},
+	)
+}
+
+function BulkUnassignModal(
+	handle: Handle<{
+		selectedCount: number
+		feedsWithItems: Array<{ feed: CuratedFeed; count: number }>
+		selectedFeedId: string | null
+		saving: boolean
+		onSelectFeed: (feedId: string) => void
+		onSave: () => void
+		onCancel: () => void
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			selectedCount,
+			feedsWithItems,
+			selectedFeedId,
+			saving,
+			onSelectFeed,
+			onSave,
+			onCancel,
+		}) => (
 			<Modal
-				title="Assign to Feeds"
-				subtitle={`Add ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to curated feeds`}
+				title="Remove from Feed"
+				subtitle="Remove selected items from a curated feed"
 				size="sm"
 				onClose={onCancel}
 				footer={
@@ -2179,27 +2264,27 @@ function BulkAssignModal() {
 							Cancel
 						</ModalButton>
 						<ModalButton
-							variant="primary"
-							disabled={saving || noFeedsSelected}
+							variant="danger"
+							disabled={saving || !selectedFeedId}
 							onClick={onSave}
 						>
-							{saving
-								? 'Assigning...'
-								: `Assign ${selectedCount} item${selectedCount !== 1 ? 's' : ''} to ${feedCount} feed${feedCount !== 1 ? 's' : ''}`}
+							{saving ? 'Removing...' : 'Remove from Feed'}
 						</ModalButton>
 					</ModalFooter>
 				}
 			>
-				{curatedFeeds.length > 0 ? (
+				{feedsWithItems.length > 0 ? (
 					<ModalList>
-						{curatedFeeds.map((feed) => (
-							<FeedCheckboxRow
+						{feedsWithItems.map(({ feed, count }) => (
+							<FeedRadioRowWithCount
 								key={feed.id}
 								feedId={feed.id}
 								name={feed.name}
 								updatedAt={feed.updatedAt}
-								isSelected={selectedFeedIds.has(feed.id)}
-								onToggle={() => onToggleFeed(feed.id)}
+								itemCount={count}
+								totalSelected={selectedCount}
+								isSelected={selectedFeedId === feed.id}
+								onSelect={() => onSelectFeed(feed.id)}
 							/>
 						))}
 					</ModalList>
@@ -2213,94 +2298,16 @@ function BulkAssignModal() {
 							}),
 						]}
 					>
-						No curated feeds available. Create a feed first.
+						None of the selected items are assigned to any feeds.
 					</p>
 				)}
 			</Modal>
-		)
-	}
-}
-
-function BulkUnassignModal() {
-	return ({
-		selectedCount,
-		feedsWithItems,
-		selectedFeedId,
-		saving,
-		onSelectFeed,
-		onSave,
-		onCancel,
-	}: {
-		selectedCount: number
-		feedsWithItems: Array<{ feed: CuratedFeed; count: number }>
-		selectedFeedId: string | null
-		saving: boolean
-		onSelectFeed: (feedId: string) => void
-		onSave: () => void
-		onCancel: () => void
-	}) => (
-		<Modal
-			title="Remove from Feed"
-			subtitle="Remove selected items from a curated feed"
-			size="sm"
-			onClose={onCancel}
-			footer={
-				<ModalFooter>
-					<ModalButton variant="secondary" disabled={saving} onClick={onCancel}>
-						Cancel
-					</ModalButton>
-					<ModalButton
-						variant="danger"
-						disabled={saving || !selectedFeedId}
-						onClick={onSave}
-					>
-						{saving ? 'Removing...' : 'Remove from Feed'}
-					</ModalButton>
-				</ModalFooter>
-			}
-		>
-			{feedsWithItems.length > 0 ? (
-				<ModalList>
-					{feedsWithItems.map(({ feed, count }) => (
-						<FeedRadioRowWithCount
-							key={feed.id}
-							feedId={feed.id}
-							name={feed.name}
-							updatedAt={feed.updatedAt}
-							itemCount={count}
-							totalSelected={selectedCount}
-							isSelected={selectedFeedId === feed.id}
-							onSelect={() => onSelectFeed(feed.id)}
-						/>
-					))}
-				</ModalList>
-			) : (
-				<p
-					mix={[
-						rmxCss({
-							textAlign: 'center',
-							color: colors.textMuted,
-							fontSize: typography.fontSize.sm,
-						}),
-					]}
-				>
-					None of the selected items are assigned to any feeds.
-				</p>
-			)}
-		</Modal>
+		),
 	)
 }
 
-function FeedRadioRowWithCount() {
-	return ({
-		feedId,
-		name,
-		updatedAt,
-		itemCount,
-		totalSelected,
-		isSelected,
-		onSelect,
-	}: {
+function FeedRadioRowWithCount(
+	handle: Handle<{
 		feedId: string
 		name: string
 		updatedAt: number
@@ -2308,80 +2315,209 @@ function FeedRadioRowWithCount() {
 		totalSelected: number
 		isSelected: boolean
 		onSelect: () => void
-	}) => (
-		<button
-			type="button"
-			mix={[
-				rmxCss({
-					display: 'flex',
-					alignItems: 'center',
-					gap: spacing.md,
-					padding: spacing.sm,
-					backgroundColor: isSelected
-						? 'rgba(239, 68, 68, 0.1)'
-						: colors.background,
-					border: `2px solid ${isSelected ? colors.error : 'transparent'}`,
-					borderRadius: radius.md,
-					cursor: 'pointer',
-					textAlign: 'left',
-					width: '100%',
-					transition: `all ${transitions.fast}`,
-					'&:hover': {
-						backgroundColor: isSelected
-							? 'rgba(239, 68, 68, 0.15)'
-							: colors.surface,
-					},
-				}),
-				rmxOn('click', onSelect),
-			]}
-		>
-			<div
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			feedId,
+			name,
+			updatedAt,
+			itemCount,
+			totalSelected,
+			isSelected,
+			onSelect,
+		}) => (
+			<button
+				type="button"
 				mix={[
 					rmxCss({
-						width: '18px',
-						height: '18px',
-						borderRadius: '50%',
-						border: `2px solid ${isSelected ? colors.error : colors.border}`,
-						backgroundColor: isSelected ? colors.error : 'transparent',
 						display: 'flex',
 						alignItems: 'center',
-						justifyContent: 'center',
-						flexShrink: 0,
+						gap: spacing.md,
+						padding: spacing.sm,
+						backgroundColor: isSelected
+							? 'rgba(239, 68, 68, 0.1)'
+							: colors.background,
+						border: `2px solid ${isSelected ? colors.error : 'transparent'}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						textAlign: 'left',
+						width: '100%',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: isSelected
+								? 'rgba(239, 68, 68, 0.15)'
+								: colors.surface,
+						},
 					}),
+					rmxOn('click', onSelect),
 				]}
 			>
-				{isSelected && (
-					<div
-						mix={[
-							rmxCss({
-								width: '8px',
-								height: '8px',
-								borderRadius: '50%',
-								backgroundColor: 'white',
-							}),
-						]}
-					/>
-				)}
-			</div>
-			<img
-				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
-				alt=""
-				mix={[
-					rmxCss({
-						width: '32px',
-						height: '32px',
-						borderRadius: radius.sm,
-						...artworkLayout.centeredContain,
-						flexShrink: 0,
-					}),
-				]}
-			/>
-			<div mix={[rmxCss({ flex: 1, minWidth: 0 })]}>
 				<div
 					mix={[
 						rmxCss({
+							width: '18px',
+							height: '18px',
+							borderRadius: '50%',
+							border: `2px solid ${isSelected ? colors.error : colors.border}`,
+							backgroundColor: isSelected ? colors.error : 'transparent',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							flexShrink: 0,
+						}),
+					]}
+				>
+					{isSelected && (
+						<div
+							mix={[
+								rmxCss({
+									width: '8px',
+									height: '8px',
+									borderRadius: '50%',
+									backgroundColor: 'white',
+								}),
+							]}
+						/>
+					)}
+				</div>
+				<img
+					src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+					alt=""
+					mix={[
+						rmxCss({
+							width: '32px',
+							height: '32px',
+							borderRadius: radius.sm,
+							...artworkLayout.centeredContain,
+							flexShrink: 0,
+						}),
+					]}
+				/>
+				<div mix={[rmxCss({ flex: 1, minWidth: 0 })]}>
+					<div
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.sm,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap',
+							}),
+						]}
+					>
+						{name}
+					</div>
+					<div
+						mix={[
+							rmxCss({
+								fontSize: typography.fontSize.xs,
+								color: colors.textMuted,
+							}),
+						]}
+					>
+						{itemCount} of {totalSelected} selected item
+						{totalSelected !== 1 ? 's' : ''}
+					</div>
+				</div>
+			</button>
+		),
+	)
+}
+
+function FeedCheckboxRow(
+	handle: Handle<{
+		feedId: string
+		name: string
+		updatedAt: number
+		isSelected: boolean
+		onToggle: () => void
+	}>,
+) {
+	return renderProps(
+		handle,
+		({ feedId, name, updatedAt, isSelected, onToggle }) => (
+			<button
+				type="button"
+				mix={[
+					rmxCss({
+						display: 'flex',
+						alignItems: 'center',
+						gap: spacing.md,
+						padding: spacing.sm,
+						backgroundColor: isSelected
+							? colors.primarySoft
+							: colors.background,
+						border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
+						borderRadius: radius.md,
+						cursor: 'pointer',
+						textAlign: 'left',
+						width: '100%',
+						transition: `all ${transitions.fast}`,
+						'&:hover': {
+							backgroundColor: isSelected
+								? colors.primarySoftStrong
+								: colors.surface,
+						},
+					}),
+					rmxOn('click', onToggle),
+				]}
+			>
+				<div
+					mix={[
+						rmxCss({
+							width: '18px',
+							height: '18px',
+							borderRadius: radius.sm,
+							border: `2px solid ${isSelected ? colors.primary : colors.border}`,
+							backgroundColor: isSelected ? colors.primary : 'transparent',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							flexShrink: 0,
+						}),
+					]}
+				>
+					{isSelected && (
+						<svg
+							width="12"
+							height="12"
+							viewBox="0 0 12 12"
+							fill="none"
+							role="img"
+							aria-label="Selected"
+							mix={[rmxCss({ flexShrink: 0 })]}
+						>
+							<path
+								d="M2 6L5 9L10 3"
+								stroke="white"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					)}
+				</div>
+				<img
+					src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
+					alt=""
+					mix={[
+						rmxCss({
+							width: '32px',
+							height: '32px',
+							borderRadius: radius.sm,
+							...artworkLayout.centeredContain,
+							flexShrink: 0,
+						}),
+					]}
+				/>
+				<span
+					mix={[
+						rmxCss({
+							flex: 1,
 							fontSize: typography.fontSize.sm,
-							fontWeight: typography.fontWeight.medium,
 							color: colors.text,
 							overflow: 'hidden',
 							textOverflow: 'ellipsis',
@@ -2390,141 +2526,14 @@ function FeedRadioRowWithCount() {
 					]}
 				>
 					{name}
-				</div>
-				<div
-					mix={[
-						rmxCss({
-							fontSize: typography.fontSize.xs,
-							color: colors.textMuted,
-						}),
-					]}
-				>
-					{itemCount} of {totalSelected} selected item
-					{totalSelected !== 1 ? 's' : ''}
-				</div>
-			</div>
-		</button>
+				</span>
+			</button>
+		),
 	)
 }
 
-function FeedCheckboxRow() {
-	return ({
-		feedId,
-		name,
-		updatedAt,
-		isSelected,
-		onToggle,
-	}: {
-		feedId: string
-		name: string
-		updatedAt: number
-		isSelected: boolean
-		onToggle: () => void
-	}) => (
-		<button
-			type="button"
-			mix={[
-				rmxCss({
-					display: 'flex',
-					alignItems: 'center',
-					gap: spacing.md,
-					padding: spacing.sm,
-					backgroundColor: isSelected ? colors.primarySoft : colors.background,
-					border: `2px solid ${isSelected ? colors.primary : 'transparent'}`,
-					borderRadius: radius.md,
-					cursor: 'pointer',
-					textAlign: 'left',
-					width: '100%',
-					transition: `all ${transitions.fast}`,
-					'&:hover': {
-						backgroundColor: isSelected
-							? colors.primarySoftStrong
-							: colors.surface,
-					},
-				}),
-				rmxOn('click', onToggle),
-			]}
-		>
-			<div
-				mix={[
-					rmxCss({
-						width: '18px',
-						height: '18px',
-						borderRadius: radius.sm,
-						border: `2px solid ${isSelected ? colors.primary : colors.border}`,
-						backgroundColor: isSelected ? colors.primary : 'transparent',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						flexShrink: 0,
-					}),
-				]}
-			>
-				{isSelected && (
-					<svg
-						width="12"
-						height="12"
-						viewBox="0 0 12 12"
-						fill="none"
-						role="img"
-						aria-label="Selected"
-						mix={[rmxCss({ flexShrink: 0 })]}
-					>
-						<path
-							d="M2 6L5 9L10 3"
-							stroke="white"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				)}
-			</div>
-			<img
-				src={`/admin/api/feeds/${feedId}/artwork?t=${updatedAt}`}
-				alt=""
-				mix={[
-					rmxCss({
-						width: '32px',
-						height: '32px',
-						borderRadius: radius.sm,
-						...artworkLayout.centeredContain,
-						flexShrink: 0,
-					}),
-				]}
-			/>
-			<span
-				mix={[
-					rmxCss({
-						flex: 1,
-						fontSize: typography.fontSize.sm,
-						color: colors.text,
-						overflow: 'hidden',
-						textOverflow: 'ellipsis',
-						whiteSpace: 'nowrap',
-					}),
-				]}
-			>
-				{name}
-			</span>
-		</button>
-	)
-}
-
-function UploadModal() {
-	return ({
-		mediaRoots,
-		selectedRoot,
-		subdirectory,
-		selectedFiles,
-		uploadState,
-		onRootChange,
-		onSubdirectoryChange,
-		onFileSelect,
-		onUpload,
-		onClose,
-		onReset,
-	}: {
+function UploadModal(
+	handle: Handle<{
 		mediaRoots: Array<MediaRoot>
 		selectedRoot: string
 		subdirectory: string
@@ -2536,477 +2545,502 @@ function UploadModal() {
 		onUpload: () => void
 		onClose: () => void
 		onReset: () => void
-	}) => {
-		const isUploading = uploadState.status === 'uploading'
-		const isSuccess = uploadState.status === 'success'
-		const isError = uploadState.status === 'error'
-		const hasFile = selectedFiles && selectedFiles.length > 0
+	}>,
+) {
+	return renderProps(
+		handle,
+		({
+			mediaRoots,
+			selectedRoot,
+			subdirectory,
+			selectedFiles,
+			uploadState,
+			onRootChange,
+			onSubdirectoryChange,
+			onFileSelect,
+			onUpload,
+			onClose,
+			onReset,
+		}) => {
+			const isUploading = uploadState.status === 'uploading'
+			const isSuccess = uploadState.status === 'success'
+			const isError = uploadState.status === 'error'
+			const hasFile = selectedFiles && selectedFiles.length > 0
 
-		return (
-			<Modal
-				title="Upload Media"
-				subtitle="Upload audio or video files to your media library"
-				size="md"
-				onClose={onClose}
-				footer={
-					<ModalFooter>
-						<ModalButton
-							variant="secondary"
-							disabled={isUploading}
-							onClick={onClose}
-						>
-							{isSuccess ? 'Close' : 'Cancel'}
-						</ModalButton>
-						{!isSuccess && (
+			return (
+				<Modal
+					title="Upload Media"
+					subtitle="Upload audio or video files to your media library"
+					size="md"
+					onClose={onClose}
+					footer={
+						<ModalFooter>
 							<ModalButton
-								variant="primary"
-								disabled={isUploading || !hasFile || !selectedRoot}
-								onClick={onUpload}
-							>
-								{isUploading ? 'Uploading...' : 'Upload'}
-							</ModalButton>
-						)}
-						{isSuccess && (
-							<ModalButton variant="primary" onClick={onReset}>
-								Upload Another
-							</ModalButton>
-						)}
-					</ModalFooter>
-				}
-			>
-				{/* Success message */}
-				{isSuccess && (
-					<div
-						mix={[
-							rmxCss({
-								padding: spacing.lg,
-								backgroundColor: 'rgba(34, 197, 94, 0.1)',
-								borderRadius: radius.md,
-								border: '1px solid rgba(34, 197, 94, 0.3)',
-								marginBottom: spacing.lg,
-							}),
-						]}
-					>
-						<div
-							mix={[
-								rmxCss({
-									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.sm,
-									marginBottom: spacing.sm,
-								}),
-							]}
-						>
-							<svg
-								width="20"
-								height="20"
-								viewBox="0 0 20 20"
-								fill="none"
-								aria-hidden="true"
-							>
-								<circle cx="10" cy="10" r="10" fill="rgba(34, 197, 94, 0.2)" />
-								<path
-									d="M6 10l3 3 5-6"
-									stroke="#22c55e"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								/>
-							</svg>
-							<span
-								mix={[
-									rmxCss({
-										color: '#22c55e',
-										fontWeight: typography.fontWeight.medium,
-										fontSize: typography.fontSize.sm,
-									}),
-								]}
-							>
-								Upload successful!
-							</span>
-						</div>
-						<p
-							mix={[
-								rmxCss({
-									margin: 0,
-									fontSize: typography.fontSize.sm,
-									color: colors.text,
-								}),
-							]}
-						>
-							<strong>{uploadState.filename}</strong> has been uploaded to{' '}
-							<code
-								mix={[
-									rmxCss({
-										padding: `${spacing.xs} ${spacing.sm}`,
-										backgroundColor: colors.background,
-										borderRadius: radius.sm,
-										fontSize: typography.fontSize.xs,
-									}),
-								]}
-							>
-								{uploadState.mediaPath}
-							</code>
-						</p>
-					</div>
-				)}
-
-				{/* Error message */}
-				{isError && (
-					<div
-						mix={[
-							rmxCss({
-								padding: spacing.lg,
-								backgroundColor: 'rgba(239, 68, 68, 0.1)',
-								borderRadius: radius.md,
-								border: '1px solid rgba(239, 68, 68, 0.3)',
-								marginBottom: spacing.lg,
-							}),
-						]}
-					>
-						<p
-							mix={[
-								rmxCss({
-									margin: 0,
-									color: '#ef4444',
-									fontSize: typography.fontSize.sm,
-								}),
-							]}
-						>
-							{uploadState.message}
-						</p>
-					</div>
-				)}
-
-				{/* File input */}
-				{!isSuccess && (
-					<ModalSection title="Select File">
-						<div
-							mix={[
-								rmxCss({
-									border: `2px dashed ${colors.border}`,
-									borderRadius: radius.md,
-									padding: spacing.xl,
-									textAlign: 'center',
-									backgroundColor: colors.background,
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										borderColor: colors.primary,
-										backgroundColor: colors.primarySoftSubtle,
-									},
-								}),
-							]}
-						>
-							<input
-								type="file"
-								accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
-								id="upload-file-input"
+								variant="secondary"
 								disabled={isUploading}
+								onClick={onClose}
+							>
+								{isSuccess ? 'Close' : 'Cancel'}
+							</ModalButton>
+							{!isSuccess && (
+								<ModalButton
+									variant="primary"
+									disabled={isUploading || !hasFile || !selectedRoot}
+									onClick={onUpload}
+								>
+									{isUploading ? 'Uploading...' : 'Upload'}
+								</ModalButton>
+							)}
+							{isSuccess && (
+								<ModalButton variant="primary" onClick={onReset}>
+									Upload Another
+								</ModalButton>
+							)}
+						</ModalFooter>
+					}
+				>
+					{/* Success message */}
+					{isSuccess && (
+						<div
+							mix={[
+								rmxCss({
+									padding: spacing.lg,
+									backgroundColor: 'rgba(34, 197, 94, 0.1)',
+									borderRadius: radius.md,
+									border: '1px solid rgba(34, 197, 94, 0.3)',
+									marginBottom: spacing.lg,
+								}),
+							]}
+						>
+							<div
 								mix={[
 									rmxCss({
-										position: 'absolute',
-										width: '1px',
-										height: '1px',
-										padding: 0,
-										margin: '-1px',
-										overflow: 'hidden',
-										clip: 'rect(0, 0, 0, 0)',
-										whiteSpace: 'nowrap',
-										border: 0,
-									}),
-									rmxOn<HTMLInputElement, 'click'>('click', (e: Event) => {
-										// Clear value before opening file dialog to allow re-selecting same file
-										const input = e.target as HTMLInputElement
-										input.value = ''
-									}),
-									rmxOn<HTMLInputElement, 'change'>('change', (e: Event) => {
-										const input = e.target as HTMLInputElement
-										onFileSelect(input.files)
-									}),
-								]}
-							/>
-							<label
-								for="upload-file-input"
-								mix={[
-									rmxCss({
-										display: 'block',
-										cursor: isUploading ? 'not-allowed' : 'pointer',
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.sm,
+										marginBottom: spacing.sm,
 									}),
 								]}
 							>
 								<svg
-									width="48"
-									height="48"
-									viewBox="0 0 48 48"
+									width="20"
+									height="20"
+									viewBox="0 0 20 20"
 									fill="none"
 									aria-hidden="true"
-									mix={[rmxCss({ margin: '0 auto', marginBottom: spacing.md })]}
 								>
-									<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
+									<circle
+										cx="10"
+										cy="10"
+										r="10"
+										fill="rgba(34, 197, 94, 0.2)"
+									/>
 									<path
-										d="M24 14v14M18 20l6-6 6 6M16 32h16"
-										stroke={colors.primary}
+										d="M6 10l3 3 5-6"
+										stroke="#22c55e"
 										stroke-width="2"
 										stroke-linecap="round"
 										stroke-linejoin="round"
 									/>
 								</svg>
-								{hasFile ? (
-									<div>
-										<p
-											mix={[
-												rmxCss({
-													margin: 0,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.text,
-												}),
-											]}
-										>
-											{selectedFiles[0]!.name}
-										</p>
-										<p
-											mix={[
-												rmxCss({
-													margin: `${spacing.xs} 0 0 0`,
-													fontSize: typography.fontSize.xs,
-													color: colors.textMuted,
-												}),
-											]}
-										>
-											{formatFileSize(selectedFiles[0]!.size)} · Click to change
-										</p>
-									</div>
-								) : (
-									<div>
-										<p
-											mix={[
-												rmxCss({
-													margin: 0,
-													fontSize: typography.fontSize.sm,
-													fontWeight: typography.fontWeight.medium,
-													color: colors.text,
-												}),
-											]}
-										>
-											Click to select a file
-										</p>
-										<p
-											mix={[
-												rmxCss({
-													margin: `${spacing.xs} 0 0 0`,
-													fontSize: typography.fontSize.xs,
-													color: colors.textMuted,
-												}),
-											]}
-										>
-											Audio or video files up to 10GB
-										</p>
-									</div>
-								)}
-							</label>
-						</div>
-					</ModalSection>
-				)}
-
-				{/* Destination */}
-				{!isSuccess && (
-					<ModalSection title="Destination">
-						{mediaRoots.length === 0 ? (
+								<span
+									mix={[
+										rmxCss({
+											color: '#22c55e',
+											fontWeight: typography.fontWeight.medium,
+											fontSize: typography.fontSize.sm,
+										}),
+									]}
+								>
+									Upload successful!
+								</span>
+							</div>
 							<p
 								mix={[
 									rmxCss({
-										fontSize: typography.fontSize.sm,
-										color: colors.textMuted,
 										margin: 0,
+										fontSize: typography.fontSize.sm,
+										color: colors.text,
 									}),
 								]}
 							>
-								No media roots configured. Add a MEDIA_PATHS environment
-								variable.
+								<strong>{uploadState.filename}</strong> has been uploaded to{' '}
+								<code
+									mix={[
+										rmxCss({
+											padding: `${spacing.xs} ${spacing.sm}`,
+											backgroundColor: colors.background,
+											borderRadius: radius.sm,
+											fontSize: typography.fontSize.xs,
+										}),
+									]}
+								>
+									{uploadState.mediaPath}
+								</code>
 							</p>
-						) : (
-							<div
-								mix={[
-									rmxCss({
-										display: 'flex',
-										flexDirection: 'column',
-										gap: spacing.md,
-									}),
-								]}
-							>
-								<div>
-									<label
-										for="upload-media-root"
-										mix={[
-											rmxCss({
-												display: 'block',
-												fontSize: typography.fontSize.xs,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.textMuted,
-												marginBottom: spacing.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-											}),
-										]}
-									>
-										Media Root
-									</label>
-									<select
-										id="upload-media-root"
-										value={selectedRoot}
-										disabled={isUploading}
-										mix={[
-											rmxCss({
-												width: '100%',
-												padding: spacing.sm,
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												backgroundColor: colors.background,
-												border: `1px solid ${colors.border}`,
-												borderRadius: radius.md,
-												cursor: isUploading ? 'not-allowed' : 'pointer',
-												'&:focus': {
-													outline: 'none',
-													borderColor: colors.primary,
-													boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-												},
-											}),
-											rmxOn<HTMLSelectElement, 'change'>(
-												'change',
-												(e: Event) => {
-													const select = e.target as HTMLSelectElement
-													onRootChange(select.value)
-												},
-											),
-										]}
-									>
-										{mediaRoots.map((root) => (
-											<option key={root.name} value={root.name}>
-												{root.name} ({root.path})
-											</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label
-										for="upload-subdirectory"
-										mix={[
-											rmxCss({
-												display: 'block',
-												fontSize: typography.fontSize.xs,
-												fontWeight: typography.fontWeight.medium,
-												color: colors.textMuted,
-												marginBottom: spacing.xs,
-												textTransform: 'uppercase',
-												letterSpacing: '0.05em',
-											}),
-										]}
-									>
-										Subdirectory (optional)
-									</label>
-									<input
-										id="upload-subdirectory"
-										type="text"
-										value={subdirectory}
-										placeholder="e.g., audiobooks/fiction"
-										disabled={isUploading}
-										mix={[
-											rmxCss({
-												width: '100%',
-												padding: spacing.sm,
-												fontSize: typography.fontSize.sm,
-												color: colors.text,
-												backgroundColor: colors.background,
-												border: `1px solid ${colors.border}`,
-												borderRadius: radius.md,
-												'&:focus': {
-													outline: 'none',
-													borderColor: colors.primary,
-													boxShadow: `0 0 0 2px ${colors.primarySoft}`,
-												},
-												'&:disabled': {
-													cursor: 'not-allowed',
-													opacity: 0.6,
-												},
-												'&::placeholder': {
-													color: colors.textMuted,
-												},
-											}),
-											rmxOn<HTMLInputElement>('input', (e: Event) => {
-												const input = e.target as HTMLInputElement
-												onSubdirectoryChange(input.value)
-											}),
-										]}
-									/>
-									<p
-										mix={[
-											rmxCss({
-												margin: `${spacing.xs} 0 0 0`,
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-											}),
-										]}
-									>
-										Folders will be created if they don't exist
-									</p>
-								</div>
-							</div>
-						)}
-					</ModalSection>
-				)}
+						</div>
+					)}
 
-				{/* Upload progress */}
-				{isUploading && (
-					<div
-						mix={[
-							rmxCss({
-								marginTop: spacing.lg,
-								padding: spacing.md,
-								backgroundColor: colors.background,
-								borderRadius: radius.md,
-							}),
-						]}
-					>
+					{/* Error message */}
+					{isError && (
 						<div
 							mix={[
 								rmxCss({
-									display: 'flex',
-									alignItems: 'center',
-									gap: spacing.sm,
-									marginBottom: spacing.sm,
+									padding: spacing.lg,
+									backgroundColor: 'rgba(239, 68, 68, 0.1)',
+									borderRadius: radius.md,
+									border: '1px solid rgba(239, 68, 68, 0.3)',
+									marginBottom: spacing.lg,
+								}),
+							]}
+						>
+							<p
+								mix={[
+									rmxCss({
+										margin: 0,
+										color: '#ef4444',
+										fontSize: typography.fontSize.sm,
+									}),
+								]}
+							>
+								{uploadState.message}
+							</p>
+						</div>
+					)}
+
+					{/* File input */}
+					{!isSuccess && (
+						<ModalSection title="Select File">
+							<div
+								mix={[
+									rmxCss({
+										border: `2px dashed ${colors.border}`,
+										borderRadius: radius.md,
+										padding: spacing.xl,
+										textAlign: 'center',
+										backgroundColor: colors.background,
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											borderColor: colors.primary,
+											backgroundColor: colors.primarySoftSubtle,
+										},
+									}),
+								]}
+							>
+								<input
+									type="file"
+									accept="audio/*,video/*,.m4b,.m4a,.mp3,.mp4,.mkv,.webm,.ogg,.flac,.wav,.aac,.avi,.mov,.flv,.opus,.wma,.aiff"
+									id="upload-file-input"
+									disabled={isUploading}
+									mix={[
+										rmxCss({
+											position: 'absolute',
+											width: '1px',
+											height: '1px',
+											padding: 0,
+											margin: '-1px',
+											overflow: 'hidden',
+											clip: 'rect(0, 0, 0, 0)',
+											whiteSpace: 'nowrap',
+											border: 0,
+										}),
+										rmxOn<HTMLInputElement, 'click'>('click', (e: Event) => {
+											// Clear value before opening file dialog to allow re-selecting same file
+											const input = e.target as HTMLInputElement
+											input.value = ''
+										}),
+										rmxOn<HTMLInputElement, 'change'>('change', (e: Event) => {
+											const input = e.target as HTMLInputElement
+											onFileSelect(input.files)
+										}),
+									]}
+								/>
+								<label
+									for="upload-file-input"
+									mix={[
+										rmxCss({
+											display: 'block',
+											cursor: isUploading ? 'not-allowed' : 'pointer',
+										}),
+									]}
+								>
+									<svg
+										width="48"
+										height="48"
+										viewBox="0 0 48 48"
+										fill="none"
+										aria-hidden="true"
+										mix={[
+											rmxCss({ margin: '0 auto', marginBottom: spacing.md }),
+										]}
+									>
+										<circle cx="24" cy="24" r="24" fill={colors.primarySoft} />
+										<path
+											d="M24 14v14M18 20l6-6 6 6M16 32h16"
+											stroke={colors.primary}
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+									{hasFile ? (
+										<div>
+											<p
+												mix={[
+													rmxCss({
+														margin: 0,
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+													}),
+												]}
+											>
+												{selectedFiles[0]!.name}
+											</p>
+											<p
+												mix={[
+													rmxCss({
+														margin: `${spacing.xs} 0 0 0`,
+														fontSize: typography.fontSize.xs,
+														color: colors.textMuted,
+													}),
+												]}
+											>
+												{formatFileSize(selectedFiles[0]!.size)} · Click to
+												change
+											</p>
+										</div>
+									) : (
+										<div>
+											<p
+												mix={[
+													rmxCss({
+														margin: 0,
+														fontSize: typography.fontSize.sm,
+														fontWeight: typography.fontWeight.medium,
+														color: colors.text,
+													}),
+												]}
+											>
+												Click to select a file
+											</p>
+											<p
+												mix={[
+													rmxCss({
+														margin: `${spacing.xs} 0 0 0`,
+														fontSize: typography.fontSize.xs,
+														color: colors.textMuted,
+													}),
+												]}
+											>
+												Audio or video files up to 10GB
+											</p>
+										</div>
+									)}
+								</label>
+							</div>
+						</ModalSection>
+					)}
+
+					{/* Destination */}
+					{!isSuccess && (
+						<ModalSection title="Destination">
+							{mediaRoots.length === 0 ? (
+								<p
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.sm,
+											color: colors.textMuted,
+											margin: 0,
+										}),
+									]}
+								>
+									No media roots configured. Add a MEDIA_PATHS environment
+									variable.
+								</p>
+							) : (
+								<div
+									mix={[
+										rmxCss({
+											display: 'flex',
+											flexDirection: 'column',
+											gap: spacing.md,
+										}),
+									]}
+								>
+									<div>
+										<label
+											for="upload-media-root"
+											mix={[
+												rmxCss({
+													display: 'block',
+													fontSize: typography.fontSize.xs,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.textMuted,
+													marginBottom: spacing.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+												}),
+											]}
+										>
+											Media Root
+										</label>
+										<select
+											id="upload-media-root"
+											value={selectedRoot}
+											disabled={isUploading}
+											mix={[
+												rmxCss({
+													width: '100%',
+													padding: spacing.sm,
+													fontSize: typography.fontSize.sm,
+													color: colors.text,
+													backgroundColor: colors.background,
+													border: `1px solid ${colors.border}`,
+													borderRadius: radius.md,
+													cursor: isUploading ? 'not-allowed' : 'pointer',
+													'&:focus': {
+														outline: 'none',
+														borderColor: colors.primary,
+														boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+													},
+												}),
+												rmxOn<HTMLSelectElement, 'change'>(
+													'change',
+													(e: Event) => {
+														const select = e.target as HTMLSelectElement
+														onRootChange(select.value)
+													},
+												),
+											]}
+										>
+											{mediaRoots.map((root) => (
+												<option key={root.name} value={root.name}>
+													{root.name} ({root.path})
+												</option>
+											))}
+										</select>
+									</div>
+									<div>
+										<label
+											for="upload-subdirectory"
+											mix={[
+												rmxCss({
+													display: 'block',
+													fontSize: typography.fontSize.xs,
+													fontWeight: typography.fontWeight.medium,
+													color: colors.textMuted,
+													marginBottom: spacing.xs,
+													textTransform: 'uppercase',
+													letterSpacing: '0.05em',
+												}),
+											]}
+										>
+											Subdirectory (optional)
+										</label>
+										<input
+											id="upload-subdirectory"
+											type="text"
+											value={subdirectory}
+											placeholder="e.g., audiobooks/fiction"
+											disabled={isUploading}
+											mix={[
+												rmxCss({
+													width: '100%',
+													padding: spacing.sm,
+													fontSize: typography.fontSize.sm,
+													color: colors.text,
+													backgroundColor: colors.background,
+													border: `1px solid ${colors.border}`,
+													borderRadius: radius.md,
+													'&:focus': {
+														outline: 'none',
+														borderColor: colors.primary,
+														boxShadow: `0 0 0 2px ${colors.primarySoft}`,
+													},
+													'&:disabled': {
+														cursor: 'not-allowed',
+														opacity: 0.6,
+													},
+													'&::placeholder': {
+														color: colors.textMuted,
+													},
+												}),
+												rmxOn<HTMLInputElement>('input', (e: Event) => {
+													const input = e.target as HTMLInputElement
+													onSubdirectoryChange(input.value)
+												}),
+											]}
+										/>
+										<p
+											mix={[
+												rmxCss({
+													margin: `${spacing.xs} 0 0 0`,
+													fontSize: typography.fontSize.xs,
+													color: colors.textMuted,
+												}),
+											]}
+										>
+											Folders will be created if they don't exist
+										</p>
+									</div>
+								</div>
+							)}
+						</ModalSection>
+					)}
+
+					{/* Upload progress */}
+					{isUploading && (
+						<div
+							mix={[
+								rmxCss({
+									marginTop: spacing.lg,
+									padding: spacing.md,
+									backgroundColor: colors.background,
+									borderRadius: radius.md,
 								}),
 							]}
 						>
 							<div
 								mix={[
 									rmxCss({
-										width: '16px',
-										height: '16px',
-										border: `2px solid ${colors.border}`,
-										borderTopColor: colors.primary,
-										borderRadius: '50%',
-										animation: 'spin 1s linear infinite',
-										'@keyframes spin': {
-											to: { transform: 'rotate(360deg)' },
-										},
-									}),
-								]}
-							/>
-							<span
-								mix={[
-									rmxCss({
-										fontSize: typography.fontSize.sm,
-										color: colors.text,
+										display: 'flex',
+										alignItems: 'center',
+										gap: spacing.sm,
+										marginBottom: spacing.sm,
 									}),
 								]}
 							>
-								Uploading {uploadState.filename}...
-							</span>
+								<div
+									mix={[
+										rmxCss({
+											width: '16px',
+											height: '16px',
+											border: `2px solid ${colors.border}`,
+											borderTopColor: colors.primary,
+											borderRadius: '50%',
+											animation: 'spin 1s linear infinite',
+											'@keyframes spin': {
+												to: { transform: 'rotate(360deg)' },
+											},
+										}),
+									]}
+								/>
+								<span
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.sm,
+											color: colors.text,
+										}),
+									]}
+								>
+									Uploading {uploadState.filename}...
+								</span>
+							</div>
 						</div>
-					</div>
-				)}
-			</Modal>
-		)
-	}
+					)}
+				</Modal>
+			)
+		},
+	)
 }

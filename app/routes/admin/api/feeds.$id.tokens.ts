@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { getCuratedFeedById } from '#app/db/curated-feeds.ts'
@@ -51,7 +51,4 @@ export default {
 
 		return Response.json({ error: 'Feed not found' }, { status: 404 })
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiFeedTokens.method,
-	typeof routes.adminApiFeedTokens.pattern
->
+} satisfies Action<typeof routes.adminApiFeedTokens>

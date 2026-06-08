@@ -1,4 +1,4 @@
-import { type BuildAction, type RequestContext } from 'remix/fetch-router'
+import { type Action, type RequestContext } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
@@ -232,7 +232,4 @@ export default {
 			return handlePost(context)
 		},
 	}),
-} satisfies BuildAction<
-	typeof routes.oauthToken.method,
-	typeof routes.oauthToken.pattern
->
+} satisfies Action<typeof routes.oauthToken>

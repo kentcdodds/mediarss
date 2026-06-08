@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
@@ -80,7 +80,4 @@ export default {
 			},
 		})
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiArtwork.method,
-	typeof routes.adminApiArtwork.pattern
->
+} satisfies Action<typeof routes.adminApiArtwork>

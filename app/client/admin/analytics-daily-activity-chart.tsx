@@ -1,4 +1,5 @@
-import { css as rmxCss } from 'remix/ui'
+import { type Handle, css as rmxCss } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'
 
 type DailyActivityPoint = {
@@ -6,8 +7,10 @@ type DailyActivityPoint = {
 	mediaRequests: number
 }
 
-export function AnalyticsDailyActivityChart() {
-	return ({ daily }: { daily: Array<DailyActivityPoint> }) => {
+export function AnalyticsDailyActivityChart(
+	handle: Handle<{ daily: Array<DailyActivityPoint> }>,
+) {
+	return renderProps(handle, ({ daily }) => {
 		const visibleDaily = daily.slice(-14)
 		const maxDailyRequests = Math.max(
 			1,
@@ -110,5 +113,5 @@ export function AnalyticsDailyActivityChart() {
 				)}
 			</div>
 		)
-	}
+	})
 }

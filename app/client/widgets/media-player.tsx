@@ -17,6 +17,7 @@ import {
 	object,
 	string,
 } from 'remix/data-schema'
+import { renderProps } from '#app/components/props-component.ts'
 import { artworkLayout } from '#app/styles/tokens.ts'
 import { waitForRenderData } from './mcp-ui.ts'
 
@@ -153,8 +154,8 @@ function isVideo(mimeType: string): boolean {
 /**
  * Metadata item display component
  */
-function MetadataItem() {
-	return ({ label, value }: { label: string; value: string }) => (
+function MetadataItem(handle: Handle<{ label: string; value: string }>) {
+	return renderProps(handle, ({ label, value }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -187,7 +188,7 @@ function MetadataItem() {
 				{value}
 			</span>
 		</div>
-	)
+	))
 }
 
 /**
@@ -228,8 +229,8 @@ function LoadingState() {
 /**
  * Error state component
  */
-function ErrorState() {
-	return ({ message }: { message: string }) => (
+function ErrorState(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -268,14 +269,14 @@ function ErrorState() {
 				{message}
 			</div>
 		</div>
-	)
+	))
 }
 
 /**
  * Media player content component
  */
-function MediaPlayerContent() {
-	return ({ media }: { media: MediaData }) => {
+function MediaPlayerContent(handle: Handle<{ media: MediaData }>) {
+	return renderProps(handle, ({ media }) => {
 		const isVideoFile = isVideo(media.mimeType)
 
 		return (
@@ -537,7 +538,7 @@ function MediaPlayerContent() {
 				</div>
 			</div>
 		)
-	}
+	})
 }
 
 /**

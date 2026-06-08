@@ -1,4 +1,4 @@
-import { type BuildAction, type RequestContext } from 'remix/fetch-router'
+import { type Action, type RequestContext } from 'remix/router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
@@ -307,7 +307,4 @@ export default {
 		}
 		return handleGet(context)
 	},
-} satisfies BuildAction<
-	typeof routes.adminAuthorize.method,
-	typeof routes.adminAuthorize.pattern
->
+} satisfies Action<typeof routes.adminAuthorize>

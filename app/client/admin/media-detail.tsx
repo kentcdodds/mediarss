@@ -1,4 +1,5 @@
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	formatDate,
 	formatDuration,
@@ -1844,8 +1845,8 @@ function LoadingSpinner() {
 	)
 }
 
-function ErrorMessage() {
-	return ({ message }: { message: string }) => (
+function ErrorMessage(handle: Handle<{ message: string }>) {
+	return renderProps(handle, ({ message }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -1882,11 +1883,11 @@ function ErrorMessage() {
 				← Back to media library
 			</a>
 		</div>
-	)
+	))
 }
 
-function MetadataItem() {
-	return ({ label, value }: { label: string; value: string }) => (
+function MetadataItem(handle: Handle<{ label: string; value: string }>) {
+	return renderProps(handle, ({ label, value }) => (
 		<div>
 			<dt
 				mix={[
@@ -1913,15 +1914,15 @@ function MetadataItem() {
 				{value}
 			</dd>
 		</div>
-	)
+	))
 }
 
-function MediaAnalyticsSection() {
-	return ({
-		analyticsState,
-	}: {
+function MediaAnalyticsSection(
+	handle: Handle<{
 		analyticsState: MediaAnalyticsLoadingState
-	}) => {
+	}>,
+) {
+	return renderProps(handle, ({ analyticsState }) => {
 		if (analyticsState.status === 'loading') {
 			return (
 				<p
@@ -2176,21 +2177,18 @@ function MediaAnalyticsSection() {
 				<AnalyticsDailyActivityChart daily={daily} />
 			</div>
 		)
-	}
+	})
 }
 
-function MetadataField() {
-	return ({
-		label,
-		value,
-		type = 'text',
-		onChange,
-	}: {
+function MetadataField(
+	handle: Handle<{
 		label: string
 		value: string
 		type?: 'text' | 'number' | 'date'
 		onChange: (value: string) => void
-	}) => {
+	}>,
+) {
+	return renderProps(handle, ({ label, value, type = 'text', onChange }) => {
 		const inputStyles = {
 			width: '100%',
 			padding: spacing.sm,
@@ -2220,7 +2218,16 @@ function MetadataField() {
 				<div>
 					<label mix={[rmxCss({ display: 'block' })]}>
 						<span mix={[rmxCss(labelStyles)]}>{label}</span>
-						<input type="number" value={value} mix={[rmxCss(inputStyles)]} />
+						<input
+							type="number"
+							value={value}
+							mix={[
+								rmxCss(inputStyles),
+								rmxOn<HTMLInputElement, 'input'>('input', (e: Event) =>
+									onChange((e.target as HTMLInputElement).value),
+								),
+							]}
+						/>
 					</label>
 				</div>
 			)
@@ -2254,24 +2261,27 @@ function MetadataField() {
 						type="text"
 						value={value}
 						list={undefined}
-						mix={[rmxCss(inputStyles)]}
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn<HTMLInputElement, 'input'>('input', (e: Event) =>
+								onChange((e.target as HTMLInputElement).value),
+							),
+						]}
 					/>
 				</label>
 			</div>
 		)
-	}
+	})
 }
 
-function MetadataTextArea() {
-	return ({
-		label,
-		value,
-		onChange,
-	}: {
+function MetadataTextArea(
+	handle: Handle<{
 		label: string
 		value: string
 		onChange: (value: string) => void
-	}) => (
+	}>,
+) {
+	return renderProps(handle, ({ label, value, onChange }) => (
 		<div>
 			<label
 				mix={[
@@ -2321,5 +2331,5 @@ function MetadataTextArea() {
 				/>
 			</label>
 		</div>
-	)
+	))
 }

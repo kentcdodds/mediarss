@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { resolveMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listMediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
@@ -96,7 +96,4 @@ export default {
 
 		return Response.json({ items })
 	},
-} satisfies BuildAction<
-	typeof routes.adminApiMedia.method,
-	typeof routes.adminApiMedia.pattern
->
+} satisfies Action<typeof routes.adminApiMedia>

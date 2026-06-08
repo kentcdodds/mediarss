@@ -5,6 +5,7 @@ import {
 	on as rmxOn,
 	ref as rmxRef,
 } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	artworkLayout,
 	colors,
@@ -80,6 +81,15 @@ const sizeMap: Record<ModalSize, string> = {
 	xl: '800px',
 }
 
+function getModalIdBase(title: string) {
+	const slug = title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+
+	return slug || 'modal'
+}
+
 /**
  * A reusable, accessible modal component.
  *
@@ -113,57 +123,14 @@ const sizeMap: Record<ModalSize, string> = {
  * )}
  * ```
  */
-export function Modal(_handle: Handle) {
+export function Modal(handle: Handle<ModalProps>) {
 	// Store reference to the modal container for focus management
 	let modalRef: HTMLElement | null = null
 	let previouslyFocusedElement: Element | null = null
 
-	// Generate unique IDs for accessibility
-	const titleId = `modal-title-${Math.random().toString(36).slice(2, 9)}`
-	const subtitleId = `modal-subtitle-${Math.random().toString(36).slice(2, 9)}`
-
-	return (renderProps: ModalProps) => {
-		// Focus trap: keep focus within the modal
-		// Defined inside render function to always use the latest onClose callback
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				e.preventDefault()
-				renderProps.onClose()
-				return
-			}
-
-			if (e.key === 'Tab' && modalRef) {
-				const focusableElements = modalRef.querySelectorAll<HTMLElement>(
-					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-				)
-				const firstElement = focusableElements[0]
-				const lastElement = focusableElements[focusableElements.length - 1]
-
-				if (!firstElement || !lastElement) return
-
-				if (e.shiftKey) {
-					// Shift+Tab: if focus is on first element, wrap to last
-					if (document.activeElement === firstElement) {
-						e.preventDefault()
-						lastElement.focus()
-					}
-				} else {
-					// Tab: if focus is on last element, wrap to first
-					if (document.activeElement === lastElement) {
-						e.preventDefault()
-						firstElement.focus()
-					}
-				}
-			}
-		}
-
-		// Handle backdrop click
-		const handleBackdropClick = (e: MouseEvent) => {
-			if (e.target === e.currentTarget) {
-				renderProps.onClose()
-			}
-		}
-		const {
+	return renderProps(
+		handle,
+		({
 			title,
 			subtitle,
 			description,
@@ -173,267 +140,319 @@ export function Modal(_handle: Handle) {
 			showHeaderBorder = true,
 			children,
 			footer,
-		} = renderProps
+		}) => {
+			// Focus trap: keep focus within the modal
+			// Defined inside render function to always use the latest onClose callback
+			const handleKeyDown = (e: KeyboardEvent) => {
+				if (e.key === 'Escape') {
+					e.preventDefault()
+					onClose()
+					return
+				}
 
-		const maxWidth = sizeMap[size]
-		const describedBy = subtitle ? subtitleId : undefined
+				if (e.key === 'Tab' && modalRef) {
+					const focusableElements = modalRef.querySelectorAll<HTMLElement>(
+						'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+					)
+					const firstElement = focusableElements[0]
+					const lastElement = focusableElements[focusableElements.length - 1]
 
-		return (
-			<div
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby={titleId}
-				aria-describedby={describedBy}
-				tabIndex={-1}
-				mix={[
-					rmxCss({
-						position: 'fixed',
-						top: 0,
-						left: 0,
-						right: 0,
-						bottom: 0,
-						backgroundColor: 'rgba(0, 0, 0, 0.5)',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						zIndex: 1000,
-						padding: spacing.lg,
-						outline: 'none',
-						[mq.mobile]: {
-							padding: 0,
-						},
-					}),
-					rmxOn<HTMLDivElement, 'click'>('click', handleBackdropClick),
-					rmxOn<HTMLDivElement, 'keydown'>('keydown', handleKeyDown),
-					rmxRef((node: HTMLDivElement, signal) => {
-						modalRef = node
+					if (!firstElement || !lastElement) return
 
-						// Store currently focused element to restore later
-						previouslyFocusedElement = document.activeElement
-
-						// Focus the close button (or first focusable element)
-						const closeButton =
-							node.querySelector<HTMLElement>('[data-modal-close]')
-						if (closeButton) {
-							// Use requestAnimationFrame to ensure DOM is ready
-							requestAnimationFrame(() => {
-								closeButton.focus()
-							})
+					if (e.shiftKey) {
+						// Shift+Tab: if focus is on first element, wrap to last
+						if (document.activeElement === firstElement) {
+							e.preventDefault()
+							lastElement.focus()
 						}
+					} else {
+						// Tab: if focus is on last element, wrap to first
+						if (document.activeElement === lastElement) {
+							e.preventDefault()
+							firstElement.focus()
+						}
+					}
+				}
+			}
 
-						// Prevent body scroll while modal is open
-						const originalOverflow = document.body.style.overflow
-						document.body.style.overflow = 'hidden'
+			// Handle backdrop click
+			const handleBackdropClick = (e: MouseEvent) => {
+				if (e.target === e.currentTarget) {
+					onClose()
+				}
+			}
 
-						// Cleanup on unmount
-						signal.addEventListener('abort', () => {
-							document.body.style.overflow = originalOverflow
-							// Restore focus to previously focused element
-							if (
-								previouslyFocusedElement instanceof HTMLElement &&
-								previouslyFocusedElement.focus
-							) {
-								previouslyFocusedElement.focus()
-							}
-						})
-					}),
-				]}
-			>
+			const maxWidth = sizeMap[size]
+			const idBase = getModalIdBase(title)
+			const titleId = `modal-title-${idBase}`
+			const subtitleId = `modal-subtitle-${idBase}`
+			const descriptionId = `modal-description-${idBase}`
+			const describedBy =
+				[
+					subtitle ? subtitleId : undefined,
+					description ? descriptionId : undefined,
+				]
+					.filter((id) => id !== undefined)
+					.join(' ') || undefined
+
+			return (
 				<div
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby={titleId}
+					aria-describedby={describedBy}
+					tabIndex={-1}
 					mix={[
 						rmxCss({
-							position: 'relative',
-							backgroundColor: colors.surface,
-							borderRadius: radius.lg,
-							border: `1px solid ${colors.border}`,
-							maxWidth,
-							width: '100%',
-							minHeight: '400px',
-							maxHeight: '85vh',
+							position: 'fixed',
+							top: 0,
+							left: 0,
+							right: 0,
+							bottom: 0,
+							backgroundColor: 'rgba(0, 0, 0, 0.5)',
 							display: 'flex',
-							flexDirection: 'column',
-							boxShadow: shadows.lg,
+							alignItems: 'center',
+							justifyContent: 'center',
+							zIndex: 1000,
+							padding: spacing.lg,
+							outline: 'none',
 							[mq.mobile]: {
-								maxWidth: 'none',
-								minHeight: 'none',
-								maxHeight: 'none',
-								height: '100%',
-								borderRadius: 0,
-								border: 'none',
+								padding: 0,
 							},
+						}),
+						rmxOn<HTMLDivElement, 'click'>('click', handleBackdropClick),
+						rmxOn<HTMLDivElement, 'keydown'>('keydown', handleKeyDown),
+						rmxRef((node: HTMLDivElement, signal) => {
+							modalRef = node
+
+							// Store currently focused element to restore later
+							previouslyFocusedElement = document.activeElement
+
+							// Focus the close button (or first focusable element)
+							const closeButton =
+								node.querySelector<HTMLElement>('[data-modal-close]')
+							if (closeButton) {
+								// Use requestAnimationFrame to ensure DOM is ready
+								requestAnimationFrame(() => {
+									closeButton.focus()
+								})
+							}
+
+							// Prevent body scroll while modal is open
+							const originalOverflow = document.body.style.overflow
+							document.body.style.overflow = 'hidden'
+
+							// Cleanup on unmount
+							signal.addEventListener('abort', () => {
+								document.body.style.overflow = originalOverflow
+								// Restore focus to previously focused element
+								if (
+									previouslyFocusedElement instanceof HTMLElement &&
+									previouslyFocusedElement.focus
+								) {
+									previouslyFocusedElement.focus()
+								}
+							})
 						}),
 					]}
 				>
-					{/* Header */}
 					<div
 						mix={[
 							rmxCss({
-								padding: spacing.lg,
-								paddingBottom: showHeaderBorder ? spacing.md : spacing.sm,
-								borderBottom: showHeaderBorder
-									? `1px solid ${colors.border}`
-									: 'none',
-								flexShrink: 0,
+								position: 'relative',
+								backgroundColor: colors.surface,
+								borderRadius: radius.lg,
+								border: `1px solid ${colors.border}`,
+								maxWidth,
+								width: '100%',
+								minHeight: '400px',
+								maxHeight: '85vh',
 								display: 'flex',
-								gap: spacing.md,
+								flexDirection: 'column',
+								boxShadow: shadows.lg,
+								[mq.mobile]: {
+									maxWidth: 'none',
+									minHeight: 'none',
+									maxHeight: 'none',
+									height: '100%',
+									borderRadius: 0,
+									border: 'none',
+								},
 							}),
 						]}
 					>
-						{/* Close button */}
-						<button
-							type="button"
-							data-modal-close
-							aria-label="Close modal"
-							mix={[
-								rmxCss({
-									position: 'absolute',
-									top: spacing.sm,
-									right: spacing.sm,
-									width: '32px',
-									height: '32px',
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									backgroundColor: colors.background,
-									border: `1px solid ${colors.border}`,
-									borderRadius: radius.md,
-									cursor: 'pointer',
-									color: colors.textMuted,
-									fontSize: typography.fontSize.lg,
-									transition: `all ${transitions.fast}`,
-									'&:hover': {
-										backgroundColor: colors.surface,
-										color: colors.text,
-									},
-									'&:focus': {
-										outline: `2px solid ${colors.primary}`,
-										outlineOffset: '2px',
-									},
-								}),
-								rmxOn('click', onClose),
-							]}
-						>
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 14 14"
-								fill="none"
-								xmlns="http://www.w3.org/2000/svg"
-								aria-hidden="true"
-							>
-								<path
-									d="M1 1L13 13M13 1L1 13"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-								/>
-							</svg>
-						</button>
-
-						{headerImage && (
-							<img
-								src={headerImage}
-								alt=""
-								mix={[
-									rmxCss({
-										width: '48px',
-										height: '48px',
-										borderRadius: radius.md,
-										...artworkLayout.centeredContain,
-										backgroundColor: colors.background,
-										flexShrink: 0,
-									}),
-								]}
-							/>
-						)}
-
-						<div mix={[rmxCss({ minWidth: 0, flex: 1 })]}>
-							<h2
-								id={titleId}
-								mix={[
-									rmxCss({
-										fontSize: typography.fontSize.base,
-										fontWeight: typography.fontWeight.semibold,
-										color: colors.text,
-										margin: 0,
-										paddingRight: spacing.xl,
-										whiteSpace: 'nowrap',
-										overflow: 'hidden',
-										textOverflow: 'ellipsis',
-									}),
-								]}
-							>
-								{title}
-							</h2>
-
-							{subtitle && (
-								<p
-									id={subtitleId}
-									mix={[
-										rmxCss({
-											fontSize: typography.fontSize.sm,
-											color: colors.textMuted,
-											margin: `2px 0 0 0`,
-											paddingRight: spacing.xl,
-										}),
-									]}
-								>
-									{subtitle}
-								</p>
-							)}
-
-							{description && (
-								<p
-									mix={[
-										rmxCss({
-											fontSize: typography.fontSize.xs,
-											color: colors.textMuted,
-											margin: `4px 0 0 0`,
-											paddingRight: spacing.xl,
-										}),
-									]}
-								>
-									{description}
-								</p>
-							)}
-						</div>
-					</div>
-
-					{/* Body */}
-					<div
-						mix={[
-							rmxCss({
-								flex: 1,
-								minHeight: '250px',
-								overflowY: 'auto',
-								padding: spacing.lg,
-								paddingTop: showHeaderBorder ? spacing.md : spacing.sm,
-								paddingBottom: footer ? spacing.sm : spacing.lg,
-							}),
-						]}
-					>
-						{children}
-					</div>
-
-					{/* Footer */}
-					{footer && (
+						{/* Header */}
 						<div
 							mix={[
 								rmxCss({
-									padding: spacing.md,
-									paddingTop: spacing.sm,
-									borderTop: `1px solid ${colors.border}`,
+									padding: spacing.lg,
+									paddingBottom: showHeaderBorder ? spacing.md : spacing.sm,
+									borderBottom: showHeaderBorder
+										? `1px solid ${colors.border}`
+										: 'none',
 									flexShrink: 0,
+									display: 'flex',
+									gap: spacing.md,
 								}),
 							]}
 						>
-							{footer}
+							{/* Close button */}
+							<button
+								type="button"
+								data-modal-close
+								aria-label="Close modal"
+								mix={[
+									rmxCss({
+										position: 'absolute',
+										top: spacing.sm,
+										right: spacing.sm,
+										width: '32px',
+										height: '32px',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										backgroundColor: colors.background,
+										border: `1px solid ${colors.border}`,
+										borderRadius: radius.md,
+										cursor: 'pointer',
+										color: colors.textMuted,
+										fontSize: typography.fontSize.lg,
+										transition: `all ${transitions.fast}`,
+										'&:hover': {
+											backgroundColor: colors.surface,
+											color: colors.text,
+										},
+										'&:focus': {
+											outline: `2px solid ${colors.primary}`,
+											outlineOffset: '2px',
+										},
+									}),
+									rmxOn('click', onClose),
+								]}
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+									aria-hidden="true"
+								>
+									<path
+										d="M1 1L13 13M13 1L1 13"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</button>
+
+							{headerImage && (
+								<img
+									src={headerImage}
+									alt=""
+									mix={[
+										rmxCss({
+											width: '48px',
+											height: '48px',
+											borderRadius: radius.md,
+											...artworkLayout.centeredContain,
+											backgroundColor: colors.background,
+											flexShrink: 0,
+										}),
+									]}
+								/>
+							)}
+
+							<div mix={[rmxCss({ minWidth: 0, flex: 1 })]}>
+								<h2
+									id={titleId}
+									mix={[
+										rmxCss({
+											fontSize: typography.fontSize.base,
+											fontWeight: typography.fontWeight.semibold,
+											color: colors.text,
+											margin: 0,
+											paddingRight: spacing.xl,
+											whiteSpace: 'nowrap',
+											overflow: 'hidden',
+											textOverflow: 'ellipsis',
+										}),
+									]}
+								>
+									{title}
+								</h2>
+
+								{subtitle && (
+									<p
+										id={subtitleId}
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.sm,
+												color: colors.textMuted,
+												margin: `2px 0 0 0`,
+												paddingRight: spacing.xl,
+											}),
+										]}
+									>
+										{subtitle}
+									</p>
+								)}
+
+								{description && (
+									<p
+										id={descriptionId}
+										mix={[
+											rmxCss({
+												fontSize: typography.fontSize.xs,
+												color: colors.textMuted,
+												margin: `4px 0 0 0`,
+												paddingRight: spacing.xl,
+											}),
+										]}
+									>
+										{description}
+									</p>
+								)}
+							</div>
 						</div>
-					)}
+
+						{/* Body */}
+						<div
+							mix={[
+								rmxCss({
+									flex: 1,
+									minHeight: '250px',
+									overflowY: 'auto',
+									padding: spacing.lg,
+									paddingTop: showHeaderBorder ? spacing.md : spacing.sm,
+									paddingBottom: footer ? spacing.sm : spacing.lg,
+								}),
+							]}
+						>
+							{children}
+						</div>
+
+						{/* Footer */}
+						{footer && (
+							<div
+								mix={[
+									rmxCss({
+										padding: spacing.md,
+										paddingTop: spacing.sm,
+										borderTop: `1px solid ${colors.border}`,
+										flexShrink: 0,
+									}),
+								]}
+							>
+								{footer}
+							</div>
+						)}
+					</div>
 				</div>
-			</div>
-		)
-	}
+			)
+		},
+	)
 }
 
 // ============================================================================
@@ -456,8 +475,8 @@ type ModalFooterProps = {
 /**
  * Container for modal footer actions with proper spacing and alignment.
  */
-export function ModalFooter() {
-	return ({ align = 'right', children }: ModalFooterProps) => {
+export function ModalFooter(handle: Handle<ModalFooterProps>) {
+	return renderProps(handle, ({ align = 'right', children }) => {
 		const justifyMap = {
 			left: 'flex-start',
 			center: 'center',
@@ -479,7 +498,7 @@ export function ModalFooter() {
 				{children}
 			</div>
 		)
-	}
+	})
 }
 
 type ModalButtonVariant = 'primary' | 'secondary' | 'danger'
@@ -513,59 +532,60 @@ type ModalButtonProps = {
 /**
  * A styled button for use within modal footers.
  */
-export function ModalButton() {
-	return ({
-		variant = 'secondary',
-		disabled = false,
-		onClick,
-		children,
-	}: ModalButtonProps) => {
-		const baseStyles = {
-			padding: `${spacing.sm} ${spacing.lg}`,
-			fontSize: typography.fontSize.sm,
-			fontWeight: typography.fontWeight.medium,
-			borderRadius: radius.md,
-			cursor: disabled ? 'not-allowed' : 'pointer',
-			transition: `all ${transitions.fast}`,
-			border: 'none',
-			'&:focus': {
-				outline: `2px solid ${colors.primary}`,
-				outlineOffset: '2px',
-			},
-		}
+export function ModalButton(handle: Handle<ModalButtonProps>) {
+	return renderProps(
+		handle,
+		({ variant = 'secondary', disabled = false, onClick, children }) => {
+			const baseStyles = {
+				padding: `${spacing.sm} ${spacing.lg}`,
+				fontSize: typography.fontSize.sm,
+				fontWeight: typography.fontWeight.medium,
+				borderRadius: radius.md,
+				cursor: disabled ? 'not-allowed' : 'pointer',
+				transition: `all ${transitions.fast}`,
+				border: 'none',
+				'&:focus': {
+					outline: `2px solid ${colors.primary}`,
+					outlineOffset: '2px',
+				},
+			}
 
-		const variantStyles: Record<ModalButtonVariant, Record<string, unknown>> = {
-			primary: {
-				color: colors.background,
-				backgroundColor: disabled ? colors.border : colors.primary,
-				'&:hover': disabled ? {} : { backgroundColor: colors.primaryHover },
-			},
-			secondary: {
-				color: colors.text,
-				backgroundColor: 'transparent',
-				border: `1px solid ${colors.border}`,
-				'&:hover': disabled ? {} : { backgroundColor: colors.background },
-			},
-			danger: {
-				color: '#fff',
-				backgroundColor: disabled ? colors.border : colors.error,
-				'&:hover': disabled ? {} : { backgroundColor: colors.errorHover },
-			},
-		}
+			const variantStyles: Record<
+				ModalButtonVariant,
+				Record<string, unknown>
+			> = {
+				primary: {
+					color: colors.background,
+					backgroundColor: disabled ? colors.border : colors.primary,
+					'&:hover': disabled ? {} : { backgroundColor: colors.primaryHover },
+				},
+				secondary: {
+					color: colors.text,
+					backgroundColor: 'transparent',
+					border: `1px solid ${colors.border}`,
+					'&:hover': disabled ? {} : { backgroundColor: colors.background },
+				},
+				danger: {
+					color: '#fff',
+					backgroundColor: disabled ? colors.border : colors.error,
+					'&:hover': disabled ? {} : { backgroundColor: colors.errorHover },
+				},
+			}
 
-		return (
-			<button
-				type="button"
-				disabled={disabled}
-				mix={[
-					rmxCss({ ...baseStyles, ...variantStyles[variant] }),
-					rmxOn('click', onClick),
-				]}
-			>
-				{children}
-			</button>
-		)
-	}
+			return (
+				<button
+					type="button"
+					disabled={disabled}
+					mix={[
+						rmxCss({ ...baseStyles, ...variantStyles[variant] }),
+						rmxOn('click', onClick),
+					]}
+				>
+					{children}
+				</button>
+			)
+		},
+	)
 }
 
 // ============================================================================
@@ -590,8 +610,8 @@ type ModalAlertProps = {
 /**
  * A styled alert box for displaying warnings, errors, or info within modals.
  */
-export function ModalAlert() {
-	return ({ type, children }: ModalAlertProps) => {
+export function ModalAlert(handle: Handle<ModalAlertProps>) {
+	return renderProps(handle, ({ type, children }) => {
 		const colorMap = {
 			warning: {
 				bg: 'rgba(245, 158, 11, 0.1)',
@@ -635,7 +655,7 @@ export function ModalAlert() {
 				</div>
 			</div>
 		)
-	}
+	})
 }
 
 /**
@@ -670,8 +690,8 @@ type ModalSectionProps = {
 /**
  * A section within modal content, optionally with a title.
  */
-export function ModalSection() {
-	return ({ title, children }: ModalSectionProps) => (
+export function ModalSection(handle: Handle<ModalSectionProps>) {
+	return renderProps(handle, ({ title, children }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -698,7 +718,7 @@ export function ModalSection() {
 			)}
 			{children}
 		</div>
-	)
+	))
 }
 
 type ModalListProps = {
@@ -717,8 +737,8 @@ type ModalListProps = {
 /**
  * A scrollable list container for modal content.
  */
-export function ModalList() {
-	return ({ children, maxHeight = '60vh' }: ModalListProps) => (
+export function ModalList(handle: Handle<ModalListProps>) {
+	return renderProps(handle, ({ children, maxHeight = '60vh' }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -732,5 +752,5 @@ export function ModalList() {
 		>
 			{children}
 		</div>
-	)
+	))
 }

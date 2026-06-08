@@ -1,4 +1,5 @@
 import { type Handle, type RemixNode, css as rmxCss } from 'remix/ui'
+import { renderProps } from '#app/components/props-component.ts'
 import {
 	formatDate,
 	formatRelativeTime,
@@ -250,8 +251,8 @@ export function VersionPage(handle: Handle) {
 	}
 }
 
-function InfoCard() {
-	return ({ title, children }: { title: string; children: RemixNode }) => (
+function InfoCard(handle: Handle<{ title: string; children: RemixNode }>) {
+	return renderProps(handle, ({ title, children }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -299,11 +300,11 @@ function InfoCard() {
 				{children}
 			</div>
 		</div>
-	)
+	))
 }
 
-function InfoRow() {
-	return ({ label, value }: { label: string; value: RemixNode }) => (
+function InfoRow(handle: Handle<{ label: string; value: RemixNode }>) {
+	return renderProps(handle, ({ label, value }) => (
 		<div
 			mix={[
 				rmxCss({
@@ -341,5 +342,5 @@ function InfoRow() {
 				{value}
 			</span>
 		</div>
-	)
+	))
 }

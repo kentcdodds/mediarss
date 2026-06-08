@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { db } from '#app/db/index.ts'
 
@@ -28,7 +28,4 @@ export default {
 			)
 		}
 	},
-} satisfies BuildAction<
-	typeof routes.adminHealth.method,
-	typeof routes.adminHealth.pattern
->
+} satisfies Action<typeof routes.adminHealth>

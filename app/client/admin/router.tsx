@@ -1,4 +1,9 @@
-import { addEventListeners, type Handle, TypedEventTarget } from 'remix/ui'
+import {
+	addEventListeners,
+	type Handle,
+	type RemixNode,
+	TypedEventTarget,
+} from 'remix/ui'
 import {
 	getRelativeHref,
 	isRouterOwnedPath,
@@ -16,10 +21,7 @@ type RouteMatch = {
 	params: Record<string, string>
 }
 
-type RouteComponent = (
-	handle: Handle,
-	setup?: unknown,
-) => (props: { params: Record<string, string> }) => JSX.Element
+type RouteComponent = (handle: Handle<any>) => () => RemixNode
 
 type Route = {
 	pattern: RegExp

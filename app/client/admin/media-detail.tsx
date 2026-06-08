@@ -2218,7 +2218,16 @@ function MetadataField(
 				<div>
 					<label mix={[rmxCss({ display: 'block' })]}>
 						<span mix={[rmxCss(labelStyles)]}>{label}</span>
-						<input type="number" value={value} mix={[rmxCss(inputStyles)]} />
+						<input
+							type="number"
+							value={value}
+							mix={[
+								rmxCss(inputStyles),
+								rmxOn<HTMLInputElement, 'input'>('input', (e: Event) =>
+									onChange((e.target as HTMLInputElement).value),
+								),
+							]}
+						/>
 					</label>
 				</div>
 			)
@@ -2252,7 +2261,12 @@ function MetadataField(
 						type="text"
 						value={value}
 						list={undefined}
-						mix={[rmxCss(inputStyles)]}
+						mix={[
+							rmxCss(inputStyles),
+							rmxOn<HTMLInputElement, 'input'>('input', (e: Event) =>
+								onChange((e.target as HTMLInputElement).value),
+							),
+						]}
 					/>
 				</label>
 			</div>

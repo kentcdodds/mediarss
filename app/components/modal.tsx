@@ -122,6 +122,7 @@ export function Modal(handle: Handle<ModalProps>) {
 	// Generate unique IDs for accessibility
 	const titleId = `modal-title-${Math.random().toString(36).slice(2, 9)}`
 	const subtitleId = `modal-subtitle-${Math.random().toString(36).slice(2, 9)}`
+	const descriptionId = `modal-description-${Math.random().toString(36).slice(2, 9)}`
 
 	return renderProps(
 		handle,
@@ -178,7 +179,13 @@ export function Modal(handle: Handle<ModalProps>) {
 			}
 
 			const maxWidth = sizeMap[size]
-			const describedBy = subtitle ? subtitleId : undefined
+			const describedBy =
+				[
+					subtitle ? subtitleId : undefined,
+					description ? descriptionId : undefined,
+				]
+					.filter((id) => id !== undefined)
+					.join(' ') || undefined
 
 			return (
 				<div
@@ -386,6 +393,7 @@ export function Modal(handle: Handle<ModalProps>) {
 
 								{description && (
 									<p
+										id={descriptionId}
 										mix={[
 											rmxCss({
 												fontSize: typography.fontSize.xs,

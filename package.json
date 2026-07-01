@@ -50,7 +50,7 @@
     "match-sorter": "^8.3.0",
     "music-metadata": "^11.12.3",
     "p-limit": "^7.3.0",
-    "remix": "3.0.0-beta.4",
+    "remix": "3.0.0-beta.5",
     "sharp": "^0.34.5",
     "zod": "^4.4.1"
   }

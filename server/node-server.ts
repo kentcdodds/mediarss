@@ -1,9 +1,8 @@
 import http from 'node:http'
 import { type AddressInfo } from 'node:net'
 import {
-	createRequest,
+	createRequestListener,
 	type FetchHandler,
-	sendResponse,
 } from 'remix/node-fetch-server'
 
 export type AppServer = {
@@ -24,26 +23,17 @@ export async function startNodeServer({
 	hostname?: string
 	handler: FetchHandler
 }): Promise<AppServer> {
-	const server = http.createServer(async (req, res) => {
-		try {
-			const request = createRequest(req, res)
-			const client = {
-				address: req.socket.remoteAddress ?? '127.0.0.1',
-				family: (req.socket.remoteFamily as 'IPv4' | 'IPv6') ?? 'IPv4',
-				port: req.socket.remotePort ?? 0,
-			}
-			const response = await handler(request, client)
-			await sendResponse(res, response)
-		} catch (error) {
-			console.error(error)
-			if (!res.headersSent) {
-				res.statusCode = 500
-				res.end('Internal Server Error')
-			} else {
-				res.destroy()
-			}
-		}
-	})
+	const server = http.createServer(
+		createRequestListener(handler, {
+			// This app generates public URLs behind reverse proxies, so let Remix
+			// normalize request.url from trusted Forwarded/X-Forwarded-* headers.
+			trustProxy: true,
+			onError(error) {
+				console.error(error)
+				return new Response('Internal Server Error', { status: 500 })
+			},
+		}),
+	)
 
 	await new Promise<void>((resolve, reject) => {
 		server.once('error', reject)

@@ -118,3 +118,40 @@ test('root redirect preserves incoming host on the node server', async () => {
 	expect(response.statusCode).toBe(302)
 	expect(response.location).toBe('http://mediarss.doddsfamily.us/admin')
 })
+
+test('node server request URL reflects trusted proxy headers', async () => {
+	await using server = await startNodeServer({
+		port: 0,
+		async handler(request) {
+			return new Response(request.url)
+		},
+	})
+
+	const body = await new Promise<string>((resolve, reject) => {
+		const request = http.request(
+			{
+				hostname: '127.0.0.1',
+				port: server.port,
+				path: '/mcp?hello=world',
+				method: 'GET',
+				headers: {
+					Host: 'internal-service:22050',
+					'X-Forwarded-Proto': 'https',
+					'X-Forwarded-Host': 'mediarss.doddsfamily.us',
+				},
+			},
+			(response) => {
+				const chunks: Buffer[] = []
+				response.on('data', (chunk: Buffer) => chunks.push(chunk))
+				response.on('end', () => {
+					resolve(Buffer.concat(chunks).toString('utf8'))
+				})
+			},
+		)
+
+		request.on('error', reject)
+		request.end()
+	})
+
+	expect(body).toBe('https://mediarss.doddsfamily.us/mcp?hello=world')
+})

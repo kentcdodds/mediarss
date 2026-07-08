@@ -115,21 +115,7 @@ export class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Match the current path against registered routes.
 	 */
 	match(): { route: Route; match: RouteMatch } | null {
-		for (const route of this.#routes) {
-			const result = route.pattern.exec(this.#currentPath)
-			if (result) {
-				const params: Record<string, string> = {}
-				route.paramNames.forEach((name, index) => {
-					const value = result[index + 1]
-					if (value !== undefined) params[name] = value
-				})
-				return {
-					route,
-					match: { path: this.#currentPath, params },
-				}
-			}
-		}
-		return null
+		return this.#matchPath(this.#currentPath)
 	}
 
 	get loaderData() {

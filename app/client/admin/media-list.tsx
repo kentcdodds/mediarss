@@ -196,6 +196,7 @@ export function MediaList(
 	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
 ) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 	const initialParams = getInitialSearchParams(handle.props.url)
 	let searchQuery = (initialParams.get('q') ?? '').trim()
 	let selectedDirectory =
@@ -669,11 +670,25 @@ export function MediaList(
 		handle.queueTask(fetchData)
 	}
 
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'media-list') {
+			const data = loaderData.data as {
+				media: MediaResponse
+				assignments: AssignmentsResponse
+			}
+			state = createSuccessState(data.media, data.assignments)
+		}
+	}
+
 	const getArtworkUrl = (item: MediaItem) => {
 		return `/admin/api/artwork/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
 	}
 
 	return () => {
+		applyCurrentLoaderData()
 		if (isBrowser()) syncStateFromUrl()
 
 		if (state.status === 'loading') {

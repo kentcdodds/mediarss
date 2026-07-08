@@ -89,6 +89,7 @@ export function FeedList(
 	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
 ) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 	const initialParams = getInitialSearchParams(handle.props.url)
 	let searchQuery = (initialParams.get('q') ?? '').trim()
 	let filterType = parseFilterTypeParam(initialParams.get('type'))
@@ -188,7 +189,17 @@ export function FeedList(
 		})
 	}
 
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'feeds') {
+			state = createSuccessState(loaderData.data as FeedsResponse)
+		}
+	}
+
 	return () => {
+		applyCurrentLoaderData()
 		if (isBrowser()) syncStateFromUrl()
 
 		if (state.status === 'loading') {

@@ -133,6 +133,7 @@ export function CreateFeed(
 
 	// API states
 	let rootsState: RootsState = getInitialRootsState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 	let browseState: BrowseState = { status: 'idle' }
 	let submitState: SubmitState = { status: 'idle' }
 
@@ -161,6 +162,15 @@ export function CreateFeed(
 		if (loaderData?.type !== 'create-feed') return { status: 'loading' }
 		const data = loaderData.data as { roots: Array<MediaRoot> }
 		return { status: 'success', roots: data.roots }
+	}
+
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'create-feed') {
+			rootsState = getInitialRootsState(loaderData)
+		}
 	}
 
 	// Browse a directory
@@ -416,6 +426,7 @@ export function CreateFeed(
 	}
 
 	return () => {
+		applyCurrentLoaderData()
 		const canSubmitDirectory = Boolean(
 			directoryForm.name.trim() &&
 			directoryForm.selectedDirectories.length > 0 &&

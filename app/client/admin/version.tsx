@@ -35,6 +35,7 @@ export function VersionPage(
 	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
 ) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 
 	if (state.status === 'loading') {
 		handle.queueTask(async (signal) => {
@@ -57,7 +58,17 @@ export function VersionPage(
 		})
 	}
 
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'version') {
+			state = { status: 'success', data: loaderData.data as VersionResponse }
+		}
+	}
+
 	return () => {
+		applyCurrentLoaderData()
 		if (state.status === 'loading') {
 			return (
 				<div

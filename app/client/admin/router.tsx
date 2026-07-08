@@ -35,16 +35,19 @@ type Route = {
 	loader?: AdminRouteLoader
 }
 
+export const routerEvents = new EventTarget()
+
 /**
  * Simple client-side router using the Navigation API.
  * Emits 'navigate' events when the route changes.
  */
-class RouterState extends TypedEventTarget<{ navigate: Event }> {
+export class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
 	#currentPath: string = '/admin'
 	#currentHref: string = '/admin'
 	#loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
 	#loadRequestId = 0
+	#navigationController: AbortController | null = null
 	#started = false
 
 	get currentPath() {
@@ -112,21 +115,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Match the current path against registered routes.
 	 */
 	match(): { route: Route; match: RouteMatch } | null {
-		for (const route of this.#routes) {
-			const result = route.pattern.exec(this.#currentPath)
-			if (result) {
-				const params: Record<string, string> = {}
-				route.paramNames.forEach((name, index) => {
-					const value = result[index + 1]
-					if (value !== undefined) params[name] = value
-				})
-				return {
-					route,
-					match: { path: this.#currentPath, params },
-				}
-			}
-		}
-		return null
+		return this.#matchPath(this.#currentPath)
 	}
 
 	get loaderData() {
@@ -219,26 +208,57 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 	async #syncToUrl(url: URL, notify: boolean = true) {
 		const nextHref = getRelativeHref(url)
-		if (nextHref === this.#currentHref) return
+		if (nextHref === this.#currentHref) {
+			if (this.#navigationController) {
+				this.#loadRequestId += 1
+				this.#navigationController.abort()
+				this.#navigationController = null
+				routerEvents.dispatchEvent(
+					new CustomEvent('navigationstart', {
+						detail: { href: nextHref, pathname: url.pathname },
+					}),
+				)
+				routerEvents.dispatchEvent(
+					new CustomEvent('navigationend', {
+						detail: { href: nextHref, pathname: url.pathname },
+					}),
+				)
+			}
+			return
+		}
 
 		const nextPath = url.pathname
 		const nextRoute = this.#matchPath(nextPath)
 		const loadRequestId = ++this.#loadRequestId
+		this.#navigationController?.abort()
+		const navigationController = new AbortController()
+		this.#navigationController = navigationController
+		routerEvents.dispatchEvent(
+			new CustomEvent('navigationstart', {
+				detail: { href: nextHref, pathname: nextPath },
+			}),
+		)
 		let loaderData: AdminRouteLoaderData = this.#loaderData
 		if (nextPath !== this.#currentPath && nextRoute?.route.loader) {
 			try {
 				loaderData = await nextRoute.route.loader({
 					params: nextRoute.match.params,
 					url: url.href,
+					signal: navigationController.signal,
 				})
 			} catch (error) {
-				console.error('Failed to load admin route data:', error)
+				if (!navigationController.signal.aborted) {
+					console.error('Failed to load admin route data:', error)
+				}
 				loaderData = noAdminRouteLoaderData
 			}
 		} else if (nextPath !== this.#currentPath) {
 			loaderData = noAdminRouteLoaderData
 		}
 		if (loadRequestId !== this.#loadRequestId) return
+		if (this.#navigationController === navigationController) {
+			this.#navigationController = null
+		}
 		this.#loaderData = loaderData
 
 		this.#currentHref = nextHref
@@ -246,6 +266,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		if (notify) {
 			this.dispatchEvent(new Event('navigate'))
 		}
+		routerEvents.dispatchEvent(
+			new CustomEvent('navigationend', {
+				detail: { href: nextHref, pathname: nextPath },
+			}),
+		)
 	}
 
 	#matchPath(pathname: string): { route: Route; match: RouteMatch } | null {

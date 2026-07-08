@@ -18,6 +18,7 @@ import { FeedDetail } from './feed-detail.tsx'
 import { FeedList } from './feed-list.tsx'
 import { MediaDetail } from './media-detail.tsx'
 import { MediaList } from './media-list.tsx'
+import { NavigationProgress } from './navigation-progress.tsx'
 import { RouterOutlet, router } from './router.tsx'
 import { VersionPage } from './version.tsx'
 import {
@@ -131,6 +132,7 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 				}),
 			]}
 		>
+			<NavigationProgress />
 			<header
 				mix={[
 					rmxCss({

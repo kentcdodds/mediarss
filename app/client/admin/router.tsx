@@ -35,6 +35,8 @@ type Route = {
 	loader?: AdminRouteLoader
 }
 
+export const routerEvents = new EventTarget()
+
 /**
  * Simple client-side router using the Navigation API.
  * Emits 'navigate' events when the route changes.
@@ -45,6 +47,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#currentHref: string = '/admin'
 	#loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
 	#loadRequestId = 0
+	#navigationController: AbortController | null = null
 	#started = false
 
 	get currentPath() {
@@ -224,21 +227,35 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		const nextPath = url.pathname
 		const nextRoute = this.#matchPath(nextPath)
 		const loadRequestId = ++this.#loadRequestId
+		this.#navigationController?.abort()
+		const navigationController = new AbortController()
+		this.#navigationController = navigationController
+		routerEvents.dispatchEvent(
+			new CustomEvent('navigationstart', {
+				detail: { href: nextHref, pathname: nextPath },
+			}),
+		)
 		let loaderData: AdminRouteLoaderData = this.#loaderData
 		if (nextPath !== this.#currentPath && nextRoute?.route.loader) {
 			try {
 				loaderData = await nextRoute.route.loader({
 					params: nextRoute.match.params,
 					url: url.href,
+					signal: navigationController.signal,
 				})
 			} catch (error) {
-				console.error('Failed to load admin route data:', error)
+				if (!navigationController.signal.aborted) {
+					console.error('Failed to load admin route data:', error)
+				}
 				loaderData = noAdminRouteLoaderData
 			}
 		} else if (nextPath !== this.#currentPath) {
 			loaderData = noAdminRouteLoaderData
 		}
 		if (loadRequestId !== this.#loadRequestId) return
+		if (this.#navigationController === navigationController) {
+			this.#navigationController = null
+		}
 		this.#loaderData = loaderData
 
 		this.#currentHref = nextHref
@@ -246,6 +263,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		if (notify) {
 			this.dispatchEvent(new Event('navigate'))
 		}
+		routerEvents.dispatchEvent(
+			new CustomEvent('navigationend', {
+				detail: { href: nextHref, pathname: nextPath },
+			}),
+		)
 	}
 
 	#matchPath(pathname: string): { route: Route; match: RouteMatch } | null {

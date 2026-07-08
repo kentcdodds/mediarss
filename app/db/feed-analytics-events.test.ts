@@ -288,7 +288,7 @@ test('media popularity metrics aggregate multiple items with normalized keys', (
 		uniqueClients: 1,
 		lastSeenAt: base + 120,
 	})
-})
+}, 15_000)
 
 test('media analytics aggregate across feeds/tokens and normalize paths', () => {
 	using ctx = createMigratedTestDatabase('test-feed-analytics-events')

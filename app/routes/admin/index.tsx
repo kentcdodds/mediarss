@@ -1,21 +1,22 @@
 import { type Action } from 'remix/router'
-import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
-import { render } from '#app/helpers/render.ts'
+import { renderDocument } from '#app/helpers/render.ts'
+import { AdminDocument } from './document.tsx'
+import { loadAdminRouteData } from './loaders.ts'
 
 /**
- * Admin shell handler.
- * Serves the HTML shell for all /admin/* routes (except /admin/api/*).
- * The client-side app handles routing from here.
+ * Admin app handler.
+ * Server-renders the hydrated admin root for direct page loads.
  */
 const adminShellHandler = {
 	middleware: [],
-	handler() {
-		return render(
-			Layout({
-				title: 'MediaRSS Admin',
-				entryScript: '/app/client/admin/entry.tsx',
-			}),
+	async handler({ request }: { request: Request }) {
+		return renderDocument(
+			<AdminDocument
+				url={request.url}
+				loaderData={await loadAdminRouteData(request)}
+			/>,
+			{ request },
 		)
 	},
 }

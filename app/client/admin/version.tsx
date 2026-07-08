@@ -6,6 +6,7 @@ import {
 	formatUptime,
 } from '#app/helpers/format.ts'
 import { colors, mq, radius, spacing, typography } from '#app/styles/tokens.ts'
+import { type AdminRouteLoaderData } from './loader-data.ts'
 
 type CommitInfo = {
 	hash: string
@@ -30,26 +31,44 @@ type LoadingState =
 /**
  * Version page component - displays detailed version information.
  */
-export function VersionPage(handle: Handle) {
-	let state: LoadingState = { status: 'loading' }
+export function VersionPage(
+	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
+) {
+	let state: LoadingState = getInitialState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 
-	// Fetch version info on mount
-	fetch('/admin/api/version', { signal: handle.signal })
-		.then((res) => {
-			if (!res.ok) throw new Error(`HTTP ${res.status}`)
-			return res.json() as Promise<VersionResponse>
+	if (state.status === 'loading') {
+		handle.queueTask(async (signal) => {
+			try {
+				const res = await fetch('/admin/api/version', { signal })
+				if (!res.ok) throw new Error(`HTTP ${res.status}`)
+				state = {
+					status: 'success',
+					data: (await res.json()) as VersionResponse,
+				}
+				await handle.update()
+			} catch (err) {
+				if (signal.aborted) return
+				state = {
+					status: 'error',
+					message: err instanceof Error ? err.message : 'Unknown error',
+				}
+				await handle.update()
+			}
 		})
-		.then((data) => {
-			state = { status: 'success', data }
-			handle.update()
-		})
-		.catch((err) => {
-			if (handle.signal.aborted) return
-			state = { status: 'error', message: err.message }
-			handle.update()
-		})
+	}
+
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'version') {
+			state = { status: 'success', data: loaderData.data as VersionResponse }
+		}
+	}
 
 	return () => {
+		applyCurrentLoaderData()
 		if (state.status === 'loading') {
 			return (
 				<div
@@ -249,6 +268,13 @@ export function VersionPage(handle: Handle) {
 			</div>
 		)
 	}
+}
+
+function getInitialState(
+	loaderData: AdminRouteLoaderData | undefined,
+): LoadingState {
+	if (loaderData?.type !== 'version') return { status: 'loading' }
+	return { status: 'success', data: loaderData.data as VersionResponse }
 }
 
 function InfoCard(handle: Handle<{ title: string; children: RemixNode }>) {

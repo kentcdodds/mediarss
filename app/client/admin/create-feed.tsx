@@ -15,6 +15,7 @@ import {
 	typography,
 } from '#app/styles/tokens.ts'
 import { renderProps } from '#app/components/props-component.ts'
+import { type AdminRouteLoaderData } from './loader-data.ts'
 import { router } from './router.tsx'
 
 type FeedType = 'directory' | 'curated'
@@ -91,7 +92,9 @@ type SubmitState =
 /**
  * CreateFeed component - form for creating a new feed (directory or curated).
  */
-export function CreateFeed(handle: Handle) {
+export function CreateFeed(
+	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
+) {
 	// Feed type selection
 	let feedType: FeedType = 'directory'
 
@@ -129,25 +132,46 @@ export function CreateFeed(handle: Handle) {
 	let pickerSearch = ''
 
 	// API states
-	let rootsState: RootsState = { status: 'loading' }
+	let rootsState: RootsState = getInitialRootsState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
 	let browseState: BrowseState = { status: 'idle' }
 	let submitState: SubmitState = { status: 'idle' }
 
-	// Fetch media roots on mount
-	fetch('/admin/api/directories', { signal: handle.signal })
-		.then((res) => {
-			if (!res.ok) throw new Error(`HTTP ${res.status}`)
-			return res.json() as Promise<{ roots: Array<MediaRoot> }>
+	if (rootsState.status === 'loading') {
+		handle.queueTask(async (signal) => {
+			try {
+				const res = await fetch('/admin/api/directories', { signal })
+				if (!res.ok) throw new Error(`HTTP ${res.status}`)
+				const data = (await res.json()) as { roots: Array<MediaRoot> }
+				rootsState = { status: 'success', roots: data.roots }
+				await handle.update()
+			} catch (err) {
+				if (signal.aborted) return
+				rootsState = {
+					status: 'error',
+					message: err instanceof Error ? err.message : 'Unknown error',
+				}
+				await handle.update()
+			}
 		})
-		.then((data) => {
-			rootsState = { status: 'success', roots: data.roots }
-			handle.update()
-		})
-		.catch((err) => {
-			if (handle.signal.aborted) return
-			rootsState = { status: 'error', message: err.message }
-			handle.update()
-		})
+	}
+
+	function getInitialRootsState(
+		loaderData: AdminRouteLoaderData | undefined,
+	): RootsState {
+		if (loaderData?.type !== 'create-feed') return { status: 'loading' }
+		const data = loaderData.data as { roots: Array<MediaRoot> }
+		return { status: 'success', roots: data.roots }
+	}
+
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'create-feed') {
+			rootsState = getInitialRootsState(loaderData)
+		}
+	}
 
 	// Browse a directory
 	const browse = (rootName: string, path: string) => {
@@ -402,6 +426,7 @@ export function CreateFeed(handle: Handle) {
 	}
 
 	return () => {
+		applyCurrentLoaderData()
 		const canSubmitDirectory = Boolean(
 			directoryForm.name.trim() &&
 			directoryForm.selectedDirectories.length > 0 &&

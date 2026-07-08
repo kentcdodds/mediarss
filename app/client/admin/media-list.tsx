@@ -25,6 +25,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { type AdminRouteLoaderData } from './loader-data.ts'
 import { router } from './router.tsx'
 
 type MediaRoot = {
@@ -191,13 +192,20 @@ type UploadState =
 /**
  * MediaList component - displays all media files with search/filter and assignment management
  */
-export function MediaList(handle: Handle) {
-	let state: LoadingState = { status: 'loading' }
-	let searchQuery = ''
-	let selectedDirectory = 'all'
-	let sortBy: MediaSortBy = 'recently-modified'
-	let currentPage = 1
-	let lastSyncedSearch = ''
+export function MediaList(
+	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
+) {
+	let state: LoadingState = getInitialState(handle.props.loaderData)
+	let appliedLoaderData = handle.props.loaderData
+	const initialParams = getInitialSearchParams(handle.props.url)
+	let searchQuery = (initialParams.get('q') ?? '').trim()
+	let selectedDirectory =
+		(initialParams.get('directory') ?? 'all').trim() || 'all'
+	let sortBy = parseMediaSortByParam(initialParams.get('sort'))
+	let currentPage = parsePositivePageParam(initialParams.get('page'))
+	let lastSyncedSearch = initialParams.toString()
+		? `?${initialParams.toString()}`
+		: ''
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
@@ -291,7 +299,7 @@ export function MediaList(handle: Handle) {
 		handle.update()
 	}
 
-	syncStateFromUrl()
+	if (isBrowser()) syncStateFromUrl()
 
 	// Bulk selection state
 	let selectedItems: Set<string> = new Set() // Set of "rootName:relativePath" keys
@@ -646,13 +654,7 @@ export function MediaList(handle: Handle) {
 			const assignmentsData =
 				(await assignmentsRes.json()) as AssignmentsResponse
 
-			state = {
-				status: 'success',
-				media: mediaData.items,
-				assignments: assignmentsData.assignments,
-				curatedFeeds: assignmentsData.curatedFeeds,
-				directoryFeeds: assignmentsData.directoryFeeds,
-			}
+			state = createSuccessState(mediaData, assignmentsData)
 			handle.update()
 		} catch (err) {
 			if (handle.signal.aborted) return
@@ -664,14 +666,30 @@ export function MediaList(handle: Handle) {
 		}
 	}
 
-	fetchData()
+	if (state.status === 'loading') {
+		handle.queueTask(fetchData)
+	}
+
+	const applyCurrentLoaderData = () => {
+		const loaderData = handle.props.loaderData
+		if (loaderData === appliedLoaderData) return
+		appliedLoaderData = loaderData
+		if (loaderData?.type === 'media-list') {
+			const data = loaderData.data as {
+				media: MediaResponse
+				assignments: AssignmentsResponse
+			}
+			state = createSuccessState(data.media, data.assignments)
+		}
+	}
 
 	const getArtworkUrl = (item: MediaItem) => {
 		return `/admin/api/artwork/${encodeURIComponent(item.rootName)}/${encodeURIComponent(item.relativePath)}`
 	}
 
 	return () => {
-		syncStateFromUrl()
+		applyCurrentLoaderData()
+		if (isBrowser()) syncStateFromUrl()
 
 		if (state.status === 'loading') {
 			return <LoadingSpinner />
@@ -1559,6 +1577,39 @@ export function MediaList(handle: Handle) {
 				)}
 			</div>
 		)
+	}
+}
+
+function isBrowser() {
+	return typeof window !== 'undefined'
+}
+
+function getInitialSearchParams(url: string | undefined) {
+	if (!url) return new URLSearchParams()
+	return new URL(url).searchParams
+}
+
+function getInitialState(
+	loaderData: AdminRouteLoaderData | undefined,
+): LoadingState {
+	if (loaderData?.type !== 'media-list') return { status: 'loading' }
+	const data = loaderData.data as {
+		media: MediaResponse
+		assignments: AssignmentsResponse
+	}
+	return createSuccessState(data.media, data.assignments)
+}
+
+function createSuccessState(
+	mediaData: MediaResponse,
+	assignmentsData: AssignmentsResponse,
+): LoadingState {
+	return {
+		status: 'success',
+		media: mediaData.items,
+		assignments: assignmentsData.assignments,
+		curatedFeeds: assignmentsData.curatedFeeds,
+		directoryFeeds: assignmentsData.directoryFeeds,
 	}
 }
 

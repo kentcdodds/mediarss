@@ -6,13 +6,15 @@ import type routes from '#app/config/routes.ts'
  * GET /admin/api/directories
  * Returns all configured media root directories.
  */
+export function getAdminDirectoriesData() {
+	return {
+		roots: getMediaRoots(),
+	}
+}
+
 export default {
 	middleware: [],
 	handler() {
-		const roots = getMediaRoots()
-
-		return Response.json({
-			roots,
-		})
+		return Response.json(getAdminDirectoriesData())
 	},
 } satisfies Action<typeof routes.adminApiDirectories>

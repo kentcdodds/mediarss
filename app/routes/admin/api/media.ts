@@ -59,41 +59,45 @@ function toMediaItem(file: MediaFile): MediaItem | null {
  * GET /admin/api/media
  * Returns all media files across all configured media roots.
  */
+export async function getAdminMediaData() {
+	const files = await scanAllMediaRoots()
+	const popularityByMediaKey = listMediaPopularityMetrics()
+
+	const items = files
+		.map(toMediaItem)
+		.filter((item): item is MediaItem => item !== null)
+		.map((item) => {
+			const popularity = popularityByMediaKey.get(
+				createMediaKey(item.rootName, item.relativePath),
+			)
+			return {
+				...item,
+				popularityScore:
+					(popularity?.downloadStarts ?? 0) * 100 +
+					(popularity?.mediaRequests ?? 0),
+				downloadStarts: popularity?.downloadStarts ?? 0,
+				mediaRequests: popularity?.mediaRequests ?? 0,
+				uniqueClients: popularity?.uniqueClients ?? 0,
+				lastPlayedAt: popularity?.lastSeenAt ?? null,
+			}
+		})
+
+	// Sort by publication date (newest first), items without date go to end
+	items.sort((a, b) => {
+		if (!a.publicationDate && !b.publicationDate) {
+			return a.title.localeCompare(b.title) // fallback to title
+		}
+		if (!a.publicationDate) return 1
+		if (!b.publicationDate) return -1
+		return b.publicationDate.localeCompare(a.publicationDate)
+	})
+
+	return { items }
+}
+
 export default {
 	middleware: [],
 	async handler() {
-		const files = await scanAllMediaRoots()
-		const popularityByMediaKey = listMediaPopularityMetrics()
-
-		const items = files
-			.map(toMediaItem)
-			.filter((item): item is MediaItem => item !== null)
-			.map((item) => {
-				const popularity = popularityByMediaKey.get(
-					createMediaKey(item.rootName, item.relativePath),
-				)
-				return {
-					...item,
-					popularityScore:
-						(popularity?.downloadStarts ?? 0) * 100 +
-						(popularity?.mediaRequests ?? 0),
-					downloadStarts: popularity?.downloadStarts ?? 0,
-					mediaRequests: popularity?.mediaRequests ?? 0,
-					uniqueClients: popularity?.uniqueClients ?? 0,
-					lastPlayedAt: popularity?.lastSeenAt ?? null,
-				}
-			})
-
-		// Sort by publication date (newest first), items without date go to end
-		items.sort((a, b) => {
-			if (!a.publicationDate && !b.publicationDate) {
-				return a.title.localeCompare(b.title) // fallback to title
-			}
-			if (!a.publicationDate) return 1
-			if (!b.publicationDate) return -1
-			return b.publicationDate.localeCompare(a.publicationDate)
-		})
-
-		return Response.json({ items })
+		return Response.json(await getAdminMediaData())
 	},
 } satisfies Action<typeof routes.adminApiMedia>

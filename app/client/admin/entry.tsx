@@ -1,177 +1,41 @@
-import { createRoot, type Handle, css as rmxCss } from 'remix/ui'
-import {
-	colors,
-	mq,
-	responsive,
-	spacing,
-	typography,
-} from '#app/styles/tokens.ts'
-import { CreateFeed } from './create-feed.tsx'
-import { FeedDetail } from './feed-detail.tsx'
-import { FeedList } from './feed-list.tsx'
-import { MediaDetail } from './media-detail.tsx'
-import { MediaList } from './media-list.tsx'
-import { RouterOutlet, router } from './router.tsx'
-import { VersionPage } from './version.tsx'
+import { run } from 'remix/ui'
+import { AdminApp, ADMIN_APP_ENTRY_ID } from './app-root.tsx'
 
-// Register routes
-router.register('/admin', FeedList)
-router.register('/admin/feeds/new', CreateFeed)
-router.register('/admin/feeds/:id/edit', FeedDetail)
-router.register('/admin/feeds/:id', FeedDetail)
-router.register('/admin/media', MediaList)
-router.register('/admin/media/*/edit', MediaDetail)
-router.register('/admin/media/*', MediaDetail)
-router.register('/admin/version', VersionPage)
+const clientRegistry = {
+	AdminApp,
+} as const
 
-type VersionResponse = {
-	version: string | null
-	commit: { shortHash: string } | null
-}
+const app = run({
+	loadModule(moduleUrl, exportName) {
+		const expectedHref = ADMIN_APP_ENTRY_ID.split('#')[0]
+		if (moduleUrl !== expectedHref) {
+			throw new Error(`Unknown client module URL: ${moduleUrl}`)
+		}
+		const component = clientRegistry[exportName as keyof typeof clientRegistry]
+		if (!component) {
+			throw new Error(`Unknown client export: ${exportName}`)
+		}
+		return component
+	},
+	async resolveFrame(src, signal, target) {
+		const headers = new Headers({ Accept: 'text/html' })
+		if (target) headers.set('x-remix-target', target)
+		const response = await fetch(src, { headers, signal })
+		if (!response.ok) {
+			throw new Error(
+				`Frame resolve failed (${response.status}) for ${src}${
+					target ? ` target=${target}` : ''
+				}`,
+			)
+		}
+		return response.body ?? (await response.text())
+	},
+})
 
-/**
- * Footer component that displays the app version.
- */
-function AppFooter(handle: Handle) {
-	let displayVersion: string | null = null
+app.addEventListener('error', (event) => {
+	console.error('Admin hydration error:', event.error)
+})
 
-	// Fetch version info on mount
-	fetch('/admin/api/version', { signal: handle.signal })
-		.then((res) => {
-			if (!res.ok) throw new Error(`HTTP ${res.status}`)
-			return res.json() as Promise<VersionResponse>
-		})
-		.then((data) => {
-			displayVersion = data.version || data.commit?.shortHash || null
-			handle.update()
-		})
-		.catch(() => {
-			// Silently fail - version display is not critical
-		})
-
-	return () => (
-		<footer
-			mix={[
-				rmxCss({
-					borderTop: `1px solid ${colors.border}`,
-					padding: `${spacing.md} ${responsive.spacingHeader}`,
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-				}),
-			]}
-		>
-			<a
-				href="/admin/version"
-				mix={[
-					rmxCss({
-						fontSize: typography.fontSize.xs,
-						color: colors.textMuted,
-						textDecoration: 'none',
-						'&:hover': {
-							color: colors.primary,
-						},
-					}),
-				]}
-			>
-				{displayVersion ? `v${displayVersion}` : '...'}
-			</a>
-		</footer>
-	)
-}
-
-function AdminApp() {
-	return () => (
-		<div
-			mix={[
-				rmxCss({
-					fontFamily: typography.fontFamily,
-					minHeight: '100vh',
-					backgroundColor: colors.background,
-					display: 'flex',
-					flexDirection: 'column',
-				}),
-			]}
-		>
-			<header
-				mix={[
-					rmxCss({
-						borderBottom: `1px solid ${colors.border}`,
-						padding: `${spacing.md} ${responsive.spacingHeader}`,
-						display: 'flex',
-						alignItems: 'center',
-						gap: spacing.md,
-						[mq.mobile]: {
-							gap: spacing.sm,
-						},
-					}),
-				]}
-			>
-				<a
-					href="/admin"
-					mix={[
-						rmxCss({
-							display: 'flex',
-							alignItems: 'center',
-							gap: spacing.md,
-							textDecoration: 'none',
-						}),
-					]}
-				>
-					<img
-						src="/assets/logo.svg"
-						alt="MediaRSS"
-						mix={[
-							rmxCss({
-								width: '36px',
-								height: '36px',
-							}),
-						]}
-					/>
-					<h1
-						mix={[
-							rmxCss({
-								fontSize: typography.fontSize.lg,
-								fontWeight: typography.fontWeight.semibold,
-								color: colors.text,
-								margin: 0,
-							}),
-						]}
-					>
-						MediaRSS
-					</h1>
-					<span
-						mix={[
-							rmxCss({
-								fontSize: typography.fontSize.sm,
-								color: colors.textMuted,
-								[mq.mobile]: {
-									display: 'none',
-								},
-							}),
-						]}
-					>
-						Admin
-					</span>
-				</a>
-			</header>
-			<main
-				mix={[
-					rmxCss({
-						flex: 1,
-						maxWidth: '1200px',
-						width: '100%',
-						margin: '0 auto',
-						padding: responsive.spacingPage,
-					}),
-				]}
-			>
-				<RouterOutlet />
-			</main>
-			<AppFooter />
-		</div>
-	)
-}
-
-const rootElement = document.getElementById('root') ?? document.body
-createRoot(rootElement).render(<AdminApp />)
+void app.ready().catch(() => {
+	// The error event listener above reports hydration and initialization failures.
+})

@@ -2,7 +2,10 @@ import { type Action } from 'remix/router'
 import { getMediaRootByName, parseMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import { listDirectoryFeeds } from '#app/db/directory-feeds.ts'
+import {
+	listDirectoryFeeds,
+	parseDirectoryPaths,
+} from '#app/db/directory-feeds.ts'
 import {
 	addItemToFeed,
 	getItemsForFeed,
@@ -72,7 +75,7 @@ export default {
 	},
 } satisfies Action<typeof routes.adminApiMediaAssignments>
 
-async function handleGet(): Promise<Response> {
+export async function getAdminMediaAssignmentsData(): Promise<AssignmentsResponse> {
 	const curatedFeeds = await listCuratedFeeds()
 	const directoryFeeds = await listDirectoryFeeds()
 
@@ -110,7 +113,7 @@ async function handleGet(): Promise<Response> {
 	// based on file paths, since we don't have all file paths here.
 	// The client will match files against directoryFeeds[].directoryPaths
 
-	return Response.json({
+	return {
 		assignments,
 		curatedFeeds: curatedFeeds.map((f) => ({
 			id: f.id,
@@ -120,10 +123,14 @@ async function handleGet(): Promise<Response> {
 		directoryFeeds: directoryFeeds.map((f) => ({
 			id: f.id,
 			name: f.name,
-			directoryPaths: JSON.parse(f.directoryPaths) as Array<string>,
+			directoryPaths: parseDirectoryPaths(f),
 			updatedAt: f.updatedAt,
 		})),
-	} satisfies AssignmentsResponse)
+	}
+}
+
+async function handleGet(): Promise<Response> {
+	return Response.json(await getAdminMediaAssignmentsData())
 }
 
 async function handlePut(request: Request): Promise<Response> {

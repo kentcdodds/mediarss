@@ -182,7 +182,7 @@ function isVideo(mimeType: string): boolean {
 /**
  * MediaDetail component - displays full metadata, feed assignments, and media player
  */
-export function MediaDetail(handle: Handle) {
+export function MediaDetail(handle: Handle<{ url?: string }>) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
 	let analyticsRequestId = 0
@@ -569,7 +569,9 @@ export function MediaDetail(handle: Handle) {
 
 	return () => {
 		// Extract path from URL and determine if this is the routed edit page.
-		const urlPath = window.location.pathname
+		const urlPath = isBrowser()
+			? window.location.pathname
+			: new URL(handle.props.url ?? 'http://localhost/admin/media').pathname
 		const {
 			rawPath,
 			paramPath: parsedPath,
@@ -581,7 +583,7 @@ export function MediaDetail(handle: Handle) {
 		const isEditRoute = hasEditSuffix && currentPath === editBasePath
 		const paramPath = isEditRoute ? editBasePath : rawPath
 
-		if (paramPath && paramPath !== currentPath) {
+		if (isBrowser() && paramPath && paramPath !== currentPath) {
 			setTimeout(() => fetchMedia(fetchPath, fallbackPath), 0)
 		}
 
@@ -1812,6 +1814,10 @@ export function MediaDetail(handle: Handle) {
 			</div>
 		)
 	}
+}
+
+function isBrowser() {
+	return typeof window !== 'undefined'
 }
 
 function LoadingSpinner() {

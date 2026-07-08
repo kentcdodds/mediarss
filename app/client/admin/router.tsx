@@ -226,10 +226,15 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		const loadRequestId = ++this.#loadRequestId
 		let loaderData: AdminRouteLoaderData = this.#loaderData
 		if (nextPath !== this.#currentPath && nextRoute?.route.loader) {
-			loaderData = await nextRoute.route.loader({
-				params: nextRoute.match.params,
-				url: url.href,
-			})
+			try {
+				loaderData = await nextRoute.route.loader({
+					params: nextRoute.match.params,
+					url: url.href,
+				})
+			} catch (error) {
+				console.error('Failed to load admin route data:', error)
+				loaderData = noAdminRouteLoaderData
+			}
 		} else if (nextPath !== this.#currentPath) {
 			loaderData = noAdminRouteLoaderData
 		}
@@ -272,7 +277,7 @@ export const router = new RouterState()
 export function RouterOutlet(
 	handle: Handle<{ url: string; loaderData: AdminRouteLoaderData }>,
 ) {
-	let ready = handle.props.loaderData.type !== 'none'
+	let ready = !isBrowser() || handle.props.loaderData.type !== 'none'
 	const initialUrl = new URL(handle.props.url)
 	const initialMatch = router.matchPath(initialUrl.pathname)
 	if (isBrowser()) {

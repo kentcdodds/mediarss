@@ -63,10 +63,11 @@ test.each([
 	['feed edit', routes.adminFeedEdit.href({ id: 'feed-1' })],
 	['media detail', routes.adminMediaDetail.href({ path: 'audio/book.m4b' })],
 	['media edit', routes.adminMediaEdit.href({ path: 'audio/book.m4b' })],
-])('admin %s route still has a server shell fallback', async (_, path) => {
+])('admin %s route server-renders its route fallback', async (_, path) => {
 	const response = await fetchAdminRoute(path)
 	const body = await response.text()
 
 	expect(response.status).toBe(200)
 	expect(body).toContain('/app/client/admin/entry.tsx')
+	expect(body).not.toContain('data-admin-route-placeholder')
 })

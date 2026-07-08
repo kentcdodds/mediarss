@@ -354,21 +354,24 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 	let artworkError: string | null = null
 	let artworkImageKey = 0 // Used to force image refresh after upload
 
-	// Fetch media roots for file picker
-	fetch('/admin/api/directories', { signal: handle.signal })
-		.then((res) => {
-			if (!res.ok) throw new Error(`HTTP ${res.status}`)
-			return res.json() as Promise<{ roots: Array<MediaRoot> }>
+	if (isBrowser()) {
+		handle.queueTask(async (signal) => {
+			try {
+				const res = await fetch('/admin/api/directories', { signal })
+				if (!res.ok) throw new Error(`HTTP ${res.status}`)
+				const data = (await res.json()) as { roots: Array<MediaRoot> }
+				rootsState = { status: 'success', roots: data.roots }
+				await handle.update()
+			} catch (err) {
+				if (signal.aborted) return
+				rootsState = {
+					status: 'error',
+					message: err instanceof Error ? err.message : 'Unknown error',
+				}
+				await handle.update()
+			}
 		})
-		.then((data) => {
-			rootsState = { status: 'success', roots: data.roots }
-			handle.update()
-		})
-		.catch((err) => {
-			if (handle.signal.aborted) return
-			rootsState = { status: 'error', message: err.message }
-			handle.update()
-		})
+	}
 
 	// Browse a directory for the file picker
 	const browse = (rootName: string, path: string) => {
@@ -818,7 +821,7 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 	return renderProps(handle, ({ params }) => {
 		// Fetch on first render or if id changes
 		const paramId = params.id
-		if (paramId && paramId !== feedId) {
+		if (isBrowser() && paramId && paramId !== feedId) {
 			// Use setTimeout to avoid updating during render
 			setTimeout(() => fetchFeed(paramId), 0)
 		}
@@ -2445,6 +2448,10 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 			</div>
 		)
 	})
+}
+
+function isBrowser() {
+	return typeof window !== 'undefined'
 }
 
 function LoadingSpinner() {

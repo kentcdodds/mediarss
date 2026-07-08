@@ -2,7 +2,10 @@ import { type Action } from 'remix/router'
 import { getMediaRootByName, parseMediaPath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import { listDirectoryFeeds } from '#app/db/directory-feeds.ts'
+import {
+	listDirectoryFeeds,
+	parseDirectoryPaths,
+} from '#app/db/directory-feeds.ts'
 import {
 	addItemToFeed,
 	getItemsForFeed,
@@ -120,7 +123,7 @@ export async function getAdminMediaAssignmentsData(): Promise<AssignmentsRespons
 		directoryFeeds: directoryFeeds.map((f) => ({
 			id: f.id,
 			name: f.name,
-			directoryPaths: JSON.parse(f.directoryPaths) as Array<string>,
+			directoryPaths: parseDirectoryPaths(f),
 			updatedAt: f.updatedAt,
 		})),
 	}

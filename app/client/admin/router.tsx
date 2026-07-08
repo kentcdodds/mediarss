@@ -35,8 +35,9 @@ type Route = {
  */
 class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
-	#currentPath: string = window.location.pathname
-	#currentHref: string = getWindowLocationHref()
+	#currentPath: string = '/admin'
+	#currentHref: string = '/admin'
+	#started = false
 
 	get currentPath() {
 		return this.#currentPath
@@ -70,6 +71,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	}
 
 	replace(path: string) {
+		if (!isBrowser()) return
 		const target = normalizeNavigationTarget(path, window.location.origin)
 		if (!target) return
 		this.#commitNavigation(
@@ -98,6 +100,19 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			}
 		}
 		return null
+	}
+
+	start() {
+		if (this.#started || !isBrowser()) return
+		this.#started = true
+		this.syncToCurrentLocation(false)
+		if (!window.navigation) return
+		window.navigation.addEventListener('navigate', this.handleNavigation)
+	}
+
+	syncToCurrentLocation(notify: boolean = false) {
+		if (!isBrowser()) return
+		this.#syncToUrl(new URL(window.location.href), notify)
 	}
 
 	handleNavigation = (event: NavigateEvent) => {
@@ -132,9 +147,19 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		historyMode: NavigationHistoryBehavior,
 		notify: boolean,
 	) {
+		if (!isBrowser()) return
 		const target = normalizeNavigationTarget(path, window.location.origin)
 		if (!target) return
 		if (getRelativeHref(target) === getWindowLocationHref()) return
+
+		if (!window.navigation) {
+			if (historyMode === 'replace') {
+				window.location.replace(target.href)
+			} else {
+				window.location.assign(target.href)
+			}
+			return
+		}
 
 		const transition = window.navigation.navigate(target.href, {
 			history: historyMode,
@@ -168,15 +193,21 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 // Singleton router instance
 export const router = new RouterState()
 
-// The admin SPA intentionally requires the Navigation API, matching the Remix
-// website's client-side navigation model.
-window.navigation.addEventListener('navigate', router.handleNavigation)
-
 /**
  * Router outlet component.
  * Renders the matched route's component.
  */
-export function RouterOutlet(handle: Handle) {
+export function RouterOutlet(handle: Handle<{ url: string }>) {
+	let ready = false
+	if (isBrowser()) {
+		router.start()
+		router.syncToCurrentLocation(false)
+		handle.queueTask(() => {
+			ready = true
+			handle.update()
+		})
+	}
+
 	// Subscribe to navigation events
 	addEventListeners(router, handle.signal, {
 		navigate: () => {
@@ -185,6 +216,13 @@ export function RouterOutlet(handle: Handle) {
 	})
 
 	return () => {
+		if (!ready) {
+			return (
+				<div aria-busy="true" data-admin-route-placeholder="">
+					Loading admin route...
+				</div>
+			)
+		}
 		const result = router.match()
 		if (!result) {
 			return <div>404 - Not Found</div>
@@ -193,4 +231,8 @@ export function RouterOutlet(handle: Handle) {
 		const Component = route.component
 		return <Component params={match.params} />
 	}
+}
+
+function isBrowser() {
+	return typeof window !== 'undefined'
 }

@@ -189,6 +189,13 @@ router.mount('/admin', (admin) => {
 	admin.map(adminRoutes.health, adminApiHealthHandlers)
 	admin.map(adminRoutes.authorize, adminAuthorizeHandlers)
 	admin.map(adminRoutes.index, adminHandler)
+	admin.map(adminRoutes.feedNew, adminHandler)
+	admin.map(adminRoutes.feedEdit, adminHandler)
+	admin.map(adminRoutes.feed, adminHandler)
+	admin.map(adminRoutes.mediaIndex, adminHandler)
+	admin.map(adminRoutes.mediaEdit, adminHandler)
+	admin.map(adminRoutes.mediaDetail, adminHandler)
+	admin.map(adminRoutes.version, adminHandler)
 	admin.map(adminRoutes.catchAll, adminCatchAllHandler)
 })
 

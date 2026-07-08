@@ -44,6 +44,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#currentPath: string = '/admin'
 	#currentHref: string = '/admin'
 	#loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
+	#loadRequestId = 0
 	#started = false
 
 	get currentPath() {
@@ -126,6 +127,10 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 	get loaderData() {
 		return this.#loaderData
+	}
+
+	matchPath(pathname: string) {
+		return this.#matchPath(pathname)
 	}
 
 	start() {
@@ -214,14 +219,16 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 		const nextPath = url.pathname
 		const nextRoute = this.#matchPath(nextPath)
+		const loadRequestId = ++this.#loadRequestId
+		let loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
 		if (nextRoute?.route.loader) {
-			this.#loaderData = await nextRoute.route.loader({
+			loaderData = await nextRoute.route.loader({
 				params: nextRoute.match.params,
 				url: url.href,
 			})
-		} else {
-			this.#loaderData = noAdminRouteLoaderData
 		}
+		if (loadRequestId !== this.#loadRequestId) return
+		this.#loaderData = loaderData
 
 		this.#currentHref = nextHref
 		this.#currentPath = nextPath
@@ -260,8 +267,10 @@ export function RouterOutlet(
 	handle: Handle<{ url: string; loaderData: AdminRouteLoaderData }>,
 ) {
 	let ready = handle.props.loaderData.type !== 'none'
-	router.seed(new URL(handle.props.url), handle.props.loaderData)
+	const initialUrl = new URL(handle.props.url)
+	const initialMatch = router.matchPath(initialUrl.pathname)
 	if (isBrowser()) {
+		router.seed(initialUrl, handle.props.loaderData)
 		router.start()
 		handle.queueTask(async () => {
 			await router.syncToCurrentLocation(false)
@@ -285,13 +294,14 @@ export function RouterOutlet(
 				</div>
 			)
 		}
-		const result = router.match()
+		const result = isBrowser() ? router.match() : initialMatch
 		if (!result) {
 			return <div>404 - Not Found</div>
 		}
 		const { route, match } = result
 		const Component = route.component
-		return <Component params={match.params} loaderData={router.loaderData} />
+		const loaderData = isBrowser() ? router.loaderData : handle.props.loaderData
+		return <Component params={match.params} loaderData={loaderData} />
 	}
 }
 

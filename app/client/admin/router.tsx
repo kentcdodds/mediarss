@@ -41,7 +41,7 @@ export const routerEvents = new EventTarget()
  * Simple client-side router using the Navigation API.
  * Emits 'navigate' events when the route changes.
  */
-class RouterState extends TypedEventTarget<{ navigate: Event }> {
+export class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
 	#currentPath: string = '/admin'
 	#currentHref: string = '/admin'
@@ -222,7 +222,24 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 
 	async #syncToUrl(url: URL, notify: boolean = true) {
 		const nextHref = getRelativeHref(url)
-		if (nextHref === this.#currentHref) return
+		if (nextHref === this.#currentHref) {
+			if (this.#navigationController) {
+				this.#loadRequestId += 1
+				this.#navigationController.abort()
+				this.#navigationController = null
+				routerEvents.dispatchEvent(
+					new CustomEvent('navigationstart', {
+						detail: { href: nextHref, pathname: url.pathname },
+					}),
+				)
+				routerEvents.dispatchEvent(
+					new CustomEvent('navigationend', {
+						detail: { href: nextHref, pathname: url.pathname },
+					}),
+				)
+			}
+			return
+		}
 
 		const nextPath = url.pathname
 		const nextRoute = this.#matchPath(nextPath)

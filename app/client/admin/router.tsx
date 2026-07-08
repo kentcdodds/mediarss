@@ -277,7 +277,7 @@ export const router = new RouterState()
 export function RouterOutlet(
 	handle: Handle<{ url: string; loaderData: AdminRouteLoaderData }>,
 ) {
-	let ready = !isBrowser() || handle.props.loaderData.type !== 'none'
+	let ready = true
 	const initialUrl = new URL(handle.props.url)
 	const initialMatch = router.matchPath(initialUrl.pathname)
 	if (isBrowser()) {

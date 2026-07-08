@@ -7,12 +7,10 @@ import {
 
 export function Layout({
 	children,
-	head,
 	title = 'MediaRSS',
 	entryScript = '/app/client/entry.tsx',
 }: {
 	children?: SafeHtml
-	head?: SafeHtml
 	title?: string
 	entryScript?: string | false
 }) {
@@ -36,7 +34,7 @@ export function Layout({
 			<link rel="icon" href="/favicon.ico" sizes="48x48" />
 			<link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
 			<link rel="stylesheet" href="/assets/styles.css" />
-			${head ?? ''} ${importmapScript} ${modulePreloads}
+			${importmapScript} ${modulePreloads}
 		</head>
 		<body>
 			<div id="root">${children ?? ''}</div>

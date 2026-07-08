@@ -86,13 +86,16 @@ function parseSortByParam(value: string | null): FeedSortBy {
  * FeedList component - displays all feeds in a card grid.
  */
 export function FeedList(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
+	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
 ) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
-	let searchQuery = ''
-	let filterType: FilterType = 'all'
-	let sortBy: FeedSortBy = 'most-popular'
-	let lastSyncedSearch = ''
+	const initialParams = getInitialSearchParams(handle.props.url)
+	let searchQuery = (initialParams.get('q') ?? '').trim()
+	let filterType = parseFilterTypeParam(initialParams.get('type'))
+	let sortBy = parseSortByParam(initialParams.get('sort'))
+	let lastSyncedSearch = initialParams.toString()
+		? `?${initialParams.toString()}`
+		: ''
 
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
@@ -493,6 +496,11 @@ export function FeedList(
 			</div>
 		)
 	}
+}
+
+function getInitialSearchParams(url: string | undefined) {
+	if (!url) return new URLSearchParams()
+	return new URL(url).searchParams
 }
 
 function isBrowser() {

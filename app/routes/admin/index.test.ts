@@ -2,6 +2,7 @@ import '#app/config/init-env.ts'
 
 import { expect, test } from 'vitest'
 import routes from '#app/config/routes.ts'
+import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import router from '#app/router.tsx'
 
 async function fetchAdminRoute(pathname: string) {
@@ -34,6 +35,27 @@ test.each([
 	expect(response.status).toBe(200)
 	expect(body).toContain(content)
 	expect(body).not.toContain('data-admin-route-placeholder')
+})
+
+test('admin feed list applies query params during server render', async () => {
+	const feed = await createCuratedFeed({ name: 'Needle Feed' })
+	try {
+		const response = await fetchAdminRoute(`${routes.admin.href()}?q=needle`)
+		const body = await response.text()
+
+		expect(response.status).toBe(200)
+		expect(body).toContain('value="needle"')
+	} finally {
+		await deleteCuratedFeed(feed.id)
+	}
+})
+
+test('admin media list applies query params during server render', async () => {
+	const response = await fetchAdminRoute(`${routes.adminMedia.href()}?q=movie`)
+	const body = await response.text()
+
+	expect(response.status).toBe(200)
+	expect(body).toContain('value="movie"')
 })
 
 test.each([

@@ -51,6 +51,10 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		return this.#currentPath
 	}
 
+	get currentHref() {
+		return this.#currentHref
+	}
+
 	/**
 	 * Register a route with a pattern and component.
 	 * Pattern supports :param syntax for dynamic segments.
@@ -303,7 +307,10 @@ export function RouterOutlet(
 		const { route, match } = result
 		const Component = route.component
 		const loaderData = isBrowser() ? router.loaderData : handle.props.loaderData
-		return <Component params={match.params} loaderData={loaderData} />
+		const url = isBrowser()
+			? new URL(router.currentHref, window.location.origin).href
+			: handle.props.url
+		return <Component params={match.params} loaderData={loaderData} url={url} />
 	}
 }
 

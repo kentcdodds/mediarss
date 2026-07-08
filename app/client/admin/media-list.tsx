@@ -193,14 +193,18 @@ type UploadState =
  * MediaList component - displays all media files with search/filter and assignment management
  */
 export function MediaList(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
+	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
 ) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
-	let searchQuery = ''
-	let selectedDirectory = 'all'
-	let sortBy: MediaSortBy = 'recently-modified'
-	let currentPage = 1
-	let lastSyncedSearch = ''
+	const initialParams = getInitialSearchParams(handle.props.url)
+	let searchQuery = (initialParams.get('q') ?? '').trim()
+	let selectedDirectory =
+		(initialParams.get('directory') ?? 'all').trim() || 'all'
+	let sortBy = parseMediaSortByParam(initialParams.get('sort'))
+	let currentPage = parsePositivePageParam(initialParams.get('page'))
+	let lastSyncedSearch = initialParams.toString()
+		? `?${initialParams.toString()}`
+		: ''
 	const syncUrlFromState = () => {
 		const params = new URLSearchParams(window.location.search)
 		const trimmedSearchQuery = searchQuery.trim()
@@ -1563,6 +1567,11 @@ export function MediaList(
 
 function isBrowser() {
 	return typeof window !== 'undefined'
+}
+
+function getInitialSearchParams(url: string | undefined) {
+	if (!url) return new URLSearchParams()
+	return new URL(url).searchParams
 }
 
 function getInitialState(

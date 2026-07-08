@@ -220,12 +220,14 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		const nextPath = url.pathname
 		const nextRoute = this.#matchPath(nextPath)
 		const loadRequestId = ++this.#loadRequestId
-		let loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
-		if (nextRoute?.route.loader) {
+		let loaderData: AdminRouteLoaderData = this.#loaderData
+		if (nextPath !== this.#currentPath && nextRoute?.route.loader) {
 			loaderData = await nextRoute.route.loader({
 				params: nextRoute.match.params,
 				url: url.href,
 			})
+		} else if (nextPath !== this.#currentPath) {
+			loaderData = noAdminRouteLoaderData
 		}
 		if (loadRequestId !== this.#loadRequestId) return
 		this.#loaderData = loaderData

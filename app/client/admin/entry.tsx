@@ -36,4 +36,6 @@ app.addEventListener('error', (event) => {
 	console.error('Admin hydration error:', event.error)
 })
 
-void app.ready()
+void app.ready().catch(() => {
+	// The error event listener above reports hydration and initialization failures.
+})

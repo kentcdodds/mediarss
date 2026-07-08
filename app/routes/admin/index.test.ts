@@ -21,18 +21,18 @@ test('admin routes return server-rendered hydrated shell', async () => {
 	expect(body).not.toContain('<div id="root"><head>')
 })
 
-test('admin page routes are mapped directly on the server', async () => {
-	const paths = [
-		routes.adminFeedNew.href(),
-		routes.adminMedia.href(),
-		routes.adminVersion.href(),
-	]
+test.each([
+	['new feed', routes.adminFeedNew.href()],
+	['feed detail', routes.adminFeed.href({ id: 'feed-1' })],
+	['feed edit', routes.adminFeedEdit.href({ id: 'feed-1' })],
+	['media list', routes.adminMedia.href()],
+	['media detail', routes.adminMediaDetail.href({ path: 'audio/book.m4b' })],
+	['media edit', routes.adminMediaEdit.href({ path: 'audio/book.m4b' })],
+	['version', routes.adminVersion.href()],
+])('admin %s route is mapped directly on the server', async (_, path) => {
+	const response = await fetchAdminRoute(path)
+	const body = await response.text()
 
-	for (const path of paths) {
-		const response = await fetchAdminRoute(path)
-		const body = await response.text()
-
-		expect(response.status).toBe(200)
-		expect(body).toContain('data-admin-route-placeholder')
-	}
+	expect(response.status).toBe(200)
+	expect(body).toContain('data-admin-route-placeholder')
 })

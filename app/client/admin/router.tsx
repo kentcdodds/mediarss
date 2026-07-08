@@ -115,6 +115,10 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		this.#syncToUrl(new URL(window.location.href), notify)
 	}
 
+	syncToUrl(url: URL, notify: boolean = false) {
+		this.#syncToUrl(url, notify)
+	}
+
 	handleNavigation = (event: NavigateEvent) => {
 		if (
 			!shouldInterceptNavigationEvent({
@@ -199,6 +203,7 @@ export const router = new RouterState()
  */
 export function RouterOutlet(handle: Handle<{ url: string }>) {
 	let ready = false
+	router.syncToUrl(new URL(handle.props.url), false)
 	if (isBrowser()) {
 		router.start()
 		router.syncToCurrentLocation(false)

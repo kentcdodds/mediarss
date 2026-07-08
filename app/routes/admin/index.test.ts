@@ -14,6 +14,7 @@ test('admin routes return server-rendered hydrated shell', async () => {
 
 	expect(response.status).toBe(200)
 	expect(response.headers.get('Content-Type')).toContain('text/html')
+	expect(body.startsWith('<!DOCTYPE html>')).toBe(true)
 	expect(body).toContain('MediaRSS')
 	expect(body).toContain('data-admin-route-placeholder')
 	expect(body).toContain('/app/client/admin/entry.tsx')

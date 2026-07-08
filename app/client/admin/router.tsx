@@ -15,6 +15,11 @@ import {
 	type NavigationHistoryBehavior,
 	getWindowLocationHref,
 } from './router-navigation.ts'
+import {
+	noAdminRouteLoaderData,
+	type AdminRouteLoader,
+	type AdminRouteLoaderData,
+} from './loader-data.ts'
 
 type RouteMatch = {
 	path: string
@@ -27,6 +32,7 @@ type Route = {
 	pattern: RegExp
 	paramNames: Array<string>
 	component: RouteComponent
+	loader?: AdminRouteLoader
 }
 
 /**
@@ -37,6 +43,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	#routes: Array<Route> = []
 	#currentPath: string = '/admin'
 	#currentHref: string = '/admin'
+	#loaderData: AdminRouteLoaderData = noAdminRouteLoaderData
 	#started = false
 
 	get currentPath() {
@@ -47,7 +54,11 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 	 * Register a route with a pattern and component.
 	 * Pattern supports :param syntax for dynamic segments.
 	 */
-	register(pattern: string, component: RouteComponent) {
+	register(
+		pattern: string,
+		component: RouteComponent,
+		loader?: AdminRouteLoader,
+	) {
 		const paramNames: Array<string> = []
 		const regexPattern = pattern
 			.replace(/:([^/]+)/g, (_, name) => {
@@ -60,7 +71,18 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			pattern: new RegExp(`^${regexPattern}$`),
 			paramNames,
 			component,
+			loader,
 		})
+	}
+
+	setLoaderData(loaderData: AdminRouteLoaderData) {
+		this.#loaderData = loaderData
+	}
+
+	seed(url: URL, loaderData: AdminRouteLoaderData) {
+		this.#currentHref = getRelativeHref(url)
+		this.#currentPath = url.pathname
+		this.#loaderData = loaderData
 	}
 
 	/**
@@ -102,21 +124,25 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		return null
 	}
 
+	get loaderData() {
+		return this.#loaderData
+	}
+
 	start() {
 		if (this.#started || !isBrowser()) return
 		this.#started = true
-		this.syncToCurrentLocation(false)
+		void this.syncToCurrentLocation(false)
 		if (!window.navigation) return
 		window.navigation.addEventListener('navigate', this.handleNavigation)
 	}
 
-	syncToCurrentLocation(notify: boolean = false) {
+	async syncToCurrentLocation(notify: boolean = false) {
 		if (!isBrowser()) return
-		this.#syncToUrl(new URL(window.location.href), notify)
+		await this.#syncToUrl(new URL(window.location.href), notify)
 	}
 
-	syncToUrl(url: URL, notify: boolean = false) {
-		this.#syncToUrl(url, notify)
+	async syncToUrl(url: URL, notify: boolean = false) {
+		await this.#syncToUrl(url, notify)
 	}
 
 	handleNavigation = (event: NavigateEvent) => {
@@ -141,7 +167,7 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 			focusReset: shouldNotify ? 'after-transition' : 'manual',
 			scroll: shouldNotify ? 'after-transition' : 'manual',
 			handler: async () => {
-				this.#syncToUrl(destination, shouldNotify)
+				await this.#syncToUrl(destination, shouldNotify)
 			},
 		})
 	}
@@ -182,15 +208,44 @@ class RouterState extends TypedEventTarget<{ navigate: Event }> {
 		})
 	}
 
-	#syncToUrl(url: URL, notify: boolean = true) {
+	async #syncToUrl(url: URL, notify: boolean = true) {
 		const nextHref = getRelativeHref(url)
 		if (nextHref === this.#currentHref) return
 
+		const nextPath = url.pathname
+		const nextRoute = this.#matchPath(nextPath)
+		if (nextRoute?.route.loader) {
+			this.#loaderData = await nextRoute.route.loader({
+				params: nextRoute.match.params,
+				url: url.href,
+			})
+		} else {
+			this.#loaderData = noAdminRouteLoaderData
+		}
+
 		this.#currentHref = nextHref
-		this.#currentPath = url.pathname
+		this.#currentPath = nextPath
 		if (notify) {
 			this.dispatchEvent(new Event('navigate'))
 		}
+	}
+
+	#matchPath(pathname: string): { route: Route; match: RouteMatch } | null {
+		for (const route of this.#routes) {
+			const result = route.pattern.exec(pathname)
+			if (result) {
+				const params: Record<string, string> = {}
+				route.paramNames.forEach((name, index) => {
+					const value = result[index + 1]
+					if (value !== undefined) params[name] = value
+				})
+				return {
+					route,
+					match: { path: pathname, params },
+				}
+			}
+		}
+		return null
 	}
 }
 
@@ -201,13 +256,15 @@ export const router = new RouterState()
  * Router outlet component.
  * Renders the matched route's component.
  */
-export function RouterOutlet(handle: Handle<{ url: string }>) {
-	let ready = false
-	router.syncToUrl(new URL(handle.props.url), false)
+export function RouterOutlet(
+	handle: Handle<{ url: string; loaderData: AdminRouteLoaderData }>,
+) {
+	let ready = handle.props.loaderData.type !== 'none'
+	router.seed(new URL(handle.props.url), handle.props.loaderData)
 	if (isBrowser()) {
 		router.start()
-		router.syncToCurrentLocation(false)
-		handle.queueTask(() => {
+		handle.queueTask(async () => {
+			await router.syncToCurrentLocation(false)
 			ready = true
 			handle.update()
 		})
@@ -234,7 +291,7 @@ export function RouterOutlet(handle: Handle<{ url: string }>) {
 		}
 		const { route, match } = result
 		const Component = route.component
-		return <Component params={match.params} />
+		return <Component params={match.params} loaderData={router.loaderData} />
 	}
 }
 

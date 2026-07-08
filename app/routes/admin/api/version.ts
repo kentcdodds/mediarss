@@ -7,16 +7,20 @@ import { getVersionInfo } from '#app/helpers/version.ts'
  * GET /admin/api/version
  * Returns version information including app version, commit info, and uptime.
  */
+export async function getAdminVersionData() {
+	const versionInfo = await getVersionInfo()
+	const githubRepo = getGitHubRepo()
+
+	return {
+		...versionInfo,
+		githubRepo,
+	}
+}
+
 const adminApiVersionHandlers = {
 	middleware: [],
 	async handler() {
-		const versionInfo = await getVersionInfo()
-		const githubRepo = getGitHubRepo()
-
-		return Response.json({
-			...versionInfo,
-			githubRepo,
-		})
+		return Response.json(await getAdminVersionData())
 	},
 } satisfies Action<typeof routes.adminApiVersion>
 

@@ -2,6 +2,7 @@ import { type Action } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { renderDocument } from '#app/helpers/render.ts'
 import { AdminDocument } from './document.tsx'
+import { loadAdminRouteData } from './loaders.ts'
 
 /**
  * Admin app handler.
@@ -10,7 +11,13 @@ import { AdminDocument } from './document.tsx'
 const adminShellHandler = {
 	middleware: [],
 	async handler({ request }: { request: Request }) {
-		return renderDocument(<AdminDocument url={request.url} />, { request })
+		return renderDocument(
+			<AdminDocument
+				url={request.url}
+				loaderData={await loadAdminRouteData(request)}
+			/>,
+			{ request },
+		)
 	},
 }
 

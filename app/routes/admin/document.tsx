@@ -1,9 +1,14 @@
 import { type Handle } from 'remix/ui'
 import { AdminApp } from '#app/client/admin/app-root.tsx'
+import {
+	noAdminRouteLoaderData,
+	type AdminRouteLoaderData,
+} from '#app/client/admin/loader-data.ts'
 import { versionedUrl } from '#app/helpers/bundle-version.ts'
 
 type AdminDocumentProps = {
 	url: string
+	loaderData?: AdminRouteLoaderData
 }
 
 const ADMIN_ENTRY_SCRIPT = '/app/client/admin/entry.tsx'
@@ -24,7 +29,10 @@ export function AdminDocument(handle: Handle<AdminDocumentProps>) {
 			</head>
 			<body>
 				<div id="root">
-					<AdminApp url={handle.props.url} />
+					<AdminApp
+						url={handle.props.url}
+						loaderData={handle.props.loaderData ?? noAdminRouteLoaderData}
+					/>
 				</div>
 				<script type="module" src={entryScriptHref}></script>
 			</body>

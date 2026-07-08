@@ -26,57 +26,61 @@ function getLastAccessedAt(
  * GET /admin/api/feeds
  * Returns all feeds (directory and curated) with item counts and last accessed times.
  */
+export async function getAdminFeedsData() {
+	// Process directory feeds
+	const directoryFeedsList = await listDirectoryFeeds()
+	const directoryFeeds = await Promise.all(
+		directoryFeedsList.map(async (feed) => {
+			const tokens = await listActiveDirectoryFeedTokens(feed.id)
+			const paths = parseDirectoryPaths(feed)
+
+			// Count files across all directories (uses cached scan)
+			let itemCount = 0
+			for (const mediaPath of paths) {
+				const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
+				const absolutePath = toAbsolutePath(mediaRoot, relativePath)
+				if (absolutePath) {
+					const files = await scanDirectory(absolutePath)
+					itemCount += files.length
+				}
+			}
+
+			return {
+				...feed,
+				type: 'directory' as const,
+				tokenCount: tokens.length,
+				itemCount,
+				lastAccessedAt: getLastAccessedAt(tokens),
+			}
+		}),
+	)
+
+	// Process curated feeds
+	const curatedFeedsList = await listCuratedFeeds()
+	const curatedFeeds = await Promise.all(
+		curatedFeedsList.map(async (feed) => {
+			const tokens = await listActiveCuratedFeedTokens(feed.id)
+			const items = await getItemsForFeed(feed.id)
+
+			return {
+				...feed,
+				type: 'curated' as const,
+				tokenCount: tokens.length,
+				itemCount: items.length,
+				lastAccessedAt: getLastAccessedAt(tokens),
+			}
+		}),
+	)
+
+	return {
+		directoryFeeds,
+		curatedFeeds,
+	}
+}
+
 export default {
 	middleware: [],
 	async handler() {
-		// Process directory feeds
-		const directoryFeedsList = await listDirectoryFeeds()
-		const directoryFeeds = await Promise.all(
-			directoryFeedsList.map(async (feed) => {
-				const tokens = await listActiveDirectoryFeedTokens(feed.id)
-				const paths = parseDirectoryPaths(feed)
-
-				// Count files across all directories (uses cached scan)
-				let itemCount = 0
-				for (const mediaPath of paths) {
-					const { mediaRoot, relativePath } = parseMediaPath(mediaPath)
-					const absolutePath = toAbsolutePath(mediaRoot, relativePath)
-					if (absolutePath) {
-						const files = await scanDirectory(absolutePath)
-						itemCount += files.length
-					}
-				}
-
-				return {
-					...feed,
-					type: 'directory' as const,
-					tokenCount: tokens.length,
-					itemCount,
-					lastAccessedAt: getLastAccessedAt(tokens),
-				}
-			}),
-		)
-
-		// Process curated feeds
-		const curatedFeedsList = await listCuratedFeeds()
-		const curatedFeeds = await Promise.all(
-			curatedFeedsList.map(async (feed) => {
-				const tokens = await listActiveCuratedFeedTokens(feed.id)
-				const items = await getItemsForFeed(feed.id)
-
-				return {
-					...feed,
-					type: 'curated' as const,
-					tokenCount: tokens.length,
-					itemCount: items.length,
-					lastAccessedAt: getLastAccessedAt(tokens),
-				}
-			}),
-		)
-
-		return Response.json({
-			directoryFeeds,
-			curatedFeeds,
-		})
+		return Response.json(await getAdminFeedsData())
 	},
 } satisfies Action<typeof routes.adminApiFeeds>

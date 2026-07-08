@@ -72,7 +72,7 @@ export default {
 	},
 } satisfies Action<typeof routes.adminApiMediaAssignments>
 
-async function handleGet(): Promise<Response> {
+export async function getAdminMediaAssignmentsData(): Promise<AssignmentsResponse> {
 	const curatedFeeds = await listCuratedFeeds()
 	const directoryFeeds = await listDirectoryFeeds()
 
@@ -110,7 +110,7 @@ async function handleGet(): Promise<Response> {
 	// based on file paths, since we don't have all file paths here.
 	// The client will match files against directoryFeeds[].directoryPaths
 
-	return Response.json({
+	return {
 		assignments,
 		curatedFeeds: curatedFeeds.map((f) => ({
 			id: f.id,
@@ -123,7 +123,11 @@ async function handleGet(): Promise<Response> {
 			directoryPaths: JSON.parse(f.directoryPaths) as Array<string>,
 			updatedAt: f.updatedAt,
 		})),
-	} satisfies AssignmentsResponse)
+	}
+}
+
+async function handleGet(): Promise<Response> {
+	return Response.json(await getAdminMediaAssignmentsData())
 }
 
 async function handlePut(request: Request): Promise<Response> {

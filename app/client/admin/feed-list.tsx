@@ -19,6 +19,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { type AdminRouteLoaderData } from './loader-data.ts'
 import { router } from './router.tsx'
 
 type DirectoryFeed = {
@@ -84,8 +85,10 @@ function parseSortByParam(value: string | null): FeedSortBy {
 /**
  * FeedList component - displays all feeds in a card grid.
  */
-export function FeedList(handle: Handle) {
-	let state: LoadingState = { status: 'loading' }
+export function FeedList(
+	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
+) {
+	let state: LoadingState = getInitialState(handle.props.loaderData)
 	let searchQuery = ''
 	let filterType: FilterType = 'all'
 	let sortBy: FeedSortBy = 'most-popular'
@@ -162,31 +165,28 @@ export function FeedList(handle: Handle) {
 		handle.update()
 	}
 
-	syncStateFromUrl()
+	if (isBrowser()) syncStateFromUrl()
 
-	// Fetch feeds on mount
-	fetch('/admin/api/feeds', { signal: handle.signal })
-		.then((res) => {
-			if (!res.ok) throw new Error(`HTTP ${res.status}`)
-			return res.json() as Promise<FeedsResponse>
+	if (state.status === 'loading') {
+		handle.queueTask(async (signal) => {
+			try {
+				const res = await fetch('/admin/api/feeds', { signal })
+				if (!res.ok) throw new Error(`HTTP ${res.status}`)
+				state = createSuccessState((await res.json()) as FeedsResponse)
+				await handle.update()
+			} catch (err) {
+				if (signal.aborted) return
+				state = {
+					status: 'error',
+					message: err instanceof Error ? err.message : 'Unknown error',
+				}
+				await handle.update()
+			}
 		})
-		.then((data) => {
-			const allFeeds: Array<Feed> = [
-				...data.directoryFeeds,
-				...data.curatedFeeds,
-			]
-
-			state = { status: 'success', feeds: allFeeds }
-			handle.update()
-		})
-		.catch((err) => {
-			if (handle.signal.aborted) return
-			state = { status: 'error', message: err.message }
-			handle.update()
-		})
+	}
 
 	return () => {
-		syncStateFromUrl()
+		if (isBrowser()) syncStateFromUrl()
 
 		if (state.status === 'loading') {
 			return <LoadingSpinner />
@@ -492,6 +492,24 @@ export function FeedList(handle: Handle) {
 				)}
 			</div>
 		)
+	}
+}
+
+function isBrowser() {
+	return typeof window !== 'undefined'
+}
+
+function getInitialState(
+	loaderData: AdminRouteLoaderData | undefined,
+): LoadingState {
+	if (loaderData?.type !== 'feeds') return { status: 'loading' }
+	return createSuccessState(loaderData.data as FeedsResponse)
+}
+
+function createSuccessState(data: FeedsResponse): LoadingState {
+	return {
+		status: 'success',
+		feeds: [...data.directoryFeeds, ...data.curatedFeeds],
 	}
 }
 

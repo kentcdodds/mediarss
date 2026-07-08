@@ -3,6 +3,7 @@ import {
 	type Handle,
 	css as rmxCss,
 	type RemixNode,
+	type SerializableValue,
 } from 'remix/ui'
 import routes from '#app/config/routes.ts'
 import {
@@ -19,11 +20,17 @@ import { MediaDetail } from './media-detail.tsx'
 import { MediaList } from './media-list.tsx'
 import { RouterOutlet, router } from './router.tsx'
 import { VersionPage } from './version.tsx'
+import {
+	noAdminRouteLoaderData,
+	type AdminRouteLoaderData,
+} from './loader-data.ts'
 
 export const ADMIN_APP_ENTRY_ID = '/app/client/admin/entry.tsx#AdminApp'
 
 type AdminAppProps = {
+	[key: string]: SerializableValue
 	url: string
+	loaderData?: AdminRouteLoaderData
 }
 
 type VersionResponse = {
@@ -31,14 +38,38 @@ type VersionResponse = {
 	commit: { shortHash: string } | null
 }
 
-router.register('/admin', FeedList)
-router.register('/admin/feeds/new', CreateFeed)
+async function fetchJson(path: string, signal?: AbortSignal) {
+	const response = await fetch(path, { signal })
+	if (!response.ok) throw new Error(`HTTP ${response.status}`)
+	return response.json() as Promise<SerializableValue>
+}
+
+router.register('/admin', FeedList, async ({ signal }) => ({
+	type: 'feeds',
+	data: await fetchJson('/admin/api/feeds', signal),
+}))
+router.register('/admin/feeds/new', CreateFeed, async ({ signal }) => ({
+	type: 'create-feed',
+	data: await fetchJson('/admin/api/directories', signal),
+}))
 router.register('/admin/feeds/:id/edit', FeedDetail)
 router.register('/admin/feeds/:id', FeedDetail)
-router.register('/admin/media', MediaList)
+router.register('/admin/media', MediaList, async ({ signal }) => {
+	const [media, assignments] = await Promise.all([
+		fetchJson('/admin/api/media', signal),
+		fetchJson('/admin/api/media/assignments', signal),
+	])
+	return {
+		type: 'media-list',
+		data: { media, assignments },
+	}
+})
 router.register('/admin/media/*/edit', MediaDetail)
 router.register('/admin/media/*', MediaDetail)
-router.register('/admin/version', VersionPage)
+router.register('/admin/version', VersionPage, async ({ signal }) => ({
+	type: 'version',
+	data: await fetchJson('/admin/api/version', signal),
+}))
 
 function AppFooter(handle: Handle) {
 	let displayVersion: string | null = null
@@ -173,7 +204,10 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 					}),
 				]}
 			>
-				<RouterOutlet url={handle.props.url} />
+				<RouterOutlet
+					url={handle.props.url}
+					loaderData={handle.props.loaderData ?? noAdminRouteLoaderData}
+				/>
 			</main>
 			<AppFooter />
 		</div>
@@ -183,6 +217,11 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 export const AdminApp = clientEntry(
 	ADMIN_APP_ENTRY_ID,
 	function AdminApp(handle: Handle<AdminAppProps>): () => RemixNode {
-		return () => <AdminShell url={handle.props.url} />
+		return () => (
+			<AdminShell
+				url={handle.props.url}
+				loaderData={handle.props.loaderData ?? noAdminRouteLoaderData}
+			/>
+		)
 	},
 )

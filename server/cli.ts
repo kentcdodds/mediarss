@@ -52,7 +52,7 @@ export function setupInteractiveCli(url: string, server: AppServer) {
 			console.error('Error during shutdown:', err)
 		}
 		console.log(`\n\n${colorize('Shutting down...', 'crimson')}`)
-		server.stop(true) // true = close all idle connections immediately
+		await server.stop(true)
 	})
 
 	const stdin = process.stdin

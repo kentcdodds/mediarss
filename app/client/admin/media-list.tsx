@@ -1,5 +1,6 @@
 import { matchSorter, rankings } from 'match-sorter'
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import checkbox from 'remix/ui/checkbox'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,
@@ -1883,108 +1884,56 @@ function Checkbox(
 		title?: string
 	}>,
 ) {
-	return renderProps(handle, ({ checked, indeterminate, onChange, title }) => (
-		<label
-			title={title}
-			mix={[
-				rmxCss({
-					width: '18px',
-					height: '18px',
-					borderRadius: radius.sm,
-					border: `2px solid ${checked || indeterminate ? colors.primary : colors.border}`,
-					backgroundColor:
-						checked || indeterminate ? colors.primary : 'transparent',
-					cursor: 'pointer',
-					padding: 0,
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					transition: `all ${transitions.fast}`,
-					position: 'relative',
-					'&:hover': {
-						borderColor: colors.primary,
-					},
-					'&:focus-within': {
-						outline: `2px solid ${colors.primary}`,
-						outlineOffset: '2px',
-					},
-				}),
-				rmxOn<HTMLLabelElement, 'click'>('click', (e: MouseEvent) => {
-					e.stopPropagation()
-				}),
-				rmxOn<HTMLLabelElement, 'keydown'>('keydown', (e: KeyboardEvent) => {
-					// Stop Space/Enter from bubbling to row's keydown handler
-					if (e.key === ' ' || e.key === 'Enter') {
-						e.stopPropagation()
-					}
-				}),
-			]}
-		>
-			<input
-				type="checkbox"
-				checked={checked}
-				aria-label={title ?? 'Select item'}
+	return renderProps(handle, ({ checked, indeterminate, onChange, title }) => {
+		const state = indeterminate ? 'mixed' : checked ? 'checked' : 'unchecked'
+
+		return (
+			<label
+				title={title}
 				mix={[
 					rmxCss({
-						position: 'absolute',
-						width: '1px',
-						height: '1px',
-						padding: 0,
-						margin: '-1px',
-						overflow: 'hidden',
-						clip: 'rect(0, 0, 0, 0)',
-						whiteSpace: 'nowrap',
-						border: 0,
+						display: 'inline-flex',
+						cursor: 'pointer',
 					}),
-					rmxOn<HTMLInputElement>('change', () => onChange()),
-					rmxOn<HTMLInputElement, 'click'>('click', (e: MouseEvent) =>
-						e.stopPropagation(),
-					),
-					rmxOn<HTMLInputElement, 'keydown'>('keydown', (e: KeyboardEvent) => {
-						// Stop Space/Enter from bubbling to row's keydown handler
-						if (e.key === ' ' || e.key === 'Enter') {
-							e.stopPropagation()
+					rmxOn<HTMLLabelElement, 'click'>('click', (event) => {
+						event.stopPropagation()
+					}),
+					rmxOn<HTMLLabelElement, 'keydown'>('keydown', (event) => {
+						if (event.key === ' ' || event.key === 'Enter') {
+							event.stopPropagation()
 						}
 					}),
 				]}
-			/>
-			{checked && (
-				<svg
-					width="12"
-					height="12"
-					viewBox="0 0 12 12"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-					aria-hidden="true"
-				>
-					<path
-						d="M2 6L5 9L10 3"
-						stroke="white"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
-			)}
-			{indeterminate && !checked && (
-				<svg
-					width="12"
-					height="12"
-					viewBox="0 0 12 12"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-					aria-hidden="true"
-				>
-					<path
-						d="M2 6H10"
-						stroke="white"
-						stroke-width="2"
-						stroke-linecap="round"
-					/>
-				</svg>
-			)}
-		</label>
-	))
+			>
+				<input
+					checked={checked}
+					indeterminate={indeterminate}
+					aria-label={title ?? 'Select item'}
+					mix={[
+						checkbox({ size: 'lg', state }),
+						rmxCss({
+							cursor: 'pointer',
+							'&:checked, &[aria-checked="true"], &[data-state="checked"], &:indeterminate, &[aria-checked="mixed"], &[data-state="mixed"]':
+								{
+									background: colors.primary,
+									boxShadow: `0 0 0 1px ${colors.primary}`,
+								},
+							'&:focus-visible': {
+								outline: `2px solid ${colors.primary}`,
+								outlineOffset: '2px',
+							},
+						}),
+						rmxOn<HTMLInputElement>('change', onChange),
+						rmxOn<HTMLInputElement, 'keydown'>('keydown', (event) => {
+							if (event.key === ' ' || event.key === 'Enter') {
+								event.stopPropagation()
+							}
+						}),
+					]}
+				/>
+			</label>
+		)
+	})
 }
 
 function FloatingActionBar(

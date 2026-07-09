@@ -1,4 +1,5 @@
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import input from 'remix/ui/input'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	colors,
@@ -24,10 +25,27 @@ export function SearchInput(handle: Handle<SearchInputProps>) {
 	return renderProps(handle, ({ placeholder, value, onInput, onClear }) => (
 		<div
 			mix={[
+				input.root({ size: 'lg' }),
 				rmxCss({
-					position: 'relative',
 					width: '100%',
 					maxWidth: '400px',
+					height: 'auto',
+					minHeight: '36px',
+					paddingBlock: 0,
+					paddingInline: spacing.sm,
+					gap: spacing.sm,
+					fontFamily: typography.fontFamily,
+					fontSize: typography.fontSize.sm,
+					color: colors.text,
+					background: colors.surface,
+					border: `1px solid ${colors.border}`,
+					borderRadius: radius.md,
+					boxShadow: 'none',
+					transition: `border-color ${transitions.fast}`,
+					'&:focus-within': {
+						borderColor: colors.primary,
+						boxShadow: 'none',
+					},
 					[mq.mobile]: {
 						maxWidth: 'none',
 					},
@@ -39,20 +57,11 @@ export function SearchInput(handle: Handle<SearchInputProps>) {
 				placeholder={placeholder}
 				value={value}
 				mix={[
+					input.field(),
 					rmxCss({
-						width: '100%',
-						padding: spacing.sm,
-						paddingRight: value ? '36px' : spacing.sm,
+						height: 'auto',
 						fontSize: typography.fontSize.sm,
 						color: colors.text,
-						backgroundColor: colors.surface,
-						border: `1px solid ${colors.border}`,
-						borderRadius: radius.md,
-						outline: 'none',
-						transition: `border-color ${transitions.fast}`,
-						'&:focus': {
-							borderColor: colors.primary,
-						},
 						'&::placeholder': {
 							color: colors.textMuted,
 						},
@@ -68,10 +77,7 @@ export function SearchInput(handle: Handle<SearchInputProps>) {
 					aria-label="Clear search"
 					mix={[
 						rmxCss({
-							position: 'absolute',
-							right: '8px',
-							top: '50%',
-							transform: 'translateY(-50%)',
+							flexShrink: 0,
 							width: '20px',
 							height: '20px',
 							padding: 0,

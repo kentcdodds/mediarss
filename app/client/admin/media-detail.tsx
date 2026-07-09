@@ -1,4 +1,5 @@
 import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import toggle from 'remix/ui/toggle'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	formatDate,
@@ -1566,48 +1567,28 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 															>
 																{feed.name}
 															</span>
-															<button
-																type="button"
-																role="switch"
-																aria-checked={isEnabled}
+															<input
+																checked={isEnabled}
+																aria-label={`${isEnabled ? 'Remove from' : 'Assign to'} ${feed.name}`}
 																mix={[
+																	toggle({ size: 'lg' }),
 																	rmxCss({
-																		width: '44px',
-																		height: '24px',
-																		borderRadius: '12px',
-																		border: 'none',
-																		backgroundColor: isEnabled
-																			? colors.primary
-																			: colors.border,
 																		cursor: 'pointer',
-																		padding: '2px',
-																		transition: `background-color ${transitions.fast}`,
-																		display: 'flex',
-																		alignItems: 'center',
-																		'&:focus': {
+																		background: colors.border,
+																		'&:checked, &[aria-checked="true"], &[data-state="checked"]':
+																			{
+																				background: colors.primary,
+																			},
+																		'&:focus-visible': {
 																			outline: `2px solid ${colors.primary}`,
 																			outlineOffset: '2px',
 																		},
 																	}),
-																	rmxOn('click', () => toggleFeed(feed.id)),
+																	rmxOn<HTMLInputElement>('change', () =>
+																		toggleFeed(feed.id),
+																	),
 																]}
-															>
-																<div
-																	mix={[
-																		rmxCss({
-																			width: '20px',
-																			height: '20px',
-																			borderRadius: '50%',
-																			backgroundColor: '#fff',
-																			boxShadow: shadows.sm,
-																			transition: `transform ${transitions.fast}`,
-																			transform: isEnabled
-																				? 'translateX(20px)'
-																				: 'translateX(0)',
-																		}),
-																	]}
-																/>
-															</button>
+															/>
 														</div>
 													)
 												})}

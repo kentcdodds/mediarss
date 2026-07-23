@@ -8,12 +8,17 @@ import {
 	isTrackableRssStatus,
 } from '#app/helpers/analytics-request.ts'
 import {
+	getUploadedFeedArtworkMimeType,
+	resolveFeedArtworkMimeType,
+} from '#app/helpers/feed-artwork-mime.ts'
+import {
 	getCuratedFeedItems,
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
 import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
 import { type MediaFile } from '#app/helpers/media.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
+import { PODCAST_ART_PLACEHOLDER_CONTENT_TYPE } from '#app/helpers/podcast-art-placeholder.ts'
 import { generateRssFeed } from '#app/helpers/rss.ts'
 
 /**
@@ -48,6 +53,18 @@ export default {
 			items = await getCuratedFeedItems(feed as CuratedFeed)
 		}
 
+		const uploadedFeedArtworkMimeType = await getUploadedFeedArtworkMimeType(
+			feed.id,
+		)
+		const feedArtworkMimeType = resolveFeedArtworkMimeType({
+			uploadedFeedArtworkMimeType,
+			items,
+		})
+		// Item `/art` fallbacks use uploaded feed art or the PNG placeholder —
+		// not another item's embedded cover.
+		const itemArtworkFallbackMimeType =
+			uploadedFeedArtworkMimeType ?? PODCAST_ART_PLACEHOLDER_CONTENT_TYPE
+
 		// Generate RSS XML
 		const rssXml = generateRssFeed({
 			feed,
@@ -57,6 +74,8 @@ export default {
 			feedUrl,
 			adminUrl,
 			sortFields: feed.sortFields,
+			feedArtworkMimeType,
+			itemArtworkFallbackMimeType,
 		})
 
 		const response = new Response(rssXml, {

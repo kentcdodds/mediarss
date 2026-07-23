@@ -31,6 +31,16 @@ export type RSSGeneratorOptions = {
 	 * clients while preserving the actual publication dates.
 	 */
 	sortFields: string
+	/**
+	 * MIME type of the image served for channel/feed artwork.
+	 * Controls the `.jpg` / `.png` / `.webp` suffix on feed art URLs.
+	 */
+	feedArtworkMimeType: string
+	/**
+	 * MIME type used for item artwork URLs when the item has no embedded cover.
+	 * Should match the item `/art` fallback (uploaded feed art or placeholder).
+	 */
+	itemArtworkFallbackMimeType: string
 }
 
 /**
@@ -150,18 +160,20 @@ function getMediaUrl(baseUrl: string, token: string, filePath: string): string {
 
 /**
  * Build the URL for item artwork.
- * Uses format: /art/:token/v/:cacheVersion/:rootName/:relativePath.jpg
+ * Uses format: /art/:token/v/:cacheVersion/:rootName/:relativePath.{jpg|png|webp}
  *
- * The URL ends with a real image extension so podcast clients that reject
- * extension-less (or audio-extension) itunes:image hrefs will still fetch it.
- * Cache-busting lives in the path for the same reason — a trailing `?v=` would
- * make the URL no longer end in `.jpg`.
+ * The URL ends with the image extension that matches the format `/art` will
+ * serve after squaring, so podcast clients that reject extension-less (or
+ * audio-extension) itunes:image hrefs still fetch it. Cache-busting lives in
+ * the path for the same reason — a trailing `?v=` would make the URL no longer
+ * end in an image extension.
  */
 function getArtworkUrl(
 	baseUrl: string,
 	token: string,
 	filePath: string,
 	cacheVersion: number,
+	artworkMimeType: string,
 ): string {
 	const resolved = resolveMediaPath(filePath)
 	invariant(
@@ -174,6 +186,7 @@ function getArtworkUrl(
 		resolved.root.name,
 		resolved.relativePath,
 		cacheVersion,
+		artworkMimeType,
 	)
 }
 
@@ -205,6 +218,7 @@ function generateItem(
 	token: string,
 	cacheVersion: number,
 	useTitleNumbering: boolean,
+	itemArtworkFallbackMimeType: string,
 ): string {
 	const itemId = generateItemId(item)
 
@@ -223,7 +237,14 @@ function generateItem(
 	const description = buildDescription(item.description)
 
 	const mediaUrl = getMediaUrl(baseUrl, token, item.path)
-	const artworkUrl = getArtworkUrl(baseUrl, token, item.path, cacheVersion)
+	const artworkMimeType = item.artworkMimeType ?? itemArtworkFallbackMimeType
+	const artworkUrl = getArtworkUrl(
+		baseUrl,
+		token,
+		item.path,
+		cacheVersion,
+		artworkMimeType,
+	)
 	const duration = formatItunesDuration(item.duration)
 
 	return `    <item>
@@ -262,7 +283,17 @@ function _isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
  * still maintaining the intended episode order.
  */
 export function generateRssFeed(options: RSSGeneratorOptions): string {
-	const { feed, items, baseUrl, token, feedUrl, adminUrl, sortFields } = options
+	const {
+		feed,
+		items,
+		baseUrl,
+		token,
+		feedUrl,
+		adminUrl,
+		sortFields,
+		feedArtworkMimeType,
+		itemArtworkFallbackMimeType,
+	} = options
 
 	// Determine if we need to use title numbering for ordering.
 	// When sorting by pubDate, no numbering is needed as clients will sort correctly.
@@ -284,8 +315,13 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	)
 	const link = escapeXml(feed.link || adminUrl)
 	const cacheVersion = feed.updatedAt
-	// Ends with .jpg; cache version is a path segment (see podcast-art-url.ts).
-	const imageUrl = buildFeedPodcastArtUrl(baseUrl, token, cacheVersion)
+	// Extension matches the format `/art` will serve (see podcast-art-url.ts).
+	const imageUrl = buildFeedPodcastArtUrl(
+		baseUrl,
+		token,
+		cacheVersion,
+		feedArtworkMimeType,
+	)
 	// PocketCasts and similar apps prefer itunes:author; fall back to ownerName.
 	const author = escapeXml(feed.author || feed.ownerName)
 	const ownerName = escapeXml(feed.ownerName || feed.author)
@@ -311,6 +347,7 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 				token,
 				cacheVersion,
 				useTitleNumbering,
+				itemArtworkFallbackMimeType,
 			),
 		)
 		.join('\n')

@@ -19,6 +19,7 @@ import {
 } from 'remix/data-schema'
 import { cachified, shouldRefreshCache } from '#app/cache/cache.ts'
 import { getMediaRoots } from '#app/config/env.ts'
+import { getArtworkMimeType } from '#app/helpers/artwork.ts'
 
 /**
  * Concurrency limit for parallel metadata extraction.
@@ -155,6 +156,11 @@ const MediaFileShape = {
 	copyright: nullable(string()),
 	sizeBytes: number(),
 	mimeType: string(),
+	/**
+	 * MIME type of embedded cover art, if present.
+	 * Used so RSS itunes:image URLs can end with a matching image extension.
+	 */
+	artworkMimeType: nullable(string()),
 	fileModifiedAt: number(),
 	// Additional metadata fields
 	album: nullable(string()),
@@ -183,13 +189,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(2 as const)), // Increment when schema changes
+	_cacheVersion: optional(literal(3 as const)), // Increment when schema changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema changes
-const CACHE_VERSION = 2 as const
+const CACHE_VERSION = 3 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -859,9 +865,10 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 		const fileType = await fileTypeFromFile(absolutePath)
 		if (!fileType || !isMediaMimeType(fileType.mime)) return null
 
-		// Parse metadata
+		// Parse metadata including cover format so RSS artwork URLs can use
+		// an extension that matches the image `/art` will serve.
 		const metadata = await mm.parseFile(absolutePath, {
-			skipCovers: true,
+			skipCovers: false,
 		})
 
 		// Parse Audible json64 metadata if present
@@ -869,6 +876,8 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 
 		const filename = path.basename(absolutePath)
 		const directory = path.dirname(absolutePath)
+		const cover = metadata.common.picture?.[0]
+		const artworkMimeType = cover ? getArtworkMimeType(cover.format) : null
 
 		const mediaFile: MediaFile = {
 			path: absolutePath,
@@ -888,6 +897,7 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 			copyright: extractCopyright(metadata, audible),
 			sizeBytes: stat.size,
 			mimeType: correctMimeType(fileType.mime, filename),
+			artworkMimeType,
 			fileModifiedAt: Math.floor(stat.mtimeMs / 1000),
 			// Additional metadata fields
 			album: extractAlbum(metadata),

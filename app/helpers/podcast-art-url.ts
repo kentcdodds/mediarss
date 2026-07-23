@@ -5,27 +5,44 @@
  * URLs to end with a real image extension such as `.jpg`. Cache-bust tokens
  * therefore live in the path (`/v/{version}/...jpg`) rather than a `?v=` query
  * string that would make the URL no longer end in an image extension.
+ *
+ * The extension matches the format `/art` will serve after squaring
+ * (JPEG / PNG / WebP), not the underlying media file's audio extension.
  */
 
-const PODCAST_ART_IMAGE_EXTENSION = '.jpg'
+import { getArtworkOutputFormat } from '#app/helpers/square-artwork.ts'
+
 const TRAILING_IMAGE_EXTENSION_RE = /\.(?:jpe?g|png|webp)$/i
 const CACHE_VERSION_PREFIX_RE = /^v\/(\d+)\//
 
+export type PodcastArtImageExtension = 'jpg' | 'png' | 'webp'
+
+/**
+ * Choose the podcast-art URL extension for a source artwork MIME type.
+ */
+export function getPodcastArtExtension(
+	mimeType: string,
+): PodcastArtImageExtension {
+	return getArtworkOutputFormat(mimeType).ext
+}
+
 /**
  * Build the channel/feed artwork URL for an RSS feed.
- * Format: /art/:token/v/:cacheVersion/feed.jpg
+ * Format: /art/:token/v/:cacheVersion/feed.{jpg|png|webp}
  */
 export function buildFeedPodcastArtUrl(
 	baseUrl: string,
 	token: string,
 	cacheVersion: number,
+	artworkMimeType: string,
 ): string {
-	return `${baseUrl}/art/${token}/v/${cacheVersion}/feed${PODCAST_ART_IMAGE_EXTENSION}`
+	const ext = getPodcastArtExtension(artworkMimeType)
+	return `${baseUrl}/art/${token}/v/${cacheVersion}/feed.${ext}`
 }
 
 /**
  * Build an episode/item artwork URL for an RSS feed.
- * Format: /art/:token/v/:cacheVersion/:rootName/:encodedRelativePath.jpg
+ * Format: /art/:token/v/:cacheVersion/:rootName/:encodedRelativePath.{jpg|png|webp}
  */
 export function buildItemPodcastArtUrl(
 	baseUrl: string,
@@ -33,9 +50,11 @@ export function buildItemPodcastArtUrl(
 	rootName: string,
 	relativePath: string,
 	cacheVersion: number,
+	artworkMimeType: string,
 ): string {
 	const encodedRelativePath = encodeURIComponent(relativePath)
-	return `${baseUrl}/art/${token}/v/${cacheVersion}/${rootName}/${encodedRelativePath}${PODCAST_ART_IMAGE_EXTENSION}`
+	const ext = getPodcastArtExtension(artworkMimeType)
+	return `${baseUrl}/art/${token}/v/${cacheVersion}/${rootName}/${encodedRelativePath}.${ext}`
 }
 
 /**

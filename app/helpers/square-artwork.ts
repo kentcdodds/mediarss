@@ -11,12 +11,16 @@ type SquareArtworkResult = {
 	mimeType: string
 }
 
-type OutputFormat = {
+export type ArtworkOutputFormat = {
 	ext: 'jpg' | 'png' | 'webp'
 	mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
 }
 
-function getOutputFormat(mimeType: string): OutputFormat {
+/**
+ * Map a source artwork MIME type to the format `/art` will actually serve
+ * after squaring. Unknown types are normalized to JPEG.
+ */
+export function getArtworkOutputFormat(mimeType: string): ArtworkOutputFormat {
 	switch (mimeType) {
 		case 'image/png':
 			return { ext: 'png', mimeType: 'image/png' }
@@ -25,6 +29,10 @@ function getOutputFormat(mimeType: string): OutputFormat {
 		default:
 			return { ext: 'jpg', mimeType: 'image/jpeg' }
 	}
+}
+
+function getOutputFormat(mimeType: string): ArtworkOutputFormat {
+	return getArtworkOutputFormat(mimeType)
 }
 
 function getCacheKey(sourceKey: string): string {
@@ -39,7 +47,7 @@ async function ensureCacheDir(): Promise<void> {
 
 async function tryReadCachedArtwork(
 	cacheKey: string,
-	format: OutputFormat,
+	format: ArtworkOutputFormat,
 ): Promise<SquareArtworkResult | null> {
 	const cachePath = path.join(ARTWORK_CACHE_DIR, `${cacheKey}.${format.ext}`)
 	try {
@@ -56,7 +64,7 @@ async function tryReadCachedArtwork(
 
 async function writeCachedArtwork(
 	cacheKey: string,
-	format: OutputFormat,
+	format: ArtworkOutputFormat,
 	data: Buffer,
 ): Promise<void> {
 	await ensureCacheDir()

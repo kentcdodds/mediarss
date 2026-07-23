@@ -12,6 +12,7 @@ import { resolveFeedArtwork } from '#app/helpers/feed-artwork-resolution.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
+import { normalizePodcastArtPath } from '#app/helpers/podcast-art-url.ts'
 import {
 	getPodcastArtPlaceholderBytes,
 	PODCAST_ART_PLACEHOLDER_CONTENT_TYPE,
@@ -74,18 +75,22 @@ export default {
 
 		const { feed, type } = result
 
-		// Special case: "/art/:token/feed" returns the feed's artwork
-		if (splatParam === 'feed') {
-			return resolveFeedArtwork(feed.id)
-		}
-
 		// File-specific artwork
 		if (!splatParam) {
 			return new Response('File path required', { status: 400 })
 		}
 
+		// Accept podcast-client-friendly URLs that end in .jpg (and optional
+		// /v/{cacheVersion}/ prefix) while keeping legacy undecorated paths.
+		const artPath = normalizePodcastArtPath(splatParam)
+
+		// Special case: "/art/:token/feed" (also feed.jpg / v/:n/feed.jpg)
+		if (artPath === 'feed') {
+			return resolveFeedArtwork(feed.id)
+		}
+
 		// Decode the path parameter
-		const decodedPath = decodePathParam(splatParam)
+		const decodedPath = decodePathParam(artPath)
 		if (decodedPath === null) {
 			return new Response('Invalid path encoding', { status: 400 })
 		}

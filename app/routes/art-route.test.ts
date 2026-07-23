@@ -154,6 +154,89 @@ test('art route serves PNG placeholder for feed artwork when no artwork exists',
 	}
 })
 
+test('art route accepts podcast-client feed.jpg URLs with path cache-bust', async () => {
+	const feed = await createCuratedFeed({
+		name: `art-route-feed-jpg-${Date.now()}`,
+	})
+	const token = await createCuratedFeedToken({
+		feedId: feed.id,
+		label: 'Feed jpg art token',
+	})
+
+	try {
+		const pathParam = `v/${feed.updatedAt}/feed.jpg`
+		const request = new Request(
+			`http://localhost/art/${token.token}/${pathParam}`,
+		)
+		const response = await artHandler.handler(
+			asActionContext({
+				request,
+				method: 'GET',
+				url: new URL(request.url),
+				params: {
+					token: token.token,
+					path: pathParam,
+				},
+			}),
+		)
+
+		expect(response.status).toBe(200)
+		expect(response.headers.get('Content-Type')).toBe('image/png')
+		const body = Buffer.from(await response.arrayBuffer())
+		expect(body.equals(getPodcastArtPlaceholderBytes())).toBe(true)
+	} finally {
+		await deleteCuratedFeed(feed.id)
+	}
+})
+
+test('art route accepts item artwork URLs that end with .jpg', async () => {
+	await using ctx = await createFileArtRouteTestContext()
+	const extractArtworkSpy = spyOn(
+		artworkHelpers,
+		'extractArtwork',
+	).mockResolvedValue({
+		data: Buffer.from('embedded-artwork'),
+		mimeType: 'image/jpeg',
+	})
+	using _restoreExtractArtworkSpy = {
+		[Symbol.dispose]: () => {
+			extractArtworkSpy.mockRestore()
+		},
+	}
+	const squared = Buffer.from('squared-item-artwork')
+	const getSquareArtworkSpy = spyOn(
+		squareArtworkHelpers,
+		'getSquareArtwork',
+	).mockResolvedValue({
+		data: squared,
+		mimeType: 'image/jpeg',
+	})
+	using _restoreGetSquareArtworkSpy = {
+		[Symbol.dispose]: () => {
+			getSquareArtworkSpy.mockRestore()
+		},
+	}
+
+	const pathParam = `v/99/${ctx.rootName}/${encodeURIComponent(ctx.relativePath)}.jpg`
+	const request = new Request(`http://localhost/art/${ctx.token}/${pathParam}`)
+	const response = await artHandler.handler(
+		asActionContext({
+			request,
+			method: 'GET',
+			url: new URL(request.url),
+			params: {
+				token: ctx.token,
+				path: pathParam,
+			},
+		}),
+	)
+
+	expect(response.status).toBe(200)
+	expect(response.headers.get('Content-Type')).toBe('image/jpeg')
+	const body = Buffer.from(await response.arrayBuffer())
+	expect(body.equals(squared)).toBe(true)
+})
+
 test('art route falls back to uploaded feed artwork when embedded squaring fails', async () => {
 	await using ctx = await createFileArtRouteTestContext()
 	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})

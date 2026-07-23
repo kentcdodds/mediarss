@@ -3,6 +3,10 @@ import { resolveMediaPath } from '#app/config/env.ts'
 import { type DirectoryFeed, type Feed } from '#app/db/types.ts'
 import { formatItunesDuration, formatRssDate } from './format.ts'
 import { type MediaFile } from './media.ts'
+import {
+	buildFeedPodcastArtUrl,
+	buildItemPodcastArtUrl,
+} from './podcast-art-url.ts'
 
 /**
  * Options for generating an RSS feed.
@@ -146,7 +150,12 @@ function getMediaUrl(baseUrl: string, token: string, filePath: string): string {
 
 /**
  * Build the URL for item artwork.
- * Uses format: /art/:token/:rootName/:relativePath?v={cacheVersion}
+ * Uses format: /art/:token/v/:cacheVersion/:rootName/:relativePath.jpg
+ *
+ * The URL ends with a real image extension so podcast clients that reject
+ * extension-less (or audio-extension) itunes:image hrefs will still fetch it.
+ * Cache-busting lives in the path for the same reason — a trailing `?v=` would
+ * make the URL no longer end in `.jpg`.
  */
 function getArtworkUrl(
 	baseUrl: string,
@@ -159,8 +168,13 @@ function getArtworkUrl(
 		resolved,
 		`File "${filePath}" is not within any configured media root. Check MEDIA_PATHS configuration.`,
 	)
-	const encodedRelativePath = encodeURIComponent(resolved.relativePath)
-	return `${baseUrl}/art/${token}/${resolved.root.name}/${encodedRelativePath}?v=${cacheVersion}`
+	return buildItemPodcastArtUrl(
+		baseUrl,
+		token,
+		resolved.root.name,
+		resolved.relativePath,
+		cacheVersion,
+	)
 }
 
 /**
@@ -270,7 +284,8 @@ export function generateRssFeed(options: RSSGeneratorOptions): string {
 	)
 	const link = escapeXml(feed.link || adminUrl)
 	const cacheVersion = feed.updatedAt
-	const imageUrl = `${baseUrl}/art/${token}/feed?v=${cacheVersion}`
+	// Ends with .jpg; cache version is a path segment (see podcast-art-url.ts).
+	const imageUrl = buildFeedPodcastArtUrl(baseUrl, token, cacheVersion)
 	// PocketCasts and similar apps prefer itunes:author; fall back to ownerName.
 	const author = escapeXml(feed.author || feed.ownerName)
 	const ownerName = escapeXml(feed.ownerName || feed.author)

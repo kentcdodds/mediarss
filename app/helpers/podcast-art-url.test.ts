@@ -37,4 +37,7 @@ test('normalizePodcastArtPath keeps legacy undecorated paths intact', () => {
 	expect(normalizePodcastArtPath('audio/Book%2Fepisode.m4b')).toBe(
 		'audio/Book%2Fepisode.m4b',
 	)
+	// A media root named `v` must not be treated as a cache-bust prefix
+	// unless the URL also ends with an image extension (new format).
+	expect(normalizePodcastArtPath('v/123/episode.m4b')).toBe('v/123/episode.m4b')
 })

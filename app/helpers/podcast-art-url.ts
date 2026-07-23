@@ -43,9 +43,14 @@ export function buildItemPodcastArtUrl(
  *
  * Accepts both the new decorated URLs and legacy undecorated paths:
  * - trailing `.jpg` / `.jpeg` / `.png` / `.webp`
- * - leading `v/{cacheVersion}/` cache-bust segment
+ * - leading `v/{cacheVersion}/` cache-bust segment (only when an image
+ *   extension was present, so a legacy media root named `v` is not mangled)
  */
 export function normalizePodcastArtPath(splatParam: string): string {
+	const hadImageExtension = TRAILING_IMAGE_EXTENSION_RE.test(splatParam)
 	const withoutExtension = splatParam.replace(TRAILING_IMAGE_EXTENSION_RE, '')
+	if (!hadImageExtension) {
+		return withoutExtension
+	}
 	return withoutExtension.replace(CACHE_VERSION_PREFIX_RE, '')
 }

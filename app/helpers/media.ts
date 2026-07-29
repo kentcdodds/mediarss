@@ -189,13 +189,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(3 as const)), // Increment when schema changes
+	_cacheVersion: optional(literal(4 as const)), // Increment when schema changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema changes
-const CACHE_VERSION = 3 as const
+const CACHE_VERSION = 4 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -301,14 +301,15 @@ function parseAsFullDate(value: string | number): Date | null {
  * 1. json64.release_date (e.g. "2023-11-07")
  * 2. TXXX:year (may contain full date like "2023-11-07")
  * 3. TXXX:date
- * 4. common.date
- * 5. common.year
+ * 4. common.releasedate (ID3 TDRL — preferred over TDRC/date)
+ * 5. common.date (ID3 TDRC — often year-only)
+ * 6. common.year
  *
  * Handles edge cases where date/year fields may be swapped or contain unexpected formats
  */
-function extractPublicationDate(
+export function extractPublicationDate(
 	metadata: mm.IAudioMetadata,
-	audible: AudibleJson64 | null,
+	audible: { release_date?: string } | null = null,
 ): Date | null {
 	const { common } = metadata
 
@@ -332,7 +333,13 @@ function extractPublicationDate(
 		if (fullDate) return fullDate
 	}
 
-	// 4. common.date
+	// 4. common.releasedate (TDRL) — preferred over TDRC/date when both exist
+	if (common.releasedate) {
+		const fullDate = parseAsFullDate(common.releasedate)
+		if (fullDate) return fullDate
+	}
+
+	// 5. common.date (TDRC)
 	if (common.date) {
 		const fullDate = parseAsFullDate(common.date)
 		if (fullDate) return fullDate
@@ -352,6 +359,12 @@ function extractPublicationDate(
 	// Check TXXX:year for year-only
 	if (txxxYear && isYearString(txxxYear)) {
 		const year = parseInt(txxxYear, 10)
+		return new Date(year, 0, 1)
+	}
+
+	// Prefer releasedate year over date year when both are year-only
+	if (common.releasedate && isYearString(common.releasedate)) {
+		const year = parseInt(common.releasedate, 10)
 		return new Date(year, 0, 1)
 	}
 

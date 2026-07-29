@@ -4,6 +4,7 @@ import { expect, test } from 'vitest'
 import { initEnv } from '#app/config/env.ts'
 import { consoleError, consoleWarn } from '#test/setup.ts'
 import {
+	extractPublicationDate,
 	getFileMetadata,
 	isMediaFile,
 	scanDirectory,
@@ -148,4 +149,57 @@ test('scanDirectoryWithMetadata returns complete metadata for all media files', 
 	// Directory without media files should return empty array
 	const noMediaFiles = await scanDirectoryWithMetadata('./app/db')
 	expect(noMediaFiles).toEqual([])
+})
+
+function metadataWithCommon(
+	common: Record<string, unknown>,
+): Parameters<typeof extractPublicationDate>[0] {
+	return {
+		common: {
+			track: { no: null, of: null },
+			disk: { no: null, of: null },
+			movementIndex: { no: null, of: null },
+			...common,
+		},
+		format: { trackInfo: [], tagTypes: [] },
+		native: {},
+		quality: { warnings: [] },
+	}
+}
+
+test('extractPublicationDate prefers TDRL releasedate over year-only TDRC date', () => {
+	// Podcast files often have TDRC=2026 (year) and TDRL=2026-07-28 (full date).
+	// music-metadata maps those to common.date and common.releasedate.
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2026',
+			releasedate: '2026-07-28',
+		}),
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+})
+
+test('extractPublicationDate prefers releasedate over full common.date', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2026-01-01',
+			releasedate: '2026-07-28',
+		}),
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+})
+
+test('extractPublicationDate falls back to common.date when releasedate is missing', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2025-03-15',
+		}),
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
 })

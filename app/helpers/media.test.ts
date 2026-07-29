@@ -154,6 +154,7 @@ test('scanDirectoryWithMetadata returns complete metadata for all media files', 
 
 function metadataWithCommon(
 	common: Record<string, unknown>,
+	native: Record<string, Array<{ id: string; value: unknown }>> = {},
 ): Parameters<typeof extractPublicationDate>[0] {
 	return {
 		common: {
@@ -163,7 +164,7 @@ function metadataWithCommon(
 			...common,
 		},
 		format: { trackInfo: [], tagTypes: [] },
-		native: {},
+		native,
 		quality: { warnings: [] },
 	}
 }
@@ -252,11 +253,64 @@ test('extractDescription keeps non-iTunes comments when mixed with iTun* frames'
 
 test('extractDescription returns null when only Apple iTun* COMM frames exist', () => {
 	const description = extractDescription(
-		metadataWithCommon({
-			comment: [{ language: 'eng', descriptor: 'iTunPGAP', text: '0' }],
-		}),
+		metadataWithCommon(
+			{
+				comment: [
+					{ language: 'eng', descriptor: 'iTunPGAP', text: '0' },
+					{
+						language: 'eng',
+						descriptor: 'iTunNORM',
+						text: ' 00000473 00000473',
+					},
+				],
+			},
+			{
+				// Native COMM frames keep the same values; first match must not win.
+				'ID3v2.4': [
+					{
+						id: 'COMM',
+						value: { language: 'eng', descriptor: 'iTunPGAP', text: '0' },
+					},
+					{
+						id: 'COMM',
+						value: {
+							language: 'eng',
+							descriptor: 'iTunNORM',
+							text: ' 00000473 00000473',
+						},
+					},
+				],
+			},
+		),
 		null,
 	)
 
 	expect(description).toBeNull()
+})
+
+test('extractDescription uses non-private native COMM when common.comment is empty', () => {
+	const description = extractDescription(
+		metadataWithCommon(
+			{},
+			{
+				'ID3v2.4': [
+					{
+						id: 'COMM',
+						value: { language: 'eng', descriptor: 'iTunPGAP', text: '0' },
+					},
+					{
+						id: 'COMM',
+						value: {
+							language: 'eng',
+							descriptor: '',
+							text: 'Native comment description',
+						},
+					},
+				],
+			},
+		),
+		null,
+	)
+
+	expect(description).toBe('Native comment description')
 })

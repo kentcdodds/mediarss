@@ -412,6 +412,33 @@ function isItunesPrivateComment(comment: unknown): boolean {
 	return typeof descriptor === 'string' && /^iTun/i.test(descriptor)
 }
 
+function isNativeCommTagId(id: string): boolean {
+	const lower = id.toLowerCase()
+	return lower === 'comm' || lower.startsWith('comm:')
+}
+
+/**
+ * Collect non-private native COMM frame text.
+ * music-metadata stores each COMM as id "COMM" with `{ descriptor, text }`,
+ * so we must skip iTun* descriptors rather than taking the first COMM value.
+ */
+function getNativeCommentDescription(
+	metadata: mm.IAudioMetadata,
+): string | null {
+	const texts: string[] = []
+	for (const nativeMetadata of Object.values(metadata.native)) {
+		for (const item of nativeMetadata) {
+			if (!isNativeCommTagId(item.id)) continue
+			// Descriptor may also appear in the tag id (e.g. COMM:iTunNORM)
+			if (/^comm:itun/i.test(item.id)) continue
+			if (isItunesPrivateComment(item.value)) continue
+			const text = valueToString(item.value)
+			if (text) texts.push(text)
+		}
+	}
+	return texts.length > 0 ? texts.join('\n') : null
+}
+
 /**
  * Extract description from metadata with fallback chain:
  * 1. json64.summary (Audible's main description)
@@ -419,7 +446,7 @@ function isItunesPrivateComment(comment: unknown): boolean {
  * 3. common.description
  * 4. TXXX:comment
  * 5. common.comment (excluding Apple iTun* private COMM frames)
- * 6. COMM native tag
+ * 6. COMM native tags (excluding Apple iTun* private COMM frames)
  */
 export function extractDescription(
 	metadata: mm.IAudioMetadata,
@@ -462,14 +489,8 @@ export function extractDescription(
 		if (comment) return comment
 	}
 
-	// 6. COMM native tag (ID3v2 comment frame)
-	const comm =
-		getNativeValue(metadata, 'COMM:comment') ?? getNativeValue(metadata, 'COMM')
-	if (comm) {
-		return comm
-	}
-
-	return null
+	// 6. COMM native tags — same iTun* filter as common.comment
+	return getNativeCommentDescription(metadata)
 }
 
 /**

@@ -403,15 +403,25 @@ function valueToString(value: unknown): string {
 }
 
 /**
+ * Apple embeds private iTunes COMM frames (iTunNORM, iTunPGAP, iTunSMPB, …)
+ * as hex/numeric metadata. Those must not appear in RSS item descriptions.
+ */
+function isItunesPrivateComment(comment: unknown): boolean {
+	if (!comment || typeof comment !== 'object') return false
+	const descriptor = (comment as { descriptor?: unknown }).descriptor
+	return typeof descriptor === 'string' && /^iTun/i.test(descriptor)
+}
+
+/**
  * Extract description from metadata with fallback chain:
  * 1. json64.summary (Audible's main description)
  * 2. TXXX:description (native tag)
  * 3. common.description
  * 4. TXXX:comment
- * 5. common.comment
+ * 5. common.comment (excluding Apple iTun* private COMM frames)
  * 6. COMM native tag
  */
-function extractDescription(
+export function extractDescription(
 	metadata: mm.IAudioMetadata,
 	audible: AudibleJson64 | null,
 ): string | null {
@@ -442,9 +452,13 @@ function extractDescription(
 		return txxxComment
 	}
 
-	// 5. common.comment
+	// 5. common.comment — skip Apple private iTun* COMM frames
 	if (common.comment && common.comment.length > 0) {
-		const comment = common.comment.map(valueToString).filter(Boolean).join('\n')
+		const comment = common.comment
+			.filter((entry) => !isItunesPrivateComment(entry))
+			.map(valueToString)
+			.filter(Boolean)
+			.join('\n')
 		if (comment) return comment
 	}
 

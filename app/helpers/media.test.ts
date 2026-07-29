@@ -4,6 +4,7 @@ import { expect, test } from 'vitest'
 import { initEnv } from '#app/config/env.ts'
 import { consoleError, consoleWarn } from '#test/setup.ts'
 import {
+	extractDescription,
 	extractPublicationDate,
 	getFileMetadata,
 	isMediaFile,
@@ -202,4 +203,60 @@ test('extractPublicationDate falls back to common.date when releasedate is missi
 
 	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
+})
+
+test('extractDescription ignores Apple iTun* COMM frames', () => {
+	// Podcasts from Apple include private COMM tags (iTunNORM, iTunPGAP, iTunSMPB)
+	// alongside the real description. Those must not leak into RSS item text.
+	const description = extractDescription(
+		metadataWithCommon({
+			comment: [
+				{ language: 'eng', descriptor: 'iTunPGAP', text: '0' },
+				{
+					language: 'eng',
+					descriptor: 'iTunNORM',
+					text: ' 00000473 00000473 000072AE 000072AE 0027971A 0027971A 00007213 00007213 000004CB 000019B6',
+				},
+				{
+					language: 'eng',
+					descriptor: 'iTunSMPB',
+					text: ' 00000000 00000210 0000098B 000000000CD49165 00000000 04A7A53D 00000000 00000000 00000000 00000000 00000000 00000000',
+				},
+				{
+					language: 'eng',
+					descriptor: '',
+					text: 'This is the actual description.',
+				},
+			],
+		}),
+		null,
+	)
+
+	expect(description).toBe('This is the actual description.')
+})
+
+test('extractDescription keeps non-iTunes comments when mixed with iTun* frames', () => {
+	const description = extractDescription(
+		metadataWithCommon({
+			comment: [
+				{ language: 'eng', descriptor: 'iTunNORM', text: ' 00000473' },
+				{ language: 'eng', descriptor: 'note', text: 'Producer notes' },
+				{ language: 'eng', descriptor: '', text: 'Episode summary' },
+			],
+		}),
+		null,
+	)
+
+	expect(description).toBe('Producer notes\nEpisode summary')
+})
+
+test('extractDescription returns null when only Apple iTun* COMM frames exist', () => {
+	const description = extractDescription(
+		metadataWithCommon({
+			comment: [{ language: 'eng', descriptor: 'iTunPGAP', text: '0' }],
+		}),
+		null,
+	)
+
+	expect(description).toBeNull()
 })

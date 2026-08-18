@@ -1,10 +1,8 @@
-import { column as c, createDatabase, table } from 'remix/data-table'
-import { createSqliteDatabaseAdapter } from 'remix/data-table-sqlite'
+import { column as c, table } from 'remix/data-table'
+import { createSqliteDatabase } from 'remix/data-table/sqlite'
 import { db as sqliteDb } from './index.ts'
 
-const sqliteAdapter = createSqliteDatabaseAdapter(sqliteDb)
-
-export const dataTableDb = createDatabase(sqliteAdapter)
+export const dataTableDb = createSqliteDatabase(sqliteDb)
 
 export const directoryFeedsTable = table({
 	name: 'directory_feeds',

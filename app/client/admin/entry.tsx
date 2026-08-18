@@ -17,7 +17,8 @@ const app = run({
 		}
 		return component
 	},
-	async resolveFrame(src, signal, target) {
+	async resolveFrame(src, options) {
+		const { signal, target } = options ?? {}
 		const headers = new Headers({ Accept: 'text/html' })
 		if (target) headers.set('x-remix-target', target)
 		const response = await fetch(src, { headers, signal })

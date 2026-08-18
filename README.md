@@ -14,7 +14,7 @@
 
 ## Remix Version Notes
 
-MediaRSS currently targets `remix@3.0.0-beta.0`.
+MediaRSS currently targets `remix@3.0.0-beta.10`.
 
 For migration details, package guidance, and framework usage patterns, use the
 repo-local Remix skill at `.agents/skills/remix/SKILL.md`.

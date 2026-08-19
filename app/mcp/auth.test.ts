@@ -1,6 +1,11 @@
 import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
-import { handleUnauthorized } from './auth.ts'
+import { db } from '#app/db/index.ts'
+import { migrate } from '#app/db/migrations.ts'
+import { generateAccessToken } from '#app/oauth/tokens.ts'
+import { handleUnauthorized, resolveAuthInfo } from './auth.ts'
+
+migrate(db)
 
 test('handleUnauthorized advertises https resource metadata from Forwarded proto', () => {
 	const request = new Request('http://mediarss.doddsfamily.us/mcp', {
@@ -31,4 +36,18 @@ test('handleUnauthorized includes invalid_token details when auth header exists'
 
 	expect(header).toContain('error="invalid_token"')
 	expect(header).toContain('error_description=')
+})
+
+test('resolveAuthInfo includes token expiry for the 2026 resource-server contract', async () => {
+	const issuer = 'http://localhost'
+	const { token } = await generateAccessToken({
+		issuer,
+		scope: 'mcp:read',
+	})
+
+	const authInfo = await resolveAuthInfo(`Bearer ${token}`, issuer)
+
+	expect(authInfo).not.toBeNull()
+	expect(authInfo?.scopes).toEqual(['mcp:read'])
+	expect(authInfo?.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000))
 })

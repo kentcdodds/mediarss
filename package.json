@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@epic-web/config": "^3.1.0",
+    "@modelcontextprotocol/client": "^2.0.0",
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
     "@types/semver": "^7.7.1",
@@ -41,7 +42,7 @@
     "@epic-web/cachified": "^5.6.2",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "^6.1.0",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "close-with-grace": "^2.5.0",
     "esbuild": "^0.28.0",
     "fast-sort": "^3.4.1",

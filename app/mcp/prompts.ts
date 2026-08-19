@@ -3,7 +3,7 @@
  * Prompts are pre-defined conversation starters that help users accomplish tasks.
  */
 
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
@@ -99,9 +99,9 @@ You can use \`browse_media\` to explore the media directories and \`get_feed\` t
 			{
 				title: promptsMetadata.explore_feed.title,
 				description: promptsMetadata.explore_feed.description,
-				argsSchema: {
+				argsSchema: z.object({
 					feedId: z.string().describe('The feed ID to explore'),
-				},
+				}),
 			},
 			async ({ feedId }) => {
 				const feed = await getFeedById(feedId)
@@ -199,12 +199,12 @@ Use \`browse_media\` to explore the source directories if needed.`,
 			{
 				title: promptsMetadata.create_feed_wizard.title,
 				description: promptsMetadata.create_feed_wizard.description,
-				argsSchema: {
+				argsSchema: z.object({
 					type: z
 						.enum(['directory', 'curated'])
 						.optional()
 						.describe('Type of feed to create'),
-				},
+				}),
 			},
 			async ({ type }) => {
 				const mediaRoots = getMediaRoots()
@@ -304,12 +304,12 @@ What are you trying to create?`
 			{
 				title: promptsMetadata.organize_media.title,
 				description: promptsMetadata.organize_media.description,
-				argsSchema: {
+				argsSchema: z.object({
 					mediaRoot: z
 						.string()
 						.optional()
 						.describe('The media root to organize'),
-				},
+				}),
 			},
 			async ({ mediaRoot }) => {
 				const mediaRoots = getMediaRoots()

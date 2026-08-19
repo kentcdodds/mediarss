@@ -3,7 +3,7 @@
  * Creates and configures an McpServer instance for the media server.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { McpServer } from '@modelcontextprotocol/server'
 import { type AuthInfo, hasScope, type McpScope } from './auth.ts'
 import { serverMetadata } from './metadata.ts'
 import { initializePrompts } from './prompts.ts'
@@ -22,9 +22,8 @@ export function createMcpServer(): McpServer {
 		{
 			capabilities: {
 				tools: { listChanged: true },
-				resources: { listChanged: true, subscribe: true },
+				resources: { listChanged: true },
 				prompts: { listChanged: true },
-				logging: {},
 			},
 			instructions: serverMetadata.instructions,
 		},

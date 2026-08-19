@@ -91,14 +91,14 @@ export function withCors({
 
 /**
  * CORS headers for MCP endpoints.
- * Note: DELETE is supported for session termination per MCP spec.
+ * 2026-07-28 Streamable HTTP requires MCP-Protocol-Version, Mcp-Method,
+ * and Mcp-Name on request POSTs (SEP-2243).
  */
 export const MCP_CORS_HEADERS = {
 	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 	'Access-Control-Allow-Headers':
-		'Content-Type, Authorization, Accept, mcp-session-id, mcp-protocol-version',
-	'Access-Control-Expose-Headers': 'mcp-session-id',
+		'Content-Type, Authorization, Accept, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
 } as const
 
 /**

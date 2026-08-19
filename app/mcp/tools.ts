@@ -3,7 +3,7 @@
  * Tools provide callable functions that the AI can invoke.
  */
 
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer } from '@modelcontextprotocol/server'
 import { matchSorter } from 'match-sorter'
 import { z } from 'zod'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
@@ -471,9 +471,9 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.get_feed.title,
 				description: toolsMetadata.get_feed.description,
-				inputSchema: {
+				inputSchema: z.object({
 					id: z.string().describe('The feed ID (from `list_feeds`)'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: true,
 					destructiveHint: false,
@@ -635,7 +635,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.browse_media.title,
 				description: toolsMetadata.browse_media.description,
-				inputSchema: {
+				inputSchema: z.object({
 					mediaRoot: z
 						.string()
 						.describe('Name of the media root (from `list_media_directories`)'),
@@ -643,7 +643,7 @@ export async function initializeTools(
 						.string()
 						.optional()
 						.describe('Subdirectory path to browse (default: root)'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: true,
 					destructiveHint: false,
@@ -788,9 +788,9 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.get_feed_tokens.title,
 				description: toolsMetadata.get_feed_tokens.description,
-				inputSchema: {
+				inputSchema: z.object({
 					feedId: z.string().describe('The feed ID'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: true,
 					destructiveHint: false,
@@ -865,7 +865,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.get_media_widget.title,
 				description: toolsMetadata.get_media_widget.description,
-				inputSchema: {
+				inputSchema: z.object({
 					mediaRoot: z
 						.string()
 						.describe('Name of the media root (from `list_media_directories`)'),
@@ -878,7 +878,7 @@ export async function initializeTools(
 						.describe(
 							'A feed access token (optional). If not provided, uses the first available token from a feed that has access to this file.',
 						),
-				},
+				}),
 				annotations: {
 					readOnlyHint: true,
 					destructiveHint: false,
@@ -1083,7 +1083,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.search_media.title,
 				description: toolsMetadata.search_media.description,
-				inputSchema: {
+				inputSchema: z.object({
 					query: z
 						.string()
 						.describe(
@@ -1096,7 +1096,7 @@ export async function initializeTools(
 						.max(100)
 						.optional()
 						.describe('Maximum results to return (default: 20, max: 100)'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: true,
 					destructiveHint: false,
@@ -1306,7 +1306,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.create_directory_feed.title,
 				description: toolsMetadata.create_directory_feed.description,
-				inputSchema: {
+				inputSchema: z.object({
 					name: z.string().describe('Display name for the feed'),
 					description: z
 						.string()
@@ -1396,7 +1396,7 @@ export async function initializeTools(
 						.describe(
 							'Path within the media root (e.g., "Brandon Sanderson/Mistborn")',
 						),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
@@ -1607,7 +1607,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.create_curated_feed.title,
 				description: toolsMetadata.create_curated_feed.description,
-				inputSchema: {
+				inputSchema: z.object({
 					name: z.string().describe('Display name for the feed'),
 					description: z
 						.string()
@@ -1679,7 +1679,7 @@ export async function initializeTools(
 						.describe(
 							'JSON string of per-item metadata overrides (advanced) (or null to clear)',
 						),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
@@ -1836,7 +1836,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.update_feed.title,
 				description: toolsMetadata.update_feed.description,
-				inputSchema: {
+				inputSchema: z.object({
 					id: z.string().describe('The feed ID'),
 					name: z
 						.string()
@@ -1939,7 +1939,7 @@ export async function initializeTools(
 						.nullable()
 						.optional()
 						.describe('Directory feed only: exclude filter (or null to clear)'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
@@ -2150,9 +2150,9 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.delete_feed.title,
 				description: toolsMetadata.delete_feed.description,
-				inputSchema: {
+				inputSchema: z.object({
 					id: z.string().describe('The feed ID to delete'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: true,
@@ -2228,9 +2228,9 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.create_feed_token.title,
 				description: toolsMetadata.create_feed_token.description,
-				inputSchema: {
+				inputSchema: z.object({
 					feedId: z.string().describe('The feed ID'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
@@ -2299,9 +2299,9 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.delete_feed_token.title,
 				description: toolsMetadata.delete_feed_token.description,
-				inputSchema: {
+				inputSchema: z.object({
 					token: z.string().describe('The token to delete'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: true,
@@ -2363,7 +2363,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.add_media_to_feeds.title,
 				description: toolsMetadata.add_media_to_feeds.description,
-				inputSchema: {
+				inputSchema: z.object({
 					items: z
 						.array(
 							z.object({
@@ -2379,7 +2379,7 @@ export async function initializeTools(
 						.array(z.string())
 						.min(1)
 						.describe('Curated feed IDs to add the items to'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
@@ -2681,7 +2681,7 @@ export async function initializeTools(
 			{
 				title: toolsMetadata.remove_media_from_feeds.title,
 				description: toolsMetadata.remove_media_from_feeds.description,
-				inputSchema: {
+				inputSchema: z.object({
 					items: z
 						.array(
 							z.object({
@@ -2697,7 +2697,7 @@ export async function initializeTools(
 						.array(z.string())
 						.min(1)
 						.describe('Curated feed IDs to remove the items from'),
-				},
+				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: true,

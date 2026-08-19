@@ -4,10 +4,7 @@
  */
 
 import { createUIResource } from '@mcp-ui/server'
-import {
-	type McpServer,
-	ResourceTemplate,
-} from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/server'
 import { getMediaRoots, toAbsolutePath } from '#app/config/env.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
@@ -318,7 +315,7 @@ export async function initializeResources(
 					'Interactive media player widget (MCP-UI). Returns an HTML page with embedded media player for playback. Requires a valid feed token. Use get_feed_tokens to obtain tokens for your feeds.',
 				mimeType: 'text/html',
 			},
-			async (uri, params, extra) => {
+			async (uri, params) => {
 				// Decode URI components with error handling for malformed sequences
 				let token: string, rootName: string, relativePath: string
 				try {
@@ -371,13 +368,10 @@ export async function initializeResources(
 					throw new Error(`Media file not found or not readable.`)
 				}
 
-				// Determine base URL from the request context, falling back to initialization baseUrl
-				const resolvedBaseUrl = getBaseUrlFromExtra(extra, baseUrl)
-
 				// Generate the HTML widget (minimal shell - data comes via MCP-UI protocol)
 				// Note: This resource is intended for MCP-UI clients that provide initial-render-data
 				const widgetHtml = generateMediaWidgetHtml({
-					baseUrl: resolvedBaseUrl,
+					baseUrl,
 				})
 
 				return {
@@ -440,21 +434,4 @@ export async function initializeResources(
 			},
 		)
 	}
-}
-
-/**
- * Extract base URL from the extra context provided by the transport.
- * Falls back to a reasonable default if not available.
- */
-function getBaseUrlFromExtra(extra: unknown, fallback?: string): string {
-	// The transport may pass authInfo which contains issuer info
-	if (extra && typeof extra === 'object' && 'authInfo' in extra) {
-		const authInfo = extra.authInfo as { issuer?: string }
-		if (authInfo.issuer) {
-			return authInfo.issuer
-		}
-	}
-
-	// Use fallback if provided, otherwise default to environment variable or localhost
-	return fallback ?? process.env.PUBLIC_URL ?? 'http://localhost:3000'
 }

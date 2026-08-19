@@ -9,6 +9,7 @@ import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { handleUnauthorized, resolveAuthInfo } from '#app/mcp/auth.ts'
 import { MCP_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
+import { validateModernProtocolHeaders } from '#app/mcp/protocol-headers.ts'
 import { createMcpServer, initializeMcpServer } from '#app/mcp/server.ts'
 
 const mcpHandler = createMcpHandler(
@@ -43,6 +44,17 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 
 	if (!authInfo) {
 		return handleUnauthorized(request)
+	}
+
+	if (request.method === 'POST') {
+		let body: unknown
+		try {
+			body = await request.clone().json()
+		} catch {
+			body = undefined
+		}
+		const rejected = validateModernProtocolHeaders(request, body)
+		if (rejected) return rejected
 	}
 
 	return mcpHandler.fetch(request, { authInfo })

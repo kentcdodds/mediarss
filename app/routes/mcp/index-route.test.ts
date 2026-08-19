@@ -88,6 +88,44 @@ test('MCP CORS preflight advertises 2026-07-28 routing headers', async () => {
 	)
 })
 
+test('modern POST without MCP-Protocol-Version is rejected', async () => {
+	const token = await issueAccessToken()
+	const request = new Request('http://localhost/mcp', {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${token}`,
+			'Content-Type': 'application/json',
+			'Mcp-Method': 'tools/list',
+		},
+		body: JSON.stringify({
+			jsonrpc: '2.0',
+			id: 1,
+			method: 'tools/list',
+			params: {
+				_meta: {
+					'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+					'io.modelcontextprotocol/clientInfo': {
+						name: 'header-test',
+						version: '1.0.0',
+					},
+					'io.modelcontextprotocol/clientCapabilities': {},
+				},
+			},
+		}),
+	})
+
+	const response = await handleMcp(request)
+	const body = (await response.json()) as {
+		error?: { code?: number; message?: string }
+	}
+
+	expect(response.status).toBe(400)
+	expect(body.error?.code).toBe(-32020)
+	expect(body.error?.message?.toLowerCase()).toMatch(
+		/header|protocol-version|mismatch/,
+	)
+})
+
 test('legacy initialize handshake is rejected', async () => {
 	const token = await issueAccessToken()
 	const request = new Request('http://localhost/mcp', {

@@ -33,6 +33,7 @@ test('getCommitInfo returns complete git commit information when in a git repo',
 
 	// Short hash should be first 7 characters of full hash
 	expect(commit.shortHash).toBe(commit.hash.slice(0, 7))
+	expect(commit.source === 'git' || commit.source === 'env').toBe(true)
 })
 
 test('getShortCommitHash returns 7 character hash when in git repo', async () => {
@@ -73,4 +74,19 @@ test('getVersionInfo returns complete version info object with all required prop
 	// Uptime should be a positive number
 	expect(typeof info.uptimeMs).toBe('number')
 	expect(info.uptimeMs).toBeGreaterThanOrEqual(0)
+})
+
+test('getCommitInfo prefers a baked COMMIT_SHA over the local git hash', async () => {
+	const previous = process.env.COMMIT_SHA
+	process.env.COMMIT_SHA = 'abcdef1234567890abcdef1234567890abcdef12'
+	try {
+		const commit = await getCommitInfo()
+		expect(commit).not.toBeNull()
+		expect(commit!.source).toBe('env')
+		expect(commit!.hash).toBe('abcdef1234567890abcdef1234567890abcdef12')
+		expect(commit!.shortHash).toBe('abcdef1')
+	} finally {
+		if (previous === undefined) delete process.env.COMMIT_SHA
+		else process.env.COMMIT_SHA = previous
+	}
 })

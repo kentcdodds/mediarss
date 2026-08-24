@@ -18,6 +18,28 @@ export type CommitInfo = {
 	shortHash: string
 	message: string
 	date: string
+	source: 'env' | 'git'
+}
+
+function readBakedCommitSha(): string | null {
+	const sha = process.env.COMMIT_SHA || process.env.SOURCE_COMMIT
+	if (!sha) return null
+	const trimmed = sha.trim()
+	return /^[0-9a-f]{7,40}$/i.test(trimmed) ? trimmed : null
+}
+
+function commitFromSha(
+	sha: string,
+	source: CommitInfo['source'],
+	rest?: Partial<Pick<CommitInfo, 'message' | 'date'>>,
+): CommitInfo {
+	return {
+		hash: sha,
+		shortHash: sha.slice(0, 7),
+		message: rest?.message ?? 'baked at image build',
+		date: rest?.date ?? new Date(APP_START_TIME).toISOString(),
+		source,
+	}
 }
 
 /**
@@ -60,6 +82,8 @@ export async function getAppVersion(): Promise<string | null> {
  * Returns null if not in a git repository or git commands fail.
  */
 export async function getCommitInfo(): Promise<CommitInfo | null> {
+	const baked = readBakedCommitSha()
+	if (baked) return commitFromSha(baked, 'env')
 	try {
 		const [{ stdout: hash }, { stdout: message }, { stdout: date }] =
 			await Promise.all([
@@ -74,11 +98,13 @@ export async function getCommitInfo(): Promise<CommitInfo | null> {
 				}),
 			])
 
+		const gitHash = hash.trim()
 		return {
-			hash: hash.trim(),
-			shortHash: hash.trim().slice(0, 7),
+			hash: gitHash,
+			shortHash: gitHash.slice(0, 7),
 			message: message.trim(),
 			date: date.trim(),
+			source: 'git',
 		}
 	} catch {
 		return null

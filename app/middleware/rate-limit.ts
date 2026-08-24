@@ -11,7 +11,7 @@ import {
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /** Paths that should skip rate limiting entirely */
-const SKIP_PATHS = new Set(['/admin/health'])
+const SKIP_PATHS = new Set(['/health', '/admin/health'])
 
 /** Path prefixes that should skip rate limiting */
 const SKIP_PREFIXES = ['/assets/']
@@ -22,9 +22,10 @@ const ADMIN_ASSET_PREFIXES = ['/admin/api/artwork', '/admin/api/media-stream']
 /**
  * Check if a path should skip rate limiting.
  */
-function shouldSkipRateLimit(pathname: string): boolean {
-	if (SKIP_PATHS.has(pathname)) return true
-	return SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+function shouldSkipRateLimit(url: URL): boolean {
+	if (url.searchParams.has('probe')) return false
+	if (SKIP_PATHS.has(url.pathname)) return true
+	return SKIP_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))
 }
 
 /**
@@ -119,14 +120,15 @@ function isFailedResponse(status: number): boolean {
  * giving clients 1/10th the rate limit when making failed requests. This helps
  * prevent brute force attacks and credential stuffing.
  *
- * Skipped paths: /admin/health, /assets/*
+ * Skipped paths: /health, /admin/health, /assets/*
+ * Health stays skippable unless `?probe=` is present.
  */
 export function rateLimit(): Middleware {
 	return async (context, next) => {
 		const { request, url } = context
 
 		// Skip rate limiting for health checks and static assets
-		if (shouldSkipRateLimit(url.pathname)) {
+		if (shouldSkipRateLimit(url)) {
 			return next()
 		}
 

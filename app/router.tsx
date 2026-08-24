@@ -37,6 +37,7 @@ import adminAuthorizeHandlers from '#app/routes/admin/authorize.tsx'
 import { adminCatchAllHandler, adminHandler } from '#app/routes/admin/index.tsx'
 import artHandlers from '#app/routes/art.ts'
 import feedHandlers from '#app/routes/feed.ts'
+import healthHandlers from '#app/routes/health.ts'
 import mcpHandlers from '#app/routes/mcp/index.ts'
 import mcpProtectedResourceHandlers from '#app/routes/mcp/oauth-protected-resource.ts'
 import mcpWidgetHandlers from '#app/routes/mcp/widget.ts'
@@ -134,6 +135,7 @@ const router = createRouter({
 	},
 })
 
+router.map(routes.health, healthHandlers)
 router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)

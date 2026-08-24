@@ -19,10 +19,13 @@ import {
 	deleteClient,
 	generateCodeVerifier,
 	getAudience,
+	CIMD_FETCH_USER_AGENT,
 	getClientMetadata,
 	isUrlClientId,
 	isValidClientRedirectUri,
 	resolveClient,
+	resolveClientResult,
+	type ClientResolveResult,
 } from './index.ts'
 
 // Ensure migrations are run
@@ -34,6 +37,15 @@ const uniqueId = () =>
 
 // Track created test resources for cleanup
 const testClientIds: string[] = []
+
+function assertFailedClientResolve(
+	result: ClientResolveResult,
+): asserts result is { client: null; reason: string } {
+	expect(result.client).toBeNull()
+	if (result.client !== null) {
+		throw new Error('expected client resolve to fail')
+	}
+}
 
 function createTestClient(
 	name: string = 'Test Client',
@@ -77,15 +89,16 @@ let mockFetchResponses: Map<string, () => Response | Promise<Response>>
 
 function setupMockFetch() {
 	mockFetchResponses = new Map()
+	const capturedHeaders: Array<{ url: string; userAgent: string | null }> = []
 
 	// Mock global fetch for HTTPS URLs
 	const mockFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url =
-			typeof input === 'string'
-				? input
-				: input instanceof URL
-					? input.toString()
-					: input.url
+		const request = input instanceof Request ? input : new Request(input, init)
+		const url = request.url
+		capturedHeaders.push({
+			url,
+			userAgent: request.headers.get('user-agent'),
+		})
 
 		// Check if we have a mock response for this URL
 		const mockResponseFn = mockFetchResponses.get(url)
@@ -100,6 +113,7 @@ function setupMockFetch() {
 
 	return {
 		mockFetchResponses,
+		capturedHeaders,
 		[Symbol.dispose]: () => {
 			globalThis.fetch = originalFetch
 			clearMetadataCache()
@@ -915,6 +929,71 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 		() => new Response('Not Found', { status: 404 }),
 	)
 	await expect(resolveClient(invalidUrl)).resolves.toBeNull()
+})
+
+test('resolveClientResult explains missing, unknown, and unreadable clients', async () => {
+	using mockCtx = setupMockFetch()
+	consoleError.mockImplementation(() => {})
+
+	const missing = await resolveClientResult('')
+	assertFailedClientResolve(missing)
+	expect(missing.reason).toMatch(/client_id is missing/i)
+
+	const unknown = await resolveClientResult('unknown-client-' + uniqueId())
+	assertFailedClientResolve(unknown)
+	expect(unknown.reason).toMatch(/not a registered OAuth client/i)
+
+	const cimdUrl = 'https://test-cimd-reason.example.com/metadata'
+	mockCtx.mockFetchResponses.set(
+		cimdUrl,
+		() => new Response('Not Found', { status: 404 }),
+	)
+	const unread = await resolveClientResult(cimdUrl)
+	assertFailedClientResolve(unread)
+	expect(unread.reason).toContain(cimdUrl)
+	expect(unread.reason).toMatch(/404/)
+	expect(mockCtx.capturedHeaders[0]?.userAgent).toBe(CIMD_FETCH_USER_AGENT)
+})
+
+test('authorization endpoint reports why a client_id could not be resolved', async () => {
+	using mockCtx = setupMockFetch()
+	consoleError.mockImplementation(() => {})
+	await using ctx = await createTestServer()
+
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+
+	const missingResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${new URLSearchParams({
+			response_type: 'code',
+			code_challenge: challenge,
+			code_challenge_method: 'S256',
+		})}`,
+	)
+	expect(missingResponse.status).toBe(400)
+	const missingHtml = await missingResponse.text()
+	expect(missingHtml).toContain('Invalid Client')
+	expect(missingHtml).toMatch(/client_id is missing/i)
+
+	const cimdUrl = 'https://test-cimd-authorize.example.com/metadata'
+	mockCtx.mockFetchResponses.set(
+		cimdUrl,
+		() => new Response('Not Found', { status: 404 }),
+	)
+	const cimdResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${new URLSearchParams({
+			response_type: 'code',
+			client_id: cimdUrl,
+			redirect_uri: 'https://kody.codes/account/mcp-servers/oauth/callback',
+			code_challenge: challenge,
+			code_challenge_method: 'S256',
+		})}`,
+	)
+	expect(cimdResponse.status).toBe(400)
+	const cimdHtml = await cimdResponse.text()
+	expect(cimdHtml).toContain('Invalid Client')
+	expect(cimdHtml).toContain('Could not resolve Client ID Metadata Document')
+	expect(cimdHtml).toContain(cimdUrl)
 })
 
 test('URL-based client redirect URI and grant type validation', async () => {

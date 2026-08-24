@@ -1,7 +1,6 @@
 /**
  * MCP (Model Context Protocol) endpoint.
- * Serves the 2026-07-28 Streamable HTTP revision per request, and falls
- * back to stateless 2025-era serving for clients that still send initialize.
+ * Serves the 2026-07-28 Streamable HTTP revision per request.
  */
 
 import { createMcpHandler } from '@modelcontextprotocol/server'
@@ -28,9 +27,7 @@ const mcpHandler = createMcpHandler(
 		return server
 	},
 	{
-		// Kody and other 2025 Streamable HTTP clients still send `initialize`.
-		// Rejecting that handshake advertises zero tools even when OAuth works.
-		legacy: 'stateless',
+		legacy: 'reject',
 		onerror(error) {
 			console.error('[MCP] handler error:', error)
 		},

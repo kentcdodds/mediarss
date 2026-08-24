@@ -21,6 +21,7 @@ import {
 	getAudience,
 	CIMD_FETCH_USER_AGENT,
 	getClientMetadata,
+	lookupClientMetadata,
 	isUrlClientId,
 	isValidClientRedirectUri,
 	resolveClient,
@@ -1125,4 +1126,48 @@ test('DCR endpoint works (MCP 2025-11-25 compliance)', async () => {
 	expect(clientData.grant_types).toContain('refresh_token')
 	expect(clientData.response_types).toContain('code')
 	expect(clientData.client_id_issued_at).toBeGreaterThan(0)
+})
+
+test('unknown CIMD URLs still fail when the live fetch fails', async () => {
+	using mockCtx = setupMockFetch()
+	consoleError.mockImplementation(() => {})
+
+	const unknownUrl = 'https://test-unknown-cimd.example.com/metadata'
+	mockCtx.mockFetchResponses.set(unknownUrl, () => {
+		const error = new Error('The operation was aborted due to timeout')
+		error.name = 'AbortError'
+		throw error
+	})
+
+	const lookup = await lookupClientMetadata(unknownUrl)
+	expect(lookup.metadata).toBeNull()
+	if (lookup.metadata !== null) {
+		throw new Error('expected unknown CIMD lookup to fail')
+	}
+	expect(lookup.error).toMatch(/Timeout fetching client metadata/)
+})
+
+test('lookupClientMetadata uses expired database cache when fetch fails', async () => {
+	using mockCtx = setupMockFetch()
+	consoleError.mockImplementation(() => {})
+
+	const staleUrl = 'https://test-stale-cimd.example.com/metadata'
+	const staleMetadata = {
+		client_id: staleUrl,
+		client_name: 'Stale Client',
+		redirect_uris: ['https://test-stale-cimd.example.com/callback'],
+	}
+	const now = Math.floor(Date.now() / 1000)
+	db.query(
+		sql`INSERT OR REPLACE INTO client_metadata_cache (client_id, metadata_json, cached_at, expires_at) VALUES (?, ?, ?, ?);`,
+	).run(staleUrl, JSON.stringify(staleMetadata), now - 120, now - 60)
+
+	mockCtx.mockFetchResponses.set(staleUrl, () => {
+		const error = new Error('The operation was aborted due to timeout')
+		error.name = 'AbortError'
+		throw error
+	})
+
+	const result = await getClientMetadata(staleUrl)
+	expect(result).toEqual(staleMetadata)
 })

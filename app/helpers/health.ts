@@ -1,6 +1,6 @@
 import { getEnv } from '#app/config/env.ts'
 import { db } from '#app/db/index.ts'
-import { lookupClientMetadata } from '#app/oauth/client-metadata.ts'
+import { fetchClientMetadataLive } from '#app/oauth/client-metadata.ts'
 import { getRecentDiagnostics, recordDiagnostic } from './diagnostics.ts'
 import { getVersionInfo } from './version.ts'
 
@@ -73,7 +73,7 @@ export function resetCimdProbeState(): void {
 
 async function runCimdProbe(url: string): Promise<HealthCimdProbe> {
 	const started = performance.now()
-	const lookup = await lookupClientMetadata(url)
+	const lookup = await fetchClientMetadataLive(url)
 	const durationMs = performance.now() - started
 	const probe: HealthCimdProbe = lookup.metadata
 		? { url, ok: true, durationMs }

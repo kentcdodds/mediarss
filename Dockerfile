@@ -34,4 +34,4 @@ ENV COMMIT_SHA=$COMMIT_SHA
 EXPOSE 22050
 
 # Run the application
-CMD ["node", "--import", "./server/register-hooks.mjs", "index.ts"]
+CMD ["node", "--dns-result-order=ipv4first", "--import", "./server/register-hooks.mjs", "index.ts"]

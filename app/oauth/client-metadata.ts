@@ -1,6 +1,10 @@
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
+import { getClient } from './clients.ts'
 import { DEFAULT_GRANT_TYPES } from './tokens.ts'
+
+export const CIMD_FETCH_USER_AGENT =
+	'MediaRSS/1.0 (CIMD resolver; +https://github.com/kentcdodds/mediarss)'
 
 /**
  * Client ID Metadata Document support per MCP 2025-11-25 spec.
@@ -207,6 +211,7 @@ async function fetchMetadataDocument(
 		response = await fetch(clientIdUrl, {
 			headers: {
 				Accept: 'application/json',
+				'User-Agent': CIMD_FETCH_USER_AGENT,
 			},
 			// Timeout after 10 seconds
 			signal: AbortSignal.timeout(10000),
@@ -300,15 +305,26 @@ function saveMetadataToDb(
 	).run(clientId, JSON.stringify(metadata), now, expiresAt)
 }
 
+export type ClientMetadataLookup =
+	| { metadata: ClientMetadataDocument }
+	| { metadata: null; error: string }
+
+export type ClientResolveResult =
+	| { client: ResolvedClient }
+	| { client: null; reason: string }
+
 /**
  * Get client metadata for a URL-based client_id.
  * Uses in-memory cache, then database cache, then fetches fresh.
  */
-export async function getClientMetadata(
+export async function lookupClientMetadata(
 	clientIdUrl: string,
-): Promise<ClientMetadataDocument | null> {
+): Promise<ClientMetadataLookup> {
 	if (!isUrlClientId(clientIdUrl)) {
-		return null
+		return {
+			metadata: null,
+			error: 'client_id must be an https URL to use a metadata document',
+		}
 	}
 
 	const now = Date.now()
@@ -316,7 +332,7 @@ export async function getClientMetadata(
 	// Check in-memory cache first
 	const cached = metadataCache.get(clientIdUrl)
 	if (cached && cached.expiresAt > now) {
-		return cached.metadata
+		return { metadata: cached.metadata }
 	}
 
 	// Check database cache
@@ -326,7 +342,7 @@ export async function getClientMetadata(
 		// Convert from Unix seconds to milliseconds
 		const expiresAt = dbCached.expiresAt * 1000
 		metadataCache.set(clientIdUrl, { metadata: dbCached.metadata, expiresAt })
-		return dbCached.metadata
+		return { metadata: dbCached.metadata }
 	}
 
 	// Fetch fresh metadata
@@ -340,50 +356,84 @@ export async function getClientMetadata(
 			expiresAt: now + cacheDuration * 1000,
 		})
 
-		return metadata
+		return { metadata }
 	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Unknown error'
 		console.error('Failed to fetch client metadata:', error)
-		return null
+		return { metadata: null, error: message }
+	}
+}
+
+export async function getClientMetadata(
+	clientIdUrl: string,
+): Promise<ClientMetadataDocument | null> {
+	const lookup = await lookupClientMetadata(clientIdUrl)
+	return lookup.metadata
+}
+
+function resolvedMetadataClient(
+	clientId: string,
+	metadata: ClientMetadataDocument,
+): ResolvedClient {
+	return {
+		id: metadata.client_id,
+		name: metadata.client_name ?? new URL(clientId).hostname,
+		redirectUris: metadata.redirect_uris,
+		grantTypes: metadata.grant_types ?? [...DEFAULT_GRANT_TYPES],
+		isMetadataClient: true,
 	}
 }
 
 /**
  * Resolve a client by ID, supporting both static clients and URL-based metadata documents.
+ * `reason` is for the authorize page; token endpoints can keep using `resolveClient`.
  */
-export async function resolveClient(
+export async function resolveClientResult(
 	clientId: string,
-): Promise<ResolvedClient | null> {
-	// First check if it's a URL-based client
-	if (isUrlClientId(clientId)) {
-		const metadata = await getClientMetadata(clientId)
-		if (!metadata) {
-			return null
-		}
-
+): Promise<ClientResolveResult> {
+	if (!clientId) {
 		return {
-			id: metadata.client_id,
-			name: metadata.client_name ?? new URL(clientId).hostname,
-			redirectUris: metadata.redirect_uris,
-			grantTypes: metadata.grant_types ?? [...DEFAULT_GRANT_TYPES],
-			isMetadataClient: true,
+			client: null,
+			reason:
+				'client_id is missing. Open the authorization link from the MCP client instead of visiting /admin/authorize directly.',
 		}
 	}
 
-	// Fall back to static client lookup
-	const { getClient } = await import('./clients.ts')
-	const staticClient = getClient(clientId)
+	if (isUrlClientId(clientId)) {
+		const lookup = await lookupClientMetadata(clientId)
+		if (!lookup.metadata) {
+			return {
+				client: null,
+				reason: `Could not resolve Client ID Metadata Document at ${clientId}: ${lookup.error}`,
+			}
+		}
+		return { client: resolvedMetadataClient(clientId, lookup.metadata) }
+	}
 
+	const staticClient = getClient(clientId)
 	if (!staticClient) {
-		return null
+		return {
+			client: null,
+			reason: 'The specified client_id is not a registered OAuth client.',
+		}
 	}
 
 	return {
-		id: staticClient.id,
-		name: staticClient.name,
-		redirectUris: staticClient.redirectUris,
-		grantTypes: [...DEFAULT_GRANT_TYPES],
-		isMetadataClient: false,
+		client: {
+			id: staticClient.id,
+			name: staticClient.name,
+			redirectUris: staticClient.redirectUris,
+			grantTypes: [...DEFAULT_GRANT_TYPES],
+			isMetadataClient: false,
+		},
 	}
+}
+
+export async function resolveClient(
+	clientId: string,
+): Promise<ResolvedClient | null> {
+	const result = await resolveClientResult(clientId)
+	return result.client
 }
 
 /**

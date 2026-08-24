@@ -8,7 +8,7 @@ import {
 	createAuthorizationCode,
 	isValidClientRedirectUri,
 	isValidCodeChallenge,
-	resolveClient,
+	resolveClientResult,
 } from '#app/oauth/index.ts'
 
 interface AuthorizeParams {
@@ -166,13 +166,11 @@ async function handleGet(context: RequestContext): Promise<Response> {
 	}
 
 	// Validate client (supports both static clients and URL-based metadata documents)
-	const client = await resolveClient(params.client_id)
-	if (!client) {
-		return renderError(
-			'Invalid Client',
-			'The specified client_id is not registered or could not be resolved.',
-		)
+	const resolved = await resolveClientResult(params.client_id)
+	if (!resolved.client) {
+		return renderError('Invalid Client', resolved.reason)
 	}
+	const client = resolved.client
 
 	// Validate client supports authorization_code grant type
 	if (!clientSupportsGrantType(client, 'authorization_code')) {
@@ -237,13 +235,11 @@ async function handlePost(context: RequestContext): Promise<Response> {
 	}
 
 	// Resolve client (supports both static clients and URL-based metadata documents)
-	const client = await resolveClient(params.client_id)
-	if (!client) {
-		return renderError(
-			'Invalid Client',
-			'The specified client_id is not registered or could not be resolved.',
-		)
+	const resolved = await resolveClientResult(params.client_id)
+	if (!resolved.client) {
+		return renderError('Invalid Client', resolved.reason)
 	}
+	const client = resolved.client
 
 	// Validate client supports authorization_code grant type
 	if (!clientSupportsGrantType(client, 'authorization_code')) {

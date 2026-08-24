@@ -7,6 +7,7 @@ import { type Action, type RequestContext } from 'remix/router'
 import type routes from '#app/config/routes.ts'
 import { REGISTRATION_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createClient } from '#app/oauth/clients.ts'
+import { DEFAULT_GRANT_TYPES } from '#app/oauth/tokens.ts'
 
 /**
  * Client registration request per RFC 7591.
@@ -123,7 +124,7 @@ function validateRegistrationRequest(
 				}
 			}
 		}
-		// We only support authorization_code
+		// Authorization code is required; refresh_token is also supported
 		if (!req.grant_types.includes('authorization_code')) {
 			return {
 				error: 'invalid_client_metadata',
@@ -203,7 +204,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		client_name: client.name,
 		redirect_uris: client.redirectUris,
 		token_endpoint_auth_method: 'none',
-		grant_types: validated.grant_types ?? ['authorization_code'],
+		grant_types: validated.grant_types ?? [...DEFAULT_GRANT_TYPES],
 		response_types: validated.response_types ?? ['code'],
 		client_id_issued_at: client.createdAt,
 	}

@@ -76,8 +76,9 @@ afterAll(() => {
 	for (const clientId of testClientIds) {
 		deleteClient(clientId)
 	}
-	// Clean up any orphaned test authorization codes
+	// Clean up any orphaned test authorization codes and refresh tokens
 	db.run(sql`DELETE FROM authorization_codes WHERE client_id LIKE 'test-%';`)
+	db.run(sql`DELETE FROM oauth_refresh_tokens WHERE client_id LIKE 'test-%';`)
 })
 
 // PKCE Tests
@@ -369,9 +370,11 @@ test('full OAuth authorization code flow with token exchange and JWT verificatio
 		access_token: string
 		token_type: string
 		expires_in: number
+		refresh_token: string
 		scope: string
 	}
 	expect(tokenData.access_token).toBeTruthy()
+	expect(tokenData.refresh_token).toBeTruthy()
 	expect(tokenData.token_type).toBe('Bearer')
 	expect(tokenData.expires_in).toBe(3600)
 	expect(tokenData.scope).toBe('read write')
@@ -763,7 +766,238 @@ test('JWT token has correct claims structure', async () => {
 	expect(payload.aud).toBe('mcp-server')
 	expect(payload.sub).toBe('user')
 	expect(payload.scope).toBe('mcp:read')
+	expect(payload.client_id).toBe(testClient.id)
 	expect(typeof payload.iat).toBe('number')
 	expect(typeof payload.exp).toBe('number')
 	expect(payload.exp! - payload.iat!).toBe(3600)
+})
+
+async function authorizeAndExchange(params: {
+	baseUrl: string
+	clientId: string
+	redirectUri: string
+	scope?: string
+}) {
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: params.clientId,
+		redirect_uri: params.redirectUri,
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+	if (params.scope) {
+		authorizeParams.set('scope', params.scope)
+	}
+
+	const authorizeResponse = await fetch(
+		`${params.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+	const code = new URL(
+		authorizeResponse.headers.get('Location')!,
+	).searchParams.get('code')!
+
+	const tokenResponse = await fetch(`${params.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code,
+			redirect_uri: params.redirectUri,
+			client_id: params.clientId,
+			code_verifier: verifier,
+		}).toString(),
+	})
+
+	return (await tokenResponse.json()) as {
+		access_token: string
+		refresh_token: string
+		scope?: string
+		expires_in: number
+	}
+}
+
+test('refresh token grant rotates the refresh token and issues a new access token', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = createTestClient('Refresh Flow Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read mcp:write',
+	})
+
+	const refreshResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+
+	expect(refreshResponse.status).toBe(200)
+	const refreshed = (await refreshResponse.json()) as {
+		access_token: string
+		refresh_token: string
+		token_type: string
+		expires_in: number
+		scope: string
+	}
+
+	expect(refreshed.token_type).toBe('Bearer')
+	expect(refreshed.expires_in).toBe(3600)
+	expect(refreshed.scope).toBe('mcp:read mcp:write')
+	expect(refreshed.access_token).toBeTruthy()
+	expect(refreshed.access_token).not.toBe(first.access_token)
+	expect(refreshed.refresh_token).toBeTruthy()
+	expect(refreshed.refresh_token).not.toBe(first.refresh_token)
+
+	const jwksResponse = await fetch(`${ctx.baseUrl}/oauth/jwks`)
+	const jwks = (await jwksResponse.json()) as { keys: jose.JWK[] }
+	const publicKey = await jose.importJWK(jwks.keys[0]!, 'RS256')
+	const { payload } = await jose.jwtVerify(refreshed.access_token, publicKey, {
+		issuer: ctx.baseUrl,
+		audience: getAudience(),
+	})
+	expect(payload.scope).toBe('mcp:read mcp:write')
+	expect(payload.client_id).toBe(testClient.id)
+})
+
+test('refresh token cannot be reused after rotation', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = createTestClient('Refresh Reuse Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+	})
+
+	const firstRefresh = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(firstRefresh.status).toBe(200)
+	const rotated = (await firstRefresh.json()) as { refresh_token: string }
+
+	const replay = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(replay.status).toBe(400)
+	expect(((await replay.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+
+	const rotatedAfterReplay = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: rotated.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(rotatedAfterReplay.status).toBe(400)
+	expect(((await rotatedAfterReplay.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+})
+
+test('refresh token grant rejects wrong client and expanded scope', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = createTestClient('Refresh Scope Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const otherClient = createTestClient('Refresh Other Client ' + uniqueId(), [
+		'http://other.com/callback',
+	])
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+	})
+
+	const wrongClient = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: otherClient.id,
+		}).toString(),
+	})
+	expect(wrongClient.status).toBe(400)
+	expect(((await wrongClient.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+
+	const expandedScope = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+			scope: 'mcp:read mcp:write',
+		}).toString(),
+	})
+	expect(expandedScope.status).toBe(400)
+	expect(((await expandedScope.json()) as { error: string }).error).toBe(
+		'invalid_scope',
+	)
+
+	const narrowed = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+			scope: 'mcp:read',
+		}).toString(),
+	})
+	expect(narrowed.status).toBe(200)
+	expect(((await narrowed.json()) as { scope: string }).scope).toBe('mcp:read')
 })

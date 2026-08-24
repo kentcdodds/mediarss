@@ -1,6 +1,7 @@
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
 import { generateId } from '#app/helpers/crypto.ts'
+import { deleteRefreshTokensForClient } from './refresh-tokens.ts'
 
 export interface OAuthClient {
 	id: string
@@ -86,6 +87,7 @@ export function createClient(
  * Delete an OAuth client.
  */
 export function deleteClient(clientId: string): boolean {
+	deleteRefreshTokensForClient(clientId)
 	const result = db
 		.query(sql`DELETE FROM oauth_clients WHERE id = ?;`)
 		.run(clientId)

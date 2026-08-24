@@ -128,6 +128,7 @@ test('DCR endpoint creates clients with various configurations', async () => {
 	])
 	expect(basicClientData.token_endpoint_auth_method).toBe('none')
 	expect(basicClientData.grant_types).toContain('authorization_code')
+	expect(basicClientData.grant_types).toContain('refresh_token')
 	expect(basicClientData.response_types).toContain('code')
 	expect(basicClientData.client_id_issued_at).toBeGreaterThan(0)
 

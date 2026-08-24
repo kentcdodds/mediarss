@@ -3,6 +3,7 @@ import type routes from '#app/config/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
+import { DEFAULT_GRANT_TYPES } from '#app/oauth/tokens.ts'
 
 /**
  * OAuth Authorization Server Metadata per RFC 8414.
@@ -36,7 +37,7 @@ function handleGet(context: RequestContext): Response {
 		registration_endpoint: `${origin}/oauth/register`,
 		scopes_supported: MCP_SCOPES,
 		response_types_supported: ['code'],
-		grant_types_supported: ['authorization_code'],
+		grant_types_supported: [...DEFAULT_GRANT_TYPES],
 		code_challenge_methods_supported: ['S256'],
 		token_endpoint_auth_methods_supported: ['none'],
 		// MCP 2025-11-25: Indicate support for client ID metadata documents

@@ -2,6 +2,34 @@ import { expect, test } from 'vitest'
 import { sql } from './sql.ts'
 import { createMigratedTestDatabase } from './test-database.ts'
 
+test('migration creates oauth_refresh_tokens table and indexes', () => {
+	using ctx = createMigratedTestDatabase('test-refresh-tokens')
+
+	const columns = ctx.db
+		.query(sql`PRAGMA table_info(oauth_refresh_tokens);`)
+		.all() as Array<{ name: string }>
+	const columnNames = columns.map((column) => column.name)
+
+	expect(columnNames).toEqual([
+		'token',
+		'family_id',
+		'client_id',
+		'scope',
+		'expires_at',
+		'used_at',
+		'created_at',
+	])
+
+	const indexes = ctx.db
+		.query(sql`PRAGMA index_list(oauth_refresh_tokens);`)
+		.all() as Array<{ name: string }>
+	const indexNames = indexes.map((index) => index.name)
+
+	expect(indexNames).toContain('idx_oauth_refresh_tokens_client_id')
+	expect(indexNames).toContain('idx_oauth_refresh_tokens_family_id')
+	expect(indexNames).toContain('idx_oauth_refresh_tokens_expires_at')
+})
+
 test('migration creates feed_analytics_events table and indexes', () => {
 	using ctx = createMigratedTestDatabase('test-analytics')
 

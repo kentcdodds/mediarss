@@ -4,7 +4,8 @@ import { createHealthResponse } from '#app/helpers/health.ts'
 
 /**
  * Public GET /health — Docker, Cloudflare, and curl can reach this without
- * Access. Optional `?probe=cimd` fetches Kody's client metadata document.
+ * Access. Optional `?probe=cimd` live-fetches Kody's client metadata
+ * document so NAS egress failures stay visible (authorize uses a pin).
  */
 export default {
 	middleware: [],

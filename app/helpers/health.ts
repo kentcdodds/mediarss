@@ -1,11 +1,14 @@
 import { getEnv } from '#app/config/env.ts'
 import { db } from '#app/db/index.ts'
-import { lookupClientMetadata } from '#app/oauth/client-metadata.ts'
+import { fetchClientMetadataLive } from '#app/oauth/client-metadata.ts'
+import {
+	KODY_CIMD_URL,
+	listKnownClientMetadataUrls,
+} from '#app/oauth/known-cimd.ts'
 import { getRecentDiagnostics, recordDiagnostic } from './diagnostics.ts'
 import { getVersionInfo } from './version.ts'
 
-export const DEFAULT_CIMD_PROBE_URL =
-	'https://kody.codes/oauth/client-metadata.json'
+export const DEFAULT_CIMD_PROBE_URL = KODY_CIMD_URL
 
 export type HealthDatabaseStatus = {
 	ok: boolean
@@ -40,6 +43,7 @@ export type HealthSnapshot = {
 	}
 	oauth: {
 		clientIdMetadataDocumentSupported: true
+		knownClientMetadataDocuments: Array<string>
 	}
 	database: HealthDatabaseStatus
 	mediaRoots: Array<string>
@@ -73,7 +77,7 @@ export function resetCimdProbeState(): void {
 
 async function runCimdProbe(url: string): Promise<HealthCimdProbe> {
 	const started = performance.now()
-	const lookup = await lookupClientMetadata(url)
+	const lookup = await fetchClientMetadataLive(url)
 	const durationMs = performance.now() - started
 	const probe: HealthCimdProbe = lookup.metadata
 		? { url, ok: true, durationMs }
@@ -137,6 +141,7 @@ export async function getHealthSnapshot(url: URL): Promise<HealthSnapshot> {
 		},
 		oauth: {
 			clientIdMetadataDocumentSupported: true,
+			knownClientMetadataDocuments: listKnownClientMetadataUrls(),
 		},
 		database,
 		mediaRoots: getEnv().MEDIA_PATHS.map((root) => root.name),

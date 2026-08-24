@@ -2,6 +2,7 @@ import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { getClient } from './clients.ts'
+import { getKnownClientMetadata } from './known-cimd.ts'
 import { DEFAULT_GRANT_TYPES } from './tokens.ts'
 
 export const CIMD_FETCH_USER_AGENT =
@@ -300,6 +301,21 @@ interface CachedMetadataWithExpiry {
 	expiresAt: number // Unix timestamp in seconds
 }
 
+function parseCachedMetadataRow(
+	row: CachedMetadataRow,
+): CachedMetadataWithExpiry | null {
+	try {
+		const metadata = JSON.parse(row.metadata_json) as ClientMetadataDocument
+		return {
+			metadata,
+			expiresAt: row.expires_at,
+		}
+	} catch {
+		console.error('Failed to parse cached metadata:', row.metadata_json)
+		return null
+	}
+}
+
 /**
  * Get cached metadata from database, including expiration time.
  */
@@ -318,16 +334,27 @@ function getCachedMetadataFromDb(
 		return null
 	}
 
-	try {
-		const metadata = JSON.parse(row.metadata_json) as ClientMetadataDocument
-		return {
-			metadata,
-			expiresAt: row.expires_at,
-		}
-	} catch {
-		console.error('Failed to parse cached metadata:', row.metadata_json)
+	return parseCachedMetadataRow(row)
+}
+
+/**
+ * Last stored metadata even if the cache entry has expired.
+ * Used as stale-if-error when a live fetch fails.
+ */
+function getStaleCachedMetadataFromDb(
+	clientId: string,
+): CachedMetadataWithExpiry | null {
+	const row = db
+		.query<CachedMetadataRow, [string]>(
+			sql`SELECT * FROM client_metadata_cache WHERE client_id = ?;`,
+		)
+		.get(clientId)
+
+	if (!row) {
 		return null
 	}
+
+	return parseCachedMetadataRow(row)
 }
 
 /**
@@ -354,9 +381,67 @@ export type ClientResolveResult =
 	| { client: ResolvedClient }
 	| { client: null; reason: string }
 
+function rememberMetadata(
+	clientIdUrl: string,
+	metadata: ClientMetadataDocument,
+	expiresAtMs: number,
+): void {
+	metadataCache.set(clientIdUrl, { metadata, expiresAt: expiresAtMs })
+}
+
+function knownClientMetadataLookup(
+	clientIdUrl: string,
+): ClientMetadataLookup | null {
+	const known = getKnownClientMetadata(clientIdUrl)
+	if (!known) {
+		return null
+	}
+
+	recordDiagnostic({
+		area: 'oauth.cimd',
+		event: 'known_fallback',
+		ok: true,
+		detail: { url: clientIdUrl },
+	})
+	rememberMetadata(
+		clientIdUrl,
+		known,
+		Date.now() + DEFAULT_CACHE_DURATION_SECONDS * 1000,
+	)
+	return { metadata: known }
+}
+
+/**
+ * Live CIMD fetch that skips memory, database, and bundled fallbacks.
+ * Health probes use this so NAS egress failures stay visible.
+ */
+export async function fetchClientMetadataLive(
+	clientIdUrl: string,
+): Promise<ClientMetadataLookup> {
+	if (!isUrlClientId(clientIdUrl)) {
+		return {
+			metadata: null,
+			error: 'client_id must be an https URL to use a metadata document',
+		}
+	}
+
+	try {
+		const { metadata, cacheDuration } = await fetchMetadataDocument(clientIdUrl)
+		saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
+		rememberMetadata(clientIdUrl, metadata, Date.now() + cacheDuration * 1000)
+		return { metadata }
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Unknown error'
+		console.error('Failed to fetch client metadata:', error)
+		return { metadata: null, error: message }
+	}
+}
+
 /**
  * Get client metadata for a URL-based client_id.
- * Uses in-memory cache, then database cache, then fetches fresh.
+ * Uses in-memory cache, then unexpired database cache, then a bundled
+ * first-party document (so authorize works without egress), then a live
+ * fetch, then expired database cache.
  */
 export async function lookupClientMetadata(
 	clientIdUrl: string,
@@ -382,25 +467,42 @@ export async function lookupClientMetadata(
 		// Store in memory cache using the DB's actual expiration time
 		// Convert from Unix seconds to milliseconds
 		const expiresAt = dbCached.expiresAt * 1000
-		metadataCache.set(clientIdUrl, { metadata: dbCached.metadata, expiresAt })
+		rememberMetadata(clientIdUrl, dbCached.metadata, expiresAt)
 		return { metadata: dbCached.metadata }
 	}
 
-	// Fetch fresh metadata
+	const known = knownClientMetadataLookup(clientIdUrl)
+	if (known) {
+		return known
+	}
+
 	try {
 		const { metadata, cacheDuration } = await fetchMetadataDocument(clientIdUrl)
 
-		// Save to both caches
 		saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
-		metadataCache.set(clientIdUrl, {
-			metadata,
-			expiresAt: now + cacheDuration * 1000,
-		})
+		rememberMetadata(clientIdUrl, metadata, now + cacheDuration * 1000)
 
 		return { metadata }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Unknown error'
 		console.error('Failed to fetch client metadata:', error)
+
+		const stale = getStaleCachedMetadataFromDb(clientIdUrl)
+		if (stale) {
+			recordDiagnostic({
+				area: 'oauth.cimd',
+				event: 'stale_cache',
+				ok: true,
+				detail: { url: clientIdUrl },
+			})
+			rememberMetadata(
+				clientIdUrl,
+				stale.metadata,
+				now + MIN_CACHE_DURATION_SECONDS * 1000,
+			)
+			return { metadata: stale.metadata }
+		}
+
 		return { metadata: null, error: message }
 	}
 }

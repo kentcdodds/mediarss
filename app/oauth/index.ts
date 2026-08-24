@@ -6,6 +6,7 @@
 
 export * from './client-metadata.ts'
 export * from './clients.ts'
+export * from './known-cimd.ts'
 export * from './codes.ts'
 export * from './keys.ts'
 export * from './pkce.ts'

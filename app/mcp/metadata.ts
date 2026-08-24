@@ -65,7 +65,7 @@ The \`search_media\` tool uses fuzzy string matching (match-sorter), NOT natural
 1. \`list_media_directories\` → find the media root name
 2. \`browse_media\` → navigate to the folder
 3. \`create_directory_feed\` → create the feed
-4. Feed URL: \`/feed/{feedId}?token={token}\`
+4. Feed URL: \`/feed/{token}\`
 
 ### Manage feed access:
 1. \`get_feed_tokens\` → list existing tokens
@@ -171,9 +171,10 @@ Next: Use paths with \`create_directory_feed\` to create feeds.`,
 Inputs:
 - feedId: string (required) — The feed ID
 
-Returns: { feedId, feedName, tokens: [{ token, label, createdAt }] }
+Returns: { feedId, feedName, tokens: [{ token, label, createdAt, rssUrl }] }
 
-Feed URLs use the format: \`/feed/{feedId}?token={token}\`
+Feed URLs use the token-only path: \`/feed/{token}\`
+(for example \`https://your-host/feed/{token}\`). The feed id is not part of the URL.
 Add this URL to any podcast app to subscribe to the feed.
 
 Next: Use \`create_feed_token\` to generate additional tokens, or \`delete_feed_token\` to revoke access.`,
@@ -203,7 +204,7 @@ Examples:
 - { name: "Mistborn Series", mediaRoot: "audio", directoryPath: "Brandon Sanderson/Mistborn" }
 - { name: "Movies 2024", mediaRoot: "video", directoryPath: "Movies/2024", description: "Latest movies" }
 
-Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Use \`get_feed\` to verify.`,
+Next: Feed URL is \`/feed/{token}\`. Use \`get_feed\` to verify.`,
 	},
 
 	create_curated_feed: {
@@ -227,7 +228,7 @@ Examples:
 - { name: "Favorites" }
 - { name: "Road Trip Playlist", description: "Audiobooks for the drive" }
 
-Next: Feed URL is \`/feed/{feed.id}?token={token}\`. Add items via \`add_media_to_feeds\` or the admin UI.`,
+Next: Feed URL is \`/feed/{token}\`. Add items via \`add_media_to_feeds\` or the admin UI.`,
 	},
 
 	update_feed: {
@@ -280,11 +281,13 @@ Next: Use \`list_feeds\` to verify deletion.`,
 
 Inputs:
 - feedId: string (required) — The feed ID
+- label: string (optional) — Name for this token (e.g. "Nathan", "iPhone")
 
-Returns: { success, feedId, token }
+Returns: { success, feedId, token, label, rssUrl }
 
-Each token creates a unique RSS URL: \`/feed/{feedId}?token={token}\`
-Use multiple tokens to track or revoke access per device/user.
+Each token creates a unique RSS URL: \`/feed/{token}\`
+(for example \`https://your-host/feed/{token}\`). The feed id is not part of the URL.
+Use multiple labeled tokens to track or revoke access per device/user.
 
 Next: Share the feed URL with the new token.`,
 	},

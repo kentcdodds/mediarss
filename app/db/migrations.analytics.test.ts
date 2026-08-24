@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { migrate } from './migrations.ts'
 import { sql } from './sql.ts'
 import { createMigratedTestDatabase } from './test-database.ts'
 
@@ -37,6 +38,90 @@ test('authorization_codes does not foreign-key oauth_clients', () => {
 		)
 		.get()
 	expect(row?.client_id).toBe('https://example.com/oauth/client-metadata.json')
+})
+
+test('migration 8 copies existing authorization codes and drops the client FK', () => {
+	using ctx = createMigratedTestDatabase('test-auth-codes-migrate', 7)
+
+	const foreignKeysBefore = ctx.db
+		.query(sql`PRAGMA foreign_key_list(authorization_codes);`)
+		.all() as Array<{ table: string }>
+	expect(foreignKeysBefore.map((key) => key.table)).toContain('oauth_clients')
+
+	ctx.db.run(sql`
+		INSERT INTO oauth_clients (id, name, redirect_uris, created_at)
+		VALUES (
+			'client-static',
+			'Static Client',
+			'["https://example.com/callback"]',
+			1700000000
+		);
+	`)
+	ctx.db.run(sql`
+		INSERT INTO authorization_codes (
+			code,
+			client_id,
+			redirect_uri,
+			scope,
+			code_challenge,
+			code_challenge_method,
+			expires_at,
+			used_at,
+			created_at
+		) VALUES (
+			'code-keep',
+			'client-static',
+			'https://example.com/callback',
+			'mcp:read mcp:write',
+			'challenge-value',
+			'S256',
+			1800000000,
+			1700000100,
+			1700000001
+		);
+	`)
+
+	migrate(ctx.db, 8)
+
+	const row = ctx.db
+		.query<
+			{
+				code: string
+				client_id: string
+				redirect_uri: string
+				scope: string
+				code_challenge: string
+				code_challenge_method: string
+				expires_at: number
+				used_at: number | null
+				created_at: number
+			},
+			[]
+		>(sql`SELECT * FROM authorization_codes WHERE code = 'code-keep';`)
+		.get()
+	expect(row).toEqual({
+		code: 'code-keep',
+		client_id: 'client-static',
+		redirect_uri: 'https://example.com/callback',
+		scope: 'mcp:read mcp:write',
+		code_challenge: 'challenge-value',
+		code_challenge_method: 'S256',
+		expires_at: 1800000000,
+		used_at: 1700000100,
+		created_at: 1700000001,
+	})
+
+	const foreignKeysAfter = ctx.db
+		.query(sql`PRAGMA foreign_key_list(authorization_codes);`)
+		.all() as Array<{ table: string }>
+	expect(foreignKeysAfter).toEqual([])
+
+	const indexes = ctx.db
+		.query(sql`PRAGMA index_list(authorization_codes);`)
+		.all() as Array<{ name: string }>
+	const indexNames = indexes.map((index) => index.name)
+	expect(indexNames).toContain('idx_authorization_codes_client_id')
+	expect(indexNames).toContain('idx_authorization_codes_expires_at')
 })
 
 test('migration creates oauth_refresh_tokens table and indexes', () => {

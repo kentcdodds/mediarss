@@ -3,7 +3,10 @@ import path from 'node:path'
 import { migrate } from './migrations.ts'
 import { Database } from './sqlite.ts'
 
-export function createMigratedTestDatabase(prefix: string): {
+export function createMigratedTestDatabase(
+	prefix: string,
+	toVersion?: number,
+): {
 	db: Database
 	[Symbol.dispose]: () => void
 } {
@@ -14,7 +17,7 @@ export function createMigratedTestDatabase(prefix: string): {
 	}
 
 	const db = new Database(dbPath)
-	migrate(db)
+	migrate(db, toVersion)
 
 	return {
 		db,

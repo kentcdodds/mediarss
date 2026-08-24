@@ -43,6 +43,20 @@ async function issueAccessToken(issuer = 'http://localhost'): Promise<string> {
 	return token
 }
 
+async function readJsonRpcResponse<T>(response: Response): Promise<T> {
+	const contentType = response.headers.get('content-type') ?? ''
+	if (contentType.includes('application/json')) {
+		return (await response.json()) as T
+	}
+
+	const text = await response.text()
+	const dataLine = text.split('\n').find((line) => line.startsWith('data: '))
+	if (!dataLine) {
+		throw new Error(`Expected JSON-RPC payload, got: ${text.slice(0, 200)}`)
+	}
+	return JSON.parse(dataLine.slice('data: '.length)) as T
+}
+
 test('unauthenticated MCP request returns 401 with resource metadata', async () => {
 	const request = new Request('http://localhost/mcp', {
 		method: 'POST',
@@ -126,13 +140,14 @@ test('modern POST without MCP-Protocol-Version is rejected', async () => {
 	)
 })
 
-test('legacy initialize handshake is rejected', async () => {
+test('legacy initialize handshake can list tools', async () => {
 	const token = await issueAccessToken()
-	const request = new Request('http://localhost/mcp', {
+	const initializeRequest = new Request('http://localhost/mcp', {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${token}`,
 			'Content-Type': 'application/json',
+			Accept: 'application/json, text/event-stream',
 		},
 		body: JSON.stringify({
 			jsonrpc: '2.0',
@@ -146,14 +161,48 @@ test('legacy initialize handshake is rejected', async () => {
 		}),
 	})
 
-	const response = await handleMcp(request)
-	const body = (await response.json()) as {
+	const initializeResponse = await handleMcp(initializeRequest)
+	const initializeBody = await readJsonRpcResponse<{
 		error?: { code?: number; message?: string }
+		result?: { capabilities?: { tools?: unknown } }
+	}>(initializeResponse)
+
+	expect(initializeResponse.status).toBe(200)
+	expect(initializeBody.error).toBeUndefined()
+	expect(initializeBody.result?.capabilities?.tools).toBeTruthy()
+
+	const sessionId = initializeResponse.headers.get('mcp-session-id')
+	const listHeaders: Record<string, string> = {
+		Authorization: `Bearer ${token}`,
+		'Content-Type': 'application/json',
+		Accept: 'application/json, text/event-stream',
+	}
+	if (sessionId) {
+		listHeaders['mcp-session-id'] = sessionId
 	}
 
-	expect(response.status).toBeGreaterThanOrEqual(400)
-	expect(body.error?.code).toBe(-32022)
-	expect(body.error?.message?.toLowerCase()).toContain('protocol')
+	const listResponse = await handleMcp(
+		new Request('http://localhost/mcp', {
+			method: 'POST',
+			headers: listHeaders,
+			body: JSON.stringify({
+				jsonrpc: '2.0',
+				id: 2,
+				method: 'tools/list',
+				params: {},
+			}),
+		}),
+	)
+	const listBody = await readJsonRpcResponse<{
+		error?: { message?: string }
+		result?: { tools?: Array<{ name: string }> }
+	}>(listResponse)
+
+	expect(listResponse.status).toBe(200)
+	expect(listBody.error).toBeUndefined()
+	const toolNames = listBody.result?.tools?.map((tool) => tool.name) ?? []
+	expect(toolNames).toContain('list_feeds')
+	expect(toolNames).toContain('create_directory_feed')
 })
 
 test('modern MCP client can discover the server and list tools', async () => {

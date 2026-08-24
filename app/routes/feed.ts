@@ -16,6 +16,7 @@ import {
 	getDirectoryFeedItems,
 } from '#app/helpers/feed-items.ts'
 import { getFeedByTokenAndTouch } from '#app/helpers/feed-lookup.ts'
+import { buildFeedRssUrl } from '#app/helpers/feed-url.ts'
 import { type MediaFile } from '#app/helpers/media.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { PODCAST_ART_PLACEHOLDER_CONTENT_TYPE } from '#app/helpers/podcast-art-placeholder.ts'
@@ -42,7 +43,7 @@ export default {
 
 		const { feed, type } = result
 		const baseUrl = getBaseUrl(context.request)
-		const feedUrl = `${baseUrl}/feed/${token}`
+		const feedUrl = buildFeedRssUrl(baseUrl, token)
 		const adminUrl = `${baseUrl}/admin/feeds/${feed.id}`
 
 		// Get items based on feed type

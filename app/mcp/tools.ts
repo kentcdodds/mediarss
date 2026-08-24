@@ -46,6 +46,7 @@ import {
 } from '#app/db/types.ts'
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
+import { buildFeedRssUrl, displayTokenLabel } from '#app/helpers/feed-url.ts'
 import {
 	getFileMetadata,
 	type MediaFile,
@@ -830,8 +831,11 @@ export async function initializeTools(
 				} else {
 					lines.push(`### Active Tokens (${tokens.length})`)
 					for (const t of tokens) {
-						lines.push(`- \`${t.token}\` — Created ${formatDate(t.createdAt)}`)
-						lines.push(`  RSS URL: \`/feed/${feedId}?token=${t.token}\``)
+						const rssUrl = buildFeedRssUrl(baseUrl, t.token)
+						lines.push(
+							`- **${displayTokenLabel(t.label)}** — \`${t.token}\` — Created ${formatDate(t.createdAt)}`,
+						)
+						lines.push(`  RSS URL: \`${rssUrl}\``)
 					}
 					lines.push('')
 					lines.push(
@@ -852,7 +856,7 @@ export async function initializeTools(
 							token: t.token,
 							label: t.label,
 							createdAt: t.createdAt,
-							rssUrl: `/feed/${feedId}?token=${t.token}`,
+							rssUrl: buildFeedRssUrl(baseUrl, t.token),
 						})),
 					},
 				}
@@ -1526,7 +1530,10 @@ export async function initializeTools(
 					// Prefer re-using an existing active token when deduping.
 					const token =
 						(await listActiveDirectoryFeedTokens(feed.id))[0] ??
-						(await createDirectoryFeedToken({ feedId: feed.id }))
+						(await createDirectoryFeedToken({
+							feedId: feed.id,
+							label: 'Default',
+						}))
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -1548,7 +1555,7 @@ export async function initializeTools(
 					}
 					lines.push('')
 					lines.push(`### RSS Feed URL`)
-					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
+					lines.push(`\`${buildFeedRssUrl(baseUrl, token.token)}\``)
 					lines.push('')
 					lines.push(
 						'Add this URL to any podcast app to subscribe to the feed.',
@@ -1583,7 +1590,7 @@ export async function initializeTools(
 								type: 'directory',
 							},
 							token: token.token,
-							rssUrl: `/feed/${feed.id}?token=${token.token}`,
+							rssUrl: buildFeedRssUrl(baseUrl, token.token),
 						},
 					}
 				} catch (error) {
@@ -1761,7 +1768,10 @@ export async function initializeTools(
 					// Prefer re-using an existing active token when deduping.
 					const token =
 						(await listActiveCuratedFeedTokens(feed.id))[0] ??
-						(await createCuratedFeedToken({ feedId: feed.id }))
+						(await createCuratedFeedToken({
+							feedId: feed.id,
+							label: 'Default',
+						}))
 
 					// Format human-readable output
 					const lines: string[] = []
@@ -1782,7 +1792,7 @@ export async function initializeTools(
 					}
 					lines.push('')
 					lines.push(`### RSS Feed URL`)
-					lines.push(`\`/feed/${feed.id}?token=${token.token}\``)
+					lines.push(`\`${buildFeedRssUrl(baseUrl, token.token)}\``)
 					lines.push('')
 					lines.push('The feed starts empty. Add media files via the admin UI.')
 
@@ -1812,7 +1822,7 @@ export async function initializeTools(
 								type: 'curated',
 							},
 							token: token.token,
-							rssUrl: `/feed/${feed.id}?token=${token.token}`,
+							rssUrl: buildFeedRssUrl(baseUrl, token.token),
 						},
 					}
 				} catch (error) {
@@ -2230,13 +2240,17 @@ export async function initializeTools(
 				description: toolsMetadata.create_feed_token.description,
 				inputSchema: z.object({
 					feedId: z.string().describe('The feed ID'),
+					label: z
+						.string()
+						.optional()
+						.describe('Optional name for this token (e.g. "Nathan", "iPhone")'),
 				}),
 				annotations: {
 					readOnlyHint: false,
 					destructiveHint: false,
 				},
 			},
-			async ({ feedId }) => {
+			async ({ feedId, label }) => {
 				const feed = await getFeedById(feedId)
 
 				if (!feed) {
@@ -2252,17 +2266,29 @@ export async function initializeTools(
 				}
 
 				try {
+					const normalizedLabel = label?.trim() || undefined
 					const token =
 						feed.type === 'directory'
-							? await createDirectoryFeedToken({ feedId })
-							: await createCuratedFeedToken({ feedId })
+							? await createDirectoryFeedToken({
+									feedId,
+									label: normalizedLabel,
+								})
+							: await createCuratedFeedToken({
+									feedId,
+									label: normalizedLabel,
+								})
+
+					const rssUrl = buildFeedRssUrl(baseUrl, token.token)
+					const displayLabel = displayTokenLabel(token.label)
 
 					// Format human-readable output
 					const lines: string[] = []
 					lines.push(`✅ Token created successfully!`)
 					lines.push('')
+					lines.push(`- **Label**: ${displayLabel}`)
+					lines.push('')
 					lines.push(`### RSS Feed URL`)
-					lines.push(`\`/feed/${feedId}?token=${token.token}\``)
+					lines.push(`\`${rssUrl}\``)
 					lines.push('')
 					lines.push(
 						'Add this URL to any podcast app to subscribe to the feed.',
@@ -2275,7 +2301,8 @@ export async function initializeTools(
 							feedId,
 							feedName: feed.name,
 							token: token.token,
-							rssUrl: `/feed/${feedId}?token=${token.token}`,
+							label: token.label,
+							rssUrl,
 						},
 					}
 				} catch (error) {

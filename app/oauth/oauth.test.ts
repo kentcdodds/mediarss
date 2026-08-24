@@ -1001,3 +1001,67 @@ test('refresh token grant rejects wrong client and expanded scope', async () => 
 	expect(narrowed.status).toBe(200)
 	expect(((await narrowed.json()) as { scope: string }).scope).toBe('mcp:read')
 })
+
+test('replaying an expired used refresh token still revokes the family', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = createTestClient('Refresh Expired Replay ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+	})
+
+	const firstRefresh = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(firstRefresh.status).toBe(200)
+	const rotated = (await firstRefresh.json()) as { refresh_token: string }
+
+	db.query(
+		sql`UPDATE oauth_refresh_tokens SET expires_at = ? WHERE token = ?;`,
+	).run(Math.floor(Date.now() / 1000) - 1, first.refresh_token)
+
+	const replay = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: first.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(replay.status).toBe(400)
+	expect(((await replay.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+
+	const descendant = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: rotated.refresh_token,
+			client_id: testClient.id,
+		}).toString(),
+	})
+	expect(descendant.status).toBe(400)
+	expect(((await descendant.json()) as { error: string }).error).toBe(
+		'invalid_grant',
+	)
+})

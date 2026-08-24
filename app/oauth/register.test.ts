@@ -281,6 +281,23 @@ test('DCR endpoint rejects invalid registration requests', async () => {
 	}
 	expect(noAuthCodeGrantError.error).toBe('invalid_client_metadata')
 	expect(noAuthCodeGrantError.error_description).toContain('authorization_code')
+
+	// grant_types without refresh_token
+	const noRefreshGrantResponse = await fetch(`${ctx.baseUrl}/oauth/register`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			redirect_uris: ['http://localhost:9999/callback'],
+			grant_types: ['authorization_code'],
+		}),
+	})
+	expect(noRefreshGrantResponse.status).toBe(400)
+	const noRefreshGrantError = (await noRefreshGrantResponse.json()) as {
+		error: string
+		error_description: string
+	}
+	expect(noRefreshGrantError.error).toBe('invalid_client_metadata')
+	expect(noRefreshGrantError.error_description).toContain('refresh_token')
 })
 
 test('DCR endpoint supports CORS', async () => {

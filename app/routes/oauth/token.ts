@@ -34,7 +34,7 @@ interface TokenSuccessResponse {
 	access_token: string
 	token_type: string
 	expires_in: number
-	refresh_token: string
+	refresh_token?: string
 	scope?: string
 }
 
@@ -127,7 +127,7 @@ async function issueTokenPair(params: {
 	issuer: string
 	clientId: string
 	scope: string
-	refreshToken: string
+	refreshToken?: string
 }): Promise<TokenSuccessResponse> {
 	const { token, expiresIn } = await generateAccessToken({
 		issuer: params.issuer,
@@ -139,7 +139,10 @@ async function issueTokenPair(params: {
 		access_token: token,
 		token_type: 'Bearer',
 		expires_in: expiresIn,
-		refresh_token: params.refreshToken,
+	}
+
+	if (params.refreshToken) {
+		response.refresh_token = params.refreshToken
 	}
 
 	if (params.scope) {
@@ -226,17 +229,19 @@ async function handleAuthorizationCode(
 	}
 
 	const issuer = getOrigin(context.request, context.url)
-	const refresh = createRefreshToken({
-		clientId: authCode.clientId,
-		scope: authCode.scope,
-	})
+	const refresh = clientSupportsGrantType(client, 'refresh_token')
+		? createRefreshToken({
+				clientId: authCode.clientId,
+				scope: authCode.scope,
+			})
+		: null
 
 	return jsonTokenResponse(
 		await issueTokenPair({
 			issuer,
 			clientId: authCode.clientId,
 			scope: authCode.scope,
-			refreshToken: refresh.token,
+			refreshToken: refresh?.token,
 		}),
 	)
 }
@@ -267,14 +272,22 @@ async function handleRefreshToken(
 
 	const existing = getRefreshToken(tokenRequest.refresh_token)
 	const now = Math.floor(Date.now() / 1000)
-	if (!existing || existing.expiresAt < now) {
+	if (!existing) {
 		return errorResponse(
 			'invalid_grant',
 			'Refresh token is invalid, expired, or has already been used.',
 		)
 	}
 	if (existing.usedAt !== null) {
+		// Replay detection must run even after the used token expires, so a
+		// later valid descendant in the same family is still revoked.
 		consumeRefreshToken(tokenRequest.refresh_token)
+		return errorResponse(
+			'invalid_grant',
+			'Refresh token is invalid, expired, or has already been used.',
+		)
+	}
+	if (existing.expiresAt < now) {
 		return errorResponse(
 			'invalid_grant',
 			'Refresh token is invalid, expired, or has already been used.',

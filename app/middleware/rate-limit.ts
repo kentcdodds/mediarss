@@ -11,7 +11,7 @@ import {
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /** Paths that should skip rate limiting entirely */
-const SKIP_PATHS = new Set(['/admin/health'])
+const SKIP_PATHS = new Set(['/health', '/admin/health'])
 
 /** Path prefixes that should skip rate limiting */
 const SKIP_PREFIXES = ['/assets/']
@@ -119,7 +119,7 @@ function isFailedResponse(status: number): boolean {
  * giving clients 1/10th the rate limit when making failed requests. This helps
  * prevent brute force attacks and credential stuffing.
  *
- * Skipped paths: /admin/health, /assets/*
+ * Skipped paths: /health, /admin/health, /assets/*
  */
 export function rateLimit(): Middleware {
 	return async (context, next) => {

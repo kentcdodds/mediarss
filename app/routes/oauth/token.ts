@@ -1,5 +1,6 @@
 import { type Action, type RequestContext } from 'remix/router'
 import type routes from '#app/config/routes.ts'
+import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import {
@@ -10,7 +11,7 @@ import {
 	generateAccessToken,
 	getRefreshToken,
 	getValidAuthorizationCode,
-	resolveClient,
+	resolveClientResult,
 	rotateRefreshToken,
 	verifyCodeChallenge,
 } from '#app/oauth/index.ts'
@@ -160,10 +161,21 @@ async function handleAuthorizationCode(
 		return errorResponse('invalid_request', 'client_id is required.')
 	}
 
-	const client = await resolveClient(tokenRequest.client_id)
-	if (!client) {
+	const resolved = await resolveClientResult(tokenRequest.client_id)
+	if (!resolved.client) {
+		recordDiagnostic({
+			area: 'oauth.token',
+			event: 'client_rejected',
+			ok: false,
+			detail: {
+				grantType: tokenRequest.grant_type,
+				clientId: tokenRequest.client_id,
+				reason: resolved.reason,
+			},
+		})
 		return errorResponse('invalid_client', 'Unknown client.', 401)
 	}
+	const client = resolved.client
 
 	if (!clientSupportsGrantType(client, 'authorization_code')) {
 		return errorResponse(
@@ -258,10 +270,21 @@ async function handleRefreshToken(
 		return errorResponse('invalid_request', 'refresh_token is required.')
 	}
 
-	const client = await resolveClient(tokenRequest.client_id)
-	if (!client) {
+	const resolved = await resolveClientResult(tokenRequest.client_id)
+	if (!resolved.client) {
+		recordDiagnostic({
+			area: 'oauth.token',
+			event: 'client_rejected',
+			ok: false,
+			detail: {
+				grantType: tokenRequest.grant_type,
+				clientId: tokenRequest.client_id,
+				reason: resolved.reason,
+			},
+		})
 		return errorResponse('invalid_client', 'Unknown client.', 401)
 	}
+	const client = resolved.client
 
 	if (!clientSupportsGrantType(client, 'refresh_token')) {
 		return errorResponse(

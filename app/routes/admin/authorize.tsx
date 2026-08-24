@@ -2,6 +2,7 @@ import { type Action, type RequestContext } from 'remix/router'
 import { html } from 'remix/html-template'
 import { Layout } from '#app/components/layout.tsx'
 import type routes from '#app/config/routes.ts'
+import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { render } from '#app/helpers/render.ts'
 import {
 	clientSupportsGrantType,
@@ -167,6 +168,18 @@ async function handleGet(context: RequestContext): Promise<Response> {
 
 	// Validate client (supports both static clients and URL-based metadata documents)
 	const resolved = await resolveClientResult(params.client_id)
+	recordDiagnostic({
+		area: 'oauth.authorize',
+		event: resolved.client ? 'client_resolved' : 'client_rejected',
+		ok: Boolean(resolved.client),
+		detail: {
+			clientId: params.client_id || null,
+			method: context.method,
+			...(resolved.client
+				? { clientName: resolved.client.name }
+				: { reason: resolved.reason }),
+		},
+	})
 	if (!resolved.client) {
 		return renderError('Invalid Client', resolved.reason)
 	}
@@ -236,6 +249,18 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	// Resolve client (supports both static clients and URL-based metadata documents)
 	const resolved = await resolveClientResult(params.client_id)
+	recordDiagnostic({
+		area: 'oauth.authorize',
+		event: resolved.client ? 'client_resolved' : 'client_rejected',
+		ok: Boolean(resolved.client),
+		detail: {
+			clientId: params.client_id || null,
+			method: context.method,
+			...(resolved.client
+				? { clientName: resolved.client.name }
+				: { reason: resolved.reason }),
+		},
+	})
 	if (!resolved.client) {
 		return renderError('Invalid Client', resolved.reason)
 	}

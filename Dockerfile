@@ -25,6 +25,11 @@ ENV PORT=22050
 ENV DATABASE_PATH=/data/sqlite.db
 ENV CACHE_DATABASE_PATH=/data/cache.db
 
+# Publish workflow already passes COMMIT_SHA; without it, /health has no SHA
+# because .git is not copied into the image.
+ARG COMMIT_SHA=
+ENV COMMIT_SHA=$COMMIT_SHA
+
 # Expose the default port (22050 = audiobook sample rate 🎧)
 EXPOSE 22050
 

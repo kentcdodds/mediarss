@@ -62,10 +62,15 @@ async function callRateLimiter(
 
 test('rate limiter skips rate limiting for health check and static assets', async () => {
 	// Health check endpoint should not have rate limit headers
-	const healthResponse = await callRateLimiter('/admin/health')
-	invariant(healthResponse, 'Expected response')
-	expect(healthResponse.headers.has('X-RateLimit-Limit')).toBe(false)
-	expect(healthResponse.status).toBe(200)
+	const adminHealthResponse = await callRateLimiter('/admin/health')
+	invariant(adminHealthResponse, 'Expected response')
+	expect(adminHealthResponse.headers.has('X-RateLimit-Limit')).toBe(false)
+	expect(adminHealthResponse.status).toBe(200)
+
+	const publicHealthResponse = await callRateLimiter('/health')
+	invariant(publicHealthResponse, 'Expected response')
+	expect(publicHealthResponse.headers.has('X-RateLimit-Limit')).toBe(false)
+	expect(publicHealthResponse.status).toBe(200)
 
 	// Static assets should not have rate limit headers
 	const assetsResponse = await callRateLimiter('/assets/styles.css')

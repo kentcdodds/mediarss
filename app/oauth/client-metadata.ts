@@ -1,5 +1,6 @@
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
+import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { getClient } from './clients.ts'
 import { DEFAULT_GRANT_TYPES } from './tokens.ts'
 
@@ -205,8 +206,26 @@ function validateMetadataDocument(
 async function fetchMetadataDocument(
 	clientIdUrl: string,
 ): Promise<{ metadata: ClientMetadataDocument; cacheDuration: number }> {
-	let response: Response
+	const started = performance.now()
+	let httpStatus: number | undefined
+	let contentType: string | null = null
 
+	function recordFetchFailure(message: string) {
+		recordDiagnostic({
+			area: 'oauth.cimd',
+			event: 'fetch_failed',
+			ok: false,
+			durationMs: performance.now() - started,
+			detail: {
+				url: clientIdUrl,
+				...(httpStatus !== undefined ? { httpStatus } : {}),
+				...(contentType ? { contentType } : {}),
+				error: message,
+			},
+		})
+	}
+
+	let response: Response
 	try {
 		response = await fetch(clientIdUrl, {
 			headers: {
@@ -217,36 +236,51 @@ async function fetchMetadataDocument(
 			signal: AbortSignal.timeout(10000),
 		})
 	} catch (error) {
-		if (error instanceof Error && error.name === 'AbortError') {
-			throw new Error(`Timeout fetching client metadata from ${clientIdUrl}`)
-		}
-		throw new Error(
-			`Failed to fetch client metadata from ${clientIdUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		)
+		const message =
+			error instanceof Error && error.name === 'AbortError'
+				? `Timeout fetching client metadata from ${clientIdUrl}`
+				: `Failed to fetch client metadata from ${clientIdUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`
+		recordFetchFailure(message)
+		throw new Error(message)
 	}
+
+	httpStatus = response.status
+	contentType = response.headers.get('Content-Type')
 
 	if (!response.ok) {
-		throw new Error(
-			`Client metadata endpoint returned ${response.status}: ${clientIdUrl}`,
-		)
+		const message = `Client metadata endpoint returned ${response.status}: ${clientIdUrl}`
+		recordFetchFailure(message)
+		throw new Error(message)
 	}
 
-	const contentType = response.headers.get('Content-Type')
 	if (!contentType?.includes('application/json')) {
-		throw new Error(
-			`Client metadata endpoint must return application/json, got: ${contentType}`,
-		)
+		const message = `Client metadata endpoint must return application/json, got: ${contentType}`
+		recordFetchFailure(message)
+		throw new Error(message)
 	}
 
 	let data: unknown
 	try {
 		data = await response.json()
 	} catch {
-		throw new Error('Client metadata document is not valid JSON')
+		const message = 'Client metadata document is not valid JSON'
+		recordFetchFailure(message)
+		throw new Error(message)
 	}
 
 	const metadata = validateMetadataDocument(clientIdUrl, data)
 	const cacheDuration = parseCacheDuration(response)
+	recordDiagnostic({
+		area: 'oauth.cimd',
+		event: 'fetch_ok',
+		ok: true,
+		durationMs: performance.now() - started,
+		detail: {
+			url: clientIdUrl,
+			httpStatus,
+			...(contentType ? { contentType } : {}),
+		},
+	})
 
 	return { metadata, cacheDuration }
 }

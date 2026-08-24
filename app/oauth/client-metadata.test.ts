@@ -17,6 +17,7 @@ import {
 	createAuthorizationCode,
 	createClient,
 	deleteClient,
+	getClient,
 	generateCodeVerifier,
 	getAudience,
 	CIMD_FETCH_USER_AGENT,
@@ -397,19 +398,6 @@ test('authorization-code-only metadata clients do not receive refresh tokens', a
 		),
 	)
 
-	// Authorization codes FK to oauth_clients; URL clients are not stored there.
-	// Insert a stub row so the code can be created, then resolve via metadata.
-	const now = Math.floor(Date.now() / 1000)
-	db.query(
-		sql`INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?);`,
-	).run(
-		clientId,
-		'No Refresh Metadata Client',
-		JSON.stringify([redirectUri]),
-		now,
-	)
-	testClientIds.push(clientId)
-
 	const verifier = generateCodeVerifier()
 	const challenge = await computeS256Challenge(verifier)
 	const authCode = createAuthorizationCode({
@@ -441,6 +429,52 @@ test('authorization-code-only metadata clients do not receive refresh tokens', a
 	}
 	expect(tokenData.access_token).toBeTruthy()
 	expect(tokenData.refresh_token).toBeUndefined()
+})
+
+test('authorization POST issues a code for URL metadata clients', async () => {
+	await using ctx = await createTestServer()
+	using mockCtx = setupMockFetch()
+
+	const clientId = 'https://test-cimd-authorize-post.example.com/metadata'
+	const redirectUri = 'https://test-cimd-authorize-post.example.com/callback'
+	mockCtx.mockFetchResponses.set(clientId, () =>
+		Response.json(
+			{
+				client_id: clientId,
+				client_name: 'Kody Test',
+				redirect_uris: [redirectUri],
+				grant_types: ['authorization_code', 'refresh_token'],
+			},
+			{ headers: { 'Content-Type': 'application/json' } },
+		),
+	)
+
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+	const authorizeParams = new URLSearchParams({
+		response_type: 'code',
+		client_id: clientId,
+		redirect_uri: redirectUri,
+		scope: 'mcp:read mcp:write',
+		state: 'cimd-post-state',
+		code_challenge: challenge,
+		code_challenge_method: 'S256',
+	})
+
+	const authorizeResponse = await fetch(
+		`${ctx.baseUrl}/admin/authorize?${authorizeParams}`,
+		{
+			method: 'POST',
+			redirect: 'manual',
+		},
+	)
+
+	expect(authorizeResponse.status).toBe(302)
+	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
+	expect(redirectUrl.origin + redirectUrl.pathname).toBe(redirectUri)
+	expect(redirectUrl.searchParams.get('code')).toBeTruthy()
+	expect(redirectUrl.searchParams.get('state')).toBe('cimd-post-state')
+	expect(getClient(clientId)).toBeNull()
 })
 
 test('authorization endpoint rejects unknown and invalid redirect URIs', async () => {

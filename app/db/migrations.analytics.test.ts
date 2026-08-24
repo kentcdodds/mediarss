@@ -2,6 +2,43 @@ import { expect, test } from 'vitest'
 import { sql } from './sql.ts'
 import { createMigratedTestDatabase } from './test-database.ts'
 
+test('authorization_codes does not foreign-key oauth_clients', () => {
+	using ctx = createMigratedTestDatabase('test-auth-codes-fk')
+
+	const foreignKeys = ctx.db
+		.query(sql`PRAGMA foreign_key_list(authorization_codes);`)
+		.all() as Array<{ table: string }>
+
+	expect(foreignKeys).toEqual([])
+
+	ctx.db.run(sql`
+		INSERT INTO authorization_codes (
+			code,
+			client_id,
+			redirect_uri,
+			scope,
+			code_challenge,
+			code_challenge_method,
+			expires_at
+		) VALUES (
+			'code-cimd',
+			'https://example.com/oauth/client-metadata.json',
+			'https://example.com/callback',
+			'mcp:read',
+			'challenge',
+			'S256',
+			9999999999
+		);
+	`)
+
+	const row = ctx.db
+		.query<{ client_id: string }, []>(
+			sql`SELECT client_id FROM authorization_codes WHERE code = 'code-cimd';`,
+		)
+		.get()
+	expect(row?.client_id).toBe('https://example.com/oauth/client-metadata.json')
+})
+
 test('migration creates oauth_refresh_tokens table and indexes', () => {
 	using ctx = createMigratedTestDatabase('test-refresh-tokens')
 

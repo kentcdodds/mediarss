@@ -270,6 +270,66 @@ const migrations: Array<Migration> = [
 			`)
 		},
 	},
+	{
+		version: 8,
+		name: 'drop_authorization_codes_client_fk',
+		up: (db) => {
+			// URL-based Client ID Metadata Documents are not rows in
+			// oauth_clients. Keeping this FK made authorize crash with
+			// SQLITE_CONSTRAINT_FOREIGNKEY after CIMD resolve succeeded.
+			db.exec('PRAGMA foreign_keys = OFF;')
+			db.run(sql`
+				CREATE TABLE authorization_codes_new (
+					code TEXT PRIMARY KEY,
+					client_id TEXT NOT NULL,
+					redirect_uri TEXT NOT NULL,
+					scope TEXT NOT NULL DEFAULT '',
+					code_challenge TEXT NOT NULL,
+					code_challenge_method TEXT NOT NULL DEFAULT 'S256',
+					expires_at INTEGER NOT NULL,
+					used_at INTEGER,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+			db.run(sql`
+				INSERT INTO authorization_codes_new (
+					code,
+					client_id,
+					redirect_uri,
+					scope,
+					code_challenge,
+					code_challenge_method,
+					expires_at,
+					used_at,
+					created_at
+				)
+				SELECT
+					code,
+					client_id,
+					redirect_uri,
+					scope,
+					code_challenge,
+					code_challenge_method,
+					expires_at,
+					used_at,
+					created_at
+				FROM authorization_codes;
+			`)
+			db.run(sql`DROP TABLE authorization_codes;`)
+			db.run(
+				sql`ALTER TABLE authorization_codes_new RENAME TO authorization_codes;`,
+			)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_authorization_codes_client_id
+				ON authorization_codes(client_id);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_authorization_codes_expires_at
+				ON authorization_codes(expires_at);
+			`)
+			db.exec('PRAGMA foreign_keys = ON;')
+		},
+	},
 ]
 
 /**

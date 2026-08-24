@@ -83,6 +83,7 @@ export async function getAppVersion(): Promise<string | null> {
  */
 export async function getCommitInfo(): Promise<CommitInfo | null> {
 	const baked = readBakedCommitSha()
+	if (baked) return commitFromSha(baked, 'env')
 	try {
 		const [{ stdout: hash }, { stdout: message }, { stdout: date }] =
 			await Promise.all([
@@ -99,14 +100,14 @@ export async function getCommitInfo(): Promise<CommitInfo | null> {
 
 		const gitHash = hash.trim()
 		return {
-			hash: baked ?? gitHash,
-			shortHash: (baked ?? gitHash).slice(0, 7),
+			hash: gitHash,
+			shortHash: gitHash.slice(0, 7),
 			message: message.trim(),
 			date: date.trim(),
-			source: baked ? 'env' : 'git',
+			source: 'git',
 		}
 	} catch {
-		return baked ? commitFromSha(baked, 'env') : null
+		return null
 	}
 }
 

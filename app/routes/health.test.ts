@@ -5,6 +5,7 @@ import routes from '#app/config/routes.ts'
 import { clearDiagnostics, recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import {
 	DEFAULT_CIMD_PROBE_URL,
+	resetCimdProbeState,
 	type HealthSnapshot,
 } from '#app/helpers/health.ts'
 import router from '#app/router.tsx'
@@ -14,6 +15,7 @@ function withClearedDiagnostics() {
 	return {
 		[Symbol.dispose]() {
 			clearDiagnostics()
+			resetCimdProbeState()
 		},
 	}
 }
@@ -98,6 +100,38 @@ test('health ?probe=cimd records an outbound CIMD lookup', async () => {
 				(event) => event.area === 'oauth.cimd' && event.ok === false,
 			),
 		).toBe(true)
+	} finally {
+		globalThis.fetch = originalFetch
+	}
+})
+
+test('health ?probe=cimd coalesces overlapping and cooldown lookups', async () => {
+	using _diagnostics = withClearedDiagnostics()
+	resetCimdProbeState()
+	let fetches = 0
+	const originalFetch = globalThis.fetch
+	globalThis.fetch = (async (input: RequestInfo | URL) => {
+		const url = String(input)
+		if (url === DEFAULT_CIMD_PROBE_URL) {
+			fetches += 1
+			return new Response('blocked', {
+				status: 403,
+				headers: { 'Content-Type': 'text/plain' },
+			})
+		}
+		return originalFetch(input)
+	}) as typeof fetch
+
+	try {
+		const [first, second] = await Promise.all([
+			fetchHealth(`${routes.health.href()}?probe=cimd`),
+			fetchHealth(`${routes.health.href()}?probe=cimd`),
+		])
+		expect(first.body.probes?.cimd.ok).toBe(false)
+		expect(second.body.probes?.cimd.ok).toBe(false)
+		const third = await fetchHealth(`${routes.health.href()}?probe=cimd`)
+		expect(third.body.probes?.cimd.ok).toBe(false)
+		expect(fetches).toBe(1)
 	} finally {
 		globalThis.fetch = originalFetch
 	}

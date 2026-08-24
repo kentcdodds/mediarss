@@ -61,7 +61,17 @@ function checkDatabase(): HealthDatabaseStatus {
 	}
 }
 
-async function probeCimd(url: string): Promise<HealthCimdProbe> {
+export const CIMD_PROBE_COOLDOWN_MS = 10_000
+
+let cimdProbeInFlight: Promise<HealthCimdProbe> | null = null
+let lastCimdProbe: { at: number; result: HealthCimdProbe } | null = null
+
+export function resetCimdProbeState(): void {
+	cimdProbeInFlight = null
+	lastCimdProbe = null
+}
+
+async function runCimdProbe(url: string): Promise<HealthCimdProbe> {
 	const started = performance.now()
 	const lookup = await lookupClientMetadata(url)
 	const durationMs = performance.now() - started
@@ -79,6 +89,22 @@ async function probeCimd(url: string): Promise<HealthCimdProbe> {
 		},
 	})
 	return probe
+}
+
+async function probeCimd(url: string): Promise<HealthCimdProbe> {
+	if (cimdProbeInFlight) return cimdProbeInFlight
+	if (lastCimdProbe && Date.now() - lastCimdProbe.at < CIMD_PROBE_COOLDOWN_MS) {
+		return lastCimdProbe.result
+	}
+
+	cimdProbeInFlight = runCimdProbe(url)
+	try {
+		const result = await cimdProbeInFlight
+		lastCimdProbe = { at: Date.now(), result }
+		return result
+	} finally {
+		cimdProbeInFlight = null
+	}
 }
 
 export async function getHealthSnapshot(url: URL): Promise<HealthSnapshot> {

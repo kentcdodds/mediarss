@@ -268,7 +268,14 @@ async function fetchMetadataDocument(
 		throw new Error(message)
 	}
 
-	const metadata = validateMetadataDocument(clientIdUrl, data)
+	let metadata: ClientMetadataDocument
+	try {
+		metadata = validateMetadataDocument(clientIdUrl, data)
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		recordFetchFailure(message)
+		throw error instanceof Error ? error : new Error(message)
+	}
 	const cacheDuration = parseCacheDuration(response)
 	recordDiagnostic({
 		area: 'oauth.cimd',

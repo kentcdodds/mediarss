@@ -5,9 +5,13 @@ import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import {
 	clientSupportsGrantType,
 	consumeAuthorizationCode,
+	consumeRefreshToken,
+	createRefreshToken,
 	generateAccessToken,
+	getRefreshToken,
 	getValidAuthorizationCode,
 	resolveClient,
+	rotateRefreshToken,
 	verifyCodeChallenge,
 } from '#app/oauth/index.ts'
 
@@ -17,6 +21,8 @@ interface TokenRequest {
 	redirect_uri: string
 	client_id: string
 	code_verifier: string
+	refresh_token: string
+	scope: string
 }
 
 interface TokenErrorResponse {
@@ -28,6 +34,7 @@ interface TokenSuccessResponse {
 	access_token: string
 	token_type: string
 	expires_in: number
+	refresh_token: string
 	scope?: string
 }
 
@@ -42,6 +49,15 @@ function errorResponse(
 	}
 	return Response.json(body, {
 		status,
+		headers: {
+			'Cache-Control': 'no-store',
+			Pragma: 'no-cache',
+		},
+	})
+}
+
+function jsonTokenResponse(body: TokenSuccessResponse): Response {
+	return Response.json(body, {
 		headers: {
 			'Cache-Control': 'no-store',
 			Pragma: 'no-cache',
@@ -69,50 +85,83 @@ async function parseTokenRequest(
 			redirect_uri: params.get('redirect_uri') ?? '',
 			client_id: params.get('client_id') ?? '',
 			code_verifier: params.get('code_verifier') ?? '',
+			refresh_token: params.get('refresh_token') ?? '',
+			scope: params.get('scope') ?? '',
 		}
 	} catch {
 		return null
 	}
 }
 
-/**
- * POST /oauth/token - Token endpoint
- * Exchanges an authorization code for an access token.
- * Requires PKCE code_verifier.
- *
- * Supports both static client IDs and URL-based Client ID Metadata Documents
- * per MCP 2025-11-25 spec.
- */
-async function handlePost(context: RequestContext): Promise<Response> {
-	const tokenRequest = await parseTokenRequest(context.request)
+function validateAllowedHost(context: RequestContext): Response | null {
+	const allowedHosts = process.env.ALLOWED_HOSTS?.split(',').map((h) =>
+		h.trim(),
+	)
+	const requestHost = context.url.host
 
-	if (!tokenRequest) {
-		return errorResponse(
-			'invalid_request',
-			'Request must use application/x-www-form-urlencoded content type.',
-		)
+	if (allowedHosts && allowedHosts.length > 0) {
+		if (!allowedHosts.includes(requestHost)) {
+			return errorResponse('invalid_request', 'Invalid host header.', 400)
+		}
 	}
 
-	// Validate grant_type
-	if (tokenRequest.grant_type !== 'authorization_code') {
-		return errorResponse(
-			'unsupported_grant_type',
-			'Only authorization_code grant type is supported.',
-		)
+	return null
+}
+
+function requestedScopeIsAllowed(
+	requestedScope: string,
+	grantedScope: string,
+): boolean {
+	if (!requestedScope) {
+		return true
 	}
 
-	// Validate client
+	const granted = new Set(grantedScope.split(' ').filter(Boolean))
+	return requestedScope
+		.split(' ')
+		.filter(Boolean)
+		.every((scope) => granted.has(scope))
+}
+
+async function issueTokenPair(params: {
+	issuer: string
+	clientId: string
+	scope: string
+	refreshToken: string
+}): Promise<TokenSuccessResponse> {
+	const { token, expiresIn } = await generateAccessToken({
+		issuer: params.issuer,
+		scope: params.scope,
+		clientId: params.clientId,
+	})
+
+	const response: TokenSuccessResponse = {
+		access_token: token,
+		token_type: 'Bearer',
+		expires_in: expiresIn,
+		refresh_token: params.refreshToken,
+	}
+
+	if (params.scope) {
+		response.scope = params.scope
+	}
+
+	return response
+}
+
+async function handleAuthorizationCode(
+	context: RequestContext,
+	tokenRequest: TokenRequest,
+): Promise<Response> {
 	if (!tokenRequest.client_id) {
 		return errorResponse('invalid_request', 'client_id is required.')
 	}
 
-	// Resolve client (supports both static clients and URL-based metadata documents)
 	const client = await resolveClient(tokenRequest.client_id)
 	if (!client) {
 		return errorResponse('invalid_client', 'Unknown client.', 401)
 	}
 
-	// Validate client supports authorization_code grant type
 	if (!clientSupportsGrantType(client, 'authorization_code')) {
 		return errorResponse(
 			'unauthorized_client',
@@ -120,7 +169,6 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		)
 	}
 
-	// Validate code
 	if (!tokenRequest.code) {
 		return errorResponse('invalid_request', 'code is required.')
 	}
@@ -136,7 +184,6 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		)
 	}
 
-	// Validate that the code belongs to this client
 	if (authCode.clientId !== tokenRequest.client_id) {
 		return errorResponse(
 			'invalid_grant',
@@ -144,7 +191,6 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		)
 	}
 
-	// Validate redirect_uri matches the original
 	if (tokenRequest.redirect_uri !== authCode.redirectUri) {
 		return errorResponse(
 			'invalid_grant',
@@ -152,7 +198,6 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		)
 	}
 
-	// PKCE verification (required)
 	if (!tokenRequest.code_verifier) {
 		return errorResponse('invalid_request', 'code_verifier is required.')
 	}
@@ -167,55 +212,148 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		return errorResponse('invalid_grant', 'PKCE verification failed.')
 	}
 
-	// All validations passed - now atomically consume the authorization code
-	// This uses an atomic UPDATE to prevent race conditions
 	const consumedCode = consumeAuthorizationCode(tokenRequest.code)
 	if (!consumedCode) {
-		// Code was consumed by another request between validation and consumption
 		return errorResponse(
 			'invalid_grant',
 			'Authorization code is invalid, expired, or has already been used.',
 		)
 	}
 
-	// Validate Host header to prevent issuer injection attacks
-	// Only validates if ALLOWED_HOSTS is configured
-	const allowedHosts = process.env.ALLOWED_HOSTS?.split(',').map((h) =>
-		h.trim(),
-	)
-	const requestHost = context.url.host
-
-	if (allowedHosts && allowedHosts.length > 0) {
-		if (!allowedHosts.includes(requestHost)) {
-			return errorResponse('invalid_request', 'Invalid host header.', 400)
-		}
+	const hostError = validateAllowedHost(context)
+	if (hostError) {
+		return hostError
 	}
 
-	// Generate access token
-	// Determine issuer from request URL (respects X-Forwarded-Proto for reverse proxies)
 	const issuer = getOrigin(context.request, context.url)
-
-	const { token, expiresIn } = await generateAccessToken({
-		issuer,
+	const refresh = createRefreshToken({
+		clientId: authCode.clientId,
 		scope: authCode.scope,
 	})
 
-	const response: TokenSuccessResponse = {
-		access_token: token,
-		token_type: 'Bearer',
-		expires_in: expiresIn,
+	return jsonTokenResponse(
+		await issueTokenPair({
+			issuer,
+			clientId: authCode.clientId,
+			scope: authCode.scope,
+			refreshToken: refresh.token,
+		}),
+	)
+}
+
+async function handleRefreshToken(
+	context: RequestContext,
+	tokenRequest: TokenRequest,
+): Promise<Response> {
+	if (!tokenRequest.client_id) {
+		return errorResponse('invalid_request', 'client_id is required.')
 	}
 
-	if (authCode.scope) {
-		response.scope = authCode.scope
+	if (!tokenRequest.refresh_token) {
+		return errorResponse('invalid_request', 'refresh_token is required.')
 	}
 
-	return Response.json(response, {
-		headers: {
-			'Cache-Control': 'no-store',
-			Pragma: 'no-cache',
-		},
+	const client = await resolveClient(tokenRequest.client_id)
+	if (!client) {
+		return errorResponse('invalid_client', 'Unknown client.', 401)
+	}
+
+	if (!clientSupportsGrantType(client, 'refresh_token')) {
+		return errorResponse(
+			'unauthorized_client',
+			'This client is not authorized to use the refresh_token grant type.',
+		)
+	}
+
+	const existing = getRefreshToken(tokenRequest.refresh_token)
+	const now = Math.floor(Date.now() / 1000)
+	if (!existing || existing.expiresAt < now) {
+		return errorResponse(
+			'invalid_grant',
+			'Refresh token is invalid, expired, or has already been used.',
+		)
+	}
+	if (existing.usedAt !== null) {
+		consumeRefreshToken(tokenRequest.refresh_token)
+		return errorResponse(
+			'invalid_grant',
+			'Refresh token is invalid, expired, or has already been used.',
+		)
+	}
+
+	if (existing.clientId !== tokenRequest.client_id) {
+		return errorResponse(
+			'invalid_grant',
+			'Refresh token was not issued to this client.',
+		)
+	}
+
+	if (!requestedScopeIsAllowed(tokenRequest.scope, existing.scope)) {
+		return errorResponse(
+			'invalid_scope',
+			'Requested scope exceeds the scope originally granted.',
+		)
+	}
+
+	const hostError = validateAllowedHost(context)
+	if (hostError) {
+		return hostError
+	}
+
+	const consumed = consumeRefreshToken(tokenRequest.refresh_token)
+	if (!consumed) {
+		return errorResponse(
+			'invalid_grant',
+			'Refresh token is invalid, expired, or has already been used.',
+		)
+	}
+
+	const scope = tokenRequest.scope || consumed.scope
+	const rotated = rotateRefreshToken({
+		...consumed,
+		scope,
 	})
+	const issuer = getOrigin(context.request, context.url)
+
+	return jsonTokenResponse(
+		await issueTokenPair({
+			issuer,
+			clientId: consumed.clientId,
+			scope,
+			refreshToken: rotated.token,
+		}),
+	)
+}
+
+/**
+ * POST /oauth/token - Token endpoint
+ * Exchanges an authorization code or refresh token for access credentials.
+ * Authorization-code grants require PKCE.
+ *
+ * Supports both static client IDs and URL-based Client ID Metadata Documents
+ * per MCP 2025-11-25 spec.
+ */
+async function handlePost(context: RequestContext): Promise<Response> {
+	const tokenRequest = await parseTokenRequest(context.request)
+
+	if (!tokenRequest) {
+		return errorResponse(
+			'invalid_request',
+			'Request must use application/x-www-form-urlencoded content type.',
+		)
+	}
+
+	switch (tokenRequest.grant_type) {
+		case 'authorization_code':
+			return handleAuthorizationCode(context, tokenRequest)
+		case 'refresh_token':
+			return handleRefreshToken(context, tokenRequest)
+		default:
+			return errorResponse(
+				'unsupported_grant_type',
+				'Only authorization_code and refresh_token grant types are supported.',
+			)
+	}
 }
 
 export default {

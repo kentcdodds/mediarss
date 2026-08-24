@@ -1,8 +1,14 @@
 import * as jose from 'jose'
+import { generateId } from '#app/helpers/crypto.ts'
 import { getKeyId, getPrivateKey } from './keys.ts'
 
 // Access tokens expire after 1 hour
 const ACCESS_TOKEN_EXPIRY_SECONDS = 3600
+
+export const DEFAULT_GRANT_TYPES = [
+	'authorization_code',
+	'refresh_token',
+] as const
 
 // Single-user subject identifier
 const SUBJECT = 'user'
@@ -26,6 +32,7 @@ export interface AccessTokenPayload {
 export async function generateAccessToken(params: {
 	issuer: string
 	scope: string
+	clientId?: string
 }): Promise<{ token: string; expiresIn: number }> {
 	const privateKey = await getPrivateKey()
 	const kid = await getKeyId()
@@ -35,11 +42,13 @@ export async function generateAccessToken(params: {
 
 	const token = await new jose.SignJWT({
 		scope: params.scope,
+		...(params.clientId ? { client_id: params.clientId } : {}),
 	})
 		.setProtectedHeader({ alg: 'RS256', kid })
 		.setIssuer(params.issuer)
 		.setAudience(AUDIENCE)
 		.setSubject(SUBJECT)
+		.setJti(generateId())
 		.setIssuedAt(now)
 		.setExpirationTime(exp)
 		.sign(privateKey)
@@ -76,6 +85,8 @@ export async function verifyAccessToken(
 			exp: payload.exp as number,
 			iat: payload.iat as number,
 			scope: (payload.scope as string) ?? '',
+			client_id:
+				typeof payload.client_id === 'string' ? payload.client_id : undefined,
 		}
 	} catch {
 		return null

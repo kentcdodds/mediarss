@@ -215,10 +215,10 @@ test('clientSupportsGrantType validates grant types correctly', async () => {
 	const resolved = await resolveClient(staticClient.id)
 	expect(resolved).not.toBeNull()
 
-	// Static clients default to authorization_code grant type
+	// Static clients default to authorization_code and refresh_token
 	expect(clientSupportsGrantType(resolved!, 'authorization_code')).toBe(true)
+	expect(clientSupportsGrantType(resolved!, 'refresh_token')).toBe(true)
 	expect(clientSupportsGrantType(resolved!, 'client_credentials')).toBe(false)
-	expect(clientSupportsGrantType(resolved!, 'refresh_token')).toBe(false)
 
 	// Custom grant types array validation
 	const clientWithOnlyClientCredentials = {
@@ -275,6 +275,7 @@ test('server metadata indicates DCR and client ID metadata document support', as
 	expect(metadata.scopes_supported).toContain('mcp:write')
 	expect(metadata.response_types_supported).toContain('code')
 	expect(metadata.grant_types_supported).toContain('authorization_code')
+	expect(metadata.grant_types_supported).toContain('refresh_token')
 	expect(metadata.code_challenge_methods_supported).toContain('S256')
 
 	// MCP 2025-11-25 spec compliance
@@ -819,7 +820,7 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 
 	clearMetadataCache()
 
-	// Defaults to authorization_code grant type when not specified
+	// Defaults to authorization_code and refresh_token when not specified
 	const defaultGrantUrl = 'https://test-default-grant.example.com/metadata'
 	mockCtx.mockFetchResponses.set(defaultGrantUrl, () =>
 		Response.json(
@@ -833,7 +834,10 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 
 	const defaultGrantResolved = await resolveClient(defaultGrantUrl)
 	expect(defaultGrantResolved).not.toBeNull()
-	expect(defaultGrantResolved!.grantTypes).toEqual(['authorization_code'])
+	expect(defaultGrantResolved!.grantTypes).toEqual([
+		'authorization_code',
+		'refresh_token',
+	])
 
 	clearMetadataCache()
 
@@ -973,6 +977,7 @@ test('DCR endpoint works (MCP 2025-11-25 compliance)', async () => {
 	expect(clientData.redirect_uris).toContain('http://localhost:9999/callback')
 	expect(clientData.token_endpoint_auth_method).toBe('none')
 	expect(clientData.grant_types).toContain('authorization_code')
+	expect(clientData.grant_types).toContain('refresh_token')
 	expect(clientData.response_types).toContain('code')
 	expect(clientData.client_id_issued_at).toBeGreaterThan(0)
 })

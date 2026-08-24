@@ -1,5 +1,6 @@
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
+import { DEFAULT_GRANT_TYPES } from './tokens.ts'
 
 /**
  * Client ID Metadata Document support per MCP 2025-11-25 spec.
@@ -363,7 +364,7 @@ export async function resolveClient(
 			id: metadata.client_id,
 			name: metadata.client_name ?? new URL(clientId).hostname,
 			redirectUris: metadata.redirect_uris,
-			grantTypes: metadata.grant_types ?? ['authorization_code'],
+			grantTypes: metadata.grant_types ?? [...DEFAULT_GRANT_TYPES],
 			isMetadataClient: true,
 		}
 	}
@@ -380,7 +381,7 @@ export async function resolveClient(
 		id: staticClient.id,
 		name: staticClient.name,
 		redirectUris: staticClient.redirectUris,
-		grantTypes: ['authorization_code'], // Static clients only support auth code for now
+		grantTypes: [...DEFAULT_GRANT_TYPES],
 		isMetadataClient: false,
 	}
 }

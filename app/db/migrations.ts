@@ -238,6 +238,38 @@ const migrations: Array<Migration> = [
 			db.run(sql`ALTER TABLE curated_feeds DROP COLUMN image_url;`)
 		},
 	},
+	{
+		version: 7,
+		name: 'add_oauth_refresh_tokens',
+		up: (db) => {
+			// Refresh tokens are stored as opaque secrets. client_id is not a
+			// foreign key because URL-based Client ID Metadata Documents are
+			// not rows in oauth_clients.
+			db.run(sql`
+				CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+					token TEXT PRIMARY KEY,
+					family_id TEXT NOT NULL,
+					client_id TEXT NOT NULL,
+					scope TEXT NOT NULL DEFAULT '',
+					expires_at INTEGER NOT NULL,
+					used_at INTEGER,
+					created_at INTEGER NOT NULL DEFAULT (unixepoch())
+				);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_client_id
+				ON oauth_refresh_tokens(client_id);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_family_id
+				ON oauth_refresh_tokens(family_id);
+			`)
+			db.run(sql`
+				CREATE INDEX IF NOT EXISTS idx_oauth_refresh_tokens_expires_at
+				ON oauth_refresh_tokens(expires_at);
+			`)
+		},
+	},
 ]
 
 /**

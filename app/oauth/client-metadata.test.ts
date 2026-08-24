@@ -20,10 +20,7 @@ import {
 	generateCodeVerifier,
 	getAudience,
 	CIMD_FETCH_USER_AGENT,
-	fetchClientMetadataLive,
 	getClientMetadata,
-	getKnownClientMetadata,
-	KODY_CIMD_URL,
 	lookupClientMetadata,
 	isUrlClientId,
 	isValidClientRedirectUri,
@@ -1131,41 +1128,6 @@ test('DCR endpoint works (MCP 2025-11-25 compliance)', async () => {
 	expect(clientData.client_id_issued_at).toBeGreaterThan(0)
 })
 
-function rejectKodyCimdFetch(mockCtx: ReturnType<typeof setupMockFetch>) {
-	mockCtx.mockFetchResponses.set(KODY_CIMD_URL, () => {
-		const error = new Error('The operation was aborted due to timeout')
-		error.name = 'AbortError'
-		throw error
-	})
-}
-
-test('known Kody CIMD resolves without a live fetch', async () => {
-	using mockCtx = setupMockFetch()
-	db.query(sql`DELETE FROM client_metadata_cache WHERE client_id = ?;`).run(
-		KODY_CIMD_URL,
-	)
-
-	rejectKodyCimdFetch(mockCtx)
-
-	const known = getKnownClientMetadata(KODY_CIMD_URL)
-	expect(known?.client_id).toBe(KODY_CIMD_URL)
-	expect(known?.redirect_uris).toEqual([
-		'https://kody.codes/account/mcp-servers/oauth/callback',
-	])
-
-	const result = await getClientMetadata(KODY_CIMD_URL)
-	expect(result).toEqual(known)
-	expect(mockCtx.capturedHeaders).toEqual([])
-
-	const resolved = await resolveClientResult(KODY_CIMD_URL)
-	expect(resolved.client).not.toBeNull()
-	if (resolved.client === null) {
-		throw new Error('expected Kody CIMD to resolve')
-	}
-	expect(resolved.client.name).toBe('Kody')
-	expect(resolved.client.redirectUris).toEqual(known!.redirect_uris)
-})
-
 test('unknown CIMD URLs still fail when the live fetch fails', async () => {
 	using mockCtx = setupMockFetch()
 	consoleError.mockImplementation(() => {})
@@ -1208,55 +1170,4 @@ test('lookupClientMetadata uses expired database cache when fetch fails', async 
 
 	const result = await getClientMetadata(staleUrl)
 	expect(result).toEqual(staleMetadata)
-})
-
-test('fetchClientMetadataLive does not use the known Kody pin', async () => {
-	using mockCtx = setupMockFetch()
-	consoleError.mockImplementation(() => {})
-	db.query(sql`DELETE FROM client_metadata_cache WHERE client_id = ?;`).run(
-		KODY_CIMD_URL,
-	)
-	clearMetadataCache()
-	rejectKodyCimdFetch(mockCtx)
-
-	const live = await fetchClientMetadataLive(KODY_CIMD_URL)
-	expect(live.metadata).toBeNull()
-	if (live.metadata !== null) {
-		throw new Error('expected live Kody CIMD fetch to fail')
-	}
-	expect(live.error).toMatch(/Timeout fetching client metadata/)
-	expect(mockCtx.capturedHeaders[0]?.url).toBe(KODY_CIMD_URL)
-})
-
-test('authorization endpoint accepts Kody CIMD when the live fetch times out', async () => {
-	using mockCtx = setupMockFetch()
-	db.query(sql`DELETE FROM client_metadata_cache WHERE client_id = ?;`).run(
-		KODY_CIMD_URL,
-	)
-	clearMetadataCache()
-	rejectKodyCimdFetch(mockCtx)
-	await using ctx = await createTestServer()
-
-	const verifier = generateCodeVerifier()
-	const challenge = await computeS256Challenge(verifier)
-	const redirectUri = 'https://kody.codes/account/mcp-servers/oauth/callback'
-
-	const response = await fetch(
-		`${ctx.baseUrl}/admin/authorize?${new URLSearchParams({
-			response_type: 'code',
-			client_id: KODY_CIMD_URL,
-			redirect_uri: redirectUri,
-			scope: 'mcp:read mcp:write',
-			code_challenge: challenge,
-			code_challenge_method: 'S256',
-		})}`,
-	)
-	expect(response.status).toBe(200)
-	const html = await response.text()
-	expect(html).toContain('Authorize Application')
-	expect(html).toContain('Kody')
-	expect(html).not.toContain('Invalid Client')
-	expect(
-		mockCtx.capturedHeaders.some((header) => header.url === KODY_CIMD_URL),
-	).toBe(false)
 })

@@ -1,12 +1,27 @@
 import { db } from '#app/db/index.ts'
 import { sql } from '#app/db/sql.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
+import { fetchOutbound } from '#app/helpers/outbound-fetch.ts'
 import { getClient } from './clients.ts'
-import { getKnownClientMetadata } from './known-cimd.ts'
 import { DEFAULT_GRANT_TYPES } from './tokens.ts'
 
 export const CIMD_FETCH_USER_AGENT =
 	'MediaRSS/1.0 (CIMD resolver; +https://github.com/kentcdodds/mediarss)'
+
+function formatFetchError(clientIdUrl: string, error: unknown): string {
+	const timedOut =
+		error instanceof Error &&
+		(error.name === 'AbortError' || error.name === 'TimeoutError')
+	if (timedOut) {
+		return `Timeout fetching client metadata from ${clientIdUrl}`
+	}
+	const code =
+		error instanceof Error && 'code' in error && typeof error.code === 'string'
+			? ` (${error.code})`
+			: ''
+	const message = error instanceof Error ? error.message : 'Unknown error'
+	return `Failed to fetch client metadata from ${clientIdUrl}: ${message}${code}`
+}
 
 /**
  * Client ID Metadata Document support per MCP 2025-11-25 spec.
@@ -228,19 +243,15 @@ async function fetchMetadataDocument(
 
 	let response: Response
 	try {
-		response = await fetch(clientIdUrl, {
+		response = await fetchOutbound(clientIdUrl, {
 			headers: {
 				Accept: 'application/json',
 				'User-Agent': CIMD_FETCH_USER_AGENT,
 			},
-			// Timeout after 10 seconds
 			signal: AbortSignal.timeout(10000),
 		})
 	} catch (error) {
-		const message =
-			error instanceof Error && error.name === 'AbortError'
-				? `Timeout fetching client metadata from ${clientIdUrl}`
-				: `Failed to fetch client metadata from ${clientIdUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`
+		const message = formatFetchError(clientIdUrl, error)
 		recordFetchFailure(message)
 		throw new Error(message)
 	}
@@ -389,31 +400,9 @@ function rememberMetadata(
 	metadataCache.set(clientIdUrl, { metadata, expiresAt: expiresAtMs })
 }
 
-function knownClientMetadataLookup(
-	clientIdUrl: string,
-): ClientMetadataLookup | null {
-	const known = getKnownClientMetadata(clientIdUrl)
-	if (!known) {
-		return null
-	}
-
-	recordDiagnostic({
-		area: 'oauth.cimd',
-		event: 'known_fallback',
-		ok: true,
-		detail: { url: clientIdUrl },
-	})
-	rememberMetadata(
-		clientIdUrl,
-		known,
-		Date.now() + DEFAULT_CACHE_DURATION_SECONDS * 1000,
-	)
-	return { metadata: known }
-}
-
 /**
- * Live CIMD fetch that skips memory, database, and bundled fallbacks.
- * Health probes use this so NAS egress failures stay visible.
+ * Live CIMD fetch that skips memory and database caches.
+ * Health probes use this so a failed outbound lookup stays visible.
  */
 export async function fetchClientMetadataLive(
 	clientIdUrl: string,
@@ -439,9 +428,8 @@ export async function fetchClientMetadataLive(
 
 /**
  * Get client metadata for a URL-based client_id.
- * Uses in-memory cache, then unexpired database cache, then a bundled
- * first-party document (so authorize works without egress), then a live
- * fetch, then expired database cache.
+ * Uses in-memory cache, then unexpired database cache, then a live
+ * fetch, then expired database cache (stale-if-error).
  */
 export async function lookupClientMetadata(
 	clientIdUrl: string,
@@ -469,11 +457,6 @@ export async function lookupClientMetadata(
 		const expiresAt = dbCached.expiresAt * 1000
 		rememberMetadata(clientIdUrl, dbCached.metadata, expiresAt)
 		return { metadata: dbCached.metadata }
-	}
-
-	const known = knownClientMetadataLookup(clientIdUrl)
-	if (known) {
-		return known
 	}
 
 	try {

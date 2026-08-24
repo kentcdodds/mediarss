@@ -41,9 +41,6 @@ test('public /health returns commit, runtime, and MCP/OAuth facts', async () => 
 	expect(body.node).toMatch(/^v\d+/)
 	expect(body.mcp).toEqual({ protocol: '2026-07-28', legacy: 'reject' })
 	expect(body.oauth.clientIdMetadataDocumentSupported).toBe(true)
-	expect(body.oauth.knownClientMetadataDocuments).toEqual([
-		DEFAULT_CIMD_PROBE_URL,
-	])
 	expect(Array.isArray(body.mediaRoots)).toBe(true)
 	expect(Array.isArray(body.diagnostics)).toBe(true)
 	expect(body.probes).toBeUndefined()

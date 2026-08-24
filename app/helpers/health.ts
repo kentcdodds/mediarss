@@ -1,14 +1,11 @@
 import { getEnv } from '#app/config/env.ts'
 import { db } from '#app/db/index.ts'
 import { fetchClientMetadataLive } from '#app/oauth/client-metadata.ts'
-import {
-	KODY_CIMD_URL,
-	listKnownClientMetadataUrls,
-} from '#app/oauth/known-cimd.ts'
 import { getRecentDiagnostics, recordDiagnostic } from './diagnostics.ts'
 import { getVersionInfo } from './version.ts'
 
-export const DEFAULT_CIMD_PROBE_URL = KODY_CIMD_URL
+export const DEFAULT_CIMD_PROBE_URL =
+	'https://kody.codes/oauth/client-metadata.json'
 
 export type HealthDatabaseStatus = {
 	ok: boolean
@@ -43,7 +40,6 @@ export type HealthSnapshot = {
 	}
 	oauth: {
 		clientIdMetadataDocumentSupported: true
-		knownClientMetadataDocuments: Array<string>
 	}
 	database: HealthDatabaseStatus
 	mediaRoots: Array<string>
@@ -141,7 +137,6 @@ export async function getHealthSnapshot(url: URL): Promise<HealthSnapshot> {
 		},
 		oauth: {
 			clientIdMetadataDocumentSupported: true,
-			knownClientMetadataDocuments: listKnownClientMetadataUrls(),
 		},
 		database,
 		mediaRoots: getEnv().MEDIA_PATHS.map((root) => root.name),

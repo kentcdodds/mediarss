@@ -14,6 +14,7 @@ import {
 	clearMetadataCache,
 	clientSupportsGrantType,
 	computeS256Challenge,
+	createAuthorizationCode,
 	createClient,
 	deleteClient,
 	generateCodeVerifier,
@@ -340,6 +341,7 @@ test('full authorization code flow with static client', async () => {
 
 	const tokenData = (await tokenResponse.json()) as {
 		access_token: string
+		refresh_token?: string
 		token_type: string
 		expires_in: number
 		scope: string
@@ -360,6 +362,70 @@ test('full authorization code flow with static client', async () => {
 
 	expect(payload.iss).toBe(ctx.baseUrl)
 	expect(payload.scope).toBe('read write')
+	expect('refresh_token' in tokenData).toBe(true)
+})
+
+test('authorization-code-only metadata clients do not receive refresh tokens', async () => {
+	await using ctx = await createTestServer()
+	using mockCtx = setupMockFetch()
+
+	const clientId = 'https://test-no-refresh-grant.example.com/metadata'
+	const redirectUri = 'https://test-no-refresh-grant.example.com/callback'
+	mockCtx.mockFetchResponses.set(clientId, () =>
+		Response.json(
+			{
+				client_id: clientId,
+				redirect_uris: [redirectUri],
+				grant_types: ['authorization_code'],
+			},
+			{ headers: { 'Content-Type': 'application/json' } },
+		),
+	)
+
+	// Authorization codes FK to oauth_clients; URL clients are not stored there.
+	// Insert a stub row so the code can be created, then resolve via metadata.
+	const now = Math.floor(Date.now() / 1000)
+	db.query(
+		sql`INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?);`,
+	).run(
+		clientId,
+		'No Refresh Metadata Client',
+		JSON.stringify([redirectUri]),
+		now,
+	)
+	testClientIds.push(clientId)
+
+	const verifier = generateCodeVerifier()
+	const challenge = await computeS256Challenge(verifier)
+	const authCode = createAuthorizationCode({
+		clientId,
+		redirectUri,
+		scope: 'mcp:read',
+		codeChallenge: challenge,
+		codeChallengeMethod: 'S256',
+	})
+
+	const tokenResponse = await fetch(`${ctx.baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: new URLSearchParams({
+			grant_type: 'authorization_code',
+			code: authCode.code,
+			redirect_uri: redirectUri,
+			client_id: clientId,
+			code_verifier: verifier,
+		}).toString(),
+	})
+
+	expect(tokenResponse.status).toBe(200)
+	const tokenData = (await tokenResponse.json()) as {
+		access_token: string
+		refresh_token?: string
+	}
+	expect(tokenData.access_token).toBeTruthy()
+	expect(tokenData.refresh_token).toBeUndefined()
 })
 
 test('authorization endpoint rejects unknown and invalid redirect URIs', async () => {

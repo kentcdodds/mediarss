@@ -124,11 +124,18 @@ function validateRegistrationRequest(
 				}
 			}
 		}
-		// Authorization code is required; refresh_token is also supported
+		// Authorization code is required. Static DCR clients always support
+		// refresh_token, so reject registrations that try to exclude it.
 		if (!req.grant_types.includes('authorization_code')) {
 			return {
 				error: 'invalid_client_metadata',
 				error_description: 'grant_types must include "authorization_code"',
+			}
+		}
+		if (!req.grant_types.includes('refresh_token')) {
+			return {
+				error: 'invalid_client_metadata',
+				error_description: 'grant_types must include "refresh_token"',
 			}
 		}
 	}
@@ -204,7 +211,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 		client_name: client.name,
 		redirect_uris: client.redirectUris,
 		token_endpoint_auth_method: 'none',
-		grant_types: validated.grant_types ?? [...DEFAULT_GRANT_TYPES],
+		grant_types: [...DEFAULT_GRANT_TYPES],
 		response_types: validated.response_types ?? ['code'],
 		client_id_issued_at: client.createdAt,
 	}

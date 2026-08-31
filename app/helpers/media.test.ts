@@ -206,6 +206,72 @@ test('extractPublicationDate falls back to common.date when releasedate is missi
 	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
 })
 
+test('extractPublicationDate prefers estimated publish month over year-only date', () => {
+	// General Conference files are tagged with TDRC=2026 (year) and a
+	// description like "Estimated publish: 2026-04-04T10:00:00". April and
+	// October of the same year must not collapse to January 1.
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2026',
+		}),
+		null,
+		{
+			description:
+				'Session: Saturday Morning Session | Estimated publish: 2026-04-04T10:00:00 | Source: churchofjesuschrist.org',
+			path: '/media/series/General Conference/2026-04/01-introduction.m4a',
+		},
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+})
+
+test('extractPublicationDate uses the conference month so Saturday and Sunday talks share a pubDate', () => {
+	const yearOnly = metadataWithCommon({ date: '2026' })
+	const saturday = extractPublicationDate(yearOnly, null, {
+		description:
+			'Session: Saturday Morning Session | Estimated publish: 2026-04-04T10:00:00 | Source: churchofjesuschrist.org',
+	})
+	const sunday = extractPublicationDate(yearOnly, null, {
+		description:
+			'Session: Sunday Afternoon Session | Estimated publish: 2026-04-05T14:00:00 | Source: churchofjesuschrist.org',
+	})
+
+	expect(saturday!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+	expect(sunday!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+})
+
+test('extractPublicationDate keeps a full releasedate over estimated publish', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2026',
+			releasedate: '2026-07-28',
+		}),
+		null,
+		{
+			description: 'Estimated publish: 2026-04-04T10:00:00',
+		},
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+})
+
+test('extractPublicationDate falls back to YYYY-MM folder when estimated publish is missing', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({
+			date: '2025',
+		}),
+		null,
+		{
+			path: '/media/series/General Conference/2025-10/01-talk.m4a',
+		},
+	)
+
+	expect(publicationDate).not.toBeNull()
+	expect(publicationDate!.toISOString()).toBe('2025-10-01T00:00:00.000Z')
+})
+
 test('extractDescription ignores Apple iTun* COMM frames', () => {
 	// Podcasts from Apple include private COMM tags (iTunNORM, iTunPGAP, iTunSMPB)
 	// alongside the real description. Those must not leak into RSS item text.

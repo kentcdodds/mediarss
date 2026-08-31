@@ -189,13 +189,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(4 as const)), // Increment when schema changes
+	_cacheVersion: optional(literal(5 as const)), // Increment when schema or extraction changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
-// Current cache version - increment when MediaFile schema changes
-const CACHE_VERSION = 4 as const
+// Current cache version - increment when MediaFile schema or extraction logic changes
+const CACHE_VERSION = 5 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -297,19 +297,83 @@ function parseAsFullDate(value: string | number): Date | null {
 }
 
 /**
+ * Options for inferring a conference-level date when ID3 only has a year.
+ */
+type PublicationDateInference = {
+	/** Already-extracted description (may contain "Estimated publish: …") */
+	description?: string | null
+	/** Absolute or relative file path (may contain a YYYY-MM conference folder) */
+	path?: string | null
+}
+
+const ESTIMATED_PUBLISH_RE =
+	/Estimated publish:\s*(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?)/i
+
+const CONFERENCE_FOLDER_RE = /(?:^|\/)(\d{4})-(0[1-9]|1[0-2])(?:\/|$)/
+
+/**
+ * Collapse a full date to the first of that month in UTC.
+ * Directory feeds that sort `desc:pubDate,path` need talks in the same
+ * conference to share a pubDate so path (01-, 02-, …) can keep session order.
+ * Using the raw Saturday-vs-Sunday session timestamp would reverse that
+ * under pubDate desc.
+ */
+function toConferenceMonthDate(date: Date): Date {
+	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+}
+
+/**
+ * Parse "Estimated publish: 2026-04-04T10:00:00" from a description.
+ * Returns the conference month (first of that month UTC) so April and October
+ * of the same year sort apart without reversing talks inside a conference.
+ */
+function conferenceDateFromEstimatedPublish(
+	description: string | null | undefined,
+): Date | null {
+	if (!description) return null
+	const match = description.match(ESTIMATED_PUBLISH_RE)
+	const raw = match?.[1]
+	if (!raw) return null
+	let dated = raw
+	if (raw.includes('T') && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(raw)) {
+		dated = `${raw}Z`
+	}
+	const parsed = parseAsFullDate(dated)
+	return parsed ? toConferenceMonthDate(parsed) : null
+}
+
+/**
+ * Parse a YYYY-MM conference folder from a media path
+ * (e.g. "…/General Conference/2026-04/01-introduction.m4a").
+ */
+function conferenceDateFromPath(
+	filepath: string | null | undefined,
+): Date | null {
+	if (!filepath) return null
+	const match = filepath.match(CONFERENCE_FOLDER_RE)
+	if (!match) return null
+	const year = Number(match[1])
+	const month = Number(match[2])
+	return new Date(Date.UTC(year, month - 1, 1))
+}
+
+/**
  * Extract publication date from metadata with fallback chain:
  * 1. json64.release_date (e.g. "2023-11-07")
  * 2. TXXX:year (may contain full date like "2023-11-07")
  * 3. TXXX:date
  * 4. common.releasedate (ID3 TDRL — preferred over TDRC/date)
  * 5. common.date (ID3 TDRC — often year-only)
- * 6. common.year
+ * 6. Estimated publish in the description (conference month)
+ * 7. YYYY-MM folder in the file path (conference month)
+ * 8. common.year / year-only date fields
  *
  * Handles edge cases where date/year fields may be swapped or contain unexpected formats
  */
 export function extractPublicationDate(
 	metadata: mm.IAudioMetadata,
 	audible: { release_date?: string } | null = null,
+	inference: PublicationDateInference = {},
 ): Date | null {
 	const { common } = metadata
 
@@ -354,6 +418,16 @@ export function extractPublicationDate(
 			if (fullDate) return fullDate
 		}
 	}
+
+	// 6. Estimated publish in the description (more specific than year-only)
+	const estimatedConferenceDate = conferenceDateFromEstimatedPublish(
+		inference.description,
+	)
+	if (estimatedConferenceDate) return estimatedConferenceDate
+
+	// 7. YYYY-MM conference folder in the path
+	const pathConferenceDate = conferenceDateFromPath(inference.path)
+	if (pathConferenceDate) return pathConferenceDate
 
 	// Fall back to year-only dates
 	// Check TXXX:year for year-only
@@ -926,6 +1000,7 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 		const directory = path.dirname(absolutePath)
 		const cover = metadata.common.picture?.[0]
 		const artworkMimeType = cover ? getArtworkMimeType(cover.format) : null
+		const description = extractDescription(metadata, audible)
 
 		const mediaFile: MediaFile = {
 			path: absolutePath,
@@ -937,9 +1012,12 @@ async function parseFileMetadata(filepath: string): Promise<MediaFile | null> {
 				parseAudibleDuration(audible?.duration) ??
 				metadata.format.duration ??
 				null,
-			publicationDate: extractPublicationDate(metadata, audible),
+			publicationDate: extractPublicationDate(metadata, audible, {
+				description,
+				path: absolutePath,
+			}),
 			trackNumber: metadata.common.track?.no ?? null,
-			description: extractDescription(metadata, audible),
+			description,
 			narrators: extractNarrators(metadata, audible),
 			genres: extractGenres(metadata, audible),
 			copyright: extractCopyright(metadata, audible),

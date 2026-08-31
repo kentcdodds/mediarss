@@ -52,6 +52,16 @@ The MCP server has been implemented with the following components:
 | `create_feed_token`      | `mcp:write`    | Create a new feed access token    |
 | `delete_feed_token`      | `mcp:write`    | Delete a feed access token        |
 
+### RSS Feed URLs
+
+Public RSS feeds are served at the token-only path `/feed/{token}` (for example
+`https://mediarss.doddsfamily.us/feed/{token}`). `get_feed_tokens` and
+`create_feed_token` return `rssUrl` in that form.
+
+`/feed/{feedId}?token={token}` is not a valid route and 404s. The feed id is not
+part of the URL. `create_feed_token` accepts an optional `label` so tokens can
+be named (for example "Rebecca's Phone").
+
 ### Supported Scopes
 
 - `mcp:read` - Read-only access to feeds and media

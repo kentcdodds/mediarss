@@ -196,9 +196,37 @@ test('modern MCP client can discover the server and list tools', async () => {
 	try {
 		const { tools } = await client.listTools()
 		const toolNames = tools.map((tool) => tool.name)
+		const toolsByName = Object.fromEntries(
+			tools.map((tool) => [tool.name, tool]),
+		)
 
 		expect(toolNames).toContain('list_feeds')
 		expect(toolNames).toContain('create_directory_feed')
+		expect(toolNames).toContain('get_feed_tokens')
+		expect(toolNames).toContain('create_feed_token')
+
+		for (const tool of tools) {
+			expect(tool.description ?? '').not.toContain('/feed/{feedId}?token=')
+			expect(tool.description ?? '').not.toContain('?token=')
+		}
+		expect(toolsByName.get_feed_tokens?.description).toContain('/feed/{token}')
+		expect(toolsByName.create_feed_token?.description).toContain(
+			'/feed/{token}',
+		)
+		expect(toolsByName.create_feed_token?.inputSchema).toMatchObject({
+			properties: {
+				feedId: expect.any(Object),
+				label: expect.any(Object),
+			},
+		})
+		const createTokenRequired =
+			(
+				toolsByName.create_feed_token?.inputSchema as
+					| { required?: Array<string> }
+					| undefined
+			)?.required ?? []
+		expect(createTokenRequired).toContain('feedId')
+		expect(createTokenRequired).not.toContain('label')
 
 		const result = await client.callTool({ name: 'list_feeds' })
 		expect(result.isError).toBeFalsy()

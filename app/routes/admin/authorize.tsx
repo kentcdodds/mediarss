@@ -295,7 +295,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	// Create authorization code
 	// For URL-based clients, the client_id is the full URL
-	const authCode = createAuthorizationCode({
+	const authCode = await createAuthorizationCode({
 		clientId: client.id,
 		redirectUri: params.redirect_uri,
 		scope: params.scope,

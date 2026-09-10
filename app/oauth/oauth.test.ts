@@ -4,8 +4,8 @@ import '#app/config/init-env.ts'
 import * as jose from 'jose'
 import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
+import { sql } from 'remix/data-table'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { startNodeServer } from '../../server/node-server.ts'
 import {
@@ -26,7 +26,7 @@ import {
 } from './index.ts'
 
 // Ensure migrations are run
-migrate(db)
+await migrateDatabase(db)
 
 // Helper to generate unique test client names
 const uniqueId = () =>
@@ -35,11 +35,11 @@ const uniqueId = () =>
 // Track created test resources for cleanup
 const testClientIds: string[] = []
 
-function createTestClient(
+async function createTestClient(
 	name: string = 'Test Client',
 	redirectUris: string[] = ['http://localhost:9999/callback'],
 ) {
-	const client = createClient(name, redirectUris)
+	const client = await createClient(name, redirectUris)
 	testClientIds.push(client.id)
 	return client
 }
@@ -72,13 +72,17 @@ async function createTestServer() {
 }
 
 // Clean up test data after all tests
-afterAll(() => {
+afterAll(async () => {
 	for (const clientId of testClientIds) {
-		deleteClient(clientId)
+		await deleteClient(clientId)
 	}
 	// Clean up any orphaned test authorization codes and refresh tokens
-	db.run(sql`DELETE FROM authorization_codes WHERE client_id LIKE 'test-%';`)
-	db.run(sql`DELETE FROM oauth_refresh_tokens WHERE client_id LIKE 'test-%';`)
+	await db.exec(
+		sql`DELETE FROM authorization_codes WHERE client_id LIKE 'test-%';`,
+	)
+	await db.exec(
+		sql`DELETE FROM oauth_refresh_tokens WHERE client_id LIKE 'test-%';`,
+	)
 })
 
 // PKCE Tests
@@ -129,44 +133,44 @@ test('PKCE generates valid verifiers and computes correct S256 challenges', asyn
 
 // OAuth Client Tests
 
-test('OAuth clients can be created, retrieved, listed, and deleted', () => {
+test('OAuth clients can be created, retrieved, listed, and deleted', async () => {
 	// createClient creates a client
-	const client = createTestClient('Test Client ' + uniqueId())
+	const client = await createTestClient('Test Client ' + uniqueId())
 	expect(client.name).toContain('Test Client')
 	expect(client.redirectUris).toEqual(['http://localhost:9999/callback'])
 	expect(client.id).toBeTruthy()
 
 	// getClient retrieves an existing client
-	const retrieved = getClient(client.id)
+	const retrieved = await getClient(client.id)
 	expect(retrieved).not.toBeNull()
 	expect(retrieved!.name).toContain('Test Client')
 
 	// getClient returns null for unknown client
-	expect(getClient('nonexistent-id-' + uniqueId())).toBeNull()
+	expect(await getClient('nonexistent-id-' + uniqueId())).toBeNull()
 
 	// listClients includes the created client
-	const beforeCount = listClients().length
-	createTestClient('List Test Client ' + uniqueId())
-	const afterCount = listClients().length
+	const beforeCount = (await listClients()).length
+	await createTestClient('List Test Client ' + uniqueId())
+	const afterCount = (await listClients()).length
 	expect(afterCount).toBeGreaterThan(beforeCount)
 
 	// deleteClient removes a client (not using tracked cleanup for this one)
-	const deletableClient = createClient('Deletable Client ' + uniqueId(), [
+	const deletableClient = await createClient('Deletable Client ' + uniqueId(), [
 		'http://example.com/callback',
 	])
-	expect(deleteClient(deletableClient.id)).toBe(true)
-	expect(getClient(deletableClient.id)).toBeNull()
+	expect(await deleteClient(deletableClient.id)).toBe(true)
+	expect(await getClient(deletableClient.id)).toBeNull()
 })
 
 // Authorization Code Tests
 
 test('authorization codes can be created and consumed only once', async () => {
-	const client = createTestClient('Code Test Client ' + uniqueId())
+	const client = await createTestClient('Code Test Client ' + uniqueId())
 	const verifier = generateCodeVerifier()
 	const challenge = await computeS256Challenge(verifier)
 
 	// Create authorization code
-	const code = createAuthorizationCode({
+	const code = await createAuthorizationCode({
 		clientId: client.id,
 		redirectUri: 'http://localhost:9999/callback',
 		scope: 'read write',
@@ -180,12 +184,12 @@ test('authorization codes can be created and consumed only once', async () => {
 	expect(code.usedAt).toBeNull()
 
 	// First consumption should succeed
-	const consumed = consumeAuthorizationCode(code.code)
+	const consumed = await consumeAuthorizationCode(code.code)
 	expect(consumed).not.toBeNull()
 	expect(consumed!.usedAt).not.toBeNull()
 
 	// Second consumption should fail (single-use)
-	expect(consumeAuthorizationCode(code.code)).toBeNull()
+	expect(await consumeAuthorizationCode(code.code)).toBeNull()
 })
 
 // OAuth Full Flow Integration Tests
@@ -225,9 +229,10 @@ test('JWKS endpoint returns valid public key without private components', async 
 test('authorization endpoint shows page, validates client, and requires PKCE', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Auth Endpoint Test ' + uniqueId(), [
-		'http://localhost:9999/callback',
-	])
+	const testClient = await createTestClient(
+		'Auth Endpoint Test ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
 	const verifier = generateCodeVerifier()
 	const challenge = await computeS256Challenge(verifier)
 
@@ -284,7 +289,7 @@ test('authorization endpoint shows page, validates client, and requires PKCE', a
 test('POST to authorization endpoint issues authorization code with state', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('POST Auth Test ' + uniqueId(), [
+	const testClient = await createTestClient('POST Auth Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -320,7 +325,7 @@ test('POST to authorization endpoint issues authorization code with state', asyn
 test('full OAuth authorization code flow with token exchange and JWT verification', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Full Flow Test ' + uniqueId(), [
+	const testClient = await createTestClient('Full Flow Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -399,7 +404,7 @@ test('full OAuth authorization code flow with token exchange and JWT verificatio
 test('token endpoint rejects requests with invalid PKCE verifier or missing verifier', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('PKCE Reject Test ' + uniqueId(), [
+	const testClient = await createTestClient('PKCE Reject Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -487,7 +492,7 @@ test('token endpoint rejects requests with invalid PKCE verifier or missing veri
 test('authorization code cannot be reused', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Code Reuse Test ' + uniqueId(), [
+	const testClient = await createTestClient('Code Reuse Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -557,10 +562,10 @@ test('authorization code cannot be reused', async () => {
 test('token endpoint validates redirect_uri and client_id match the authorization code', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Validation Test ' + uniqueId(), [
+	const testClient = await createTestClient('Validation Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
-	const otherClient = createTestClient('Other Client ' + uniqueId(), [
+	const otherClient = await createTestClient('Other Client ' + uniqueId(), [
 		'http://other.com/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -700,7 +705,7 @@ test('OAuth endpoints enforce correct HTTP methods', async () => {
 test('JWT token has correct claims structure', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('JWT Claims Test ' + uniqueId(), [
+	const testClient = await createTestClient('JWT Claims Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -827,7 +832,7 @@ async function authorizeAndExchange(params: {
 test('refresh token grant rotates the refresh token and issues a new access token', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Refresh Flow Test ' + uniqueId(), [
+	const testClient = await createTestClient('Refresh Flow Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const first = await authorizeAndExchange({
@@ -880,9 +885,10 @@ test('refresh token grant rotates the refresh token and issues a new access toke
 test('refresh token cannot be reused after rotation', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Refresh Reuse Test ' + uniqueId(), [
-		'http://localhost:9999/callback',
-	])
+	const testClient = await createTestClient(
+		'Refresh Reuse Test ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
 	const first = await authorizeAndExchange({
 		baseUrl: ctx.baseUrl,
 		clientId: testClient.id,
@@ -940,12 +946,14 @@ test('refresh token cannot be reused after rotation', async () => {
 test('refresh token grant rejects wrong client and expanded scope', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Refresh Scope Test ' + uniqueId(), [
-		'http://localhost:9999/callback',
-	])
-	const otherClient = createTestClient('Refresh Other Client ' + uniqueId(), [
-		'http://other.com/callback',
-	])
+	const testClient = await createTestClient(
+		'Refresh Scope Test ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
+	const otherClient = await createTestClient(
+		'Refresh Other Client ' + uniqueId(),
+		['http://other.com/callback'],
+	)
 	const first = await authorizeAndExchange({
 		baseUrl: ctx.baseUrl,
 		clientId: testClient.id,
@@ -1005,9 +1013,10 @@ test('refresh token grant rejects wrong client and expanded scope', async () => 
 test('replaying an expired used refresh token still revokes the family', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Refresh Expired Replay ' + uniqueId(), [
-		'http://localhost:9999/callback',
-	])
+	const testClient = await createTestClient(
+		'Refresh Expired Replay ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
 	const first = await authorizeAndExchange({
 		baseUrl: ctx.baseUrl,
 		clientId: testClient.id,
@@ -1029,9 +1038,9 @@ test('replaying an expired used refresh token still revokes the family', async (
 	expect(firstRefresh.status).toBe(200)
 	const rotated = (await firstRefresh.json()) as { refresh_token: string }
 
-	db.query(
-		sql`UPDATE oauth_refresh_tokens SET expires_at = ? WHERE token = ?;`,
-	).run(Math.floor(Date.now() / 1000) - 1, first.refresh_token)
+	await db.exec(
+		sql`UPDATE oauth_refresh_tokens SET expires_at = ${Math.floor(Date.now() / 1000) - 1} WHERE token = ${first.refresh_token};`,
+	)
 
 	const replay = await fetch(`${ctx.baseUrl}/oauth/token`, {
 		method: 'POST',

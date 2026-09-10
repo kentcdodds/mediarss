@@ -318,7 +318,7 @@ export default {
 
 		// Invalidate cache for this file
 		const cacheKey = `media:${filePath}`
-		deleteCacheByPrefix(cacheKey)
+		await deleteCacheByPrefix(cacheKey)
 
 		// Re-fetch metadata to get updated values
 		const updatedMetadata = await getFileMetadata(filePath)

@@ -1,14 +1,8 @@
 import * as jose from 'jose'
 import { db } from '#app/db/index.ts'
-import { sql } from '#app/db/sql.ts'
+import { oauthSigningKeysTable } from '#app/db/schema.ts'
 
 const KEY_ID = 'oauth-signing-key'
-
-interface StoredKey {
-	id: string
-	public_key_jwk: string
-	private_key_jwk: string
-}
 
 // CryptoKey is the runtime type for jose key operations
 type SigningKey = CryptoKey
@@ -39,10 +33,12 @@ async function generateAndStoreKeyPair(): Promise<{
 	publicKeyJwk.use = 'sig'
 	publicKeyJwk.alg = 'RS256'
 
-	// Store in database
-	db.query(
-		sql`INSERT OR REPLACE INTO oauth_signing_keys (id, public_key_jwk, private_key_jwk) VALUES (?, ?, ?);`,
-	).run(KEY_ID, JSON.stringify(publicKeyJwk), JSON.stringify(privateKeyJwk))
+	await db.query(oauthSigningKeysTable).upsert({
+		id: KEY_ID,
+		public_key_jwk: JSON.stringify(publicKeyJwk),
+		private_key_jwk: JSON.stringify(privateKeyJwk),
+		created_at: Math.floor(Date.now() / 1000),
+	})
 
 	return {
 		publicKey: publicKeyJwk,
@@ -59,11 +55,7 @@ async function loadKeyPair(): Promise<{
 	privateKey: SigningKey
 	kid: string
 } | null> {
-	const row = db
-		.query<StoredKey, [string]>(
-			sql`SELECT * FROM oauth_signing_keys WHERE id = ?;`,
-		)
-		.get(KEY_ID)
+	const row = await db.find(oauthSigningKeysTable, KEY_ID)
 
 	if (!row) {
 		return null

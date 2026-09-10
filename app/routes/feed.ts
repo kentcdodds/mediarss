@@ -88,7 +88,7 @@ export default {
 
 		if (isTrackableRssStatus(response.status)) {
 			try {
-				createFeedAnalyticsEvent({
+				await createFeedAnalyticsEvent({
 					eventType: 'rss_fetch',
 					feedId: feed.id,
 					feedType: type,

@@ -1,8 +1,4 @@
 import { column as c, table } from 'remix/data-table'
-import { createSqliteDatabase } from 'remix/data-table/sqlite'
-import { db as sqliteDb } from './index.ts'
-
-export const dataTableDb = createSqliteDatabase(sqliteDb)
 
 export const directoryFeedsTable = table({
 	name: 'directory_feeds',
@@ -93,5 +89,88 @@ export const curatedFeedTokensTable = table({
 		created_at: c.integer(),
 		last_used_at: c.integer().nullable(),
 		revoked_at: c.integer().nullable(),
+	},
+})
+
+export const feedAnalyticsEventsTable = table({
+	name: 'feed_analytics_events',
+	primaryKey: 'id',
+	columns: {
+		id: c.text(),
+		event_type: c.enum(['rss_fetch', 'media_request'] as const),
+		feed_id: c.text(),
+		feed_type: c.enum(['directory', 'curated'] as const),
+		token: c.text(),
+		media_root: c.text().nullable(),
+		relative_path: c.text().nullable(),
+		is_download_start: c.integer(),
+		bytes_served: c.integer().nullable(),
+		status_code: c.integer(),
+		client_fingerprint: c.text().nullable(),
+		client_name: c.text().nullable(),
+		created_at: c.integer(),
+	},
+})
+
+export const oauthClientsTable = table({
+	name: 'oauth_clients',
+	primaryKey: 'id',
+	columns: {
+		id: c.text(),
+		name: c.text(),
+		redirect_uris: c.text(),
+		created_at: c.integer(),
+	},
+})
+
+export const authorizationCodesTable = table({
+	name: 'authorization_codes',
+	primaryKey: 'code',
+	columns: {
+		code: c.text(),
+		client_id: c.text(),
+		redirect_uri: c.text(),
+		scope: c.text(),
+		code_challenge: c.text(),
+		code_challenge_method: c.text(),
+		expires_at: c.integer(),
+		used_at: c.integer().nullable(),
+		created_at: c.integer(),
+	},
+})
+
+export const oauthRefreshTokensTable = table({
+	name: 'oauth_refresh_tokens',
+	primaryKey: 'token',
+	columns: {
+		token: c.text(),
+		family_id: c.text(),
+		client_id: c.text(),
+		scope: c.text(),
+		expires_at: c.integer(),
+		used_at: c.integer().nullable(),
+		created_at: c.integer(),
+	},
+})
+
+export const oauthSigningKeysTable = table({
+	name: 'oauth_signing_keys',
+	primaryKey: 'id',
+	columns: {
+		id: c.text(),
+		public_key_jwk: c.text(),
+		private_key_jwk: c.text(),
+		created_at: c.integer(),
+	},
+})
+
+export const clientMetadataCacheTable = table({
+	name: 'client_metadata_cache',
+	primaryKey: 'client_id',
+	columns: {
+		client_id: c.text(),
+		metadata_json: c.text(),
+		cached_at: c.integer(),
+		expires_at: c.integer(),
 	},
 })

@@ -46,7 +46,7 @@ type FeedAnalyticsContext = {
 
 function buildTokenAnalytics(
 	tokens: Array<FeedTokenMetadata>,
-	tokenMetrics: ReturnType<typeof getFeedAnalyticsByToken>,
+	tokenMetrics: Awaited<ReturnType<typeof getFeedAnalyticsByToken>>,
 ): Array<TokenWithMetrics> {
 	const tokenMetadataByToken = new Map(
 		tokens.map((token) => [token.token, token]),
@@ -148,15 +148,19 @@ export default {
 			return Response.json({ error: 'Feed not found' }, { status: 404 })
 		}
 
-		const summary = getFeedAnalyticsSummary(id, since)
-		const tokenMetrics = getFeedAnalyticsByToken(id, since)
-		const topMediaItems = getFeedTopMediaItemAnalytics(
+		const summary = await getFeedAnalyticsSummary(id, since)
+		const tokenMetrics = await getFeedAnalyticsByToken(id, since)
+		const topMediaItems = await getFeedTopMediaItemAnalytics(
 			id,
 			since,
 			TOP_ITEMS_LIMIT,
 		)
-		const topClients = getFeedTopClientAnalytics(id, since, TOP_ITEMS_LIMIT)
-		const daily = getFeedDailyAnalytics(id, since)
+		const topClients = await getFeedTopClientAnalytics(
+			id,
+			since,
+			TOP_ITEMS_LIMIT,
+		)
+		const daily = await getFeedDailyAnalytics(id, since)
 
 		return Response.json({
 			feed: {

@@ -1,123 +1,48 @@
+import { type TableRow } from 'remix/data-table'
+import { type CamelCaseRow } from './rows.ts'
 import {
-	enum_,
-	type InferOutput,
-	nullable,
-	number,
-	object,
-	string,
-	union,
-} from 'remix/data-schema'
+	type curatedFeedsTable,
+	type curatedFeedTokensTable,
+	type directoryFeedsTable,
+	type directoryFeedTokensTable,
+	type feedAnalyticsEventsTable,
+	type feedItemsTable,
+} from './schema.ts'
 
-export const SortOrderSchema = enum_(['asc', 'desc'] as const)
-export type SortOrder = InferOutput<typeof SortOrderSchema>
+export type DirectoryFeed = CamelCaseRow<TableRow<typeof directoryFeedsTable>>
+export type CuratedFeed = CamelCaseRow<TableRow<typeof curatedFeedsTable>>
+export type FeedItem = CamelCaseRow<TableRow<typeof feedItemsTable>>
 
-export const FeedTypeSchema = enum_(['episodic', 'serial'] as const)
-export type FeedType = InferOutput<typeof FeedTypeSchema>
+export type SortOrder = DirectoryFeed['sortOrder']
+export type FeedType = NonNullable<DirectoryFeed['feedType']>
 
-export const DirectoryFeedSchema = object({
-	id: string(),
-	name: string(),
-	description: string(),
-	subtitle: nullable(string()),
-	directoryPaths: string(), // JSON array of "mediaRoot:relativePath" strings
-	sortFields: string(),
-	sortOrder: SortOrderSchema,
-	author: nullable(string()),
-	ownerName: nullable(string()),
-	ownerEmail: nullable(string()),
-	language: string(),
-	explicit: string(),
-	category: nullable(string()),
-	link: nullable(string()),
-	copyright: nullable(string()),
-	feedType: nullable(FeedTypeSchema),
-	filterIn: nullable(string()),
-	filterOut: nullable(string()),
-	overrides: nullable(string()),
-	createdAt: number(),
-	updatedAt: number(),
-})
-export type DirectoryFeed = InferOutput<typeof DirectoryFeedSchema>
-
-export const CuratedFeedSchema = object({
-	id: string(),
-	name: string(),
-	description: string(),
-	subtitle: nullable(string()),
-	sortFields: string(),
-	sortOrder: SortOrderSchema,
-	author: nullable(string()),
-	ownerName: nullable(string()),
-	ownerEmail: nullable(string()),
-	language: string(),
-	explicit: string(),
-	category: nullable(string()),
-	link: nullable(string()),
-	copyright: nullable(string()),
-	feedType: nullable(FeedTypeSchema),
-	overrides: nullable(string()),
-	createdAt: number(),
-	updatedAt: number(),
-})
-export type CuratedFeed = InferOutput<typeof CuratedFeedSchema>
-
-export const FeedItemSchema = object({
-	id: string(),
-	feedId: string(),
-	mediaRoot: string(),
-	relativePath: string(),
-	position: nullable(number()),
-	addedAt: number(),
-})
-export type FeedItem = InferOutput<typeof FeedItemSchema>
-
-export const AnalyticsEventTypeSchema = enum_([
-	'rss_fetch',
-	'media_request',
-] as const)
-export type AnalyticsEventType = InferOutput<typeof AnalyticsEventTypeSchema>
-
-export const AnalyticsFeedTypeSchema = enum_(['directory', 'curated'] as const)
-export type AnalyticsFeedType = InferOutput<typeof AnalyticsFeedTypeSchema>
+type FeedAnalyticsEvent = CamelCaseRow<
+	TableRow<typeof feedAnalyticsEventsTable>
+>
+export type AnalyticsEventType = FeedAnalyticsEvent['eventType']
+export type AnalyticsFeedType = FeedAnalyticsEvent['feedType']
 
 /**
  * Token for accessing a directory feed.
  * Tokens are the only public identifier used in feed URLs.
  * Multiple tokens per feed are allowed for per-client access control.
  */
-export const DirectoryFeedTokenSchema = object({
-	token: string(),
-	feedId: string(),
-	label: string(),
-	createdAt: number(),
-	lastUsedAt: nullable(number()),
-	revokedAt: nullable(number()),
-})
-export type DirectoryFeedToken = InferOutput<typeof DirectoryFeedTokenSchema>
+export type DirectoryFeedToken = CamelCaseRow<
+	TableRow<typeof directoryFeedTokensTable>
+>
 
 /**
  * Token for accessing a curated feed.
  * Tokens are the only public identifier used in feed URLs.
  * Multiple tokens per feed are allowed for per-client access control.
  */
-export const CuratedFeedTokenSchema = object({
-	token: string(),
-	feedId: string(),
-	label: string(),
-	createdAt: number(),
-	lastUsedAt: nullable(number()),
-	revokedAt: nullable(number()),
-})
-export type CuratedFeedToken = InferOutput<typeof CuratedFeedTokenSchema>
+export type CuratedFeedToken = CamelCaseRow<
+	TableRow<typeof curatedFeedTokensTable>
+>
 
-export const FeedSchema = union([DirectoryFeedSchema, CuratedFeedSchema])
-export type Feed = InferOutput<typeof FeedSchema>
+export type Feed = DirectoryFeed | CuratedFeed
 
-export const FeedTokenSchema = union([
-	DirectoryFeedTokenSchema,
-	CuratedFeedTokenSchema,
-])
-export type FeedToken = InferOutput<typeof FeedTokenSchema>
+export type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
 /**
  * Type guard to check if a feed is a DirectoryFeed

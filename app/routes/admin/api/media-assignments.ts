@@ -9,11 +9,9 @@ import {
 import {
 	addItemToFeed,
 	getItemsForFeed,
+	listAllFeedItems,
 	removeItemFromFeed,
 } from '#app/db/feed-items.ts'
-import { db } from '#app/db/index.ts'
-import { parseRows, sql } from '#app/db/sql.ts'
-import { FeedItemSchema } from '#app/db/types.ts'
 
 type FeedAssignment = {
 	feedId: string
@@ -79,11 +77,7 @@ export async function getAdminMediaAssignmentsData(): Promise<AssignmentsRespons
 	const curatedFeeds = await listCuratedFeeds()
 	const directoryFeeds = await listDirectoryFeeds()
 
-	// Get all feed items from the database
-	const allFeedItems = parseRows(
-		FeedItemSchema,
-		db.query<Record<string, unknown>, []>(sql`SELECT * FROM feed_items;`).all(),
-	)
+	const allFeedItems = await listAllFeedItems()
 
 	// Build assignments map using mediaRoot:relativePath as key
 	const assignments: Record<string, Array<FeedAssignment>> = {}

@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS feed_analytics_events;
+DROP TABLE IF EXISTS client_metadata_cache;
+DROP TABLE IF EXISTS oauth_refresh_tokens;
+DROP TABLE IF EXISTS oauth_signing_keys;
+DROP TABLE IF EXISTS authorization_codes;
+DROP TABLE IF EXISTS oauth_clients;
+DROP TABLE IF EXISTS feed_items;
+DROP TABLE IF EXISTS curated_feed_tokens;
+DROP TABLE IF EXISTS curated_feeds;
+DROP TABLE IF EXISTS directory_feed_tokens;
+DROP TABLE IF EXISTS directory_feeds;

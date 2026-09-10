@@ -7,13 +7,13 @@ import '#app/config/init-env.ts'
 import routes from '#app/config/routes.ts'
 import { deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { buildFeedRssPath, buildFeedRssUrl } from '#app/helpers/feed-url.ts'
 import { generateAccessToken } from '#app/oauth/tokens.ts'
 import router from '#app/router.tsx'
 import mcpHandler from './index.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type McpActionContext = Parameters<typeof mcpHandler.handler>[0]
 

@@ -1,11 +1,11 @@
 import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { generateAccessToken } from '#app/oauth/tokens.ts'
 import { handleUnauthorized, resolveAuthInfo } from './auth.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 test('handleUnauthorized advertises https resource metadata from Forwarded proto', () => {
 	const request = new Request('http://mediarss.doddsfamily.us/mcp', {

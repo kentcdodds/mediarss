@@ -61,7 +61,7 @@ function toMediaItem(file: MediaFile): MediaItem | null {
  */
 export async function getAdminMediaData() {
 	const files = await scanAllMediaRoots()
-	const popularityByMediaKey = listMediaPopularityMetrics()
+	const popularityByMediaKey = await listMediaPopularityMetrics()
 
 	const items = files
 		.map(toMediaItem)

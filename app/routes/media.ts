@@ -111,7 +111,7 @@ export default {
 
 		if (isTrackableMediaStatus(response.status)) {
 			try {
-				createFeedAnalyticsEvent({
+				await createFeedAnalyticsEvent({
 					eventType: 'media_request',
 					feedId: feed.id,
 					feedType: type,

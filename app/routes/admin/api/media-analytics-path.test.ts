@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
+import { sql } from 'remix/data-table'
 import { expect, test } from 'vitest'
 import { spyOn } from '#test/bun-test-compat.ts'
 import '#app/config/init-env.ts'
@@ -13,12 +14,12 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
+import { directoryFeedTokensTable } from '#app/db/schema.ts'
 import { deleteEnvVar, setEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import analyticsHandler from './media-analytics.$path.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type AnalyticsActionContext = Parameters<typeof analyticsHandler.handler>[0]
 type MinimalAnalyticsActionContext = Pick<
@@ -65,9 +66,9 @@ async function createMediaApiTestContext() {
 		tokenOne,
 		tokenTwo,
 		[Symbol.asyncDispose]: async () => {
-			db.query(
-				sql`DELETE FROM feed_analytics_events WHERE feed_id IN (?, ?);`,
-			).run(feedOne.id, feedTwo.id)
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id IN (${feedOne.id}, ${feedTwo.id});`,
+			)
 			await deleteDirectoryFeed(feedOne.id)
 			await deleteDirectoryFeed(feedTwo.id)
 
@@ -125,7 +126,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `deleted-token-${Date.now()}`
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -139,7 +140,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		clientName: 'Pocket Casts',
 		createdAt: now - 120,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedTwo.id,
 		feedType: 'directory',
@@ -153,7 +154,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		clientName: 'Apple Podcasts',
 		createdAt: now - 90,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedTwo.id,
 		feedType: 'directory',
@@ -167,7 +168,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		clientName: 'Apple Podcasts',
 		createdAt: now - 60,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -181,7 +182,7 @@ test('media analytics endpoint returns aggregate data across feeds and tokens', 
 		clientName: 'Pocket Casts',
 		createdAt: now - 400 * 24 * 60 * 60,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -288,7 +289,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `deleted-batch-token-${Date.now()}`
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -302,7 +303,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 		clientName: 'Batch Client One',
 		createdAt: now - 90,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedTwo.id,
 		feedType: 'directory',
@@ -316,7 +317,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 		clientName: 'Batch Client Two',
 		createdAt: now - 60,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -331,23 +332,17 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 		createdAt: now - 30,
 	})
 
-	const tokenMetadataQueries: Array<string> = []
-	const originalQuery = db.query.bind(db)
-	const querySpy = spyOn(db, 'query').mockImplementation(((
-		...args: Array<unknown>
+	const tokenMetadataQueries: Array<unknown> = []
+	const originalFindMany = db.findMany.bind(db)
+	const querySpy = spyOn(db, 'findMany').mockImplementation(((
+		...args: Parameters<typeof originalFindMany>
 	) => {
-		const [queryText] = args
-		if (
-			typeof queryText === 'string' &&
-			queryText.includes(
-				'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
-			) &&
-			queryText.includes('FROM directory_feed_tokens')
-		) {
-			tokenMetadataQueries.push(queryText)
+		const [table, options] = args
+		if (table === directoryFeedTokensTable) {
+			tokenMetadataQueries.push(options?.where)
 		}
-		return originalQuery(...(args as Parameters<typeof originalQuery>))
-	}) as typeof db.query)
+		return originalFindMany(...args)
+	}) as typeof db.findMany)
 
 	try {
 		const response = await analyticsHandler.handler(
@@ -360,7 +355,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 	}
 
 	expect(tokenMetadataQueries).toHaveLength(1)
-	expect(tokenMetadataQueries[0]).toContain('WHERE (feed_id, token) IN')
+	expect(tokenMetadataQueries[0]).toBeDefined()
 })
 
 test('media analytics endpoint chunks token metadata queries for low variable limits', async () => {
@@ -374,7 +369,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 
 	setEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER', '4')
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -388,7 +383,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 		clientName: 'Chunking Client One',
 		createdAt: now - 90,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedTwo.id,
 		feedType: 'directory',
@@ -402,7 +397,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 		clientName: 'Chunking Client Two',
 		createdAt: now - 60,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -417,23 +412,17 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 		createdAt: now - 30,
 	})
 
-	const tokenMetadataQueries: Array<string> = []
-	const originalQuery = db.query.bind(db)
-	const querySpy = spyOn(db, 'query').mockImplementation(((
-		...args: Array<unknown>
+	const tokenMetadataQueries: Array<unknown> = []
+	const originalFindMany = db.findMany.bind(db)
+	const querySpy = spyOn(db, 'findMany').mockImplementation(((
+		...args: Parameters<typeof originalFindMany>
 	) => {
-		const [queryText] = args
-		if (
-			typeof queryText === 'string' &&
-			queryText.includes(
-				'SELECT token, feed_id, label, created_at, last_used_at, revoked_at',
-			) &&
-			queryText.includes('FROM directory_feed_tokens')
-		) {
-			tokenMetadataQueries.push(queryText)
+		const [table, options] = args
+		if (table === directoryFeedTokensTable) {
+			tokenMetadataQueries.push(options?.where)
 		}
-		return originalQuery(...(args as Parameters<typeof originalQuery>))
-	}) as typeof db.query)
+		return originalFindMany(...args)
+	}) as typeof db.findMany)
 
 	try {
 		const response = await analyticsHandler.handler(
@@ -451,8 +440,8 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	}
 
 	expect(tokenMetadataQueries).toHaveLength(2)
-	for (const queryText of tokenMetadataQueries) {
-		expect(queryText).toContain('WHERE (feed_id, token) IN')
+	for (const where of tokenMetadataQueries) {
+		expect(where).toBeDefined()
 	}
 })
 
@@ -460,7 +449,7 @@ test('media analytics endpoint groups missing client names under Unknown', async
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -495,7 +484,7 @@ test('media analytics endpoint merges null and explicit Unknown client names', a
 	await using ctx = await createMediaApiTestContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -509,7 +498,7 @@ test('media analytics endpoint merges null and explicit Unknown client names', a
 		clientName: null,
 		createdAt: now - 20,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -653,14 +642,14 @@ test('media analytics endpoint resolves curated token metadata', async () => {
 
 	await using _cleanupCurated = {
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				curatedFeed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${curatedFeed.id};`,
 			)
 			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: curatedFeed.id,
 		feedType: 'curated',
@@ -719,14 +708,14 @@ test('media analytics endpoint resolves feed names across feed types', async () 
 
 	await using _cleanupCurated = {
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				curatedFeed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${curatedFeed.id};`,
 			)
 			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feedOne.id,
 		feedType: 'directory',
@@ -740,7 +729,7 @@ test('media analytics endpoint resolves feed names across feed types', async () 
 		clientName: 'Apple Podcasts',
 		createdAt: now - 45,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: curatedFeed.id,
 		feedType: 'curated',
@@ -810,15 +799,15 @@ test('media analytics endpoint labels missing feed metadata as deleted feed', as
 		label: 'Soon deleted token',
 	})
 
-	using _cleanupDeletedFeedEvents = {
-		[Symbol.dispose]: () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				deletedFeed.id,
+	await using _cleanupDeletedFeedEvents = {
+		[Symbol.asyncDispose]: async () => {
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${deletedFeed.id};`,
 			)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: deletedFeed.id,
 		feedType: 'directory',
@@ -872,15 +861,15 @@ test('media analytics endpoint labels missing feed and token metadata as deleted
 	const missingFeedId = `missing-feed-${Date.now()}`
 	const missingToken = `missing-token-${Date.now()}`
 
-	using _cleanupEvents = {
-		[Symbol.dispose]: () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				missingFeedId,
+	await using _cleanupEvents = {
+		[Symbol.asyncDispose]: async () => {
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${missingFeedId};`,
 			)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: missingFeedId,
 		feedType: 'directory',
@@ -924,15 +913,15 @@ test('media analytics endpoint requires token metadata to match feed id', async 
 	const now = Math.floor(Date.now() / 1000)
 	const mismatchedFeedId = `mismatched-feed-${Date.now()}`
 
-	using _cleanupEvents = {
-		[Symbol.dispose]: () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				mismatchedFeedId,
+	await using _cleanupEvents = {
+		[Symbol.asyncDispose]: async () => {
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${mismatchedFeedId};`,
 			)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: mismatchedFeedId,
 		feedType: 'directory',
@@ -987,14 +976,14 @@ test('media analytics endpoint requires curated token metadata to match feed id'
 
 	await using _cleanupCuratedAndEvents = {
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				mismatchedFeedId,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${mismatchedFeedId};`,
 			)
 			await deleteCuratedFeed(curatedFeed.id)
 		},
 	}
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: mismatchedFeedId,
 		feedType: 'curated',

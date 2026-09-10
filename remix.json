@@ -17,5 +17,18 @@
 		],
 		"allowPackages": ["match-sorter", "remix"],
 		"denyFiles": ["app/**/*.test.*"]
+	},
+	"db": {
+		"adapter": {
+			"type": "sqlite",
+			"filename": {
+				"env": "DATABASE_PATH",
+				"default": "./data/sqlite.db"
+			},
+			"foreignKeys": true
+		},
+		"migrations": {
+			"directory": "./app/db/migrations"
+		}
 	}
 }

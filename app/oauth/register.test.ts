@@ -4,14 +4,14 @@ import '#app/config/init-env.ts'
 import { type RequestContext } from 'remix/router'
 import { afterAll, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { deleteClient, getClient } from '#app/oauth/clients.ts'
 import { computeS256Challenge, generateCodeVerifier } from '#app/oauth/pkce.ts'
 import { startNodeServer } from '../../server/node-server.ts'
 
 // Ensure migrations are run
-migrate(db)
+await migrateDatabase(db)
 
 // Track created test client IDs for cleanup
 const testClientIds: string[] = []
@@ -71,10 +71,10 @@ async function createDcrTestServer() {
 	}
 }
 
-afterAll(() => {
+afterAll(async () => {
 	// Clean up test clients
 	for (const clientId of testClientIds) {
-		deleteClient(clientId)
+		await deleteClient(clientId)
 	}
 	resetRateLimiters()
 })
@@ -133,7 +133,7 @@ test('DCR endpoint creates clients with various configurations', async () => {
 	expect(basicClientData.client_id_issued_at).toBeGreaterThan(0)
 
 	// Verify client was persisted to database
-	const dbClient = getClient(basicClientData.client_id)
+	const dbClient = await getClient(basicClientData.client_id)
 	expect(dbClient).not.toBeNull()
 	expect(dbClient!.name).toBe('DCR Test Client')
 

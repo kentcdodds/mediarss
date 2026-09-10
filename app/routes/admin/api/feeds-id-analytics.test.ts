@@ -1,3 +1,4 @@
+import { sql } from 'remix/data-table'
 import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -9,11 +10,10 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import analyticsHandler from './feeds.$id.analytics.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 async function createTestFeedContext() {
 	const feed = await createDirectoryFeed({
@@ -29,8 +29,8 @@ async function createTestFeedContext() {
 		feed,
 		token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteDirectoryFeed(feed.id)
 		},
@@ -51,8 +51,8 @@ async function createCuratedTestFeedContext() {
 		feed,
 		token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteCuratedFeed(feed.id)
 		},
@@ -94,7 +94,7 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `deleted-token-${Date.now()}`
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'rss_fetch',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -104,7 +104,7 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 		clientName: 'Apple Podcasts',
 		createdAt: now - 60,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -118,7 +118,7 @@ test('feed analytics endpoint returns summary, token breakdown, and top clients'
 		clientName: 'Apple Podcasts',
 		createdAt: now - 30,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -197,7 +197,7 @@ test('feed analytics endpoint groups missing client names under Unknown', async 
 	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -232,7 +232,7 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 	await using ctx = await createTestFeedContext()
 	const now = Math.floor(Date.now() / 1000)
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -246,7 +246,7 @@ test('feed analytics endpoint merges null and explicit Unknown client names', as
 		clientName: null,
 		createdAt: now - 20,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'directory',
@@ -282,7 +282,7 @@ test('feed analytics endpoint returns more than default top-client limit when av
 	const now = Math.floor(Date.now() / 1000)
 
 	for (let index = 0; index < 12; index += 1) {
-		createFeedAnalyticsEvent({
+		await createFeedAnalyticsEvent({
 			eventType: 'media_request',
 			feedId: ctx.feed.id,
 			feedType: 'directory',
@@ -363,7 +363,7 @@ test('feed analytics endpoint supports curated feeds', async () => {
 	const now = Math.floor(Date.now() / 1000)
 	const deletedToken = `curated-deleted-token-${Date.now()}`
 
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'curated',
@@ -377,7 +377,7 @@ test('feed analytics endpoint supports curated feeds', async () => {
 		clientName: 'Overcast',
 		createdAt: now - 30,
 	})
-	createFeedAnalyticsEvent({
+	await createFeedAnalyticsEvent({
 		eventType: 'media_request',
 		feedId: ctx.feed.id,
 		feedType: 'curated',

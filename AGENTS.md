@@ -53,10 +53,34 @@ supervises the server with `remix/node-hmr` for server and Remix UI hot updates.
 
 - Use the Node HTTP stack plus `remix/node-fetch-server` for the server
   entrypoint.
-- Use `node:sqlite` for SQLite.
+- Use `node:sqlite` for SQLite, through `remix/data-table` (see below).
 - `WebSocket` is built-in. Don't use `ws`.
 - Prefer Node's built-in `fs`, `fs/promises`, and web `File`/`Blob` APIs for
   file access.
+
+## Data Layer
+
+- `app/db/index.ts` exports the app `db` (`createSqliteDatabase` from
+  `remix/data-table/sqlite`, backed by `node:sqlite`). `app/cache/cache.ts` owns
+  a separate cache database with the same setup.
+- Tables are declared once in `app/db/schema.ts` with `table`/`column`. Row
+  types come from `TableRow<typeof someTable>`; don't hand-write row shapes or
+  cast query results.
+- Prefer the CRUD helpers (`db.find`, `db.findMany`, `db.create`, `db.update`,
+  `db.updateMany`, `db.delete`, `db.deleteMany`) and `db.query(table)`. Use
+  `db.exec(sql\`...\`)`(with`selectAll`/`selectOne`from`app/db/rows.ts` for
+  typed reads) only for aggregates, PRAGMAs, and SQL the builder can't express.
+- All database calls are async. Await them, including in tests.
+- Schema changes are SQL migrations in
+  `app/db/migrations/<YYYYMMDDHHmmss>_<slug>/up.sql` (+ `down.sql`). Never edit
+  an applied migration; add a new one and update `app/db/schema.ts`.
+  `migrateDatabase()` in `app/db/migrate.ts` runs at startup;
+  `npx remix db status|migrate|rollback|reset` run the same migrations from the
+  CLI via the `db` section of `remix.json`.
+- Database tests use `createTestDatabase()` from `app/db/test-database.ts`
+  (in-memory `DatabaseSync`, migrated). Module-level code that uses the shared
+  `db` runs against `DATABASE_PATH`; the test script runs with `--maxWorkers=1`
+  so those tests don't race each other.
 
 ## Testing
 

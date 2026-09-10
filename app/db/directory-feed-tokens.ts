@@ -1,16 +1,8 @@
 import { generateToken } from '#app/helpers/crypto.ts'
-import {
-	dataTableDb,
-	directoryFeedsTable,
-	directoryFeedTokensTable,
-} from './data-table.ts'
-import { parseRow, parseRows } from './sql.ts'
-import {
-	type DirectoryFeed,
-	DirectoryFeedSchema,
-	type DirectoryFeedToken,
-	DirectoryFeedTokenSchema,
-} from './types.ts'
+import { db } from './index.ts'
+import { toCamelCaseRow, toCamelCaseRows } from './rows.ts'
+import { directoryFeedTokensTable, directoryFeedsTable } from './schema.ts'
+import { type DirectoryFeed, type DirectoryFeedToken } from './types.ts'
 
 export type CreateDirectoryFeedTokenData = {
 	feedId: string
@@ -26,20 +18,19 @@ export async function createDirectoryFeedToken(
 	const token = generateToken()
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.create(directoryFeedTokensTable, {
-		token,
-		feed_id: data.feedId,
-		label: data.label ?? '',
-		created_at: now,
-		last_used_at: null,
-		revoked_at: null,
-	})
-
-	const created = await getDirectoryFeedToken(token)
-	if (!created) {
-		throw new Error(`Failed to create directory feed token "${token}"`)
-	}
-	return created
+	const created = await db.create(
+		directoryFeedTokensTable,
+		{
+			token,
+			feed_id: data.feedId,
+			label: data.label ?? '',
+			created_at: now,
+			last_used_at: null,
+			revoked_at: null,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(created)
 }
 
 /**
@@ -48,10 +39,10 @@ export async function createDirectoryFeedToken(
 export async function getDirectoryFeedToken(
 	token: string,
 ): Promise<DirectoryFeedToken | undefined> {
-	const row = await dataTableDb.findOne(directoryFeedTokensTable, {
+	const row = await db.findOne(directoryFeedTokensTable, {
 		where: { token, revoked_at: null },
 	})
-	return row ? parseRow(DirectoryFeedTokenSchema, row) : undefined
+	return row ? toCamelCaseRow(row) : undefined
 }
 
 /**
@@ -62,13 +53,13 @@ export async function getDirectoryFeedToken(
 export async function getDirectoryFeedByToken(
 	token: string,
 ): Promise<DirectoryFeed | undefined> {
-	const tokenRow = await dataTableDb.findOne(directoryFeedTokensTable, {
+	const tokenRow = await db.findOne(directoryFeedTokensTable, {
 		where: { token, revoked_at: null },
 	})
 	if (!tokenRow) return undefined
 
-	const feedRow = await dataTableDb.find(directoryFeedsTable, tokenRow.feed_id)
-	return feedRow ? parseRow(DirectoryFeedSchema, feedRow) : undefined
+	const feedRow = await db.find(directoryFeedsTable, tokenRow.feed_id)
+	return feedRow ? toCamelCaseRow(feedRow) : undefined
 }
 
 /**
@@ -77,11 +68,11 @@ export async function getDirectoryFeedByToken(
 export async function listDirectoryFeedTokens(
 	feedId: string,
 ): Promise<Array<DirectoryFeedToken>> {
-	const rows = await dataTableDb.findMany(directoryFeedTokensTable, {
+	const rows = await db.findMany(directoryFeedTokensTable, {
 		where: { feed_id: feedId },
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(DirectoryFeedTokenSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 /**
@@ -90,11 +81,11 @@ export async function listDirectoryFeedTokens(
 export async function listActiveDirectoryFeedTokens(
 	feedId: string,
 ): Promise<Array<DirectoryFeedToken>> {
-	const rows = await dataTableDb.findMany(directoryFeedTokensTable, {
+	const rows = await db.findMany(directoryFeedTokensTable, {
 		where: { feed_id: feedId, revoked_at: null },
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(DirectoryFeedTokenSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 /**
@@ -104,7 +95,7 @@ export async function revokeDirectoryFeedToken(
 	token: string,
 ): Promise<boolean> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		directoryFeedTokensTable,
 		{ revoked_at: now },
 		{ where: { token, revoked_at: null } },
@@ -118,7 +109,7 @@ export async function revokeDirectoryFeedToken(
  */
 export async function touchDirectoryFeedToken(token: string): Promise<void> {
 	const now = Math.floor(Date.now() / 1000)
-	await dataTableDb.updateMany(
+	await db.updateMany(
 		directoryFeedTokensTable,
 		{ last_used_at: now },
 		{ where: { token } },
@@ -132,7 +123,7 @@ export async function updateDirectoryFeedTokenLabel(
 	token: string,
 	label: string,
 ): Promise<boolean> {
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		directoryFeedTokensTable,
 		{ label },
 		{ where: { token } },
@@ -146,7 +137,7 @@ export async function updateDirectoryFeedTokenLabel(
 export async function deleteDirectoryFeedToken(
 	token: string,
 ): Promise<boolean> {
-	return dataTableDb.delete(directoryFeedTokensTable, token)
+	return db.delete(directoryFeedTokensTable, token)
 }
 
 /**
@@ -156,7 +147,7 @@ export async function revokeAllDirectoryFeedTokens(
 	feedId: string,
 ): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		directoryFeedTokensTable,
 		{ revoked_at: now },
 		{ where: { feed_id: feedId, revoked_at: null } },

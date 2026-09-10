@@ -12,7 +12,7 @@ import {
 	deleteDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import * as artworkHelpers from '#app/helpers/artwork.ts'
 import * as feedArtworkHelpers from '#app/helpers/feed-artwork.ts'
 import { getPodcastArtPlaceholderBytes } from '#app/helpers/podcast-art-placeholder.ts'
@@ -20,7 +20,7 @@ import * as squareArtworkHelpers from '#app/helpers/square-artwork.ts'
 import { setEnvVar, unsetEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import artHandler from './art.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type ArtActionContext = Parameters<typeof artHandler.handler>[0]
 type MinimalArtActionContext = {

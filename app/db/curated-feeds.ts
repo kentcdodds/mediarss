@@ -1,7 +1,8 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { curatedFeedsTable, dataTableDb } from './data-table.ts'
-import { parseRow, parseRows } from './sql.ts'
-import { type CuratedFeed, CuratedFeedSchema, type SortOrder } from './types.ts'
+import { db } from './index.ts'
+import { toCamelCaseRow, toCamelCaseRows } from './rows.ts'
+import { curatedFeedsTable } from './schema.ts'
+import { type CuratedFeed, type SortOrder } from './types.ts'
 
 export type CreateCuratedFeedData = {
 	name: string
@@ -27,46 +28,45 @@ export async function createCuratedFeed(
 	const id = generateId()
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.create(curatedFeedsTable, {
-		id,
-		name: data.name,
-		description: data.description ?? '',
-		subtitle: data.subtitle ?? null,
-		sort_fields: data.sortFields ?? 'position',
-		sort_order: data.sortOrder ?? 'asc',
-		author: data.author ?? null,
-		owner_name: data.ownerName ?? null,
-		owner_email: data.ownerEmail ?? null,
-		language: data.language ?? 'en',
-		explicit: data.explicit ?? 'no',
-		category: data.category ?? null,
-		link: data.link ?? null,
-		copyright: data.copyright ?? null,
-		feed_type: data.feedType ?? 'episodic',
-		overrides: data.overrides ?? null,
-		created_at: now,
-		updated_at: now,
-	})
-
-	const created = await dataTableDb.find(curatedFeedsTable, id)
-	if (!created) {
-		throw new Error(`Failed to create curated feed "${id}"`)
-	}
-	return parseRow(CuratedFeedSchema, created)
+	const created = await db.create(
+		curatedFeedsTable,
+		{
+			id,
+			name: data.name,
+			description: data.description ?? '',
+			subtitle: data.subtitle ?? null,
+			sort_fields: data.sortFields ?? 'position',
+			sort_order: data.sortOrder ?? 'asc',
+			author: data.author ?? null,
+			owner_name: data.ownerName ?? null,
+			owner_email: data.ownerEmail ?? null,
+			language: data.language ?? 'en',
+			explicit: data.explicit ?? 'no',
+			category: data.category ?? null,
+			link: data.link ?? null,
+			copyright: data.copyright ?? null,
+			feed_type: data.feedType ?? 'episodic',
+			overrides: data.overrides ?? null,
+			created_at: now,
+			updated_at: now,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(created)
 }
 
 export async function getCuratedFeedById(
 	id: string,
 ): Promise<CuratedFeed | undefined> {
-	const row = await dataTableDb.find(curatedFeedsTable, id)
-	return row ? parseRow(CuratedFeedSchema, row) : undefined
+	const row = await db.find(curatedFeedsTable, id)
+	return row ? toCamelCaseRow(row) : undefined
 }
 
 export async function listCuratedFeeds(): Promise<Array<CuratedFeed>> {
-	const rows = await dataTableDb.findMany(curatedFeedsTable, {
+	const rows = await db.findMany(curatedFeedsTable, {
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(CuratedFeedSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 export type UpdateCuratedFeedData = {
@@ -96,7 +96,7 @@ export async function updateCuratedFeed(
 
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.update(curatedFeedsTable, id, {
+	const updated = await db.update(curatedFeedsTable, id, {
 		name: data.name ?? existing.name,
 		description: data.description ?? existing.description,
 		subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
@@ -119,10 +119,9 @@ export async function updateCuratedFeed(
 		updated_at: now,
 	})
 
-	const updated = await dataTableDb.find(curatedFeedsTable, id)
-	return updated ? parseRow(CuratedFeedSchema, updated) : undefined
+	return toCamelCaseRow(updated)
 }
 
 export async function deleteCuratedFeed(id: string): Promise<boolean> {
-	return dataTableDb.delete(curatedFeedsTable, id)
+	return db.delete(curatedFeedsTable, id)
 }

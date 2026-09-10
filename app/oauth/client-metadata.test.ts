@@ -4,8 +4,9 @@ import '#app/config/init-env.ts'
 import * as jose from 'jose'
 import { afterAll, afterEach, expect, test } from 'vitest'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
+import { sql } from 'remix/data-table'
+import { selectOne } from '#app/db/rows.ts'
 import { resetRateLimiters } from '#app/helpers/rate-limiter.ts'
 import { consoleError } from '#test/setup.ts'
 import { startNodeServer } from '../../server/node-server.ts'
@@ -31,7 +32,7 @@ import {
 } from './index.ts'
 
 // Ensure migrations are run
-migrate(db)
+await migrateDatabase(db)
 
 // Helper to generate unique test IDs
 const uniqueId = () =>
@@ -49,11 +50,11 @@ function assertFailedClientResolve(
 	}
 }
 
-function createTestClient(
+async function createTestClient(
 	name: string = 'Test Client',
 	redirectUris: string[] = ['http://localhost:9999/callback'],
 ) {
-	const client = createClient(name, redirectUris)
+	const client = await createClient(name, redirectUris)
 	testClientIds.push(client.id)
 	return client
 }
@@ -116,35 +117,35 @@ function setupMockFetch() {
 	return {
 		mockFetchResponses,
 		capturedHeaders,
-		[Symbol.dispose]: () => {
+		[Symbol.asyncDispose]: async () => {
 			globalThis.fetch = originalFetch
 			clearMetadataCache()
 			// Clean up test metadata from DB
-			db.run(
+			await db.exec(
 				sql`DELETE FROM client_metadata_cache WHERE client_id LIKE 'https://test-%';`,
 			)
 		},
 	}
 }
 
-afterAll(() => {
+afterAll(async () => {
 	// Clean up test clients
 	for (const clientId of testClientIds) {
-		deleteClient(clientId)
+		await deleteClient(clientId)
 	}
 	// Clean up test metadata cache
-	db.run(
+	await db.exec(
 		sql`DELETE FROM client_metadata_cache WHERE client_id LIKE '%localhost%';`,
 	)
 })
 
-afterEach(() => {
+afterEach(async () => {
 	clearMetadataCache()
 })
 
 // URL Client ID Detection Tests
 
-test('isUrlClientId correctly identifies URL-based vs simple client IDs', () => {
+test('isUrlClientId correctly identifies URL-based vs simple client IDs', async () => {
 	// Valid HTTPS URLs should be detected as URL client IDs
 	expect(isUrlClientId('https://example.com/client')).toBe(true)
 	expect(isUrlClientId('https://client.example.com')).toBe(true)
@@ -167,7 +168,7 @@ test('isUrlClientId correctly identifies URL-based vs simple client IDs', () => 
 // Static Client Resolution Tests
 
 test('resolveClient resolves static clients and returns null for unknown clients', async () => {
-	const staticClient = createTestClient('Static Test ' + uniqueId(), [
+	const staticClient = await createTestClient('Static Test ' + uniqueId(), [
 		'http://localhost:3000/callback',
 	])
 
@@ -186,7 +187,7 @@ test('resolveClient resolves static clients and returns null for unknown clients
 })
 
 test('static clients take precedence over URL lookups for non-URL IDs', async () => {
-	const staticClient = createTestClient('Precedence Test ' + uniqueId(), [
+	const staticClient = await createTestClient('Precedence Test ' + uniqueId(), [
 		'http://localhost:5000/callback',
 	])
 
@@ -200,7 +201,7 @@ test('static clients take precedence over URL lookups for non-URL IDs', async ()
 // Redirect URI Validation Tests
 
 test('isValidClientRedirectUri validates redirect URIs for static clients', async () => {
-	const staticClient = createTestClient('URI Test ' + uniqueId(), [
+	const staticClient = await createTestClient('URI Test ' + uniqueId(), [
 		'http://localhost:3000/callback',
 		'http://localhost:8080/callback',
 	])
@@ -225,7 +226,7 @@ test('isValidClientRedirectUri validates redirect URIs for static clients', asyn
 // Grant Type Validation Tests
 
 test('clientSupportsGrantType validates grant types correctly', async () => {
-	const staticClient = createTestClient('Grant Test ' + uniqueId(), [
+	const staticClient = await createTestClient('Grant Test ' + uniqueId(), [
 		'http://localhost:3000/callback',
 	])
 
@@ -309,7 +310,7 @@ test('server metadata indicates DCR and client ID metadata document support', as
 test('full authorization code flow with static client', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Flow Test ' + uniqueId(), [
+	const testClient = await createTestClient('Flow Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -383,7 +384,7 @@ test('full authorization code flow with static client', async () => {
 
 test('authorization-code-only metadata clients do not receive refresh tokens', async () => {
 	await using ctx = await createTestServer()
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	const clientId = 'https://test-no-refresh-grant.example.com/metadata'
 	const redirectUri = 'https://test-no-refresh-grant.example.com/callback'
@@ -400,7 +401,7 @@ test('authorization-code-only metadata clients do not receive refresh tokens', a
 
 	const verifier = generateCodeVerifier()
 	const challenge = await computeS256Challenge(verifier)
-	const authCode = createAuthorizationCode({
+	const authCode = await createAuthorizationCode({
 		clientId,
 		redirectUri,
 		scope: 'mcp:read',
@@ -433,7 +434,7 @@ test('authorization-code-only metadata clients do not receive refresh tokens', a
 
 test('authorization POST issues a code for URL metadata clients', async () => {
 	await using ctx = await createTestServer()
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	const clientId = 'https://test-cimd-authorize-post.example.com/metadata'
 	const redirectUri = 'https://test-cimd-authorize-post.example.com/callback'
@@ -474,13 +475,13 @@ test('authorization POST issues a code for URL metadata clients', async () => {
 	expect(redirectUrl.origin + redirectUrl.pathname).toBe(redirectUri)
 	expect(redirectUrl.searchParams.get('code')).toBeTruthy()
 	expect(redirectUrl.searchParams.get('state')).toBe('cimd-post-state')
-	expect(getClient(clientId)).toBeNull()
+	expect(await getClient(clientId)).toBeNull()
 })
 
 test('authorization endpoint rejects unknown and invalid redirect URIs', async () => {
 	await using ctx = await createTestServer()
 
-	const testClient = createTestClient('Reject Test ' + uniqueId(), [
+	const testClient = await createTestClient('Reject Test ' + uniqueId(), [
 		'http://localhost:9999/callback',
 	])
 	const verifier = generateCodeVerifier()
@@ -520,7 +521,7 @@ test('authorization endpoint rejects unknown and invalid redirect URIs', async (
 // URL-based Client ID Metadata Document Tests
 
 test('getClientMetadata fetches and validates metadata documents', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Valid metadata document
 	const validClientUrl = 'https://test-valid-client.example.com/oauth/metadata'
@@ -602,7 +603,7 @@ test('getClientMetadata fetches and validates metadata documents', async () => {
 })
 
 test('getClientMetadata rejects invalid metadata documents', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Suppress expected console.error from validation failures
 	consoleError.mockImplementation(() => {})
@@ -686,7 +687,7 @@ test('getClientMetadata rejects invalid metadata documents', async () => {
 })
 
 test('getClientMetadata handles fetch errors gracefully', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Suppress expected console.error from fetch failures
 	consoleError.mockImplementation(() => {})
@@ -740,7 +741,7 @@ test('getClientMetadata handles fetch errors gracefully', async () => {
 })
 
 test('getClientMetadata caches metadata in memory and database', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	const clientIdUrl = 'https://test-cache-memory.example.com/metadata'
 	let fetchCount = 0
@@ -771,11 +772,10 @@ test('getClientMetadata caches metadata in memory and database', async () => {
 	expect(fetchCount).toBe(1) // No additional fetch
 
 	// Verify database cache
-	const row = db
-		.query<{ client_id: string; metadata_json: string }, [string]>(
-			sql`SELECT * FROM client_metadata_cache WHERE client_id = ?;`,
-		)
-		.get(clientIdUrl)
+	const row = await selectOne<{ client_id: string; metadata_json: string }>(
+		db,
+		sql`SELECT * FROM client_metadata_cache WHERE client_id = ${clientIdUrl};`,
+	)
 
 	expect(row).not.toBeNull()
 	expect(row!.client_id).toBe(clientIdUrl)
@@ -794,7 +794,7 @@ test('getClientMetadata caches metadata in memory and database', async () => {
 })
 
 test('metadata cache respects Cache-Control headers with min/max bounds', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Test that max-age is respected
 	const ttlTestUrl = 'https://test-cache-ttl.example.com/metadata'
@@ -815,11 +815,10 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 
 	await getClientMetadata(ttlTestUrl)
 
-	const ttlRow = db
-		.query<{ expires_at: number; cached_at: number }, [string]>(
-			sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
-		)
-		.get(ttlTestUrl)
+	const ttlRow = await selectOne<{ expires_at: number; cached_at: number }>(
+		db,
+		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${ttlTestUrl};`,
+	)
 
 	expect(ttlRow).not.toBeNull()
 	const ttlDuration = ttlRow!.expires_at - ttlRow!.cached_at
@@ -846,11 +845,10 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 
 	await getClientMetadata(minCacheUrl)
 
-	const minRow = db
-		.query<{ expires_at: number; cached_at: number }, [string]>(
-			sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
-		)
-		.get(minCacheUrl)
+	const minRow = await selectOne<{ expires_at: number; cached_at: number }>(
+		db,
+		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${minCacheUrl};`,
+	)
 
 	expect(minRow).not.toBeNull()
 	const minDuration = minRow!.expires_at - minRow!.cached_at
@@ -877,11 +875,10 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 
 	await getClientMetadata(maxCacheUrl)
 
-	const maxRow = db
-		.query<{ expires_at: number; cached_at: number }, [string]>(
-			sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ?;`,
-		)
-		.get(maxCacheUrl)
+	const maxRow = await selectOne<{ expires_at: number; cached_at: number }>(
+		db,
+		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${maxCacheUrl};`,
+	)
 
 	expect(maxRow).not.toBeNull()
 	const maxDuration = maxRow!.expires_at - maxRow!.cached_at
@@ -889,7 +886,7 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 })
 
 test('resolveClient resolves URL-based clients from metadata documents', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Valid URL-based client
 	const validUrl = 'https://test-resolve.example.com/metadata'
@@ -967,7 +964,7 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 })
 
 test('resolveClientResult explains missing, unknown, and unreadable clients', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 	consoleError.mockImplementation(() => {})
 
 	const missing = await resolveClientResult('')
@@ -991,7 +988,7 @@ test('resolveClientResult explains missing, unknown, and unreadable clients', as
 })
 
 test('authorization endpoint reports why a client_id could not be resolved', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 	consoleError.mockImplementation(() => {})
 	await using ctx = await createTestServer()
 
@@ -1032,7 +1029,7 @@ test('authorization endpoint reports why a client_id could not be resolved', asy
 })
 
 test('URL-based client redirect URI and grant type validation', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 
 	// Redirect URI validation
 	const redirectUrl = 'https://test-redirect-validation.example.com/metadata'
@@ -1163,7 +1160,7 @@ test('DCR endpoint works (MCP 2025-11-25 compliance)', async () => {
 })
 
 test('unknown CIMD URLs still fail when the live fetch fails', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 	consoleError.mockImplementation(() => {})
 
 	const unknownUrl = 'https://test-unknown-cimd.example.com/metadata'
@@ -1182,7 +1179,7 @@ test('unknown CIMD URLs still fail when the live fetch fails', async () => {
 })
 
 test('lookupClientMetadata uses expired database cache when fetch fails', async () => {
-	using mockCtx = setupMockFetch()
+	await using mockCtx = setupMockFetch()
 	consoleError.mockImplementation(() => {})
 
 	const staleUrl = 'https://test-stale-cimd.example.com/metadata'
@@ -1192,9 +1189,9 @@ test('lookupClientMetadata uses expired database cache when fetch fails', async 
 		redirect_uris: ['https://test-stale-cimd.example.com/callback'],
 	}
 	const now = Math.floor(Date.now() / 1000)
-	db.query(
-		sql`INSERT OR REPLACE INTO client_metadata_cache (client_id, metadata_json, cached_at, expires_at) VALUES (?, ?, ?, ?);`,
-	).run(staleUrl, JSON.stringify(staleMetadata), now - 120, now - 60)
+	await db.exec(
+		sql`INSERT OR REPLACE INTO client_metadata_cache (client_id, metadata_json, cached_at, expires_at) VALUES (${staleUrl}, ${JSON.stringify(staleMetadata)}, ${now - 120}, ${now - 60});`,
+	)
 
 	mockCtx.mockFetchResponses.set(staleUrl, () => {
 		const error = new Error('The operation was aborted due to timeout')

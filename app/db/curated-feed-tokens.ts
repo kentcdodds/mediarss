@@ -1,16 +1,8 @@
 import { generateToken } from '#app/helpers/crypto.ts'
-import {
-	curatedFeedsTable,
-	curatedFeedTokensTable,
-	dataTableDb,
-} from './data-table.ts'
-import { parseRow, parseRows } from './sql.ts'
-import {
-	type CuratedFeed,
-	CuratedFeedSchema,
-	type CuratedFeedToken,
-	CuratedFeedTokenSchema,
-} from './types.ts'
+import { db } from './index.ts'
+import { toCamelCaseRow, toCamelCaseRows } from './rows.ts'
+import { curatedFeedTokensTable, curatedFeedsTable } from './schema.ts'
+import { type CuratedFeed, type CuratedFeedToken } from './types.ts'
 
 export type CreateCuratedFeedTokenData = {
 	feedId: string
@@ -26,20 +18,19 @@ export async function createCuratedFeedToken(
 	const token = generateToken()
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.create(curatedFeedTokensTable, {
-		token,
-		feed_id: data.feedId,
-		label: data.label ?? '',
-		created_at: now,
-		last_used_at: null,
-		revoked_at: null,
-	})
-
-	const created = await getCuratedFeedToken(token)
-	if (!created) {
-		throw new Error(`Failed to create curated feed token "${token}"`)
-	}
-	return created
+	const created = await db.create(
+		curatedFeedTokensTable,
+		{
+			token,
+			feed_id: data.feedId,
+			label: data.label ?? '',
+			created_at: now,
+			last_used_at: null,
+			revoked_at: null,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(created)
 }
 
 /**
@@ -48,10 +39,10 @@ export async function createCuratedFeedToken(
 export async function getCuratedFeedToken(
 	token: string,
 ): Promise<CuratedFeedToken | undefined> {
-	const row = await dataTableDb.findOne(curatedFeedTokensTable, {
+	const row = await db.findOne(curatedFeedTokensTable, {
 		where: { token, revoked_at: null },
 	})
-	return row ? parseRow(CuratedFeedTokenSchema, row) : undefined
+	return row ? toCamelCaseRow(row) : undefined
 }
 
 /**
@@ -62,13 +53,13 @@ export async function getCuratedFeedToken(
 export async function getCuratedFeedByToken(
 	token: string,
 ): Promise<CuratedFeed | undefined> {
-	const tokenRow = await dataTableDb.findOne(curatedFeedTokensTable, {
+	const tokenRow = await db.findOne(curatedFeedTokensTable, {
 		where: { token, revoked_at: null },
 	})
 	if (!tokenRow) return undefined
 
-	const feedRow = await dataTableDb.find(curatedFeedsTable, tokenRow.feed_id)
-	return feedRow ? parseRow(CuratedFeedSchema, feedRow) : undefined
+	const feedRow = await db.find(curatedFeedsTable, tokenRow.feed_id)
+	return feedRow ? toCamelCaseRow(feedRow) : undefined
 }
 
 /**
@@ -77,11 +68,11 @@ export async function getCuratedFeedByToken(
 export async function listCuratedFeedTokens(
 	feedId: string,
 ): Promise<Array<CuratedFeedToken>> {
-	const rows = await dataTableDb.findMany(curatedFeedTokensTable, {
+	const rows = await db.findMany(curatedFeedTokensTable, {
 		where: { feed_id: feedId },
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(CuratedFeedTokenSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 /**
@@ -90,11 +81,11 @@ export async function listCuratedFeedTokens(
 export async function listActiveCuratedFeedTokens(
 	feedId: string,
 ): Promise<Array<CuratedFeedToken>> {
-	const rows = await dataTableDb.findMany(curatedFeedTokensTable, {
+	const rows = await db.findMany(curatedFeedTokensTable, {
 		where: { feed_id: feedId, revoked_at: null },
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(CuratedFeedTokenSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 /**
@@ -102,7 +93,7 @@ export async function listActiveCuratedFeedTokens(
  */
 export async function revokeCuratedFeedToken(token: string): Promise<boolean> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		curatedFeedTokensTable,
 		{ revoked_at: now },
 		{ where: { token, revoked_at: null } },
@@ -116,7 +107,7 @@ export async function revokeCuratedFeedToken(token: string): Promise<boolean> {
  */
 export async function touchCuratedFeedToken(token: string): Promise<void> {
 	const now = Math.floor(Date.now() / 1000)
-	await dataTableDb.updateMany(
+	await db.updateMany(
 		curatedFeedTokensTable,
 		{ last_used_at: now },
 		{ where: { token } },
@@ -130,7 +121,7 @@ export async function updateCuratedFeedTokenLabel(
 	token: string,
 	label: string,
 ): Promise<boolean> {
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		curatedFeedTokensTable,
 		{ label },
 		{ where: { token } },
@@ -142,7 +133,7 @@ export async function updateCuratedFeedTokenLabel(
  * Permanently delete a token.
  */
 export async function deleteCuratedFeedToken(token: string): Promise<boolean> {
-	return dataTableDb.delete(curatedFeedTokensTable, token)
+	return db.delete(curatedFeedTokensTable, token)
 }
 
 /**
@@ -152,7 +143,7 @@ export async function revokeAllCuratedFeedTokens(
 	feedId: string,
 ): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = await dataTableDb.updateMany(
+	const result = await db.updateMany(
 		curatedFeedTokensTable,
 		{ revoked_at: now },
 		{ where: { feed_id: feedId, revoked_at: null } },

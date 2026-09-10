@@ -1,11 +1,8 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { dataTableDb, directoryFeedsTable } from './data-table.ts'
-import { parseRow, parseRows } from './sql.ts'
-import {
-	type DirectoryFeed,
-	DirectoryFeedSchema,
-	type SortOrder,
-} from './types.ts'
+import { db } from './index.ts'
+import { toCamelCaseRow, toCamelCaseRows } from './rows.ts'
+import { directoryFeedsTable } from './schema.ts'
+import { type DirectoryFeed, type SortOrder } from './types.ts'
 
 export type CreateDirectoryFeedData = {
 	name: string
@@ -34,49 +31,48 @@ export async function createDirectoryFeed(
 	const id = generateId()
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.create(directoryFeedsTable, {
-		id,
-		name: data.name,
-		description: data.description ?? '',
-		subtitle: data.subtitle ?? null,
-		directory_paths: JSON.stringify(data.directoryPaths),
-		sort_fields: data.sortFields ?? 'filename',
-		sort_order: data.sortOrder ?? 'asc',
-		author: data.author ?? null,
-		owner_name: data.ownerName ?? null,
-		owner_email: data.ownerEmail ?? null,
-		language: data.language ?? 'en',
-		explicit: data.explicit ?? 'no',
-		category: data.category ?? null,
-		link: data.link ?? null,
-		copyright: data.copyright ?? null,
-		feed_type: data.feedType ?? 'episodic',
-		filter_in: data.filterIn ?? null,
-		filter_out: data.filterOut ?? null,
-		overrides: data.overrides ?? null,
-		created_at: now,
-		updated_at: now,
-	})
-
-	const created = await dataTableDb.find(directoryFeedsTable, id)
-	if (!created) {
-		throw new Error(`Failed to create directory feed "${id}"`)
-	}
-	return parseRow(DirectoryFeedSchema, created)
+	const created = await db.create(
+		directoryFeedsTable,
+		{
+			id,
+			name: data.name,
+			description: data.description ?? '',
+			subtitle: data.subtitle ?? null,
+			directory_paths: JSON.stringify(data.directoryPaths),
+			sort_fields: data.sortFields ?? 'filename',
+			sort_order: data.sortOrder ?? 'asc',
+			author: data.author ?? null,
+			owner_name: data.ownerName ?? null,
+			owner_email: data.ownerEmail ?? null,
+			language: data.language ?? 'en',
+			explicit: data.explicit ?? 'no',
+			category: data.category ?? null,
+			link: data.link ?? null,
+			copyright: data.copyright ?? null,
+			feed_type: data.feedType ?? 'episodic',
+			filter_in: data.filterIn ?? null,
+			filter_out: data.filterOut ?? null,
+			overrides: data.overrides ?? null,
+			created_at: now,
+			updated_at: now,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(created)
 }
 
 export async function getDirectoryFeedById(
 	id: string,
 ): Promise<DirectoryFeed | undefined> {
-	const row = await dataTableDb.find(directoryFeedsTable, id)
-	return row ? parseRow(DirectoryFeedSchema, row) : undefined
+	const row = await db.find(directoryFeedsTable, id)
+	return row ? toCamelCaseRow(row) : undefined
 }
 
 export async function listDirectoryFeeds(): Promise<Array<DirectoryFeed>> {
-	const rows = await dataTableDb.findMany(directoryFeedsTable, {
+	const rows = await db.findMany(directoryFeedsTable, {
 		orderBy: [['created_at', 'desc']],
 	})
-	return parseRows(DirectoryFeedSchema, rows)
+	return toCamelCaseRows(rows)
 }
 
 export type UpdateDirectoryFeedData = {
@@ -109,7 +105,7 @@ export async function updateDirectoryFeed(
 
 	const now = Math.floor(Date.now() / 1000)
 
-	await dataTableDb.update(directoryFeedsTable, id, {
+	const updated = await db.update(directoryFeedsTable, id, {
 		name: data.name ?? existing.name,
 		description: data.description ?? existing.description,
 		subtitle: data.subtitle !== undefined ? data.subtitle : existing.subtitle,
@@ -138,12 +134,11 @@ export async function updateDirectoryFeed(
 		updated_at: now,
 	})
 
-	const updated = await dataTableDb.find(directoryFeedsTable, id)
-	return updated ? parseRow(DirectoryFeedSchema, updated) : undefined
+	return toCamelCaseRow(updated)
 }
 
 export async function deleteDirectoryFeed(id: string): Promise<boolean> {
-	return dataTableDb.delete(directoryFeedsTable, id)
+	return db.delete(directoryFeedsTable, id)
 }
 
 /**

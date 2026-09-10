@@ -1,9 +1,4 @@
-import {
-	addEventListeners,
-	type Handle,
-	type RemixNode,
-	TypedEventTarget,
-} from 'remix/ui'
+import { type Handle, type RemixNode, TypedEventTarget } from 'remix/ui'
 import {
 	getRelativeHref,
 	isRouterOwnedPath,
@@ -302,7 +297,6 @@ export const router = new RouterState()
 export function RouterOutlet(
 	handle: Handle<{ url: string; loaderData: AdminRouteLoaderData }>,
 ) {
-	let ready = true
 	const initialUrl = new URL(handle.props.url)
 	const initialMatch = router.matchPath(initialUrl.pathname)
 	if (isBrowser()) {
@@ -310,26 +304,15 @@ export function RouterOutlet(
 		router.start()
 		handle.queueTask(async () => {
 			await router.syncToCurrentLocation(false)
-			ready = true
 			handle.update()
 		})
 	}
 
-	// Subscribe to navigation events
-	addEventListeners(router, handle.signal, {
-		navigate: () => {
-			void handle.update()
-		},
+	router.addEventListener('navigate', () => handle.update(), {
+		signal: handle.signal,
 	})
 
 	return () => {
-		if (!ready) {
-			return (
-				<div aria-busy="true" data-admin-route-placeholder="">
-					Loading admin route...
-				</div>
-			)
-		}
 		const result = isBrowser() ? router.match() : initialMatch
 		if (!result) {
 			return <div>404 - Not Found</div>

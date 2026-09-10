@@ -26,8 +26,6 @@ import {
 	type AdminRouteLoaderData,
 } from './loader-data.ts'
 
-export const ADMIN_APP_ENTRY_ID = '/app/client/admin/entry.tsx#AdminApp'
-
 type AdminAppProps = {
 	[key: string]: SerializableValue
 	url: string
@@ -159,7 +157,7 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 					]}
 				>
 					<img
-						src="/assets/logo.svg"
+						src="/logo.svg"
 						alt="MediaRSS"
 						mix={[
 							rmxCss({
@@ -217,7 +215,7 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 }
 
 export const AdminApp = clientEntry(
-	ADMIN_APP_ENTRY_ID,
+	import.meta.url,
 	function AdminApp(handle: Handle<AdminAppProps>): () => RemixNode {
 		return () => (
 			<AdminShell

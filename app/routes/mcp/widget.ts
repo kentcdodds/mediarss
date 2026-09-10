@@ -83,7 +83,7 @@ export default {
 		// Generate the HTML widget shell
 		// Note: Media data is passed via MCP-UI initial-render-data protocol when accessed
 		// through ChatGPT. Direct browser access will show a loading state.
-		const html = generateMediaWidgetHtml({ baseUrl })
+		const html = await generateMediaWidgetHtml({ baseUrl })
 
 		return new Response(html, {
 			headers: {

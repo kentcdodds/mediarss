@@ -276,9 +276,20 @@ full examples.
 - `remix/node-fetch-server` — adapter from Node's `http` module to a Fetch-style
   router. Use for `createRequestListener` in `server.ts`
 - `remix/assets` — browser asset server. Use for `createAssetServer` when
-  serving compiled scripts and styles, getting public hrefs, and emitting
-  preloads. Shared compiler options such as `target`, `sourceMaps`,
-  `sourceMapSourcePaths`, and `minify` live at the top level
+  serving compiled scripts and styles and for `getScriptEntry()` (href, import
+  map, preloads). Configure it in `remix.json` and load with `loadConfig()` from
+  `remix/cli`; use `fingerprint: true` in production. Shared compiler options
+  such as `target`, `sourceMaps`, `sourceMapSourcePaths`, and `minify` live at
+  the top level
+- `remix/middleware/render` — conventional Remix UI `render({ assets })`
+  middleware that adds `context.render(node)` with client entry and import map
+  integration
+- `remix/node-tsx` — Node loader for `.ts`/`.tsx`
+  (`node --import remix/node-tsx index.ts`), and `remix/node-hmr` — dev
+  supervisor with server HMR (`run(entry, { nodeArgs })`, `emitServerReady()`)
+- `remix/multiple-import-maps-polyfill` — `importModule()`, `preloadShim()`, and
+  `detectMultipleImportMapSupport()` for client entries when import maps are
+  added at runtime (HMR, frames)
 - `remix/headers` — typed header parsers and builders. Use when reading
   `Accept`, `Cookie`, or setting `CacheControl`, `Vary`, etc., instead of
   hand-formatting strings
@@ -340,7 +351,8 @@ full examples.
   non-sensitive preferences where the client is allowed to control the value
   (theme, locale, dismissed banner). For state where tampering matters, prefer
   `remix/session`
-- `remix/auth` — credentials, OAuth, OIDC, and Atmosphere providers. Use to
+- `remix/auth` — credentials, OAuth, and OIDC providers (`OAuthTokens`,
+  `createOAuthProvider()`; the Atmosphere provider was removed in rc.1). Use to
   define how identity is verified, start/finish external login, and refresh
   stored OAuth/OIDC token bundles with `refreshExternalAuth(...)`
 - `remix/auth-middleware` — `auth({ schemes })`, `requireAuth`, the `Auth`
@@ -352,8 +364,9 @@ full examples.
 - `remix/ui` — the component runtime: components, core mixins, `clientEntry`,
   `run`, `<Frame>`, navigation helpers, and `createRoot`. Use for app UI
   behavior
-- `remix/ui/server` — server rendering: `renderToStream`, `renderToString`. Use
-  in the `render(...)` helper that returns HTML responses
+- `remix/ui/server` — server rendering: `renderToStream`, `renderToString`, and
+  `<ImportMap>`. Prefer `remix/middleware/render` over a hand-rolled
+  `render(...)` helper; use these directly only for custom pipelines
 - `remix/ui/animation` — animation APIs: `animateEntrance`, `animateExit`,
   `animateLayout`, `spring`, `tween`, and `easings`
 - `remix/ui/<primitive>` — UI primitives, mixins, glyphs, and theme helpers.

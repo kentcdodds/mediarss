@@ -8,14 +8,11 @@
  * from ChatGPT via postMessage, rather than embedding data inline.
  */
 
+import { createHash } from 'node:crypto'
 import { createUIResource, type UIResource } from '@mcp-ui/server'
+import { type ScriptEntry } from 'remix/assets'
 import { html } from 'remix/html-template'
-import { baseImportMap } from '#app/config/import-map.ts'
-import {
-	getBundleVersion,
-	versionedImportMap,
-	versionedUrl,
-} from '#app/helpers/bundle-version.ts'
+import { MEDIA_WIDGET_ENTRY, getScriptEntry } from '#app/assets.ts'
 
 /**
  * Media data structure for the widget.
@@ -63,44 +60,77 @@ function escapeJsonForScript(data: unknown): string {
 }
 
 /**
+ * The widget document is served from ChatGPT's sandboxed origin, so every
+ * module URL (entry, preloads, and import map keys/values) must be absolute.
+ */
+function toAbsoluteScriptEntry(
+	entry: ScriptEntry,
+	baseUrl: string,
+): ScriptEntry {
+	const absolute = (url: string) => new URL(url, baseUrl).href
+	// Bare specifiers (e.g. `remix/ui`) stay as-is; URL-like keys are resolved
+	// against the server origin because the browser resolves import map keys
+	// relative to the embedding document, not the module server.
+	const absoluteSpecifier = (specifier: string) =>
+		specifier.startsWith('/') || specifier.startsWith('.')
+			? absolute(specifier)
+			: specifier
+	const absoluteMappings = (mappings: Record<string, string>) =>
+		Object.fromEntries(
+			Object.entries(mappings).map(([specifier, url]) => [
+				absoluteSpecifier(specifier),
+				absolute(url),
+			]),
+		)
+
+	return {
+		href: absolute(entry.href),
+		preloads: entry.preloads.map(absolute),
+		importMap: {
+			imports: absoluteMappings(entry.importMap.imports),
+			...(entry.importMap.scopes
+				? {
+						scopes: Object.fromEntries(
+							Object.entries(entry.importMap.scopes).map(
+								([scope, mappings]) => [
+									absolute(scope),
+									absoluteMappings(mappings),
+								],
+							),
+						),
+					}
+				: {}),
+		},
+	}
+}
+
+/**
  * Generate the raw HTML string for the media player widget.
  *
  * This creates a minimal HTML document that:
  * 1. Includes all necessary styles inline
  * 2. Includes the import map for module resolution
- * 3. Loads the widget script bundle
+ * 3. Loads the widget script entry
  *
  * The widget receives its data via the MCP-UI initial-render-data protocol,
  * NOT embedded inline. This is the correct pattern for ChatGPT Apps SDK.
  */
-export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
+export async function generateMediaWidgetHtml(
+	options: MediaWidgetOptions,
+): Promise<string> {
 	const { baseUrl } = options
 
-	// Get versioned import map with cache-busting query params
-	const versionedImports = versionedImportMap(baseImportMap)
+	const { href, importMap, preloads } = toAbsoluteScriptEntry(
+		await getScriptEntry(MEDIA_WIDGET_ENTRY),
+		baseUrl,
+	)
 
-	// The widget entry script URL with cache-busting version
-	const widgetScript = `${baseUrl}${versionedUrl('/app/client/widgets/media-player.tsx')}`
-
-	// Build absolute import map URLs (versioned URLs already include query params)
-	const absoluteImportmap = {
-		imports: Object.fromEntries(
-			Object.entries(versionedImports).map(([key, value]) => [
-				key,
-				`${baseUrl}${value}`,
-			]),
-		),
-	}
-
-	// Generate module preload links with properly escaped URLs
-	const escapeHtmlAttr = (str: string) =>
-		str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-	const modulePreloads = Object.values(absoluteImportmap.imports)
-		.map((url) => `<link rel="modulepreload" href="${escapeHtmlAttr(url)}" />`)
-		.join('\n\t\t\t')
+	const modulePreloads = preloads.map(
+		(url) => html`<link rel="modulepreload" href="${url}" />`,
+	)
 
 	// Apply XSS escaping to import map JSON for safe embedding in script context
-	const importmapJson = escapeJsonForScript(absoluteImportmap)
+	const importmapJson = escapeJsonForScript(importMap)
 
 	return html`<!doctype html>
 		<html lang="en">
@@ -112,7 +142,7 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 				${html.raw`<script type="importmap">
 					${importmapJson}
 				</script>`}
-				${html.raw`${modulePreloads}`}
+				${modulePreloads}
 				<style>
 					/* Reset and base styles */
 					*,
@@ -168,7 +198,7 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 			</head>
 			<body>
 				<div id="root"></div>
-				<script type="module" src="${widgetScript}"></script>
+				<script type="module" src="${href}"></script>
 			</body>
 		</html>`.toString()
 }
@@ -176,10 +206,15 @@ export function generateMediaWidgetHtml(options: MediaWidgetOptions): string {
 /**
  * Get the MCP-UI widget URI for a media player.
  * Uses the `ui://` scheme required by ChatGPT's Apps SDK.
- * The version is automatically derived from the bundle version for cache busting.
+ * The version is derived from the fingerprinted widget module graph so the
+ * URI changes whenever the widget code (or its dependencies) change.
  */
-export function getMediaWidgetUIUri(): `ui://${string}` {
-	const version = getBundleVersion()
+export async function getMediaWidgetUIUri(): Promise<`ui://${string}`> {
+	const scriptEntry = await getScriptEntry(MEDIA_WIDGET_ENTRY)
+	const version = createHash('sha256')
+		.update(JSON.stringify(scriptEntry))
+		.digest('hex')
+		.slice(0, 8)
 	return `ui://widget/media-player-${version}.html`
 }
 
@@ -241,13 +276,16 @@ function resolveMediaUrls(
  * @param options - Options for creating the resource
  * @returns A UIResource that can be returned in tool results
  */
-export function createMediaWidgetResource(
+export async function createMediaWidgetResource(
 	options: CreateMediaWidgetResourceOptions,
-): UIResource {
+): Promise<UIResource> {
 	const { baseUrl, media, description } = options
 
 	// Generate the minimal HTML shell (no embedded data)
-	const htmlString = generateMediaWidgetHtml({ baseUrl })
+	const [htmlString, uri] = await Promise.all([
+		generateMediaWidgetHtml({ baseUrl }),
+		getMediaWidgetUIUri(),
+	])
 
 	// Resolve relative URLs to absolute URLs for the widget
 	const resolvedMedia = resolveMediaUrls(media, baseUrl)
@@ -256,7 +294,7 @@ export function createMediaWidgetResource(
 	const cspOrigin = new URL(baseUrl).origin
 
 	return createUIResource({
-		uri: getMediaWidgetUIUri(),
+		uri,
 		content: {
 			type: 'rawHtml',
 			htmlString,
@@ -291,12 +329,12 @@ export function createMediaWidgetResource(
  * OpenAI tool metadata for the get_media_widget tool.
  * These are added to the tool's _meta field.
  */
-export function getMediaWidgetToolMeta(
+export async function getMediaWidgetToolMeta(
 	baseUrl: string,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
 	return {
 		'openai/widgetDomain': baseUrl,
-		'openai/outputTemplate': getMediaWidgetUIUri(),
+		'openai/outputTemplate': await getMediaWidgetUIUri(),
 		'openai/toolInvocation/invoking': 'Loading media player...',
 		'openai/toolInvocation/invoked': 'Media player ready',
 		'openai/resultCanProduceWidget': true,

@@ -1,9 +1,9 @@
 import { type Action, type RequestContext } from 'remix/router'
 import { html } from 'remix/html-template'
-import { Layout } from '#app/components/layout.tsx'
+import { createHtmlResponse } from 'remix/response/html'
+import { renderLayout } from '#app/components/layout.ts'
 import type routes from '#app/config/routes.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
-import { render } from '#app/helpers/render.ts'
 import {
 	clientSupportsGrantType,
 	createAuthorizationCode,
@@ -34,11 +34,10 @@ function parseAuthorizeParams(url: URL): AuthorizeParams {
 	}
 }
 
-function renderError(title: string, message: string): Response {
-	return render(
-		Layout({
+async function renderError(title: string, message: string): Promise<Response> {
+	return createHtmlResponse(
+		await renderLayout({
 			title: 'Authorization Error',
-			entryScript: false,
 			children: html`
 				<main
 					style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: system-ui, sans-serif;"
@@ -55,10 +54,10 @@ function renderError(title: string, message: string): Response {
 	)
 }
 
-function renderAuthorizePage(
+async function renderAuthorizePage(
 	params: AuthorizeParams,
 	clientName: string,
-): Response {
+): Promise<Response> {
 	// Build form action URL with all params
 	const formAction = `/admin/authorize?${new URLSearchParams({
 		response_type: params.response_type,
@@ -70,10 +69,9 @@ function renderAuthorizePage(
 		code_challenge_method: params.code_challenge_method,
 	}).toString()}`
 
-	return render(
-		Layout({
+	return createHtmlResponse(
+		await renderLayout({
 			title: 'Authorize Application',
-			entryScript: false,
 			children: html`
 				<main
 					style="max-width: 500px; margin: 80px auto; padding: 32px; font-family: system-ui, sans-serif; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.1);"

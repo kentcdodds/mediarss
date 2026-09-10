@@ -306,6 +306,22 @@ router.get(routes.search, searchAction)
 router.post(routes.logout, logoutAction)
 ```
 
+### Method matching, `HEAD`, and `405`
+
+Prefer method-specific route definitions (`{ method: 'GET', pattern }`, or the
+`get()`/`post()` builders) over bare string patterns, which match `ANY` method:
+
+- `GET` routes serve `HEAD` automatically with the same status and headers and
+  an empty body, so public feeds and media endpoints need no explicit `HEAD`
+  shim.
+- A URL that matches a pattern but not the request method returns
+  `405 Method Not Allowed` with an `Allow` header listing the registered methods
+  (`Allow: GET, HEAD` for a `GET` route). Requests only fall through to
+  `defaultHandler` (404) when no pattern matches.
+- Register an `ANY` route (a bare string pattern) when one handler must see
+  every method for a URL — for example a CORS-enabled endpoint that must answer
+  `OPTIONS` preflight itself and return its own `405` for other methods.
+
 ## Typed Context
 
 Define an `AppContext` type from your middleware stack for use in actions and

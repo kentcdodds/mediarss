@@ -1,7 +1,9 @@
 import path from 'node:path'
-import { createRouter, type Middleware } from 'remix/router'
 import { html } from 'remix/html-template'
-import { Layout } from '#app/components/layout.tsx'
+import { createHtmlResponse } from 'remix/response/html'
+import { createRouter, type Middleware } from 'remix/router'
+import { ASSETS_BASE_PATH, assets } from '#app/assets.ts'
+import { renderLayout } from '#app/components/layout.ts'
 import routes, {
 	adminApiRoutes,
 	adminRoutes,
@@ -9,7 +11,6 @@ import routes, {
 	oauthRoutes,
 } from '#app/config/routes.ts'
 import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
-import { render } from '#app/helpers/render.ts'
 import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'
 import adminApiArtworkHandlers from '#app/routes/admin/api/artwork.ts'
@@ -48,7 +49,7 @@ import oauthServerMetadataHandlers from '#app/routes/oauth/server-metadata.ts'
 import oauthTokenHandlers from '#app/routes/oauth/token.ts'
 
 /**
- * CORS headers for static files.
+ * CORS headers for static files and browser modules.
  * These need to be accessible cross-origin for MCP widgets embedded in external apps.
  */
 const STATIC_CORS_HEADERS = {
@@ -57,22 +58,52 @@ const STATIC_CORS_HEADERS = {
 	'Access-Control-Allow-Headers': 'Accept, Content-Type',
 } as const
 
+function withCorsHeaders(response: Response) {
+	for (const [key, value] of Object.entries(STATIC_CORS_HEADERS)) {
+		response.headers.set(key, value)
+	}
+	return response
+}
+
+/**
+ * Serves compiled browser modules and stylesheets from `remix/assets` with CORS
+ * headers so MCP widgets can load them from ChatGPT's sandboxed origin.
+ */
+function assetFiles(): Middleware {
+	return async (context, next) => {
+		if (!context.url.pathname.startsWith(`${ASSETS_BASE_PATH}/`)) {
+			return next()
+		}
+
+		if (context.method === 'OPTIONS') {
+			return new Response(null, {
+				status: 204,
+				headers: {
+					...STATIC_CORS_HEADERS,
+					'Access-Control-Max-Age': '86400',
+				},
+			})
+		}
+
+		const response = await assets.fetch(context.request)
+		return response ? withCorsHeaders(response) : next()
+	}
+}
+
 /**
  * Static file middleware with CORS support for embedded widgets.
  */
 function staticFiles(
 	root: string,
-	options: { filter?: (path: string) => boolean; cacheControl?: string },
+	options: { cacheControl: string },
 ): Middleware {
 	const absoluteRoot = path.resolve(root)
 	return async (context, next) => {
+		const relativePath = context.url.pathname.replace(/^\/+/, '')
+		const filePath = path.join(absoluteRoot, relativePath)
+
 		// Handle CORS preflight requests
 		if (context.method === 'OPTIONS') {
-			const relativePath = context.url.pathname.replace(/^\/+/, '')
-			if (options.filter && !options.filter(relativePath)) {
-				return next()
-			}
-			const filePath = path.join(absoluteRoot, relativePath)
 			if (!(await fileExists(filePath))) {
 				return next()
 			}
@@ -88,21 +119,10 @@ function staticFiles(
 		if (context.method !== 'GET' && context.method !== 'HEAD') {
 			return next()
 		}
-		const relativePath = context.url.pathname.replace(/^\/+/, '')
-		if (options.filter && !options.filter(relativePath)) {
-			return next()
-		}
-		const filePath = path.join(absoluteRoot, relativePath)
 		const response = await getFileResponse(filePath, context.request, {
 			cacheControl: options.cacheControl,
 		})
-		if (!response) {
-			return next()
-		}
-		for (const [key, value] of Object.entries(STATIC_CORS_HEADERS)) {
-			response.headers.set(key, value)
-		}
-		return response
+		return response ? withCorsHeaders(response) : next()
 	}
 }
 
@@ -115,19 +135,12 @@ const router = createRouter({
 					? 'public, max-age=31536000, immutable'
 					: 'no-cache',
 		}),
-		staticFiles('./app', {
-			filter: (p) => p.startsWith('assets/'),
-			cacheControl:
-				process.env.NODE_ENV === 'production'
-					? 'public, max-age=31536000, immutable'
-					: 'no-cache',
-		}),
+		assetFiles(),
 		logger(),
 	],
-	defaultHandler() {
-		return render(
-			Layout({
-				entryScript: false,
+	async defaultHandler() {
+		return createHtmlResponse(
+			await renderLayout({
 				children: html`<main><h1>404 Not Found</h1></main>`,
 			}),
 			{ status: 404 },

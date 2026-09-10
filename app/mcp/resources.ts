@@ -370,7 +370,7 @@ export async function initializeResources(
 
 				// Generate the HTML widget (minimal shell - data comes via MCP-UI protocol)
 				// Note: This resource is intended for MCP-UI clients that provide initial-render-data
-				const widgetHtml = generateMediaWidgetHtml({
+				const widgetHtml = await generateMediaWidgetHtml({
 					baseUrl,
 				})
 
@@ -388,13 +388,13 @@ export async function initializeResources(
 
 		// Media widget template resource for ChatGPT Apps SDK
 		// This is a template resource that ChatGPT uses to render widgets
-		const widgetUri = getMediaWidgetUIUri()
+		const widgetUri = await getMediaWidgetUIUri()
 		// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
 		const cspOrigin = new URL(baseUrl).origin
 
 		// Pre-generate the placeholder HTML for the template
 		// The widget receives actual data via MCP-UI initial-render-data protocol
-		const placeholderHtml = generateMediaWidgetHtml({ baseUrl })
+		const placeholderHtml = await generateMediaWidgetHtml({ baseUrl })
 
 		// Pre-create the UIResource with Apps SDK adapter enabled
 		const templateUiResource = createUIResource({

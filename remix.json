@@ -1,0 +1,21 @@
+{
+	"$schema": "./node_modules/remix/schema/remix.json",
+	"assets": {
+		"rootDir": ".",
+		"basePath": "/assets",
+		"allowFiles": [
+			"app/assets/styles.css",
+			"app/client/**",
+			"app/components/modal.tsx",
+			"app/components/props-component.ts",
+			"app/components/search-input.tsx",
+			"app/config/routes.ts",
+			"app/helpers/feed-list-sort.ts",
+			"app/helpers/format.ts",
+			"app/helpers/media-list-sort.ts",
+			"app/styles/**"
+		],
+		"allowPackages": ["match-sorter", "remix"],
+		"denyFiles": ["app/**/*.test.*"]
+	}
+}

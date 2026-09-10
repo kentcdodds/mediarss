@@ -11,12 +11,12 @@
     "#test/*": "./test/*"
   },
   "scripts": {
-    "dev": "NODE_ENV=development node --import ./server/register-hooks.mjs --watch index.ts",
-    "dev:test": "DATABASE_PATH=./data/test.db CACHE_DATABASE_PATH=./data/test-cache.db MEDIA_PATHS=audio:./local-test/1/audio NODE_ENV=development node --import ./server/register-hooks.mjs --watch index.ts",
-    "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development node --import ./server/register-hooks.mjs --watch index.ts",
+    "dev": "NODE_ENV=development node server/dev.ts",
+    "dev:test": "DATABASE_PATH=./data/test.db CACHE_DATABASE_PATH=./data/test-cache.db MEDIA_PATHS=audio:./local-test/1/audio NODE_ENV=development node server/dev.ts",
+    "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development node server/dev.ts",
     "test": "vitest run ./app --maxWorkers=1",
     "test:playwright": "playwright test -c playwright-config.ts",
-    "start": "NODE_ENV=production node --import ./server/register-hooks.mjs index.ts",
+    "start": "NODE_ENV=production node --import remix/node-tsx index.ts",
     "typecheck": "tsc --noEmit",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
@@ -44,14 +44,13 @@
     "@mcp-ui/server": "^6.1.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "close-with-grace": "^2.5.0",
-    "esbuild": "^0.28.0",
     "fast-sort": "^3.4.1",
     "get-port": "^7.2.0",
     "jose": "^6.2.3",
     "match-sorter": "^8.3.0",
     "music-metadata": "^11.12.3",
     "p-limit": "^7.3.0",
-    "remix": "3.0.0-beta.10",
+    "remix": "3.0.0-rc.2",
     "sharp": "^0.34.5",
     "zod": "^4.4.1"
   }

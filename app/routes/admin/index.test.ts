@@ -19,8 +19,11 @@ test('admin routes return server-rendered hydrated shell', async () => {
 	expect(body).toContain('MediaRSS')
 	expect(body).toContain('Your Feeds')
 	expect(body).not.toContain('data-admin-route-placeholder')
-	expect(body).toContain('/app/client/admin/entry.tsx')
-	expect(body).toContain('<style data-rmx=')
+	expect(body).toContain('<script data-rmx-import-map type="importmap">')
+	expect(body).toMatch(
+		/<script type="module" src="\/assets\/app\/client\/admin\/entry\.[^"]*tsx">/,
+	)
+	expect(body).toContain('<style data-rmx-style=')
 	expect(body).not.toContain('<div id="root"><head>')
 })
 
@@ -68,6 +71,8 @@ test.each([
 	const body = await response.text()
 
 	expect(response.status).toBe(200)
-	expect(body).toContain('/app/client/admin/entry.tsx')
+	expect(body).toMatch(
+		/<script type="module" src="\/assets\/app\/client\/admin\/entry\.[^"]*tsx">/,
+	)
 	expect(body).not.toContain('data-admin-route-placeholder')
 })

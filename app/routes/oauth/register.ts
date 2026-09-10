@@ -203,7 +203,7 @@ async function handlePost(context: RequestContext): Promise<Response> {
 
 	// Create the client
 	const clientName = validated.client_name ?? `Dynamic Client ${Date.now()}`
-	const client = createClient(clientName, validated.redirect_uris)
+	const client = await createClient(clientName, validated.redirect_uris)
 
 	// Build response per RFC 7591
 	const response: ClientRegistrationResponse = {

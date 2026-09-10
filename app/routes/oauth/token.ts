@@ -191,7 +191,7 @@ async function handleAuthorizationCode(
 	// Get the authorization code WITHOUT consuming it first
 	// This prevents an attacker from invalidating a legitimate code by submitting
 	// it with wrong parameters (client_id, redirect_uri, or PKCE verifier)
-	const authCode = getValidAuthorizationCode(tokenRequest.code)
+	const authCode = await getValidAuthorizationCode(tokenRequest.code)
 	if (!authCode) {
 		return errorResponse(
 			'invalid_grant',
@@ -227,7 +227,7 @@ async function handleAuthorizationCode(
 		return errorResponse('invalid_grant', 'PKCE verification failed.')
 	}
 
-	const consumedCode = consumeAuthorizationCode(tokenRequest.code)
+	const consumedCode = await consumeAuthorizationCode(tokenRequest.code)
 	if (!consumedCode) {
 		return errorResponse(
 			'invalid_grant',
@@ -242,7 +242,7 @@ async function handleAuthorizationCode(
 
 	const issuer = getOrigin(context.request, context.url)
 	const refresh = clientSupportsGrantType(client, 'refresh_token')
-		? createRefreshToken({
+		? await createRefreshToken({
 				clientId: authCode.clientId,
 				scope: authCode.scope,
 			})
@@ -293,7 +293,7 @@ async function handleRefreshToken(
 		)
 	}
 
-	const existing = getRefreshToken(tokenRequest.refresh_token)
+	const existing = await getRefreshToken(tokenRequest.refresh_token)
 	const now = Math.floor(Date.now() / 1000)
 	if (!existing) {
 		return errorResponse(
@@ -304,7 +304,7 @@ async function handleRefreshToken(
 	if (existing.usedAt !== null) {
 		// Replay detection must run even after the used token expires, so a
 		// later valid descendant in the same family is still revoked.
-		consumeRefreshToken(tokenRequest.refresh_token)
+		await consumeRefreshToken(tokenRequest.refresh_token)
 		return errorResponse(
 			'invalid_grant',
 			'Refresh token is invalid, expired, or has already been used.',
@@ -336,7 +336,7 @@ async function handleRefreshToken(
 		return hostError
 	}
 
-	const consumed = consumeRefreshToken(tokenRequest.refresh_token)
+	const consumed = await consumeRefreshToken(tokenRequest.refresh_token)
 	if (!consumed) {
 		return errorResponse(
 			'invalid_grant',
@@ -345,7 +345,7 @@ async function handleRefreshToken(
 	}
 
 	const scope = tokenRequest.scope || consumed.scope
-	const rotated = rotateRefreshToken({
+	const rotated = await rotateRefreshToken({
 		...consumed,
 		scope,
 	})

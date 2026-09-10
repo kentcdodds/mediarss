@@ -1,3 +1,4 @@
+import { inList, or, sql } from 'remix/data-table'
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
@@ -9,15 +10,23 @@ import {
 	getMediaTopClientAnalytics,
 } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
-import { sql } from '#app/db/sql.ts'
+import { selectAll } from '#app/db/rows.ts'
+import {
+	curatedFeedsTable,
+	curatedFeedTokensTable,
+	directoryFeedsTable,
+	directoryFeedTokensTable,
+} from '#app/db/schema.ts'
 import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
 import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 
 type FeedType = 'directory' | 'curated'
-type TokenTableName = 'directory_feed_tokens' | 'curated_feed_tokens'
-type FeedTableName = 'directory_feeds' | 'curated_feeds'
+type TokensTable =
+	| typeof directoryFeedTokensTable
+	| typeof curatedFeedTokensTable
+type FeedsTable = typeof directoryFeedsTable | typeof curatedFeedsTable
 const DEFAULT_MAX_SQLITE_VARIABLE_NUMBER = 999
 const SQLITE_MAX_VARIABLE_NUMBER_COMPILE_OPTION_PREFIX = 'MAX_VARIABLE_NUMBER='
 const SQLITE_MAX_VARIABLE_NUMBER_ENV =
@@ -43,15 +52,16 @@ function parsePositiveInteger(value: string | undefined): number | null {
 	return parsed
 }
 
-function getCompiledMaxSqliteVariableNumber(): number {
+async function getCompiledMaxSqliteVariableNumber(): Promise<number> {
 	if (cachedCompiledMaxSqliteVariableNumber !== null) {
 		return cachedCompiledMaxSqliteVariableNumber
 	}
 
 	try {
-		const options = db
-			.query<{ compile_options: string }, []>(sql`PRAGMA compile_options;`)
-			.all()
+		const options = await selectAll<{ compile_options: string }>(
+			db,
+			sql`PRAGMA compile_options;`,
+		)
 		const matchingOption = options
 			.map((option) => option.compile_options)
 			.find((option) =>
@@ -71,25 +81,25 @@ function getCompiledMaxSqliteVariableNumber(): number {
 	return cachedCompiledMaxSqliteVariableNumber
 }
 
-function getMaxSqliteVariableNumber(): number {
+async function getMaxSqliteVariableNumber(): Promise<number> {
 	const configuredLimit = parsePositiveInteger(
 		process.env[SQLITE_MAX_VARIABLE_NUMBER_ENV],
 	)
-	const compiledLimit = getCompiledMaxSqliteVariableNumber()
+	const compiledLimit = await getCompiledMaxSqliteVariableNumber()
 	if (configuredLimit === null) return compiledLimit
 	return Math.min(configuredLimit, compiledLimit)
 }
 
-function listTokenMetadataByFeedTokensFromTable(
-	tableName: TokenTableName,
+async function listTokenMetadataByFeedTokensFromTable(
+	table: TokensTable,
 	feedType: FeedType,
 	feedTokens: Array<FeedToken>,
-): Map<string, TokenMetadata> {
+): Promise<Map<string, TokenMetadata>> {
 	if (feedTokens.length === 0) {
 		return new Map()
 	}
 
-	const maxSqliteVariables = getMaxSqliteVariableNumber()
+	const maxSqliteVariables = await getMaxSqliteVariableNumber()
 	const variablesPerToken = 2
 	const maxTokensPerBatch = Math.max(
 		1,
@@ -99,26 +109,14 @@ function listTokenMetadataByFeedTokensFromTable(
 
 	for (let start = 0; start < feedTokens.length; start += maxTokensPerBatch) {
 		const batch = feedTokens.slice(start, start + maxTokensPerBatch)
-		const placeholders = batch.map(() => '(?, ?)').join(', ')
-		const rows = db
-			.query<
-				{
-					token: string
-					feed_id: string
-					label: string
-					created_at: number
-					last_used_at: number | null
-					revoked_at: number | null
-				},
-				Array<string>
-			>(
-				sql`
-					SELECT token, feed_id, label, created_at, last_used_at, revoked_at
-					FROM ${tableName}
-					WHERE (feed_id, token) IN (${placeholders});
-				`,
-			)
-			.all(...batch.flatMap((feedToken) => [feedToken.feedId, feedToken.token]))
+		const rows = await db.findMany(table, {
+			where: or(
+				...batch.map((feedToken) => ({
+					feed_id: feedToken.feedId,
+					token: feedToken.token,
+				})),
+			),
+		})
 
 		for (const row of rows) {
 			tokenMetadataByKey.set(
@@ -139,30 +137,25 @@ function listTokenMetadataByFeedTokensFromTable(
 function listTokenMetadataByFeedTokens(
 	feedType: FeedType,
 	feedTokens: Array<FeedToken>,
-): Map<string, TokenMetadata> {
-	const tableName: TokenTableName =
-		feedType === 'directory' ? 'directory_feed_tokens' : 'curated_feed_tokens'
-	return listTokenMetadataByFeedTokensFromTable(tableName, feedType, feedTokens)
+): Promise<Map<string, TokenMetadata>> {
+	const table =
+		feedType === 'directory' ? directoryFeedTokensTable : curatedFeedTokensTable
+	return listTokenMetadataByFeedTokensFromTable(table, feedType, feedTokens)
 }
 
-function listFeedNamesByIds(
-	tableName: FeedTableName,
+async function listFeedNamesByIds(
+	table: FeedsTable,
 	feedIds: Array<string>,
-): Map<string, string> {
+): Promise<Map<string, string>> {
 	if (feedIds.length === 0) {
 		return new Map()
 	}
 
-	const placeholders = feedIds.map(() => '?').join(', ')
-	const rows = db
-		.query<{ id: string; name: string }, Array<string>>(
-			sql`
-				SELECT id, name
-				FROM ${tableName}
-				WHERE id IN (${placeholders});
-			`,
-		)
-		.all(...feedIds)
+	const rows = await db
+		.query(table)
+		.where(inList('id', feedIds))
+		.select({ id: table.id, name: table.name })
+		.all()
 
 	return new Map(rows.map((row) => [row.id, row.name]))
 }
@@ -212,27 +205,27 @@ export default {
 		const now = Math.floor(Date.now() / 1000)
 		const since = now - windowDays * 24 * 60 * 60
 
-		const summary = getMediaAnalyticsSummary(
+		const summary = await getMediaAnalyticsSummary(
 			parsed.rootName,
 			parsed.relativePath,
 			since,
 		)
-		const byToken = getMediaAnalyticsByToken(
+		const byToken = await getMediaAnalyticsByToken(
 			parsed.rootName,
 			parsed.relativePath,
 			since,
 		)
-		const byFeed = getMediaAnalyticsByFeed(
+		const byFeed = await getMediaAnalyticsByFeed(
 			parsed.rootName,
 			parsed.relativePath,
 			since,
 		)
-		const daily = getMediaDailyAnalytics(
+		const daily = await getMediaDailyAnalytics(
 			parsed.rootName,
 			parsed.relativePath,
 			since,
 		)
-		const topClients = getMediaTopClientAnalytics(
+		const topClients = await getMediaTopClientAnalytics(
 			parsed.rootName,
 			parsed.relativePath,
 			since,
@@ -272,12 +265,12 @@ export default {
 		const directoryFeedIdList = Array.from(directoryFeedIds)
 		const curatedFeedIdList = Array.from(curatedFeedIds)
 
-		const directoryFeedNameById = listFeedNamesByIds(
-			'directory_feeds',
+		const directoryFeedNameById = await listFeedNamesByIds(
+			directoryFeedsTable,
 			directoryFeedIdList,
 		)
-		const curatedFeedNameById = listFeedNamesByIds(
-			'curated_feeds',
+		const curatedFeedNameById = await listFeedNamesByIds(
+			curatedFeedsTable,
 			curatedFeedIdList,
 		)
 		const feedNameByKey = new Map<string, string>()
@@ -289,15 +282,13 @@ export default {
 		}
 
 		const tokenMetadataByKey = new Map<string, TokenMetadata>()
-		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedTokens(
-			'directory',
-			directoryFeedTokens,
+		for (const [tokenKey, tokenMetadata] of (
+			await listTokenMetadataByFeedTokens('directory', directoryFeedTokens)
 		).entries()) {
 			tokenMetadataByKey.set(tokenKey, tokenMetadata)
 		}
-		for (const [tokenKey, tokenMetadata] of listTokenMetadataByFeedTokens(
-			'curated',
-			curatedFeedTokens,
+		for (const [tokenKey, tokenMetadata] of (
+			await listTokenMetadataByFeedTokens('curated', curatedFeedTokens)
 		).entries()) {
 			tokenMetadataByKey.set(tokenKey, tokenMetadata)
 		}

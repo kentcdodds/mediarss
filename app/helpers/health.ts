@@ -49,9 +49,9 @@ export type HealthSnapshot = {
 	}
 }
 
-function checkDatabase(): HealthDatabaseStatus {
+async function checkDatabase(): Promise<HealthDatabaseStatus> {
 	try {
-		db.query('SELECT 1').get()
+		await db.exec('SELECT 1')
 		return { ok: true }
 	} catch (error) {
 		return {
@@ -110,7 +110,7 @@ async function probeCimd(url: string): Promise<HealthCimdProbe> {
 export async function getHealthSnapshot(url: URL): Promise<HealthSnapshot> {
 	const [versionInfo, database] = await Promise.all([
 		getVersionInfo(),
-		Promise.resolve(checkDatabase()),
+		checkDatabase(),
 	])
 	const commit = versionInfo.commit
 		? {

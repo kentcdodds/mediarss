@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
+import { sql } from 'remix/data-table'
 import { expect, test } from 'vitest'
 import { spyOn } from '#test/bun-test-compat.ts'
 import '#app/config/init-env.ts'
@@ -16,12 +17,12 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { addItemToFeed } from '#app/db/feed-items.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
+import { selectAll, selectOne } from '#app/db/rows.ts'
 import { setEnvVar, unsetEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import mediaHandler from './media.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type MediaActionContext = Parameters<typeof mediaHandler.handler>[0]
 type MinimalMediaActionContext = {
@@ -77,8 +78,8 @@ async function createDirectoryMediaAnalyticsTestContext() {
 		feed,
 		token: token.token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteDirectoryFeed(feed.id)
 
@@ -127,8 +128,8 @@ async function createCuratedMediaAnalyticsTestContext() {
 		feed,
 		token: token.token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteCuratedFeed(feed.id)
 
@@ -181,47 +182,45 @@ function createMediaActionContextWithoutPath(
 	})
 }
 
-function readLatestMediaEvent(feedId: string): LatestMediaEvent | null {
+async function readLatestMediaEvent(
+	feedId: string,
+): Promise<LatestMediaEvent | null> {
 	return (
-		db
-			.query<LatestMediaEvent, [string]>(
-				sql`
-				SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint, token, feed_type
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND event_type = 'media_request'
-				ORDER BY rowid DESC
-				LIMIT 1;
-			`,
-			)
-			.get(feedId) ?? null
-	)
-}
-
-function listMediaEvents(feedId: string): LatestMediaEvent[] {
-	return db
-		.query<LatestMediaEvent, [string]>(
+		(await selectOne<LatestMediaEvent>(
+			db,
 			sql`
 				SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint, token, feed_type
 				FROM feed_analytics_events
-				WHERE feed_id = ? AND event_type = 'media_request'
-				ORDER BY rowid ASC;
+				WHERE feed_id = ${feedId} AND event_type = 'media_request'
+				ORDER BY rowid DESC
+				LIMIT 1;
 			`,
-		)
-		.all(feedId)
+		)) ?? null
+	)
 }
 
-function countEventsForToken(token: string): number {
-	return (
-		db
-			.query<{ count: number }, [string]>(
-				sql`
-					SELECT COUNT(*) AS count
-					FROM feed_analytics_events
-					WHERE token = ?;
-				`,
-			)
-			.get(token)?.count ?? 0
+function listMediaEvents(feedId: string): Promise<LatestMediaEvent[]> {
+	return selectAll<LatestMediaEvent>(
+		db,
+		sql`
+			SELECT status_code, is_download_start, bytes_served, media_root, relative_path, client_name, client_fingerprint, token, feed_type
+			FROM feed_analytics_events
+			WHERE feed_id = ${feedId} AND event_type = 'media_request'
+			ORDER BY rowid ASC;
+		`,
 	)
+}
+
+async function countEventsForToken(token: string): Promise<number> {
+	const row = await selectOne<{ count: number }>(
+		db,
+		sql`
+			SELECT COUNT(*) AS count
+			FROM feed_analytics_events
+			WHERE token = ${token};
+		`,
+	)
+	return row?.count ?? 0
 }
 
 async function withAnalyticsTableUnavailable(
@@ -230,11 +229,15 @@ async function withAnalyticsTableUnavailable(
 	const backupTableName = `feed_analytics_events_backup_${Date.now()}_${Math.random()
 		.toString(36)
 		.slice(2)}`
-	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
+	await db.exec(
+		`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`,
+	)
 	try {
 		await run()
 	} finally {
-		db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+		await db.exec(
+			`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`,
+		)
 	}
 }
 
@@ -267,7 +270,7 @@ test('media route logs media_request analytics for full and ranged requests', as
 	)
 	expect(rangeFromStartResponse.status).toBe(206)
 
-	const events = listMediaEvents(ctx.feed.id)
+	const events = await listMediaEvents(ctx.feed.id)
 	expect(events).toHaveLength(3)
 
 	const hasFullStartEvent = events.some(
@@ -309,7 +312,7 @@ test('media route treats malformed range headers as download starts when serving
 	)
 	expect(response.status).toBe(200)
 
-	const event = readLatestMediaEvent(ctx.feed.id)
+	const event = await readLatestMediaEvent(ctx.feed.id)
 	expect(event).not.toBeNull()
 	expect(event).toMatchObject({
 		status_code: 200,
@@ -338,7 +341,7 @@ test('media route still serves files when analytics writes fail', async () => {
 		consoleErrorSpy.mockRestore()
 	}
 
-	expect(countEventsForToken(ctx.token)).toBe(0)
+	expect(await countEventsForToken(ctx.token)).toBe(0)
 })
 
 test('media route stores null client metadata when request lacks client traits', async () => {
@@ -350,7 +353,7 @@ test('media route stores null client metadata when request lacks client traits',
 	)
 	expect(response.status).toBe(200)
 
-	expect(readLatestMediaEvent(ctx.feed.id)).toMatchObject({
+	expect(await readLatestMediaEvent(ctx.feed.id)).toMatchObject({
 		client_name: null,
 		client_fingerprint: null,
 	})
@@ -364,21 +367,21 @@ test('media route rejects invalid access cases without logging analytics', async
 		createMediaActionContextWithoutPath(ctx.token),
 	)
 	expect(missingPathResponse.status).toBe(400)
-	expect(countEventsForToken(ctx.token)).toBe(0)
+	expect(await countEventsForToken(ctx.token)).toBe(0)
 
 	const missingToken = `missing-token-${Date.now()}`
 	const missingTokenResponse = await mediaHandler.handler(
 		createMediaActionContext(missingToken, pathParam),
 	)
 	expect(missingTokenResponse.status).toBe(404)
-	expect(countEventsForToken(missingToken)).toBe(0)
+	expect(await countEventsForToken(missingToken)).toBe(0)
 
 	expect(await revokeDirectoryFeedToken(ctx.token)).toBe(true)
 	const revokedTokenResponse = await mediaHandler.handler(
 		createMediaActionContext(ctx.token, pathParam),
 	)
 	expect(revokedTokenResponse.status).toBe(404)
-	expect(countEventsForToken(ctx.token)).toBe(0)
+	expect(await countEventsForToken(ctx.token)).toBe(0)
 })
 
 test('media route logs analytics for curated feed items and blocks non-feed files', async () => {
@@ -400,7 +403,7 @@ test('media route logs analytics for curated feed items and blocks non-feed file
 	)
 	expect(disallowedResponse.status).toBe(404)
 
-	const events = listMediaEvents(ctx.feed.id)
+	const events = await listMediaEvents(ctx.feed.id)
 	expect(events).toHaveLength(1)
 	expect(events[0]).toMatchObject({
 		feed_type: 'curated',

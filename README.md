@@ -33,6 +33,30 @@ Common commands:
 - `npm run format`
 - `npm run validate`
 
+### Database
+
+The data layer is `remix/data-table` on top of Node's built-in `node:sqlite`.
+Tables are declared in `app/db/schema.ts`, and the schema is managed by plain
+SQL migrations in `app/db/migrations/<YYYYMMDDHHmmss>_<slug>/{up,down}.sql`.
+
+The server applies pending migrations at startup (`app/db/migrate.ts`) before it
+accepts its first request, so deployments never need a separate migrate step.
+The same migrations can be driven from the CLI (configured in `remix.json`,
+`DATABASE_PATH` selects the file):
+
+```bash
+npx remix db status               # applied / pending / missing
+npx remix db migrate              # apply pending migrations
+npx remix db rollback             # revert the most recent migration (down.sql)
+npx remix db rollback --dry-run   # show what would be reverted
+npx remix db reset --force        # drop the file and re-run every migration
+```
+
+To add a migration, create a new directory under `app/db/migrations/` with an
+`up.sql` (and a `down.sql` when it is reversible) and update `app/db/schema.ts`
+to match. Applied migrations are journaled in the `data_table_migrations` table;
+the runner refuses to run if an applied migration's files have been edited.
+
 ## Screenshots
 
 ### Dashboard
@@ -366,6 +390,12 @@ The application stores persistent data in two locations:
 To ensure your data persists between container restarts and updates, you
 **must** mount volumes to both `/data` and `/app/data/artwork` as shown in the
 run command above.
+
+Schema migrations run automatically when the container starts, before it serves
+any requests. Databases created by earlier releases are adopted in place: the
+first start after upgrading records the current schema as the baseline migration
+and removes the old `schema_versions` bookkeeping table. No manual steps are
+needed, but taking a backup before upgrading is always a good idea.
 
 ### Backup and Restore
 

@@ -7,7 +7,7 @@ import { pruneFeedAnalyticsEvents } from '#app/db/feed-analytics-events.ts'
 import { warmMediaCache } from '#app/helpers/media.ts'
 import { createAdminRedirectResponse } from '#app/helpers/root-redirect.ts'
 import { db } from './app/db/index.ts'
-import { migrate } from './app/db/migrations.ts'
+import { migrateDatabase } from './app/db/migrate.ts'
 import { ensureDefaultClient } from './app/oauth/clients.ts'
 import { ensureSigningKey } from './app/oauth/keys.ts'
 import router from './app/router.tsx'
@@ -16,14 +16,14 @@ import { startNodeServer } from './server/node-server.ts'
 
 const env = getEnv()
 
-// Initialize database and run migrations
-migrate(db)
+// Run migrations before serving the first request
+await migrateDatabase(db)
 
 // Prune old analytics events to keep the event table bounded.
 if (env.ANALYTICS_RETENTION_DAYS > 0) {
 	const now = Math.floor(Date.now() / 1000)
 	const cutoff = now - env.ANALYTICS_RETENTION_DAYS * 24 * 60 * 60
-	const deleted = pruneFeedAnalyticsEvents(cutoff)
+	const deleted = await pruneFeedAnalyticsEvents(cutoff)
 	if (deleted > 0) {
 		console.log(
 			`Pruned ${deleted} feed analytics event(s) older than ${env.ANALYTICS_RETENTION_DAYS} day(s).`,
@@ -32,7 +32,7 @@ if (env.ANALYTICS_RETENTION_DAYS > 0) {
 }
 
 // Ensure default OAuth client exists
-ensureDefaultClient()
+await ensureDefaultClient()
 
 // Initialize OAuth signing key at startup to prevent race conditions
 // when multiple concurrent requests arrive before any key exists

@@ -14,15 +14,15 @@ import {
 	listMediaPopularityMetrics,
 	pruneFeedAnalyticsEvents,
 } from './feed-analytics-events.ts'
-import { createMigratedTestDatabase } from './test-database.ts'
+import { createTestDatabase } from './test-database.ts'
 
-test('feed analytics aggregate correctly by summary/token/day/top-items', () => {
-	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+test('feed analytics aggregate correctly by summary/token/day/top-items', async () => {
+	using ctx = await createTestDatabase()
 	const { db: database } = ctx
 	const base = 1_700_000_000
 	const day = 86_400
 
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'rss_fetch',
 			feedId: 'feed-1',
@@ -35,7 +35,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'rss_fetch',
 			feedId: 'feed-1',
@@ -48,7 +48,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -65,7 +65,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -82,7 +82,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -99,7 +99,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -116,7 +116,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-2',
@@ -134,7 +134,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		database,
 	)
 
-	const summary = getFeedAnalyticsSummary('feed-1', base, database)
+	const summary = await getFeedAnalyticsSummary('feed-1', base, database)
 	expect(summary).toEqual({
 		rssFetches: 2,
 		mediaRequests: 4,
@@ -143,7 +143,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		uniqueClients: 3,
 	})
 
-	const byToken = getFeedAnalyticsByToken('feed-1', base, database)
+	const byToken = await getFeedAnalyticsByToken('feed-1', base, database)
 	expect(byToken).toHaveLength(2)
 	expect(byToken[0]).toMatchObject({
 		token: 'token-b',
@@ -162,7 +162,12 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		uniqueClients: 1,
 	})
 
-	const topItems = getFeedTopMediaItemAnalytics('feed-1', base, 10, database)
+	const topItems = await getFeedTopMediaItemAnalytics(
+		'feed-1',
+		base,
+		10,
+		database,
+	)
 	expect(topItems).toHaveLength(2)
 	expect(topItems[0]).toMatchObject({
 		mediaRoot: 'audio',
@@ -181,7 +186,7 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		uniqueClients: 1,
 	})
 
-	const daily = getFeedDailyAnalytics('feed-1', base, database)
+	const daily = await getFeedDailyAnalytics('feed-1', base, database)
 	expect(daily).toHaveLength(2)
 	expect(daily[0]).toMatchObject({
 		rssFetches: 2,
@@ -198,7 +203,12 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 		uniqueClients: 2,
 	})
 
-	const topClients = getFeedTopClientAnalytics('feed-1', base, 10, database)
+	const topClients = await getFeedTopClientAnalytics(
+		'feed-1',
+		base,
+		10,
+		database,
+	)
 	expect(topClients).toHaveLength(3)
 	expect(topClients[0]).toMatchObject({
 		clientName: 'Apple Podcasts',
@@ -213,12 +223,12 @@ test('feed analytics aggregate correctly by summary/token/day/top-items', () => 
 	)
 })
 
-test('media popularity metrics aggregate multiple items with normalized keys', () => {
-	using ctx = createMigratedTestDatabase('test-feed-analytics-summaries')
+test('media popularity metrics aggregate multiple items with normalized keys', async () => {
+	using ctx = await createTestDatabase()
 	const { db: database } = ctx
 	const base = 1_700_150_000
 
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -235,7 +245,7 @@ test('media popularity metrics aggregate multiple items with normalized keys', (
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -252,7 +262,7 @@ test('media popularity metrics aggregate multiple items with normalized keys', (
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-2',
@@ -270,7 +280,7 @@ test('media popularity metrics aggregate multiple items with normalized keys', (
 		database,
 	)
 
-	const summaries = listMediaPopularityMetrics(database)
+	const summaries = await listMediaPopularityMetrics(database)
 
 	expect(summaries.get('audio:series/book-one.mp3')).toEqual({
 		mediaRoot: 'audio',
@@ -290,12 +300,12 @@ test('media popularity metrics aggregate multiple items with normalized keys', (
 	})
 }, 15_000)
 
-test('media analytics aggregate across feeds/tokens and normalize paths', () => {
-	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+test('media analytics aggregate across feeds/tokens and normalize paths', async () => {
+	using ctx = await createTestDatabase()
 	const { db: database } = ctx
 	const base = 1_700_100_000
 
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -312,7 +322,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -329,7 +339,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -346,7 +356,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-2',
@@ -364,7 +374,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		database,
 	)
 
-	const summary = getMediaAnalyticsSummary(
+	const summary = await getMediaAnalyticsSummary(
 		'audio',
 		'series/book.mp3',
 		base - 1,
@@ -378,7 +388,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		uniqueClients: 3,
 	})
 
-	const byFeed = getMediaAnalyticsByFeed(
+	const byFeed = await getMediaAnalyticsByFeed(
 		'audio',
 		'series/book.mp3',
 		base - 1,
@@ -402,7 +412,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		uniqueClients: 1,
 	})
 
-	const byToken = getMediaAnalyticsByToken(
+	const byToken = await getMediaAnalyticsByToken(
 		'audio',
 		'series/book.mp3',
 		base - 1,
@@ -418,7 +428,7 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 		uniqueClients: 1,
 	})
 
-	const topClients = getMediaTopClientAnalytics(
+	const topClients = await getMediaTopClientAnalytics(
 		'audio',
 		'series/book.mp3',
 		base - 1,
@@ -438,12 +448,12 @@ test('media analytics aggregate across feeds/tokens and normalize paths', () => 
 	)
 })
 
-test('pruneFeedAnalyticsEvents removes older analytics rows', () => {
-	using ctx = createMigratedTestDatabase('test-feed-analytics-events')
+test('pruneFeedAnalyticsEvents removes older analytics rows', async () => {
+	using ctx = await createTestDatabase()
 	const { db: database } = ctx
 	const base = 1_700_200_000
 
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'rss_fetch',
 			feedId: 'feed-1',
@@ -455,7 +465,7 @@ test('pruneFeedAnalyticsEvents removes older analytics rows', () => {
 		},
 		database,
 	)
-	createFeedAnalyticsEvent(
+	await createFeedAnalyticsEvent(
 		{
 			eventType: 'media_request',
 			feedId: 'feed-1',
@@ -472,10 +482,14 @@ test('pruneFeedAnalyticsEvents removes older analytics rows', () => {
 		database,
 	)
 
-	const deleted = pruneFeedAnalyticsEvents(base, database)
+	const deleted = await pruneFeedAnalyticsEvents(base, database)
 	expect(deleted).toBe(1)
 
-	const summary = getFeedAnalyticsSummary('feed-1', base - 2_000, database)
+	const summary = await getFeedAnalyticsSummary(
+		'feed-1',
+		base - 2_000,
+		database,
+	)
 	expect(summary).toEqual({
 		rssFetches: 0,
 		mediaRequests: 1,

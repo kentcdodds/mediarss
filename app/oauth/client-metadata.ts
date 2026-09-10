@@ -1,5 +1,6 @@
+import { and, gt, lt, type TableRow } from 'remix/data-table'
 import { db } from '#app/db/index.ts'
-import { sql } from '#app/db/sql.ts'
+import { clientMetadataCacheTable } from '#app/db/schema.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { fetchOutbound } from '#app/helpers/outbound-fetch.ts'
 import { getClient } from './clients.ts'
@@ -54,12 +55,7 @@ export interface ResolvedClient {
 	isMetadataClient: boolean
 }
 
-interface CachedMetadataRow {
-	client_id: string
-	metadata_json: string
-	cached_at: number
-	expires_at: number
-}
+type CachedMetadataRow = TableRow<typeof clientMetadataCacheTable>
 
 // Default cache duration: 1 hour (if no cache headers)
 const DEFAULT_CACHE_DURATION_SECONDS = 3600
@@ -330,16 +326,14 @@ function parseCachedMetadataRow(
 /**
  * Get cached metadata from database, including expiration time.
  */
-function getCachedMetadataFromDb(
+async function getCachedMetadataFromDb(
 	clientId: string,
-): CachedMetadataWithExpiry | null {
+): Promise<CachedMetadataWithExpiry | null> {
 	const now = Math.floor(Date.now() / 1000)
 
-	const row = db
-		.query<CachedMetadataRow, [string, number]>(
-			sql`SELECT * FROM client_metadata_cache WHERE client_id = ? AND expires_at > ?;`,
-		)
-		.get(clientId, now)
+	const row = await db.findOne(clientMetadataCacheTable, {
+		where: and({ client_id: clientId }, gt('expires_at', now)),
+	})
 
 	if (!row) {
 		return null
@@ -352,14 +346,10 @@ function getCachedMetadataFromDb(
  * Last stored metadata even if the cache entry has expired.
  * Used as stale-if-error when a live fetch fails.
  */
-function getStaleCachedMetadataFromDb(
+async function getStaleCachedMetadataFromDb(
 	clientId: string,
-): CachedMetadataWithExpiry | null {
-	const row = db
-		.query<CachedMetadataRow, [string]>(
-			sql`SELECT * FROM client_metadata_cache WHERE client_id = ?;`,
-		)
-		.get(clientId)
+): Promise<CachedMetadataWithExpiry | null> {
+	const row = await db.find(clientMetadataCacheTable, clientId)
 
 	if (!row) {
 		return null
@@ -371,17 +361,19 @@ function getStaleCachedMetadataFromDb(
 /**
  * Save metadata to database cache.
  */
-function saveMetadataToDb(
+async function saveMetadataToDb(
 	clientId: string,
 	metadata: ClientMetadataDocument,
 	cacheDuration: number,
-): void {
+): Promise<void> {
 	const now = Math.floor(Date.now() / 1000)
-	const expiresAt = now + cacheDuration
 
-	db.query(
-		sql`INSERT OR REPLACE INTO client_metadata_cache (client_id, metadata_json, cached_at, expires_at) VALUES (?, ?, ?, ?);`,
-	).run(clientId, JSON.stringify(metadata), now, expiresAt)
+	await db.query(clientMetadataCacheTable).upsert({
+		client_id: clientId,
+		metadata_json: JSON.stringify(metadata),
+		cached_at: now,
+		expires_at: now + cacheDuration,
+	})
 }
 
 export type ClientMetadataLookup =
@@ -416,7 +408,7 @@ export async function fetchClientMetadataLive(
 
 	try {
 		const { metadata, cacheDuration } = await fetchMetadataDocument(clientIdUrl)
-		saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
+		await saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
 		rememberMetadata(clientIdUrl, metadata, Date.now() + cacheDuration * 1000)
 		return { metadata }
 	} catch (error) {
@@ -450,7 +442,7 @@ export async function lookupClientMetadata(
 	}
 
 	// Check database cache
-	const dbCached = getCachedMetadataFromDb(clientIdUrl)
+	const dbCached = await getCachedMetadataFromDb(clientIdUrl)
 	if (dbCached) {
 		// Store in memory cache using the DB's actual expiration time
 		// Convert from Unix seconds to milliseconds
@@ -462,7 +454,7 @@ export async function lookupClientMetadata(
 	try {
 		const { metadata, cacheDuration } = await fetchMetadataDocument(clientIdUrl)
 
-		saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
+		await saveMetadataToDb(clientIdUrl, metadata, cacheDuration)
 		rememberMetadata(clientIdUrl, metadata, now + cacheDuration * 1000)
 
 		return { metadata }
@@ -470,7 +462,7 @@ export async function lookupClientMetadata(
 		const message = error instanceof Error ? error.message : 'Unknown error'
 		console.error('Failed to fetch client metadata:', error)
 
-		const stale = getStaleCachedMetadataFromDb(clientIdUrl)
+		const stale = await getStaleCachedMetadataFromDb(clientIdUrl)
 		if (stale) {
 			recordDiagnostic({
 				area: 'oauth.cimd',
@@ -536,7 +528,7 @@ export async function resolveClientResult(
 		return { client: resolvedMetadataClient(clientId, lookup.metadata) }
 	}
 
-	const staticClient = getClient(clientId)
+	const staticClient = await getClient(clientId)
 	if (!staticClient) {
 		return {
 			client: null,
@@ -593,10 +585,10 @@ export function clearMetadataCache(): void {
 /**
  * Clean up expired metadata from database cache.
  */
-export function cleanupExpiredMetadata(): number {
+export async function cleanupExpiredMetadata(): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = db
-		.query(sql`DELETE FROM client_metadata_cache WHERE expires_at < ?;`)
-		.run(now)
-	return result.changes
+	const result = await db.deleteMany(clientMetadataCacheTable, {
+		where: lt('expires_at', now),
+	})
+	return result.affectedRows
 }

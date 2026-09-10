@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { sql } from 'remix/data-table'
 import '#app/config/init-env.ts'
 import {
 	createCuratedFeedToken,
@@ -14,12 +15,12 @@ import {
 	deleteDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
-import { sql } from '#app/db/sql.ts'
+import { selectOne } from '#app/db/rows.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { spyOn } from '#test/bun-test-compat.ts'
 import feedHandler from './feed.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type FeedActionContext = Parameters<typeof feedHandler.handler>[0]
 type MinimalFeedActionContext = {
@@ -61,8 +62,8 @@ async function createCuratedFeedRouteTestContext(): Promise<FeedRouteTestContext
 		feed,
 		token: token.token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteCuratedFeed(feed.id)
 		},
@@ -83,8 +84,8 @@ async function createDirectoryFeedRouteTestContext(): Promise<FeedRouteTestConte
 		feed,
 		token: token.token,
 		[Symbol.asyncDispose]: async () => {
-			db.query(sql`DELETE FROM feed_analytics_events WHERE feed_id = ?;`).run(
-				feed.id,
+			await db.exec(
+				sql`DELETE FROM feed_analytics_events WHERE feed_id = ${feed.id};`,
 			)
 			await deleteDirectoryFeed(feed.id)
 		},
@@ -106,62 +107,61 @@ function createFeedActionContext(
 	})
 }
 
-function readLatestRssEvent(feedId: string): LatestRssEvent | null {
+async function readLatestRssEvent(
+	feedId: string,
+): Promise<LatestRssEvent | null> {
 	return (
-		db
-			.query<LatestRssEvent, [string]>(
-				sql`
+		(await selectOne<LatestRssEvent>(
+			db,
+			sql`
 				SELECT feed_type, token, status_code, client_name, client_fingerprint
 				FROM feed_analytics_events
-				WHERE feed_id = ? AND event_type = 'rss_fetch'
+				WHERE feed_id = ${feedId} AND event_type = 'rss_fetch'
 				ORDER BY rowid DESC
 				LIMIT 1;
 			`,
-			)
-			.get(feedId) ?? null
+		)) ?? null
 	)
 }
 
-function countEventsForToken(token: string): number {
-	return (
-		db
-			.query<{ count: number }, [string]>(
-				sql`
-					SELECT COUNT(*) AS count
-					FROM feed_analytics_events
-					WHERE token = ?;
-				`,
-			)
-			.get(token)?.count ?? 0
+async function countEventsForToken(token: string): Promise<number> {
+	const row = await selectOne<{ count: number }>(
+		db,
+		sql`
+			SELECT COUNT(*) AS count
+			FROM feed_analytics_events
+			WHERE token = ${token};
+		`,
 	)
+	return row?.count ?? 0
 }
 
-function getCuratedTokenLastUsedAt(token: string): number | null {
-	return (
-		db
-			.query<{ last_used_at: number | null }, [string]>(
-				sql`
-					SELECT last_used_at
-					FROM curated_feed_tokens
-					WHERE token = ?;
-				`,
-			)
-			.get(token)?.last_used_at ?? null
+async function getCuratedTokenLastUsedAt(
+	token: string,
+): Promise<number | null> {
+	const row = await selectOne<{ last_used_at: number | null }>(
+		db,
+		sql`
+			SELECT last_used_at
+			FROM curated_feed_tokens
+			WHERE token = ${token};
+		`,
 	)
+	return row?.last_used_at ?? null
 }
 
-function getDirectoryTokenLastUsedAt(token: string): number | null {
-	return (
-		db
-			.query<{ last_used_at: number | null }, [string]>(
-				sql`
-					SELECT last_used_at
-					FROM directory_feed_tokens
-					WHERE token = ?;
-				`,
-			)
-			.get(token)?.last_used_at ?? null
+async function getDirectoryTokenLastUsedAt(
+	token: string,
+): Promise<number | null> {
+	const row = await selectOne<{ last_used_at: number | null }>(
+		db,
+		sql`
+			SELECT last_used_at
+			FROM directory_feed_tokens
+			WHERE token = ${token};
+		`,
 	)
+	return row?.last_used_at ?? null
 }
 
 async function withAnalyticsTableUnavailable(
@@ -170,10 +170,14 @@ async function withAnalyticsTableUnavailable(
 	const backupTableName = `feed_analytics_events_backup_${Date.now()}_${Math.random()
 		.toString(36)
 		.slice(2)}`
-	db.exec(`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`)
-	using _restoreAnalyticsTable = {
-		[Symbol.dispose]: () => {
-			db.exec(`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`)
+	await db.exec(
+		`ALTER TABLE feed_analytics_events RENAME TO ${backupTableName};`,
+	)
+	await using _restoreAnalyticsTable = {
+		[Symbol.asyncDispose]: async () => {
+			await db.exec(
+				`ALTER TABLE ${backupTableName} RENAME TO feed_analytics_events;`,
+			)
 		},
 	}
 	await run()
@@ -190,7 +194,7 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 	expect(response.status).toBe(200)
 	expect(response.headers.get('Content-Type')).toContain('application/rss+xml')
 
-	const event = readLatestRssEvent(ctx.feed.id)
+	const event = await readLatestRssEvent(ctx.feed.id)
 	expect(event).toMatchObject({
 		feed_type: 'curated',
 		token: ctx.token,
@@ -221,7 +225,7 @@ test('feed route still returns rss when analytics writes fail', async () => {
 			'application/rss+xml',
 		)
 	})
-	expect(countEventsForToken(ctx.token)).toBe(0)
+	expect(await countEventsForToken(ctx.token)).toBe(0)
 })
 
 test('feed route stores null client metadata when request lacks client traits', async () => {
@@ -229,7 +233,7 @@ test('feed route stores null client metadata when request lacks client traits', 
 	const response = await feedHandler.handler(createFeedActionContext(ctx.token))
 	expect(response.status).toBe(200)
 
-	expect(readLatestRssEvent(ctx.feed.id)).toMatchObject({
+	expect(await readLatestRssEvent(ctx.feed.id)).toMatchObject({
 		client_name: null,
 		client_fingerprint: null,
 	})
@@ -242,7 +246,7 @@ test('feed route does not log analytics for missing tokens', async () => {
 	)
 
 	expect(response.status).toBe(404)
-	expect(countEventsForToken(missingToken)).toBe(0)
+	expect(await countEventsForToken(missingToken)).toBe(0)
 })
 
 test('feed route does not log analytics for revoked tokens', async () => {
@@ -265,7 +269,7 @@ test('feed route does not log analytics for revoked tokens', async () => {
 			createFeedActionContext(ctx.token),
 		)
 		expect(response.status).toBe(404)
-		expect(countEventsForToken(ctx.token)).toBe(0)
+		expect(await countEventsForToken(ctx.token)).toBe(0)
 	}
 })
 
@@ -285,15 +289,15 @@ test('feed route touches token last_used_at on successful fetch', async () => {
 
 	for (const testCase of cases) {
 		await using ctx = await testCase.createContext()
-		expect(testCase.getLastUsedAt(ctx.token)).toBeNull()
+		expect(await testCase.getLastUsedAt(ctx.token)).toBeNull()
 
 		const response = await feedHandler.handler(
 			createFeedActionContext(ctx.token),
 		)
 		expect(response.status).toBe(200)
-		expect((testCase.getLastUsedAt(ctx.token) ?? 0) > 0).toBe(true)
+		expect(((await testCase.getLastUsedAt(ctx.token)) ?? 0) > 0).toBe(true)
 
-		const event = readLatestRssEvent(ctx.feed.id)
+		const event = await readLatestRssEvent(ctx.feed.id)
 		expect(event).toMatchObject({
 			feed_type: testCase.expectedFeedType,
 			token: ctx.token,

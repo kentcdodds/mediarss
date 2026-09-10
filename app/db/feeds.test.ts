@@ -1,47 +1,17 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import { expect, test } from 'vitest'
-import { migrate } from './migrations.ts'
-import { sql } from './sql.ts'
-import { Database } from './sqlite.ts'
+import { createTestDatabase } from './test-database.ts'
 
-/**
- * Creates a test database that will be automatically closed and deleted.
- */
-function createTestDatabase() {
-	const dbPath = `./data/test-feeds-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
-
-	// Ensure data directory exists
-	const dir = path.dirname(dbPath)
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, { recursive: true })
-	}
-
-	const db = new Database(dbPath)
-	migrate(db)
-
-	return {
-		db,
-		[Symbol.dispose]: () => {
-			db.close()
-			if (fs.existsSync(dbPath)) {
-				fs.unlinkSync(dbPath)
-			}
-		},
-	}
-}
-
-test('directory_feeds table stores feeds with all fields and enforces constraints', () => {
-	using ctx = createTestDatabase()
+test('directory_feeds table stores feeds with all fields and enforces constraints', async () => {
+	using ctx = await createTestDatabase()
 
 	// Test creating a feed with minimal required fields and defaults
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		INSERT INTO directory_feeds (id, name, directory_paths)
 		VALUES ('test-1', 'Test Feed', '["audio:/media/audio"]')
 	`)
 
-	const minimalFeed = ctx.db
-		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
+	const minimalFeed = ctx.sqlite
+		.prepare(`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('test-1') as Record<string, unknown>
 
 	expect(minimalFeed.name).toBe('Test Feed')
@@ -61,7 +31,7 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 	expect(minimalFeed.overrides).toBeNull()
 
 	// Test creating a feed with all fields specified
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		INSERT INTO directory_feeds (
 			id, name, description, directory_paths, sort_fields, sort_order,
 			author, owner_name, owner_email, language, explicit,
@@ -76,8 +46,8 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 		)
 	`)
 
-	const fullFeed = ctx.db
-		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
+	const fullFeed = ctx.sqlite
+		.prepare(`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('test-2') as Record<string, unknown>
 
 	expect(fullFeed.name).toBe('Full Feed')
@@ -100,24 +70,24 @@ test('directory_feeds table stores feeds with all fields and enforces constraint
 
 	// Test sort_order check constraint
 	expect(() => {
-		ctx.db.run(sql`
+		ctx.sqlite.exec(`
 			INSERT INTO directory_feeds (id, name, directory_paths, sort_order)
 			VALUES ('test-3', 'Bad Feed', '["audio:/media"]', 'invalid')
 		`)
-	}).toThrow()
+	}).toThrow(/CHECK constraint failed/)
 })
 
-test('curated_feeds table stores feeds with all fields and correct schema', () => {
-	using ctx = createTestDatabase()
+test('curated_feeds table stores feeds with all fields and correct schema', async () => {
+	using ctx = await createTestDatabase()
 
 	// Test creating a feed with minimal required fields and defaults
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		INSERT INTO curated_feeds (id, name)
 		VALUES ('test-1', 'Test Curated Feed')
 	`)
 
-	const minimalFeed = ctx.db
-		.query(sql`SELECT * FROM curated_feeds WHERE id = ?`)
+	const minimalFeed = ctx.sqlite
+		.prepare(`SELECT * FROM curated_feeds WHERE id = ?`)
 		.get('test-1') as Record<string, unknown>
 
 	expect(minimalFeed.name).toBe('Test Curated Feed')
@@ -134,7 +104,7 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	expect(minimalFeed.overrides).toBeNull()
 
 	// Test creating a feed with all fields specified
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		INSERT INTO curated_feeds (
 			id, name, description, sort_fields, sort_order,
 			author, owner_name, owner_email, language, explicit,
@@ -149,8 +119,8 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 		)
 	`)
 
-	const fullFeed = ctx.db
-		.query(sql`SELECT * FROM curated_feeds WHERE id = ?`)
+	const fullFeed = ctx.sqlite
+		.prepare(`SELECT * FROM curated_feeds WHERE id = ?`)
 		.get('test-2') as Record<string, unknown>
 
 	expect(fullFeed.name).toBe('Full Curated Feed')
@@ -166,8 +136,8 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	expect(fullFeed.overrides).toBe('{"rss": {"channel": {"custom": true}}}')
 
 	// Verify curated_feeds does NOT have filter_in/filter_out columns
-	const columns = ctx.db
-		.query(sql`PRAGMA table_info(curated_feeds)`)
+	const columns = ctx.sqlite
+		.prepare(`PRAGMA table_info(curated_feeds)`)
 		.all() as Array<{ name: string }>
 	const columnNames = columns.map((c) => c.name)
 
@@ -175,17 +145,17 @@ test('curated_feeds table stores feeds with all fields and correct schema', () =
 	expect(columnNames).not.toContain('filter_out')
 })
 
-test('directory_feeds supports updating fields and setting nullable fields to null', () => {
-	using ctx = createTestDatabase()
+test('directory_feeds supports updating fields and setting nullable fields to null', async () => {
+	using ctx = await createTestDatabase()
 
 	// Create a feed to update
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		INSERT INTO directory_feeds (id, name, directory_paths, author, filter_in)
 		VALUES ('update-test', 'Original', '["audio:/original/path"]', 'Some Author', 'Some Filter')
 	`)
 
 	// Update some fields
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		UPDATE directory_feeds
 		SET name = 'Updated',
 			sort_fields = 'desc:pubDate',
@@ -193,8 +163,8 @@ test('directory_feeds supports updating fields and setting nullable fields to nu
 		WHERE id = 'update-test'
 	`)
 
-	const updatedFeed = ctx.db
-		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
+	const updatedFeed = ctx.sqlite
+		.prepare(`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('update-test') as Record<string, unknown>
 
 	expect(updatedFeed.name).toBe('Updated')
@@ -205,14 +175,14 @@ test('directory_feeds supports updating fields and setting nullable fields to nu
 	expect(updatedFeed.language).toBe('en')
 
 	// Set nullable fields to null
-	ctx.db.run(sql`
+	ctx.sqlite.exec(`
 		UPDATE directory_feeds
 		SET author = NULL, filter_in = NULL
 		WHERE id = 'update-test'
 	`)
 
-	const nulledFeed = ctx.db
-		.query(sql`SELECT * FROM directory_feeds WHERE id = ?`)
+	const nulledFeed = ctx.sqlite
+		.prepare(`SELECT * FROM directory_feeds WHERE id = ?`)
 		.get('update-test') as Record<string, unknown>
 
 	expect(nulledFeed.author).toBeNull()

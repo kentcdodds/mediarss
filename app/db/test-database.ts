@@ -1,31 +1,28 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { migrate } from './migrations.ts'
-import { Database } from './sqlite.ts'
+import { DatabaseSync } from 'node:sqlite'
+import {
+	createSqliteDatabase,
+	type SqliteDatabase,
+} from 'remix/data-table/sqlite'
+import { migrateDatabase } from './migrate.ts'
 
-export function createMigratedTestDatabase(
-	prefix: string,
-	toVersion?: number,
-): {
-	db: Database
+/**
+ * An in-memory database with all migrations applied. Dispose it to close the
+ * underlying connection.
+ */
+export async function createTestDatabase(): Promise<{
+	db: SqliteDatabase
+	sqlite: DatabaseSync
 	[Symbol.dispose]: () => void
-} {
-	const dbPath = `./data/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
-	const dir = path.dirname(dbPath)
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, { recursive: true })
-	}
-
-	const db = new Database(dbPath)
-	migrate(db, toVersion)
+}> {
+	const sqlite = new DatabaseSync(':memory:')
+	const db = createSqliteDatabase(sqlite)
+	await migrateDatabase(db)
 
 	return {
 		db,
+		sqlite,
 		[Symbol.dispose]: () => {
-			db.close()
-			if (fs.existsSync(dbPath)) {
-				fs.unlinkSync(dbPath)
-			}
+			sqlite.close()
 		},
 	}
 }

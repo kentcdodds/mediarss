@@ -1,7 +1,8 @@
 import { generateId } from '#app/helpers/crypto.ts'
-import { dataTableDb, feedItemsTable } from './data-table.ts'
-import { parseRow, parseRows } from './sql.ts'
-import { type FeedItem, FeedItemSchema } from './types.ts'
+import { db } from './index.ts'
+import { toCamelCaseRow, toCamelCaseRows } from './rows.ts'
+import { feedItemsTable } from './schema.ts'
+import { type FeedItem } from './types.ts'
 
 export async function addItemToFeed(
 	feedId: string,
@@ -13,31 +14,27 @@ export async function addItemToFeed(
 
 	const existing = await getItemByPath(feedId, mediaRoot, relativePath)
 	if (existing) {
-		await dataTableDb.update(feedItemsTable, existing.id, {
+		const updated = await db.update(feedItemsTable, existing.id, {
 			position: position ?? null,
 			added_at: now,
 		})
-		const updated = await dataTableDb.find(feedItemsTable, existing.id)
-		if (!updated) {
-			throw new Error(`Failed to update feed item "${existing.id}"`)
-		}
-		return parseRow(FeedItemSchema, updated)
+		return toCamelCaseRow(updated)
 	}
 
 	const id = generateId()
-	await dataTableDb.create(feedItemsTable, {
-		feed_id: feedId,
-		id,
-		media_root: mediaRoot,
-		relative_path: relativePath,
-		position: position ?? null,
-		added_at: now,
-	})
-	const created = await dataTableDb.find(feedItemsTable, id)
-	if (!created) {
-		throw new Error(`Failed to create feed item "${id}"`)
-	}
-	return parseRow(FeedItemSchema, created)
+	const created = await db.create(
+		feedItemsTable,
+		{
+			id,
+			feed_id: feedId,
+			media_root: mediaRoot,
+			relative_path: relativePath,
+			position: position ?? null,
+			added_at: now,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(created)
 }
 
 export async function removeItemFromFeed(
@@ -45,7 +42,7 @@ export async function removeItemFromFeed(
 	mediaRoot: string,
 	relativePath: string,
 ): Promise<boolean> {
-	const result = await dataTableDb.deleteMany(feedItemsTable, {
+	const result = await db.deleteMany(feedItemsTable, {
 		where: {
 			feed_id: feedId,
 			media_root: mediaRoot,
@@ -58,14 +55,19 @@ export async function removeItemFromFeed(
 export async function getItemsForFeed(
 	feedId: string,
 ): Promise<Array<FeedItem>> {
-	const rows = await dataTableDb.findMany(feedItemsTable, {
+	const rows = await db.findMany(feedItemsTable, {
 		where: { feed_id: feedId },
 		orderBy: [
 			['position', 'asc'],
 			['added_at', 'asc'],
 		],
 	})
-	return parseRows(FeedItemSchema, rows)
+	return toCamelCaseRows(rows)
+}
+
+export async function listAllFeedItems(): Promise<Array<FeedItem>> {
+	const rows = await db.findMany(feedItemsTable)
+	return toCamelCaseRows(rows)
 }
 
 export type ReorderItem = {
@@ -77,7 +79,7 @@ export async function reorderFeedItems(
 	feedId: string,
 	items: Array<ReorderItem>,
 ): Promise<void> {
-	await dataTableDb.transaction(async (tx) => {
+	await db.transaction(async (tx) => {
 		for (let i = 0; i < items.length; i++) {
 			const item = items[i]
 			if (item) {
@@ -102,18 +104,18 @@ export async function getItemByPath(
 	mediaRoot: string,
 	relativePath: string,
 ): Promise<FeedItem | undefined> {
-	const row = await dataTableDb.findOne(feedItemsTable, {
+	const row = await db.findOne(feedItemsTable, {
 		where: {
 			feed_id: feedId,
 			media_root: mediaRoot,
 			relative_path: relativePath,
 		},
 	})
-	return row ? parseRow(FeedItemSchema, row) : undefined
+	return row ? toCamelCaseRow(row) : undefined
 }
 
 export async function clearFeedItems(feedId: string): Promise<number> {
-	const result = await dataTableDb.deleteMany(feedItemsTable, {
+	const result = await db.deleteMany(feedItemsTable, {
 		where: { feed_id: feedId },
 	})
 	return result.affectedRows

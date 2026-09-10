@@ -7,7 +7,7 @@ import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { addItemToFeed } from '#app/db/feed-items.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { setEnvVar, unsetEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import * as artworkHelpers from './artwork.ts'
 import * as feedArtworkHelpers from './feed-artwork.ts'
@@ -15,7 +15,7 @@ import { resolveFeedArtwork } from './feed-artwork-resolution.ts'
 import { getPodcastArtPlaceholderBytes } from './podcast-art-placeholder.ts'
 import * as squareArtworkHelpers from './square-artwork.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 async function createFeedArtworkResolutionContext(): Promise<{
 	feedId: string

@@ -1061,7 +1061,7 @@ async function getCachedFileMetadata(
 	const cached = await cachified<CachedMediaFile | null>({
 		key: cacheKey,
 		ttl: 1000 * 60 * 60 * 24 * 7, // 7 days
-		forceFresh: shouldRefreshCache(cacheKey, fileMtime),
+		forceFresh: await shouldRefreshCache(cacheKey, fileMtime),
 		getFreshValue: async () => {
 			const metadata = await parseFileMetadata(filepath)
 			if (!metadata) return null

@@ -1,101 +1,68 @@
+import { and, gte, isNull, lt, type TableRow } from 'remix/data-table'
 import { db } from '#app/db/index.ts'
-import { sql } from '#app/db/sql.ts'
+import { toCamelCaseRow, type CamelCaseRow } from '#app/db/rows.ts'
+import { oauthRefreshTokensTable } from '#app/db/schema.ts'
 import { generateId, generateToken } from '#app/helpers/crypto.ts'
 
 // Refresh tokens expire after 30 days of inactivity (sliding on each use)
 const REFRESH_TOKEN_EXPIRY_SECONDS = 30 * 24 * 60 * 60
 
-export interface RefreshToken {
-	token: string
-	familyId: string
-	clientId: string
-	scope: string
-	expiresAt: number
-	usedAt: number | null
-	createdAt: number
-}
-
-interface RefreshTokenRow {
-	token: string
-	family_id: string
-	client_id: string
-	scope: string
-	expires_at: number
-	used_at: number | null
-	created_at: number
-}
-
-function rowToRefreshToken(row: RefreshTokenRow): RefreshToken {
-	return {
-		token: row.token,
-		familyId: row.family_id,
-		clientId: row.client_id,
-		scope: row.scope,
-		expiresAt: row.expires_at,
-		usedAt: row.used_at,
-		createdAt: row.created_at,
-	}
-}
+export type RefreshToken = CamelCaseRow<
+	TableRow<typeof oauthRefreshTokensTable>
+>
 
 /**
  * Create a refresh token. Pass familyId to continue a rotated token family.
  */
-export function createRefreshToken(params: {
+export async function createRefreshToken(params: {
 	clientId: string
 	scope: string
 	familyId?: string
-}): RefreshToken {
-	const token = generateToken()
-	const familyId = params.familyId ?? generateId()
+}): Promise<RefreshToken> {
 	const now = Math.floor(Date.now() / 1000)
-	const expiresAt = now + REFRESH_TOKEN_EXPIRY_SECONDS
 
-	db.query(
-		sql`INSERT INTO oauth_refresh_tokens (token, family_id, client_id, scope, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?);`,
-	).run(token, familyId, params.clientId, params.scope, expiresAt, now)
-
-	return {
-		token,
-		familyId,
-		clientId: params.clientId,
-		scope: params.scope,
-		expiresAt,
-		usedAt: null,
-		createdAt: now,
-	}
+	const row = await db.create(
+		oauthRefreshTokensTable,
+		{
+			token: generateToken(),
+			family_id: params.familyId ?? generateId(),
+			client_id: params.clientId,
+			scope: params.scope,
+			expires_at: now + REFRESH_TOKEN_EXPIRY_SECONDS,
+			used_at: null,
+			created_at: now,
+		},
+		{ returnRow: true },
+	)
+	return toCamelCaseRow(row)
 }
 
 /**
  * Get a refresh token by its secret, regardless of expiry or usage.
  */
-export function getRefreshToken(token: string): RefreshToken | null {
-	const row = db
-		.query<RefreshTokenRow, [string]>(
-			sql`SELECT * FROM oauth_refresh_tokens WHERE token = ?;`,
-		)
-		.get(token)
-
-	if (!row) {
-		return null
-	}
-
-	return rowToRefreshToken(row)
+export async function getRefreshToken(
+	token: string,
+): Promise<RefreshToken | null> {
+	const row = await db.find(oauthRefreshTokensTable, token)
+	return row ? toCamelCaseRow(row) : null
 }
 
 /**
  * Atomically consume a refresh token and return it if it was still valid.
  * Reuse of an already-consumed token revokes the entire family.
  */
-export function consumeRefreshToken(token: string): RefreshToken | null {
+export async function consumeRefreshToken(
+	token: string,
+): Promise<RefreshToken | null> {
 	const now = Math.floor(Date.now() / 1000)
-	const existing = getRefreshToken(token)
+	const existing = await getRefreshToken(token)
 
 	if (!existing) {
 		return null
 	}
 
 	if (existing.usedAt !== null) {
-		revokeRefreshTokenFamily(existing.familyId)
+		await revokeRefreshTokenFamily(existing.familyId)
 		return null
 	}
 
@@ -103,16 +70,16 @@ export function consumeRefreshToken(token: string): RefreshToken | null {
 		return null
 	}
 
-	const result = db
-		.query(
-			sql`UPDATE oauth_refresh_tokens SET used_at = ? WHERE token = ? AND used_at IS NULL AND expires_at >= ?;`,
-		)
-		.run(now, token, now)
+	const result = await db.updateMany(
+		oauthRefreshTokensTable,
+		{ used_at: now },
+		{ where: and({ token }, isNull('used_at'), gte('expires_at', now)) },
+	)
 
-	if (result.changes === 0) {
-		const raced = getRefreshToken(token)
+	if (result.affectedRows === 0) {
+		const raced = await getRefreshToken(token)
 		if (raced?.usedAt !== null) {
-			revokeRefreshTokenFamily(existing.familyId)
+			await revokeRefreshTokenFamily(existing.familyId)
 		}
 		return null
 	}
@@ -123,41 +90,47 @@ export function consumeRefreshToken(token: string): RefreshToken | null {
 /**
  * Revoke every refresh token in a family (replay detection).
  */
-export function revokeRefreshTokenFamily(familyId: string): number {
+export async function revokeRefreshTokenFamily(
+	familyId: string,
+): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = db
-		.query(
-			sql`UPDATE oauth_refresh_tokens SET used_at = COALESCE(used_at, ?) WHERE family_id = ?;`,
-		)
-		.run(now, familyId)
-	return result.changes
+	const result = await db.updateMany(
+		oauthRefreshTokensTable,
+		{ used_at: now },
+		{ where: and({ family_id: familyId }, isNull('used_at')) },
+	)
+	return result.affectedRows
 }
 
 /**
  * Delete all refresh tokens for a client.
  */
-export function deleteRefreshTokensForClient(clientId: string): number {
-	const result = db
-		.query(sql`DELETE FROM oauth_refresh_tokens WHERE client_id = ?;`)
-		.run(clientId)
-	return result.changes
+export async function deleteRefreshTokensForClient(
+	clientId: string,
+): Promise<number> {
+	const result = await db.deleteMany(oauthRefreshTokensTable, {
+		where: { client_id: clientId },
+	})
+	return result.affectedRows
 }
 
 /**
  * Delete expired refresh tokens.
  */
-export function cleanupExpiredRefreshTokens(): number {
+export async function cleanupExpiredRefreshTokens(): Promise<number> {
 	const now = Math.floor(Date.now() / 1000)
-	const result = db
-		.query(sql`DELETE FROM oauth_refresh_tokens WHERE expires_at < ?;`)
-		.run(now)
-	return result.changes
+	const result = await db.deleteMany(oauthRefreshTokensTable, {
+		where: lt('expires_at', now),
+	})
+	return result.affectedRows
 }
 
 /**
  * Rotate a consumed refresh token: issue a new token in the same family.
  */
-export function rotateRefreshToken(consumed: RefreshToken): RefreshToken {
+export function rotateRefreshToken(
+	consumed: RefreshToken,
+): Promise<RefreshToken> {
 	return createRefreshToken({
 		clientId: consumed.clientId,
 		scope: consumed.scope,

@@ -6,10 +6,10 @@ import {
 	deleteDirectoryFeed,
 } from '#app/db/directory-feeds.ts'
 import { db } from '#app/db/index.ts'
-import { migrate } from '#app/db/migrations.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import widgetHandler from './widget.ts'
 
-migrate(db)
+await migrateDatabase(db)
 
 type WidgetActionContext = Parameters<typeof widgetHandler.handler>[0]
 type MinimalWidgetActionContext = {

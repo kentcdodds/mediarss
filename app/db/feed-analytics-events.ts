@@ -1,8 +1,9 @@
 import { generateId } from '#app/helpers/crypto.ts'
 import { createMediaKey, normalizePath } from '#app/helpers/path-parsing.ts'
+import { type Database, lt, sql } from 'remix/data-table'
 import { db } from './index.ts'
-import { sql } from './sql.ts'
-import { type Database } from './sqlite.ts'
+import { selectAll, selectOne } from './rows.ts'
+import { feedAnalyticsEventsTable } from './schema.ts'
 import { type AnalyticsEventType, type AnalyticsFeedType } from './types.ts'
 
 export type CreateFeedAnalyticsEventData = {
@@ -92,75 +93,40 @@ function normalizeRelativePathForStorage(
  *
  * This should always be called in a best-effort flow from request handlers.
  */
-export function createFeedAnalyticsEvent(
+export async function createFeedAnalyticsEvent(
 	data: CreateFeedAnalyticsEventData,
 	database: Database = db,
-): void {
+): Promise<void> {
 	const now = Math.floor(Date.now() / 1000)
 
-	database
-		.query(
-			sql`
-			INSERT INTO feed_analytics_events (
-				id,
-				event_type,
-				feed_id,
-				feed_type,
-				token,
-				media_root,
-				relative_path,
-				is_download_start,
-				bytes_served,
-				status_code,
-				client_fingerprint,
-				client_name,
-				created_at
-			)
-			VALUES (
-				$id,
-				$eventType,
-				$feedId,
-				$feedType,
-				$token,
-				$mediaRoot,
-				$relativePath,
-				$isDownloadStart,
-				$bytesServed,
-				$statusCode,
-				$clientFingerprint,
-				$clientName,
-				$createdAt
-			);
-		`,
-		)
-		.run({
-			$id: generateId(),
-			$eventType: data.eventType,
-			$feedId: data.feedId,
-			$feedType: data.feedType,
-			$token: data.token,
-			$mediaRoot: data.mediaRoot ?? null,
-			$relativePath: normalizeRelativePathForStorage(data.relativePath),
-			$isDownloadStart: data.isDownloadStart ? 1 : 0,
-			$bytesServed: data.bytesServed ?? null,
-			$statusCode: data.statusCode,
-			$clientFingerprint: data.clientFingerprint ?? null,
-			$clientName: data.clientName ?? null,
-			$createdAt: data.createdAt ?? now,
-		})
+	await database.create(feedAnalyticsEventsTable, {
+		id: generateId(),
+		event_type: data.eventType,
+		feed_id: data.feedId,
+		feed_type: data.feedType,
+		token: data.token,
+		media_root: data.mediaRoot ?? null,
+		relative_path: normalizeRelativePathForStorage(data.relativePath),
+		is_download_start: data.isDownloadStart ? 1 : 0,
+		bytes_served: data.bytesServed ?? null,
+		status_code: data.statusCode,
+		client_fingerprint: data.clientFingerprint ?? null,
+		client_name: data.clientName ?? null,
+		created_at: data.createdAt ?? now,
+	})
 }
 
 /**
  * Delete analytics events older than the given unix timestamp.
  */
-export function pruneFeedAnalyticsEvents(
+export async function pruneFeedAnalyticsEvents(
 	olderThan: number,
 	database: Database = db,
-): number {
-	const result = database
-		.query(sql`DELETE FROM feed_analytics_events WHERE created_at < ?;`)
-		.run(olderThan)
-	return result.changes
+): Promise<number> {
+	const result = await database.deleteMany(feedAnalyticsEventsTable, {
+		where: lt('created_at', olderThan),
+	})
+	return result.affectedRows
 }
 
 function mapAnalyticsSummaryRow(
@@ -187,34 +153,30 @@ function mapAnalyticsSummaryRow(
 /**
  * Summary for a single feed, across all tokens.
  */
-export function getFeedAnalyticsSummary(
+export async function getFeedAnalyticsSummary(
 	feedId: string,
 	since: number,
 	database: Database = db,
-): AnalyticsSummary {
-	const row = database
-		.query<
-			{
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-			},
-			[string, number]
-		>(
-			sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND created_at >= ?;
-			`,
-		)
-		.get(feedId, since)
+): Promise<AnalyticsSummary> {
+	const row = await selectOne<{
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
+			FROM feed_analytics_events
+			WHERE feed_id = ${feedId} AND created_at >= ${since};
+		`,
+	)
 
 	return mapAnalyticsSummaryRow(row)
 }
@@ -222,42 +184,38 @@ export function getFeedAnalyticsSummary(
 /**
  * Per-token analytics for a feed.
  */
-export function getFeedAnalyticsByToken(
+export async function getFeedAnalyticsByToken(
 	feedId: string,
 	since: number,
 	database: Database = db,
-): Array<TokenAnalyticsRow> {
-	const rows = database
-		.query<
-			{
-				token: string
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				first_seen_at: number | null
-				last_seen_at: number | null
-			},
-			[string, number]
-		>(
-			sql`
-				SELECT
-					token,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MIN(created_at) AS first_seen_at,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND created_at >= ?
-				GROUP BY token
-				ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
-			`,
-		)
-		.all(feedId, since)
+): Promise<Array<TokenAnalyticsRow>> {
+	const rows = await selectAll<{
+		token: string
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		first_seen_at: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				token,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MIN(created_at) AS first_seen_at,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE feed_id = ${feedId} AND created_at >= ${since}
+			GROUP BY token
+			ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
+		`,
+	)
 
 	return rows.map((row) => ({
 		token: row.token,
@@ -274,47 +232,43 @@ export function getFeedAnalyticsByToken(
 /**
  * Top media items for a feed in the requested time window.
  */
-export function getFeedTopMediaItemAnalytics(
+export async function getFeedTopMediaItemAnalytics(
 	feedId: string,
 	since: number,
 	limit = 10,
 	database: Database = db,
-): Array<FeedTopMediaItemAnalyticsRow> {
-	const rows = database
-		.query<
-			{
-				media_root: string
-				relative_path: string
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				last_seen_at: number | null
-			},
-			[string, number, number]
-		>(
-			sql`
-				SELECT
-					media_root,
-					relative_path,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE
-					feed_id = ?
-					AND created_at >= ?
-					AND media_root IS NOT NULL
-					AND relative_path IS NOT NULL
-				GROUP BY media_root, relative_path
-				HAVING SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END) > 0
-				ORDER BY download_starts DESC, bytes_served DESC, media_requests DESC
-				LIMIT ?;
-			`,
-		)
-		.all(feedId, since, limit)
+): Promise<Array<FeedTopMediaItemAnalyticsRow>> {
+	const rows = await selectAll<{
+		media_root: string
+		relative_path: string
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				media_root,
+				relative_path,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE
+				feed_id = ${feedId}
+				AND created_at >= ${since}
+				AND media_root IS NOT NULL
+				AND relative_path IS NOT NULL
+			GROUP BY media_root, relative_path
+			HAVING SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END) > 0
+			ORDER BY download_starts DESC, bytes_served DESC, media_requests DESC
+			LIMIT ${limit};
+		`,
+	)
 
 	return rows.map((row) => ({
 		mediaRoot: row.media_root,
@@ -330,37 +284,33 @@ export function getFeedTopMediaItemAnalytics(
 /**
  * Aggregate popularity metrics for all media items across all feeds/tokens.
  */
-export function listMediaPopularityMetrics(
+export async function listMediaPopularityMetrics(
 	database: Database = db,
-): Map<string, MediaPopularityMetrics> {
-	const rows = database
-		.query<
-			{
-				media_root: string
-				relative_path: string
-				media_requests: number | null
-				download_starts: number | null
-				unique_clients: number | null
-				last_seen_at: number | null
-			},
-			[]
-		>(
-			sql`
-				SELECT
-					media_root,
-					relative_path,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE media_root IS NOT NULL AND relative_path IS NOT NULL
-				GROUP BY media_root, relative_path
-				HAVING SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END) > 0
-				ORDER BY download_starts DESC, media_requests DESC, unique_clients DESC, last_seen_at DESC;
-			`,
-		)
-		.all()
+): Promise<Map<string, MediaPopularityMetrics>> {
+	const rows = await selectAll<{
+		media_root: string
+		relative_path: string
+		media_requests: number | null
+		download_starts: number | null
+		unique_clients: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				media_root,
+				relative_path,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE media_root IS NOT NULL AND relative_path IS NOT NULL
+			GROUP BY media_root, relative_path
+			HAVING SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END) > 0
+			ORDER BY download_starts DESC, media_requests DESC, unique_clients DESC, last_seen_at DESC;
+		`,
+	)
 
 	return new Map(
 		rows.map((row) => {
@@ -383,40 +333,36 @@ export function listMediaPopularityMetrics(
 /**
  * Daily analytics points for a feed.
  */
-export function getFeedDailyAnalytics(
+export async function getFeedDailyAnalytics(
 	feedId: string,
 	since: number,
 	database: Database = db,
-): Array<DailyAnalyticsRow> {
-	const rows = database
-		.query<
-			{
-				day: string
-				day_start: number
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-			},
-			[string, number]
-		>(
-			sql`
-				SELECT
-					strftime('%Y-%m-%d', created_at, 'unixepoch') AS day,
-					CAST(strftime('%s', date(created_at, 'unixepoch')) AS INTEGER) AS day_start,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND created_at >= ?
-				GROUP BY day
-				ORDER BY day ASC;
-			`,
-		)
-		.all(feedId, since)
+): Promise<Array<DailyAnalyticsRow>> {
+	const rows = await selectAll<{
+		day: string
+		day_start: number
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				strftime('%Y-%m-%d', created_at, 'unixepoch') AS day,
+				CAST(strftime('%s', date(created_at, 'unixepoch')) AS INTEGER) AS day_start,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
+			FROM feed_analytics_events
+			WHERE feed_id = ${feedId} AND created_at >= ${since}
+			GROUP BY day
+			ORDER BY day ASC;
+		`,
+	)
 
 	return rows.map((row) => ({
 		day: row.day,
@@ -432,44 +378,40 @@ export function getFeedDailyAnalytics(
 /**
  * Top client applications for a feed.
  */
-export function getFeedTopClientAnalytics(
+export async function getFeedTopClientAnalytics(
 	feedId: string,
 	since: number,
 	limit = 10,
 	database: Database = db,
-): Array<TopClientAnalyticsRow> {
-	const rows = database
-		.query<
-			{
-				client_name: string
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				first_seen_at: number | null
-				last_seen_at: number | null
-			},
-			[string, number, number]
-		>(
-			sql`
-				SELECT
-					COALESCE(client_name, 'Unknown') AS client_name,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MIN(created_at) AS first_seen_at,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE feed_id = ? AND created_at >= ?
-				GROUP BY COALESCE(client_name, 'Unknown')
-				ORDER BY media_requests DESC, rss_fetches DESC, download_starts DESC
-				LIMIT ?;
-			`,
-		)
-		.all(feedId, since, limit)
+): Promise<Array<TopClientAnalyticsRow>> {
+	const rows = await selectAll<{
+		client_name: string
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		first_seen_at: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				COALESCE(client_name, 'Unknown') AS client_name,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MIN(created_at) AS first_seen_at,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE feed_id = ${feedId} AND created_at >= ${since}
+			GROUP BY COALESCE(client_name, 'Unknown')
+			ORDER BY media_requests DESC, rss_fetches DESC, download_starts DESC
+			LIMIT ${limit};
+		`,
+	)
 
 	return rows.map((row) => ({
 		clientName: row.client_name,
@@ -486,36 +428,32 @@ export function getFeedTopClientAnalytics(
 /**
  * Summary analytics for a specific media item across all feeds/tokens.
  */
-export function getMediaAnalyticsSummary(
+export async function getMediaAnalyticsSummary(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
 	database: Database = db,
-): AnalyticsSummary {
+): Promise<AnalyticsSummary> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const row = database
-		.query<
-			{
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-			},
-			[string, string, number]
-		>(
-			sql`
-				SELECT
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
-				FROM feed_analytics_events
-				WHERE media_root = ? AND relative_path = ? AND created_at >= ?;
-			`,
-		)
-		.get(mediaRoot, normalizedRelativePath, since)
+	const row = await selectOne<{
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
+			FROM feed_analytics_events
+			WHERE media_root = ${mediaRoot} AND relative_path = ${normalizedRelativePath} AND created_at >= ${since};
+		`,
+	)
 
 	return mapAnalyticsSummaryRow(row)
 }
@@ -523,48 +461,44 @@ export function getMediaAnalyticsSummary(
 /**
  * Media analytics grouped by token (keeps feed id/type for context).
  */
-export function getMediaAnalyticsByToken(
+export async function getMediaAnalyticsByToken(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
 	database: Database = db,
-): Array<MediaByTokenAnalyticsRow> {
+): Promise<Array<MediaByTokenAnalyticsRow>> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = database
-		.query<
-			{
-				token: string
-				feed_id: string
-				feed_type: AnalyticsFeedType
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				first_seen_at: number | null
-				last_seen_at: number | null
-			},
-			[string, string, number]
-		>(
-			sql`
-				SELECT
-					token,
-					feed_id,
-					feed_type,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MIN(created_at) AS first_seen_at,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE media_root = ? AND relative_path = ? AND created_at >= ?
-				GROUP BY token, feed_id, feed_type
-				ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
-			`,
-		)
-		.all(mediaRoot, normalizedRelativePath, since)
+	const rows = await selectAll<{
+		token: string
+		feed_id: string
+		feed_type: AnalyticsFeedType
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		first_seen_at: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				token,
+				feed_id,
+				feed_type,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MIN(created_at) AS first_seen_at,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE media_root = ${mediaRoot} AND relative_path = ${normalizedRelativePath} AND created_at >= ${since}
+			GROUP BY token, feed_id, feed_type
+			ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
+		`,
+	)
 
 	return rows.map((row) => ({
 		token: row.token,
@@ -583,46 +517,42 @@ export function getMediaAnalyticsByToken(
 /**
  * Media analytics grouped by feed.
  */
-export function getMediaAnalyticsByFeed(
+export async function getMediaAnalyticsByFeed(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
 	database: Database = db,
-): Array<MediaByFeedAnalyticsRow> {
+): Promise<Array<MediaByFeedAnalyticsRow>> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = database
-		.query<
-			{
-				feed_id: string
-				feed_type: AnalyticsFeedType
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				first_seen_at: number | null
-				last_seen_at: number | null
-			},
-			[string, string, number]
-		>(
-			sql`
-				SELECT
-					feed_id,
-					feed_type,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MIN(created_at) AS first_seen_at,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE media_root = ? AND relative_path = ? AND created_at >= ?
-				GROUP BY feed_id, feed_type
-				ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
-			`,
-		)
-		.all(mediaRoot, normalizedRelativePath, since)
+	const rows = await selectAll<{
+		feed_id: string
+		feed_type: AnalyticsFeedType
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		first_seen_at: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				feed_id,
+				feed_type,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MIN(created_at) AS first_seen_at,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE media_root = ${mediaRoot} AND relative_path = ${normalizedRelativePath} AND created_at >= ${since}
+			GROUP BY feed_id, feed_type
+			ORDER BY download_starts DESC, media_requests DESC, last_seen_at DESC;
+		`,
+	)
 
 	return rows.map((row) => ({
 		feedId: row.feed_id,
@@ -640,42 +570,38 @@ export function getMediaAnalyticsByFeed(
 /**
  * Daily analytics points for a specific media item.
  */
-export function getMediaDailyAnalytics(
+export async function getMediaDailyAnalytics(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
 	database: Database = db,
-): Array<DailyAnalyticsRow> {
+): Promise<Array<DailyAnalyticsRow>> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = database
-		.query<
-			{
-				day: string
-				day_start: number
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-			},
-			[string, string, number]
-		>(
-			sql`
-				SELECT
-					strftime('%Y-%m-%d', created_at, 'unixepoch') AS day,
-					CAST(strftime('%s', date(created_at, 'unixepoch')) AS INTEGER) AS day_start,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
-				FROM feed_analytics_events
-				WHERE media_root = ? AND relative_path = ? AND created_at >= ?
-				GROUP BY day
-				ORDER BY day ASC;
-			`,
-		)
-		.all(mediaRoot, normalizedRelativePath, since)
+	const rows = await selectAll<{
+		day: string
+		day_start: number
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				strftime('%Y-%m-%d', created_at, 'unixepoch') AS day,
+				CAST(strftime('%s', date(created_at, 'unixepoch')) AS INTEGER) AS day_start,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients
+			FROM feed_analytics_events
+			WHERE media_root = ${mediaRoot} AND relative_path = ${normalizedRelativePath} AND created_at >= ${since}
+			GROUP BY day
+			ORDER BY day ASC;
+		`,
+	)
 
 	return rows.map((row) => ({
 		day: row.day,
@@ -691,46 +617,42 @@ export function getMediaDailyAnalytics(
 /**
  * Top client applications for a specific media item.
  */
-export function getMediaTopClientAnalytics(
+export async function getMediaTopClientAnalytics(
 	mediaRoot: string,
 	relativePath: string,
 	since: number,
 	limit = 10,
 	database: Database = db,
-): Array<TopClientAnalyticsRow> {
+): Promise<Array<TopClientAnalyticsRow>> {
 	const normalizedRelativePath = normalizePath(relativePath)
-	const rows = database
-		.query<
-			{
-				client_name: string
-				rss_fetches: number | null
-				media_requests: number | null
-				download_starts: number | null
-				bytes_served: number | null
-				unique_clients: number | null
-				first_seen_at: number | null
-				last_seen_at: number | null
-			},
-			[string, string, number, number]
-		>(
-			sql`
-				SELECT
-					COALESCE(client_name, 'Unknown') AS client_name,
-					COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
-					COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
-					COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
-					MIN(created_at) AS first_seen_at,
-					MAX(created_at) AS last_seen_at
-				FROM feed_analytics_events
-				WHERE media_root = ? AND relative_path = ? AND created_at >= ?
-				GROUP BY COALESCE(client_name, 'Unknown')
-				ORDER BY media_requests DESC, download_starts DESC, rss_fetches DESC
-				LIMIT ?;
-			`,
-		)
-		.all(mediaRoot, normalizedRelativePath, since, limit)
+	const rows = await selectAll<{
+		client_name: string
+		rss_fetches: number | null
+		media_requests: number | null
+		download_starts: number | null
+		bytes_served: number | null
+		unique_clients: number | null
+		first_seen_at: number | null
+		last_seen_at: number | null
+	}>(
+		database,
+		sql`
+			SELECT
+				COALESCE(client_name, 'Unknown') AS client_name,
+				COALESCE(SUM(CASE WHEN event_type = 'rss_fetch' THEN 1 ELSE 0 END), 0) AS rss_fetches,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN 1 ELSE 0 END), 0) AS media_requests,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' AND is_download_start = 1 THEN 1 ELSE 0 END), 0) AS download_starts,
+				COALESCE(SUM(CASE WHEN event_type = 'media_request' THEN COALESCE(bytes_served, 0) ELSE 0 END), 0) AS bytes_served,
+				COALESCE(COUNT(DISTINCT CASE WHEN client_fingerprint IS NOT NULL THEN client_fingerprint END), 0) AS unique_clients,
+				MIN(created_at) AS first_seen_at,
+				MAX(created_at) AS last_seen_at
+			FROM feed_analytics_events
+			WHERE media_root = ${mediaRoot} AND relative_path = ${normalizedRelativePath} AND created_at >= ${since}
+			GROUP BY COALESCE(client_name, 'Unknown')
+			ORDER BY media_requests DESC, download_starts DESC, rss_fetches DESC
+			LIMIT ${limit};
+		`,
+	)
 
 	return rows.map((row) => ({
 		clientName: row.client_name,

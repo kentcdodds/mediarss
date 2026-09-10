@@ -91,13 +91,20 @@ let stream = renderToStream(<App />, {
 			throw new Error(`Unable to resolve client entry export for ${entryId}`)
 		}
 
-		return {
-			href: await assetServer.getHref(entryId),
-			exportName,
-		}
+		let { href, importMap, preloads } =
+			await assetServer.getScriptEntry(entryId)
+
+		return { href, importMap, exportName, preloads }
 	},
 })
 ```
+
+Prefer the standard `render({ assets })` middleware from
+`remix/middleware/render` over calling `renderToStream()` directly: it resolves
+client entries with `getScriptEntry()` and includes their import maps in
+rendered documents and frame responses. Apply it per-route via `createAction()`
+`middleware` when only some routes render Remix UI so plain `RequestContext`
+handlers elsewhere keep typechecking.
 
 If the module export name differs from the component function name, include
 `#ExportName` in the entry ID or return the exact export name from
@@ -118,18 +125,22 @@ Use `run` to start the client runtime. It scans the document for client entry
 markers, loads modules, and hydrates each one:
 
 ```tsx
+import {
+	detectMultipleImportMapSupport,
+	importModule,
+	preloadShim,
+} from 'remix/multiple-import-maps-polyfill'
 import { run } from 'remix/ui'
 
 let app = run({
 	async loadModule(moduleUrl, exportName) {
-		let mod = await import(moduleUrl)
+		let mod = await importModule(moduleUrl)
 		return mod[exportName]
 	},
-	async resolveFrame(src, signal, target) {
-		let headers = new Headers({ accept: 'text/html' })
-		if (target) headers.set('x-remix-target', target)
-		let response = await fetch(src, { headers, signal })
-		return response.body ?? (await response.text())
+	async processClientEntryPreloads(preloads) {
+		if (await detectMultipleImportMapSupport()) return preloads
+		preloadShim(preloads)
+		return []
 	},
 })
 
@@ -143,9 +154,15 @@ await app.ready()
 ### `run` options
 
 - **`loadModule(moduleUrl, exportName)`** (required) — return the component
-  function for each client entry. Typically uses dynamic `import()`.
-- **`resolveFrame(src, signal, target)`** (optional) — called when a `<Frame>`
-  loads or reloads content. `target` is available when frame targeting matters.
+  function for each client entry. Use `importModule()` from
+  `remix/multiple-import-maps-polyfill` (or plain dynamic `import()` when you do
+  not need the polyfill).
+- **`processClientEntryPreloads(preloads)`** (optional) — handle modulepreloads
+  for client entries discovered after the initial load; return `[]` after
+  `preloadShim()` in browsers without multiple-import-map support.
+- **`resolveFrame(src, signal, target)`** (optional) — override how a `<Frame>`
+  fetches content. The default already fetches HTML (including `3xx`/`4xx`
+  responses), so only provide this for genuinely custom transport.
 
 ### `app` methods
 
@@ -283,7 +300,16 @@ navigate('/dashboard', { history: 'replace' })
 
 Options: `src`, `target`, `history` (`'push' | 'replace'`), `resetScroll`.
 
-Attributes understood by the runtime: `rmx-target`, `rmx-src`, `rmx-document`.
+Attributes understood by the runtime use the `data-rmx-*` namespace:
+`data-rmx-target`, `data-rmx-src`, `data-rmx-document`, `data-rmx-history`,
+`data-rmx-reset-scroll`, `data-rmx-preserve-dom`, and `data-rmx-key` (the
+reconciliation key, formerly `data-key`). Generated markers are `data-rmx-style`
+and `data-rmx-module-preload`. The unprefixed `rmx-*` forms were removed in
+rc.1.
+
+Frames render HTML responses with `3xx`/`4xx` status codes by default (form
+validation and error pages appear in place), so a custom `resolveFrame` that
+only fetches HTML is unnecessary; `run()` does that already.
 
 ## Head Management
 

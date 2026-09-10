@@ -1,10 +1,10 @@
 import { route } from 'remix/routes'
 
 export const rootRoutes = route({
-	health: '/health',
-	feed: '/feed/:token',
-	media: '/media/:token/*path',
-	art: '/art/:token/*path',
+	health: { method: 'GET', pattern: '/health' },
+	feed: { method: 'GET', pattern: '/feed/:token' },
+	media: { method: 'GET', pattern: '/media/:token/*path' },
+	art: { method: 'GET', pattern: '/art/:token/*path' },
 	oauthServerMetadata: '/.well-known/oauth-authorization-server',
 	mcpProtectedResource: '/.well-known/oauth-protected-resource/mcp',
 })
@@ -17,11 +17,11 @@ export const oauthRoutes = route({
 
 export const mcpRoutes = route({
 	index: '/',
-	widget: '/widget/:token/*path',
+	widget: { method: 'GET', pattern: '/widget/:token/*path' },
 })
 
 export const adminRoutes = route({
-	health: '/health',
+	health: { method: 'GET', pattern: '/health' },
 	authorize: '/authorize',
 	index: '/',
 	feedNew: '/feeds/new',

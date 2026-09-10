@@ -71,7 +71,10 @@ let router = createRouter({ middleware })
 - Use `staticFiles()` for files that should be served directly from disk, such
   as images, fonts, or already-built assets in `public/`
 - Use `remix/assets` when browser modules should be compiled and served from
-  source files with import rewriting, preloads, or fingerprinted URLs
+  source files with import maps, preloads, or fingerprinted URLs
+- Use `render({ assets })` from `remix/middleware/render` on the routes that
+  render Remix UI documents so `context.render(node)` wires client entries and
+  import maps automatically
 
 ### Ordering notes
 

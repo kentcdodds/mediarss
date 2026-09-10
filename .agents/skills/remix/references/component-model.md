@@ -233,7 +233,7 @@ For granular updates without re-rendering the full subtree, use
 `TypedEventTarget`:
 
 ```tsx
-import { TypedEventTarget, addEventListeners } from 'remix/ui'
+import { TypedEventTarget } from 'remix/ui'
 
 class Theme extends TypedEventTarget<{ change: Event }> {
 	#value: 'light' | 'dark' = 'light'
@@ -266,10 +266,8 @@ function ThemeProvider(handle: Handle<{ children?: RemixNode }, Theme>) {
 
 function ThemedContent(handle: Handle) {
 	let theme = handle.context.get(ThemeProvider)
-	addEventListeners(theme, handle.signal, {
-		change() {
-			handle.update()
-		},
+	theme.addEventListener('change', () => handle.update(), {
+		signal: handle.signal,
 	})
 	return () => <div>Theme: {theme.value}</div>
 }
@@ -277,22 +275,30 @@ function ThemedContent(handle: Handle) {
 
 ## Global Events
 
-Use `addEventListeners(target, handle.signal, listeners)` to listen to global
-targets with automatic cleanup when the component disconnects:
+Use the native `target.addEventListener(type, listener, { signal })` with
+`handle.signal` so listeners on global targets are removed automatically when
+the component disconnects (the old `addEventListeners()` helper was removed in
+rc.1):
 
 ```tsx
-import { addEventListeners, type Handle } from 'remix/ui'
+import { type Handle } from 'remix/ui'
 
 function ResizeTracker(handle: Handle) {
 	let width = window.innerWidth
 
-	addEventListeners(window, handle.signal, {
-		resize() {
+	window.addEventListener(
+		'resize',
+		() => {
 			width = window.innerWidth
 			handle.update()
 		},
-	})
+		{ signal: handle.signal },
+	)
 
 	return () => <div>{width}</div>
 }
 ```
+
+If a listener needs to cancel work from its previous run, create an
+`AbortController` per run and abort it when the listener runs again or when
+`handle.signal` aborts.

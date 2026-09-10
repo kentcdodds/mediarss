@@ -888,7 +888,7 @@ export async function initializeTools(
 					destructiveHint: false,
 				},
 				// OpenAI Apps SDK metadata for ChatGPT widget rendering
-				_meta: getMediaWidgetToolMeta(baseUrl),
+				_meta: await getMediaWidgetToolMeta(baseUrl),
 			},
 			async ({ mediaRoot, relativePath, token: providedToken }) => {
 				// If no token provided, find one automatically
@@ -1017,7 +1017,7 @@ export async function initializeTools(
 				}
 
 				// Create the UIResource for MCP-UI compatible clients
-				const uiResource = createMediaWidgetResource({
+				const uiResource = await createMediaWidgetResource({
 					baseUrl,
 					media: mediaData,
 					description: `Media player for ${metadata.title}`,

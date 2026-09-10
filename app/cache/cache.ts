@@ -60,7 +60,10 @@ async function createCacheDatabase(): Promise<SqliteDatabase> {
 let _cacheDb: Promise<SqliteDatabase> | null = null
 
 function getCacheDb(): Promise<SqliteDatabase> {
-	_cacheDb ??= createCacheDatabase()
+	_cacheDb ??= createCacheDatabase().catch((error: unknown) => {
+		_cacheDb = null
+		throw error
+	})
 	return _cacheDb
 }
 

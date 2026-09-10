@@ -156,5 +156,5 @@ CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_token_created_at ON feed_an
 CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_media_path_created_at ON feed_analytics_events(media_root, relative_path, created_at);
 CREATE INDEX IF NOT EXISTS idx_feed_analytics_events_event_type_created_at ON feed_analytics_events(event_type, created_at);
 
--- Journal of the legacy migration runner; superseded by data_table_migrations.
-DROP TABLE IF EXISTS schema_versions;
+-- The legacy runner's `schema_versions` journal is intentionally left in place
+-- so the previous release can still start against an adopted database.

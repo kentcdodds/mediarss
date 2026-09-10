@@ -394,8 +394,10 @@ run command above.
 Schema migrations run automatically when the container starts, before it serves
 any requests. Databases created by earlier releases are adopted in place: the
 first start after upgrading records the current schema as the baseline migration
-and removes the old `schema_versions` bookkeeping table. No manual steps are
-needed, but taking a backup before upgrading is always a good idea.
+in `data_table_migrations` and leaves the old `schema_versions` bookkeeping
+table untouched, so rolling back to the previous image still works (it sees
+schema version 8 and skips its own migrations). No manual steps are needed, but
+taking a backup before upgrading is always a good idea.
 
 ### Backup and Restore
 

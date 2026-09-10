@@ -11,8 +11,9 @@ const MINIMUM_LEGACY_SCHEMA_VERSION = 8
 /**
  * Databases created by the previous hand-rolled migration runner (journaled in
  * `schema_versions`) are adopted by the baseline migration: every statement in
- * it is idempotent, and it drops `schema_versions` at the end. That only holds
- * for the legacy runner's final schema version, so refuse anything older.
+ * it is idempotent, and `schema_versions` is left untouched so the previous
+ * release can still start against the database. That only holds for the legacy
+ * runner's final schema version, so refuse anything older.
  */
 async function assertLegacyDatabaseIsAdoptable(database: Database) {
 	if (!(await database.hasTable({ name: 'schema_versions' }))) return

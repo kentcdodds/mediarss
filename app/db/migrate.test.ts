@@ -115,11 +115,18 @@ test('adopts a database created by the legacy migration runner without losing da
 	const result = await migrateDatabase(legacy.db)
 	expect(result.applied.map((m) => m.name)).toEqual(['baseline'])
 
-	// Legacy journal is gone, the new one records the baseline.
-	expect(tableNames(legacy.sqlite)).not.toContain('schema_versions')
+	// The new journal records the baseline; the legacy journal survives untouched
+	// so the previous release can still start against this database (it sees
+	// version 8 and skips its own migrations).
 	expect(
 		legacy.sqlite.prepare(`SELECT id, name FROM data_table_migrations`).all(),
 	).toEqual([{ id: '20260910000000', name: 'baseline' }])
+	expect(tableNames(legacy.sqlite)).toContain('schema_versions')
+	expect(
+		legacy.sqlite
+			.prepare(`SELECT MAX(version) AS version FROM schema_versions`)
+			.get(),
+	).toEqual({ version: 8 })
 
 	// Data survived.
 	expect(

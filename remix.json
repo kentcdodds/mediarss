@@ -6,7 +6,9 @@
 		"allowFiles": [
 			"app/assets/styles.css",
 			"app/client/**",
-			"app/components/**",
+			"app/components/modal.tsx",
+			"app/components/props-component.ts",
+			"app/components/search-input.tsx",
 			"app/config/routes.ts",
 			"app/helpers/feed-list-sort.ts",
 			"app/helpers/format.ts",

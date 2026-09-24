@@ -83,7 +83,10 @@ test('a fresh database gets the baseline schema and a journal entry', async () =
 	const journal = ctx.sqlite
 		.prepare(`SELECT id, name FROM data_table_migrations ORDER BY id`)
 		.all()
-	expect(journal).toEqual([{ id: '20260910000000', name: 'baseline' }])
+	expect(journal).toEqual([
+		{ id: '20260910000000', name: 'baseline' },
+		{ id: '20260923235900', name: 'refresh_token_reuse_grace' },
+	])
 
 	// Running again is a no-op.
 	const second = await migrateDatabase(ctx.db)
@@ -113,14 +116,20 @@ test('adopts a database created by the legacy migration runner without losing da
 	`)
 
 	const result = await migrateDatabase(legacy.db)
-	expect(result.applied.map((m) => m.name)).toEqual(['baseline'])
+	expect(result.applied.map((m) => m.name)).toEqual([
+		'baseline',
+		'refresh_token_reuse_grace',
+	])
 
 	// The new journal records the baseline; the legacy journal survives untouched
 	// so the previous release can still start against this database (it sees
 	// version 8 and skips its own migrations).
 	expect(
 		legacy.sqlite.prepare(`SELECT id, name FROM data_table_migrations`).all(),
-	).toEqual([{ id: '20260910000000', name: 'baseline' }])
+	).toEqual([
+		{ id: '20260910000000', name: 'baseline' },
+		{ id: '20260923235900', name: 'refresh_token_reuse_grace' },
+	])
 	expect(tableNames(legacy.sqlite)).toContain('schema_versions')
 	expect(
 		legacy.sqlite
@@ -177,14 +186,18 @@ test('rolling back the baseline drops every application table', async () => {
 
 	const result = await ctx.db.migrate(migrations, {
 		direction: 'down',
-		step: 1,
+		step: migrations.length,
 	})
-	expect(result.reverted.map((m) => m.name)).toEqual(['baseline'])
+	expect(result.reverted.map((m) => m.name)).toEqual([
+		'refresh_token_reuse_grace',
+		'baseline',
+	])
 	expect(tableNames(ctx.sqlite)).toEqual(['data_table_migrations'])
 
 	const status = await ctx.db.migrationStatus(migrations)
 	expect(status.map((m) => [m.name, m.status])).toEqual([
 		['baseline', 'pending'],
+		['refresh_token_reuse_grace', 'pending'],
 	])
 
 	await migrateDatabase(ctx.db)
@@ -237,6 +250,7 @@ test('oauth_refresh_tokens table has the expected columns and indexes', async ()
 		'expires_at',
 		'used_at',
 		'created_at',
+		'replaced_by',
 	])
 
 	const indexes = ctx.sqlite

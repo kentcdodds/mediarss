@@ -19,6 +19,7 @@ import {
 	getAudience,
 	getClient,
 	getSubject,
+	REFRESH_REUSE_GRACE_SECONDS,
 	isValidCodeChallenge,
 	isValidCodeVerifier,
 	listClients,
@@ -829,6 +830,25 @@ async function authorizeAndExchange(params: {
 	}
 }
 
+function postRefresh(
+	baseUrl: string,
+	params: { refreshToken: string; clientId: string; scope?: string },
+) {
+	const body = new URLSearchParams({
+		grant_type: 'refresh_token',
+		refresh_token: params.refreshToken,
+		client_id: params.clientId,
+	})
+	if (params.scope) body.set('scope', params.scope)
+	return fetch(`${baseUrl}/oauth/token`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: body.toString(),
+	})
+}
+
 test('refresh token grant rotates the refresh token and issues a new access token', async () => {
 	await using ctx = await createTestServer()
 
@@ -882,7 +902,7 @@ test('refresh token grant rotates the refresh token and issues a new access toke
 	expect(payload.client_id).toBe(testClient.id)
 })
 
-test('refresh token cannot be reused after rotation', async () => {
+test('refresh token reuse inside the grace window keeps the rotated token', async () => {
 	await using ctx = await createTestServer()
 
 	const testClient = await createTestClient(
@@ -896,46 +916,106 @@ test('refresh token cannot be reused after rotation', async () => {
 		scope: 'mcp:read',
 	})
 
-	const firstRefresh = await fetch(`${ctx.baseUrl}/oauth/token`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		body: new URLSearchParams({
-			grant_type: 'refresh_token',
-			refresh_token: first.refresh_token,
-			client_id: testClient.id,
-		}).toString(),
+	const firstRefresh = await postRefresh(ctx.baseUrl, {
+		refreshToken: first.refresh_token,
+		clientId: testClient.id,
 	})
 	expect(firstRefresh.status).toBe(200)
 	const rotated = (await firstRefresh.json()) as { refresh_token: string }
 
-	const replay = await fetch(`${ctx.baseUrl}/oauth/token`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		body: new URLSearchParams({
-			grant_type: 'refresh_token',
-			refresh_token: first.refresh_token,
-			client_id: testClient.id,
-		}).toString(),
+	const replay = await postRefresh(ctx.baseUrl, {
+		refreshToken: first.refresh_token,
+		clientId: testClient.id,
+	})
+	expect(replay.status).toBe(200)
+	const replayBody = (await replay.json()) as { refresh_token: string }
+	expect(replayBody.refresh_token).toBe(rotated.refresh_token)
+
+	const rotatedAfterReplay = await postRefresh(ctx.baseUrl, {
+		refreshToken: rotated.refresh_token,
+		clientId: testClient.id,
+	})
+	expect(rotatedAfterReplay.status).toBe(200)
+	const next = (await rotatedAfterReplay.json()) as { refresh_token: string }
+	expect(next.refresh_token).toBeTruthy()
+	expect(next.refresh_token).not.toBe(rotated.refresh_token)
+})
+
+test('concurrent refresh calls share one rotated token', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = await createTestClient('Refresh Race Test ' + uniqueId(), [
+		'http://localhost:9999/callback',
+	])
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+	})
+
+	const [left, right] = await Promise.all([
+		postRefresh(ctx.baseUrl, {
+			refreshToken: first.refresh_token,
+			clientId: testClient.id,
+		}),
+		postRefresh(ctx.baseUrl, {
+			refreshToken: first.refresh_token,
+			clientId: testClient.id,
+		}),
+	])
+	expect(left.status).toBe(200)
+	expect(right.status).toBe(200)
+	const leftBody = (await left.json()) as { refresh_token: string }
+	const rightBody = (await right.json()) as { refresh_token: string }
+	expect(leftBody.refresh_token).toBe(rightBody.refresh_token)
+	expect(leftBody.refresh_token).not.toBe(first.refresh_token)
+
+	const followUp = await postRefresh(ctx.baseUrl, {
+		refreshToken: leftBody.refresh_token,
+		clientId: testClient.id,
+	})
+	expect(followUp.status).toBe(200)
+})
+
+test('refresh token reuse after the grace window revokes the family', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = await createTestClient(
+		'Refresh Grace Expired ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read',
+	})
+
+	const firstRefresh = await postRefresh(ctx.baseUrl, {
+		refreshToken: first.refresh_token,
+		clientId: testClient.id,
+	})
+	expect(firstRefresh.status).toBe(200)
+	const rotated = (await firstRefresh.json()) as { refresh_token: string }
+
+	const usedAt = Math.floor(Date.now() / 1000) - REFRESH_REUSE_GRACE_SECONDS - 5
+	await db.exec(
+		sql`UPDATE oauth_refresh_tokens SET used_at = ${usedAt} WHERE token = ${first.refresh_token};`,
+	)
+
+	const replay = await postRefresh(ctx.baseUrl, {
+		refreshToken: first.refresh_token,
+		clientId: testClient.id,
 	})
 	expect(replay.status).toBe(400)
 	expect(((await replay.json()) as { error: string }).error).toBe(
 		'invalid_grant',
 	)
 
-	const rotatedAfterReplay = await fetch(`${ctx.baseUrl}/oauth/token`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		body: new URLSearchParams({
-			grant_type: 'refresh_token',
-			refresh_token: rotated.refresh_token,
-			client_id: testClient.id,
-		}).toString(),
+	const rotatedAfterReplay = await postRefresh(ctx.baseUrl, {
+		refreshToken: rotated.refresh_token,
+		clientId: testClient.id,
 	})
 	expect(rotatedAfterReplay.status).toBe(400)
 	expect(((await rotatedAfterReplay.json()) as { error: string }).error).toBe(
@@ -1038,8 +1118,10 @@ test('replaying an expired used refresh token still revokes the family', async (
 	expect(firstRefresh.status).toBe(200)
 	const rotated = (await firstRefresh.json()) as { refresh_token: string }
 
+	const staleUsedAt =
+		Math.floor(Date.now() / 1000) - REFRESH_REUSE_GRACE_SECONDS - 5
 	await db.exec(
-		sql`UPDATE oauth_refresh_tokens SET expires_at = ${Math.floor(Date.now() / 1000) - 1} WHERE token = ${first.refresh_token};`,
+		sql`UPDATE oauth_refresh_tokens SET expires_at = ${Math.floor(Date.now() / 1000) - 1}, used_at = ${staleUsedAt} WHERE token = ${first.refresh_token};`,
 	)
 
 	const replay = await fetch(`${ctx.baseUrl}/oauth/token`, {

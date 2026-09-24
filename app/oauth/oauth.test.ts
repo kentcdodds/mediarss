@@ -783,6 +783,7 @@ async function authorizeAndExchange(params: {
 	clientId: string
 	redirectUri: string
 	scope?: string
+	resource?: string
 }) {
 	const verifier = generateCodeVerifier()
 	const challenge = await computeS256Challenge(verifier)
@@ -795,6 +796,9 @@ async function authorizeAndExchange(params: {
 	})
 	if (params.scope) {
 		authorizeParams.set('scope', params.scope)
+	}
+	if (params.resource) {
+		authorizeParams.set('resource', params.resource)
 	}
 
 	const authorizeResponse = await fetch(
@@ -819,6 +823,7 @@ async function authorizeAndExchange(params: {
 			redirect_uri: params.redirectUri,
 			client_id: params.clientId,
 			code_verifier: verifier,
+			...(params.resource ? { resource: params.resource } : {}),
 		}).toString(),
 	})
 
@@ -832,7 +837,12 @@ async function authorizeAndExchange(params: {
 
 function postRefresh(
 	baseUrl: string,
-	params: { refreshToken: string; clientId: string; scope?: string },
+	params: {
+		refreshToken: string
+		clientId: string
+		scope?: string
+		resource?: string
+	},
 ) {
 	const body = new URLSearchParams({
 		grant_type: 'refresh_token',
@@ -840,6 +850,7 @@ function postRefresh(
 		client_id: params.clientId,
 	})
 	if (params.scope) body.set('scope', params.scope)
+	if (params.resource) body.set('resource', params.resource)
 	return fetch(`${baseUrl}/oauth/token`, {
 		method: 'POST',
 		headers: {
@@ -900,6 +911,40 @@ test('refresh token grant rotates the refresh token and issues a new access toke
 	})
 	expect(payload.scope).toBe('mcp:read mcp:write')
 	expect(payload.client_id).toBe(testClient.id)
+})
+
+test('Kody resource indicator does not drop the refresh token', async () => {
+	await using ctx = await createTestServer()
+
+	const testClient = await createTestClient(
+		'Refresh Resource Test ' + uniqueId(),
+		['http://localhost:9999/callback'],
+	)
+	const resource = 'https://mediarss.doddsfamily.us/mcp'
+	const first = await authorizeAndExchange({
+		baseUrl: ctx.baseUrl,
+		clientId: testClient.id,
+		redirectUri: testClient.redirectUris[0]!,
+		scope: 'mcp:read mcp:write',
+		resource,
+	})
+
+	expect(first.refresh_token).toBeTruthy()
+	expect(first.scope).toBe('mcp:read mcp:write')
+
+	const refreshResponse = await postRefresh(ctx.baseUrl, {
+		refreshToken: first.refresh_token,
+		clientId: testClient.id,
+		resource,
+	})
+	expect(refreshResponse.status).toBe(200)
+	const refreshed = (await refreshResponse.json()) as {
+		refresh_token: string
+		access_token: string
+	}
+	expect(refreshed.refresh_token).toBeTruthy()
+	expect(refreshed.refresh_token).not.toBe(first.refresh_token)
+	expect(refreshed.access_token).toBeTruthy()
 })
 
 test('refresh token reuse inside the grace window keeps the rotated token', async () => {

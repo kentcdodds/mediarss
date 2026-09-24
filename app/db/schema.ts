@@ -150,6 +150,8 @@ export const oauthRefreshTokensTable = table({
 		expires_at: c.integer(),
 		used_at: c.integer().nullable(),
 		created_at: c.integer(),
+		// Successor secret after rotation. Null until this token is consumed.
+		replaced_by: c.text().nullable(),
 	},
 })
 

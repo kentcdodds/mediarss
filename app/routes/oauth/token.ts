@@ -6,13 +6,11 @@ import { TOKEN_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import {
 	clientSupportsGrantType,
 	consumeAuthorizationCode,
-	consumeRefreshToken,
 	createRefreshToken,
 	generateAccessToken,
-	getRefreshToken,
 	getValidAuthorizationCode,
+	redeemRefreshToken,
 	resolveClientResult,
-	rotateRefreshToken,
 	verifyCodeChallenge,
 } from '#app/oauth/index.ts'
 
@@ -107,21 +105,6 @@ function validateAllowedHost(context: RequestContext): Response | null {
 	}
 
 	return null
-}
-
-function requestedScopeIsAllowed(
-	requestedScope: string,
-	grantedScope: string,
-): boolean {
-	if (!requestedScope) {
-		return true
-	}
-
-	const granted = new Set(grantedScope.split(' ').filter(Boolean))
-	return requestedScope
-		.split(' ')
-		.filter(Boolean)
-		.every((scope) => granted.has(scope))
 }
 
 async function issueTokenPair(params: {
@@ -293,70 +276,45 @@ async function handleRefreshToken(
 		)
 	}
 
-	const existing = await getRefreshToken(tokenRequest.refresh_token)
-	const now = Math.floor(Date.now() / 1000)
-	if (!existing) {
-		return errorResponse(
-			'invalid_grant',
-			'Refresh token is invalid, expired, or has already been used.',
-		)
-	}
-	if (existing.usedAt !== null) {
-		// Replay detection must run even after the used token expires, so a
-		// later valid descendant in the same family is still revoked.
-		await consumeRefreshToken(tokenRequest.refresh_token)
-		return errorResponse(
-			'invalid_grant',
-			'Refresh token is invalid, expired, or has already been used.',
-		)
-	}
-	if (existing.expiresAt < now) {
-		return errorResponse(
-			'invalid_grant',
-			'Refresh token is invalid, expired, or has already been used.',
-		)
-	}
-
-	if (existing.clientId !== tokenRequest.client_id) {
-		return errorResponse(
-			'invalid_grant',
-			'Refresh token was not issued to this client.',
-		)
-	}
-
-	if (!requestedScopeIsAllowed(tokenRequest.scope, existing.scope)) {
-		return errorResponse(
-			'invalid_scope',
-			'Requested scope exceeds the scope originally granted.',
-		)
-	}
-
 	const hostError = validateAllowedHost(context)
 	if (hostError) {
 		return hostError
 	}
 
-	const consumed = await consumeRefreshToken(tokenRequest.refresh_token)
-	if (!consumed) {
-		return errorResponse(
-			'invalid_grant',
-			'Refresh token is invalid, expired, or has already been used.',
-		)
+	const redeemed = await redeemRefreshToken({
+		token: tokenRequest.refresh_token,
+		clientId: tokenRequest.client_id,
+		scope: tokenRequest.scope,
+	})
+
+	if (redeemed.status === 'rejected') {
+		if (redeemed.replay) {
+			recordDiagnostic({
+				area: 'oauth.token',
+				event: 'refresh_replay_revoked',
+				ok: false,
+				detail: { clientId: tokenRequest.client_id },
+			})
+		}
+		return errorResponse(redeemed.error, redeemed.description)
 	}
 
-	const scope = tokenRequest.scope || consumed.scope
-	const rotated = await rotateRefreshToken({
-		...consumed,
-		scope,
-	})
-	const issuer = getOrigin(context.request, context.url)
+	if (redeemed.status === 'reused') {
+		recordDiagnostic({
+			area: 'oauth.token',
+			event: 'refresh_reused_within_grace',
+			ok: true,
+			detail: { clientId: tokenRequest.client_id },
+		})
+	}
 
+	const issuer = getOrigin(context.request, context.url)
 	return jsonTokenResponse(
 		await issueTokenPair({
 			issuer,
-			clientId: consumed.clientId,
-			scope,
-			refreshToken: rotated.token,
+			clientId: redeemed.token.clientId,
+			scope: redeemed.grantedScope,
+			refreshToken: redeemed.token.token,
 		}),
 	)
 }

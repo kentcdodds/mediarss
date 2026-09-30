@@ -34,27 +34,6 @@ function asActionContext(context: MinimalArtActionContext): ArtActionContext {
 	return context as ArtActionContext
 }
 
-async function createArtRouteTestContext(): Promise<{
-	token: string
-	[Symbol.asyncDispose]: () => Promise<void>
-}> {
-	const feed = await createDirectoryFeed({
-		name: `art-route-test-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-		directoryPaths: ['audio:test'],
-	})
-	const token = await createDirectoryFeedToken({
-		feedId: feed.id,
-		label: 'Art route token',
-	})
-
-	return {
-		token: token.token,
-		[Symbol.asyncDispose]: async () => {
-			await deleteDirectoryFeed(feed.id)
-		},
-	}
-}
-
 async function createFileArtRouteTestContext(): Promise<{
 	feedId: string
 	rootName: string
@@ -102,25 +81,6 @@ async function createFileArtRouteTestContext(): Promise<{
 		},
 	}
 }
-
-test('art route rejects malformed path encoding', async () => {
-	await using ctx = await createArtRouteTestContext()
-	const request = new Request(`http://localhost/art/${ctx.token}/%E0%A4%A`)
-	const response = await artHandler.handler(
-		asActionContext({
-			request,
-			method: 'GET',
-			url: new URL(request.url),
-			params: {
-				token: ctx.token,
-				path: '%E0%A4%A',
-			},
-		}),
-	)
-
-	expect(response.status).toBe(400)
-	expect(await response.text()).toBe('Invalid path encoding')
-})
 
 test('art route serves PNG placeholder for feed artwork when no artwork exists', async () => {
 	const feed = await createCuratedFeed({

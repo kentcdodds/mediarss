@@ -18,7 +18,6 @@ import {
 	directoryFeedTokensTable,
 } from '#app/db/schema.ts'
 import { parseAnalyticsWindowDays } from '#app/helpers/analytics-window.ts'
-import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 
@@ -183,11 +182,7 @@ export default {
 			return Response.json({ error: 'Path required' }, { status: 400 })
 		}
 
-		const decodedPath = decodePathParam(splatParam)
-		if (decodedPath === null) {
-			return Response.json({ error: 'Invalid path encoding' }, { status: 400 })
-		}
-		const parsed = parseMediaPathStrict(decodedPath)
+		const parsed = parseMediaPathStrict(splatParam)
 		if (!parsed) {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}

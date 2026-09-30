@@ -2,7 +2,6 @@ import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
 import { extractArtwork } from '#app/helpers/artwork.ts'
-import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { generatePlaceholderSvg } from '#app/helpers/placeholder-svg.ts'
@@ -26,14 +25,8 @@ export default {
 			return new Response('Path required', { status: 400 })
 		}
 
-		// Decode the path parameter
-		const decodedPath = decodePathParam(splatParam)
-		if (decodedPath === null) {
-			return new Response('Invalid path encoding', { status: 400 })
-		}
-
 		// Parse root name and relative path from URL
-		const parsed = parseMediaPath(decodedPath)
+		const parsed = parseMediaPath(splatParam)
 		if (!parsed) {
 			return new Response('Invalid path format', { status: 400 })
 		}

@@ -14,7 +14,6 @@
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import type routes from '#app/config/routes.ts'
-import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
@@ -46,14 +45,8 @@ export default {
 
 		const { feed, type } = result
 
-		// Decode the path parameter with error handling for malformed encoding
-		const decodedPath = decodePathParam(splatParam)
-		if (decodedPath === null) {
-			return new Response('Invalid URL encoding', { status: 400 })
-		}
-
 		// Parse root name and relative path from URL
-		const parsed = parseMediaPathStrict(decodedPath)
+		const parsed = parseMediaPathStrict(splatParam)
 		if (!parsed) {
 			return new Response('Invalid path format', { status: 400 })
 		}

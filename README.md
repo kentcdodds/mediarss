@@ -14,10 +14,11 @@
 
 ## Remix Version Notes
 
-MediaRSS currently targets `remix@3.0.0-rc.2`.
+MediaRSS currently targets `remix@3.0.0-rc.4`.
 
-For migration details, package guidance, and framework usage patterns, use the
-repo-local Remix skill at `.agents/skills/remix/SKILL.md`.
+For migration details, package guidance, and framework usage patterns, start
+with the installed docs at `node_modules/remix/INDEX.md` and the repo-local
+Remix skill at `.agents/skills/remix/SKILL.md`.
 
 ## Development Tooling
 

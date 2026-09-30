@@ -11,7 +11,7 @@ import {
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /** Paths that should skip rate limiting entirely */
-const SKIP_PATHS = new Set(['/health', '/admin/health'])
+const SKIP_PATHS = new Set(['/', '/health', '/admin/health'])
 
 /** Path prefixes that should skip rate limiting */
 const SKIP_PREFIXES = ['/assets/']

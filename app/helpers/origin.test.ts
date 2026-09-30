@@ -1,11 +1,46 @@
+import '#app/config/init-env.ts'
+
 import http from 'node:http'
 import { expect, test } from 'vitest'
+import router from '#app/router.tsx'
 import { startNodeServer } from '../../server/node-server.ts'
 import { getOrigin, getProtocol } from './origin.ts'
 import {
 	createAdminRedirectResponse,
 	getAdminRedirectUrl,
 } from './root-redirect.ts'
+
+test('router redirects GET / to /admin', async () => {
+	const response = await router.fetch(new Request('http://localhost/'))
+
+	expect(response.status).toBe(302)
+	expect(response.headers.get('location')).toBe('http://localhost/admin')
+})
+
+test('router redirects POST / to /admin', async () => {
+	const response = await router.fetch(
+		new Request('http://localhost/', { method: 'POST' }),
+	)
+
+	expect(response.status).toBe(302)
+	expect(response.headers.get('location')).toBe('http://localhost/admin')
+})
+
+test('router redirect uses the forwarded public origin', async () => {
+	const response = await router.fetch(
+		new Request('http://localhost/', {
+			headers: {
+				'X-Forwarded-Proto': 'https',
+				'X-Forwarded-Host': 'mediarss.doddsfamily.us',
+			},
+		}),
+	)
+
+	expect(response.status).toBe(302)
+	expect(response.headers.get('location')).toBe(
+		'https://mediarss.doddsfamily.us/admin',
+	)
+})
 
 test('getProtocol prefers x-forwarded-proto when present', () => {
 	const request = new Request('http://mediarss.doddsfamily.us/mcp', {

@@ -1,6 +1,7 @@
 import { route } from 'remix/routes'
 
 export const rootRoutes = route({
+	root: '/',
 	health: { method: 'GET', pattern: '/health' },
 	feed: { method: 'GET', pattern: '/feed/:token' },
 	media: { method: 'GET', pattern: '/media/:token/*path' },

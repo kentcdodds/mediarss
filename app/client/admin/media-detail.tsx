@@ -1036,7 +1036,7 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 										>
 											Description
 										</h3>
-										{/* TODO: Description may contain HTML. Render as HTML when Remix components support dangerouslySetInnerHTML */}
+										{/* TODO: Description may contain HTML. Rendering it requires sanitizing before passing it through unsafeHTML() to innerHTML. */}
 										<p
 											mix={[
 												rmxCss({

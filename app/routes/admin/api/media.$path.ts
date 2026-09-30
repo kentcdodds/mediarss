@@ -8,7 +8,6 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
-import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
 
@@ -141,14 +140,8 @@ export default {
 			return Response.json({ error: 'Path required' }, { status: 400 })
 		}
 
-		// Decode the path parameter
-		const decodedPath = decodePathParam(splatParam)
-		if (decodedPath === null) {
-			return Response.json({ error: 'Invalid path encoding' }, { status: 400 })
-		}
-
 		// Parse root name and relative path from URL
-		const parsed = parseMediaPath(decodedPath)
+		const parsed = parseMediaPath(splatParam)
 		if (!parsed) {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}

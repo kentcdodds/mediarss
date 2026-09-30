@@ -13,7 +13,6 @@ import {
 	isDownloadStartRequest,
 	isTrackableMediaStatus,
 } from '#app/helpers/analytics-request.ts'
-import { decodePathParam } from '#app/helpers/decode-path-param.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { fileExists } from '#app/helpers/node-file.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
@@ -66,14 +65,8 @@ export default {
 			return new Response('File path required', { status: 400 })
 		}
 
-		// Decode the path parameter
-		const decodedPath = decodePathParam(splatParam)
-		if (decodedPath === null) {
-			return new Response('Invalid path encoding', { status: 400 })
-		}
-
 		// Parse root name and relative path from URL
-		const parsed = parseMediaPathStrict(decodedPath)
+		const parsed = parseMediaPathStrict(splatParam)
 		if (!parsed) {
 			return new Response('Invalid path format', { status: 400 })
 		}

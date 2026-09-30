@@ -20,13 +20,17 @@ Do not commit if any part of the gate fails.
 ## Remix Skill
 
 Use the repo-local Remix skill at `.agents/skills/remix/SKILL.md` for Remix 3
-package guidance and package-specific reference material. Load the skill before
-changing Remix routes, controllers, middleware, data access, validation, auth,
-sessions, file uploads, server setup, UI components, hydration, navigation, or
-tests.
+guidance. Start from the installed docs: search `node_modules/remix/INDEX.md`,
+then follow links to the relevant guide in `node_modules/remix/guides/` and the
+package README. Installed docs are canonical for the installed version.
 
-The Remix CLI does not expose a `remix skills install` command; this repo keeps
-the shipped skill files checked in instead.
+Load the skill before changing Remix routes, controllers, middleware, data
+access, validation, auth, sessions, file uploads, server setup, UI components,
+hydration, navigation, or tests.
+
+The Remix CLI has no `remix skills install` command. This skill is copied
+verbatim from `remix-run/remix` at the `remix@<version>` tag and should be
+refreshed on upgrades.
 
 ## No React
 

@@ -1,9 +1,6 @@
 import http from 'node:http'
 import { type AddressInfo } from 'node:net'
-import {
-	createRequestListener,
-	type FetchHandler,
-} from 'remix/node-fetch-server'
+import { createRequestListener } from 'remix/node-fetch-server'
 
 export type AppServer = {
 	server: http.Server
@@ -21,7 +18,7 @@ export async function startNodeServer({
 }: {
 	port: number
 	hostname?: string
-	handler: FetchHandler
+	handler: (request: Request) => Response | Promise<Response>
 }): Promise<AppServer> {
 	const server = http.createServer(
 		createRequestListener(handler, {

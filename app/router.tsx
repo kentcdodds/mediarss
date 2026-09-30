@@ -47,6 +47,7 @@ import oauthJwksHandlers from '#app/routes/oauth/jwks.ts'
 import oauthRegisterHandlers from '#app/routes/oauth/register.ts'
 import oauthServerMetadataHandlers from '#app/routes/oauth/server-metadata.ts'
 import oauthTokenHandlers from '#app/routes/oauth/token.ts'
+import rootHandlers from '#app/routes/root.ts'
 
 /**
  * CORS headers for static files and browser modules.
@@ -99,6 +100,9 @@ function staticFiles(
 ): Middleware {
 	const absoluteRoot = path.resolve(root)
 	return async (context, next) => {
+		if (context.url.pathname === '/') {
+			return next()
+		}
 		const relativePath = context.url.pathname.replace(/^\/+/, '')
 		const filePath = path.join(absoluteRoot, relativePath)
 
@@ -149,6 +153,7 @@ const router = createRouter({
 })
 
 router.map(routes.health, healthHandlers)
+router.map(routes.root, rootHandlers)
 router.map(routes.feed, feedHandlers)
 router.map(routes.media, mediaHandlers)
 router.map(routes.art, artHandlers)

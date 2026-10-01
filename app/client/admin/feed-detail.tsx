@@ -1,4 +1,4 @@
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { type Handle, css as rmxCss, navigate, on as rmxOn } from 'remix/ui'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,
@@ -31,7 +31,7 @@ import {
 	getFeedEditPath,
 	isFeedEditPath,
 } from './edit-route-paths.ts'
-import { router } from './router.tsx'
+import { type AdminRoutePageProps } from './loader-data.ts'
 
 type DirectoryFeed = {
 	id: string
@@ -273,7 +273,7 @@ type BrowseState =
 /**
  * FeedDetail component - displays feed information and manages tokens.
  */
-export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
+export function FeedDetail(handle: Handle<AdminRoutePageProps>) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: AnalyticsLoadingState = { status: 'loading' }
 	let analyticsRequestId = 0
@@ -596,7 +596,7 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 
 	const cancelEditing = () => {
 		editError = null
-		router.navigate(getFeedDetailPath(feedId))
+		void navigate(getFeedDetailPath(feedId))
 	}
 
 	const saveEdit = async (isDirectory: boolean) => {
@@ -648,7 +648,7 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 			}
 
 			fetchFeed(feedId)
-			router.navigate(getFeedDetailPath(feedId))
+			void navigate(getFeedDetailPath(feedId))
 		} catch (err) {
 			editError = err instanceof Error ? err.message : 'Failed to update feed'
 			handle.update()
@@ -673,7 +673,7 @@ export function FeedDetail(handle: Handle<{ params: Record<string, string> }>) {
 			}
 
 			// Navigate back to the feed list
-			window.location.href = '/admin'
+			void navigate('/admin')
 		} catch (err) {
 			console.error('Failed to delete feed:', err)
 			deleteLoading = false

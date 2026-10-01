@@ -19,8 +19,11 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { type AdminRouteLoaderData } from './loader-data.ts'
-import { router } from './router.tsx'
+import {
+	type AdminRouteLoaderData,
+	type AdminRoutePageProps,
+} from './loader-data.ts'
+import { replaceUrlInPlace } from './url-state.ts'
 
 type DirectoryFeed = {
 	id: string
@@ -85,9 +88,7 @@ function parseSortByParam(value: string | null): FeedSortBy {
 /**
  * FeedList component - displays all feeds in a card grid.
  */
-export function FeedList(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
-) {
+export function FeedList(handle: Handle<AdminRoutePageProps>) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
 	let appliedLoaderData = handle.props.loaderData
 	const initialParams = getInitialSearchParams(handle.props.url)
@@ -126,7 +127,7 @@ export function FeedList(
 			return
 		}
 
-		router.replace(nextHref)
+		replaceUrlInPlace(nextHref)
 		lastSyncedSearch = window.location.search
 	}
 

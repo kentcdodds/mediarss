@@ -51,3 +51,32 @@ test('query-only replace navigation preserves scroll position', async ({
 	const scrollY = await page.evaluate(() => window.scrollY)
 	expect(scrollY).toBeGreaterThanOrEqual(1100)
 })
+
+test('back navigation restores a query-synced entry without a document reload', async ({
+	page,
+}) => {
+	await page.goto('/admin/media')
+
+	const sortSelect = page.locator('#media-sort')
+	await sortSelect.selectOption('title-az')
+	await expect(page).toHaveURL(/\/admin\/media\?sort=title-az$/)
+
+	const documentRequests: Array<string> = []
+	page.on('request', (request) => {
+		if (request.resourceType() === 'document')
+			documentRequests.push(request.url())
+	})
+
+	await page.locator('footer a[href="/admin/version"]').click()
+	await expect(
+		page.getByRole('heading', { name: 'Version Information' }),
+	).toBeVisible()
+
+	await page.goBack()
+	await expect(page).toHaveURL(/\/admin\/media\?sort=title-az$/)
+	await expect(sortSelect).toHaveValue('title-az')
+	await expect(
+		page.getByRole('heading', { name: 'Media Library' }),
+	).toBeVisible()
+	expect(documentRequests).toHaveLength(0)
+})

@@ -19,11 +19,12 @@ import { FeedList } from './feed-list.tsx'
 import { MediaDetail } from './media-detail.tsx'
 import { MediaList } from './media-list.tsx'
 import { NavigationProgress } from './navigation-progress.tsx'
-import { RouterOutlet, router } from './router.tsx'
 import { VersionPage } from './version.tsx'
+import { matchAdminPage, type AdminPage } from './admin-pages.ts'
 import {
 	noAdminRouteLoaderData,
 	type AdminRouteLoaderData,
+	type AdminRoutePageProps,
 } from './loader-data.ts'
 
 type AdminAppProps = {
@@ -37,38 +38,20 @@ type VersionResponse = {
 	commit: { shortHash: string } | null
 }
 
-async function fetchJson(path: string, signal?: AbortSignal) {
-	const response = await fetch(path, { signal })
-	if (!response.ok) throw new Error(`HTTP ${response.status}`)
-	return response.json() as Promise<SerializableValue>
-}
+type AdminPageComponent = (
+	handle: Handle<AdminRoutePageProps>,
+) => () => RemixNode
 
-router.register('/admin', FeedList, async ({ signal }) => ({
-	type: 'feeds',
-	data: await fetchJson('/admin/api/feeds', signal),
-}))
-router.register('/admin/feeds/new', CreateFeed, async ({ signal }) => ({
-	type: 'create-feed',
-	data: await fetchJson('/admin/api/directories', signal),
-}))
-router.register('/admin/feeds/:id/edit', FeedDetail)
-router.register('/admin/feeds/:id', FeedDetail)
-router.register('/admin/media', MediaList, async ({ signal }) => {
-	const [media, assignments] = await Promise.all([
-		fetchJson('/admin/api/media', signal),
-		fetchJson('/admin/api/media/assignments', signal),
-	])
-	return {
-		type: 'media-list',
-		data: { media, assignments },
-	}
-})
-router.register('/admin/media/*/edit', MediaDetail)
-router.register('/admin/media/*', MediaDetail)
-router.register('/admin/version', VersionPage, async ({ signal }) => ({
-	type: 'version',
-	data: await fetchJson('/admin/api/version', signal),
-}))
+const adminPages = [
+	{ route: routes.admin, component: FeedList },
+	{ route: routes.adminFeedNew, component: CreateFeed },
+	{ route: routes.adminFeedEdit, component: FeedDetail },
+	{ route: routes.adminFeed, component: FeedDetail },
+	{ route: routes.adminMedia, component: MediaList },
+	{ route: routes.adminMediaEdit, component: MediaDetail },
+	{ route: routes.adminMediaDetail, component: MediaDetail },
+	{ route: routes.adminVersion, component: VersionPage },
+] satisfies ReadonlyArray<AdminPage<AdminPageComponent>>
 
 function AppFooter(handle: Handle) {
 	let displayVersion: string | null = null
@@ -118,6 +101,20 @@ function AppFooter(handle: Handle) {
 }
 
 function AdminShell(handle: Handle<AdminAppProps>) {
+	const renderAdminPage = () => {
+		const match = matchAdminPage(adminPages, handle.props.url)
+		if (!match) return <div>404 - Not Found</div>
+
+		const Component = match.component
+		return (
+			<Component
+				params={match.params}
+				loaderData={handle.props.loaderData ?? noAdminRouteLoaderData}
+				url={handle.props.url}
+			/>
+		)
+	}
+
 	return () => (
 		<div
 			mix={[
@@ -204,10 +201,7 @@ function AdminShell(handle: Handle<AdminAppProps>) {
 					}),
 				]}
 			>
-				<RouterOutlet
-					url={handle.props.url}
-					loaderData={handle.props.loaderData ?? noAdminRouteLoaderData}
-				/>
+				{renderAdminPage()}
 			</main>
 			<AppFooter />
 		</div>

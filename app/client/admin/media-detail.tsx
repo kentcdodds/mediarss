@@ -1,4 +1,10 @@
-import { type Handle, css as rmxCss, on as rmxOn, unsafeHTML } from 'remix/ui'
+import {
+	type Handle,
+	css as rmxCss,
+	navigate,
+	on as rmxOn,
+	unsafeHTML,
+} from 'remix/ui'
 import toggle from 'remix/ui/toggle'
 import { renderProps } from '#app/components/props-component.ts'
 import {
@@ -27,7 +33,7 @@ import {
 	getMediaEditPath,
 	getMediaFetchPaths,
 } from './edit-route-paths.ts'
-import { router } from './router.tsx'
+import { type AdminRoutePageProps } from './loader-data.ts'
 
 type MediaInfo = {
 	path: string
@@ -184,7 +190,7 @@ function isVideo(mimeType: string): boolean {
 /**
  * MediaDetail component - displays full metadata, feed assignments, and media player
  */
-export function MediaDetail(handle: Handle<{ url?: string }>) {
+export function MediaDetail(handle: Handle<AdminRoutePageProps>) {
 	let state: LoadingState = { status: 'loading' }
 	let analyticsState: MediaAnalyticsLoadingState = { status: 'loading' }
 	let analyticsRequestId = 0
@@ -442,9 +448,9 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 		isEditingMetadata = false
 		metadataMessage = null
 		if (currentPath) {
-			router.navigate(getMediaDetailPath(currentPath))
+			void navigate(getMediaDetailPath(currentPath))
 		} else {
-			router.navigate('/admin/media')
+			void navigate('/admin/media')
 		}
 	}
 
@@ -544,7 +550,7 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 
 			metadataMessage = { type: 'success', text: 'Metadata saved successfully' }
 			isEditingMetadata = false
-			router.navigate(getMediaDetailPath(savePath))
+			void navigate(getMediaDetailPath(savePath))
 
 			// Clear success message after 3 seconds
 			setTimeout(() => {

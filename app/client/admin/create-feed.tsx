@@ -2,6 +2,7 @@ import {
 	type Handle,
 	type RemixNode,
 	css as rmxCss,
+	navigate,
 	on as rmxOn,
 } from 'remix/ui'
 import {
@@ -15,8 +16,10 @@ import {
 	typography,
 } from '#app/styles/tokens.ts'
 import { renderProps } from '#app/components/props-component.ts'
-import { type AdminRouteLoaderData } from './loader-data.ts'
-import { router } from './router.tsx'
+import {
+	type AdminRouteLoaderData,
+	type AdminRoutePageProps,
+} from './loader-data.ts'
 
 type FeedType = 'directory' | 'curated'
 
@@ -92,9 +95,7 @@ type SubmitState =
 /**
  * CreateFeed component - form for creating a new feed (directory or curated).
  */
-export function CreateFeed(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
-) {
+export function CreateFeed(handle: Handle<AdminRoutePageProps>) {
 	// Feed type selection
 	let feedType: FeedType = 'directory'
 
@@ -302,7 +303,7 @@ export function CreateFeed(
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			router.navigate('/admin')
+			void navigate('/admin')
 		} catch (err) {
 			submitState = {
 				status: 'error',
@@ -415,7 +416,7 @@ export function CreateFeed(
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}
 
-			router.navigate('/admin')
+			void navigate('/admin')
 		} catch (err) {
 			submitState = {
 				status: 'error',

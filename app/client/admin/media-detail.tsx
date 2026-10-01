@@ -1,4 +1,4 @@
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { type Handle, css as rmxCss, on as rmxOn, unsafeHTML } from 'remix/ui'
 import toggle from 'remix/ui/toggle'
 import { renderProps } from '#app/components/props-component.ts'
 import {
@@ -42,6 +42,7 @@ type MediaInfo = {
 	publicationDate: string | null
 	trackNumber: number | null
 	description: string | null
+	descriptionHtml: string | null
 	narrators: string[] | null
 	genres: string[] | null
 	copyright: string | null
@@ -835,7 +836,7 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 								</div>
 
 								{/* Description - Only shown on mobile */}
-								{media.description && (
+								{media.descriptionHtml && (
 									<div
 										mix={[
 											rmxCss({
@@ -867,12 +868,17 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 													color: colors.text,
 													margin: 0,
 													lineHeight: 1.6,
-													whiteSpace: 'pre-wrap',
+													'& p': { margin: 0 },
+													'& p + p': { marginTop: spacing.sm },
+													'& ul, & ol': {
+														margin: 0,
+														paddingLeft: spacing.lg,
+													},
+													'& a': { color: colors.primary },
 												}),
 											]}
-										>
-											{media.description}
-										</dd>
+											innerHTML={unsafeHTML(media.descriptionHtml)}
+										/>
 									</div>
 								)}
 
@@ -1006,7 +1012,7 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 								</div>
 
 								{/* Description Card - Hidden on mobile (shown in metadata card instead) */}
-								{media.description && (
+								{media.descriptionHtml && (
 									<div
 										mix={[
 											rmxCss({
@@ -1036,20 +1042,24 @@ export function MediaDetail(handle: Handle<{ url?: string }>) {
 										>
 											Description
 										</h3>
-										{/* TODO: Description may contain HTML. Rendering it requires sanitizing before passing it through unsafeHTML() to innerHTML. */}
-										<p
+										<div
 											mix={[
 												rmxCss({
 													fontSize: typography.fontSize.sm,
 													color: colors.text,
 													margin: 0,
 													lineHeight: 1.6,
-													whiteSpace: 'pre-wrap',
+													'& p': { margin: 0 },
+													'& p + p': { marginTop: spacing.sm },
+													'& ul, & ol': {
+														margin: 0,
+														paddingLeft: spacing.lg,
+													},
+													'& a': { color: colors.primary },
 												}),
 											]}
-										>
-											{media.description}
-										</p>
+											innerHTML={unsafeHTML(media.descriptionHtml)}
+										/>
 									</div>
 								)}
 							</>

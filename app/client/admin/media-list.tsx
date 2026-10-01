@@ -1,5 +1,5 @@
 import { matchSorter, rankings } from 'match-sorter'
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
+import { type Handle, css as rmxCss, navigate, on as rmxOn } from 'remix/ui'
 import checkbox from 'remix/ui/checkbox'
 import { renderProps } from '#app/components/props-component.ts'
 import {
@@ -26,8 +26,11 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
-import { type AdminRouteLoaderData } from './loader-data.ts'
-import { router } from './router.tsx'
+import {
+	type AdminRouteLoaderData,
+	type AdminRoutePageProps,
+} from './loader-data.ts'
+import { replaceUrlInPlace } from './url-state.ts'
 
 type MediaRoot = {
 	name: string
@@ -193,9 +196,7 @@ type UploadState =
 /**
  * MediaList component - displays all media files with search/filter and assignment management
  */
-export function MediaList(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData; url?: string }>,
-) {
+export function MediaList(handle: Handle<AdminRoutePageProps>) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
 	let appliedLoaderData = handle.props.loaderData
 	const initialParams = getInitialSearchParams(handle.props.url)
@@ -240,7 +241,7 @@ export function MediaList(
 			return
 		}
 
-		router.replace(nextHref)
+		replaceUrlInPlace(nextHref)
 		lastSyncedSearch = window.location.search
 	}
 
@@ -1304,7 +1305,7 @@ export function MediaList(
 														'click',
 														(event: MouseEvent) => {
 															if (shouldIgnoreRowClick(event)) return
-															window.location.href = detailHref
+															void navigate(detailHref)
 														},
 													),
 												]}

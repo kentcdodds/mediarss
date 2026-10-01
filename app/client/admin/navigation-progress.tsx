@@ -1,6 +1,5 @@
 import { css as rmxCss, type Handle } from 'remix/ui'
 import { colors } from '#app/styles/tokens.ts'
-import { routerEvents } from './router.tsx'
 
 // Spin-delay semantics (https://npm.im/spin-delay): the bar only appears if a
 // navigation is still pending after `showDelayMs`, and once shown it stays
@@ -15,9 +14,8 @@ const fadeDurationMs = 200
 const initialProgress = 8
 
 export function NavigationProgress(handle: Handle) {
-	// Boolean, not a counter: navigations are latest-wins and a superseded
-	// (aborted) navigation never dispatches its own `navigationend`, so the
-	// winning navigation's end event must clear the pending state outright.
+	// Boolean, not a counter: top-frame reloads are latest-wins and only the
+	// winning reload dispatches `reloadComplete`, so that event clears pending.
 	let navigationPending = false
 	let visible = false
 	let opacity = 0
@@ -140,12 +138,14 @@ export function NavigationProgress(handle: Handle) {
 		}, remainingVisibleMs)
 	}
 
-	routerEvents.addEventListener('navigationstart', startNavigation, {
-		signal: handle.signal,
-	})
-	routerEvents.addEventListener('navigationend', endNavigation, {
-		signal: handle.signal,
-	})
+	if (typeof window !== 'undefined') {
+		handle.frames.top.addEventListener('reloadStart', startNavigation, {
+			signal: handle.signal,
+		})
+		handle.frames.top.addEventListener('reloadComplete', endNavigation, {
+			signal: handle.signal,
+		})
+	}
 	handle.signal.addEventListener('abort', clearAllTimers, { once: true })
 
 	return () => (

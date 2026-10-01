@@ -6,7 +6,10 @@ import {
 	formatUptime,
 } from '#app/helpers/format.ts'
 import { colors, mq, radius, spacing, typography } from '#app/styles/tokens.ts'
-import { type AdminRouteLoaderData } from './loader-data.ts'
+import {
+	type AdminRouteLoaderData,
+	type AdminRoutePageProps,
+} from './loader-data.ts'
 
 type CommitInfo = {
 	hash: string
@@ -31,9 +34,7 @@ type LoadingState =
 /**
  * Version page component - displays detailed version information.
  */
-export function VersionPage(
-	handle: Handle<{ loaderData?: AdminRouteLoaderData }>,
-) {
+export function VersionPage(handle: Handle<AdminRoutePageProps>) {
 	let state: LoadingState = getInitialState(handle.props.loaderData)
 	let appliedLoaderData = handle.props.loaderData
 

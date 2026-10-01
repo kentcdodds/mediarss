@@ -1,6 +1,6 @@
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 import { serveFileWithRanges } from '#app/helpers/range-request.ts'
 

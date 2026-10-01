@@ -1,7 +1,7 @@
 import { inList, or, sql } from 'remix/data-table'
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import {
 	getMediaAnalyticsByFeed,
 	getMediaAnalyticsByToken,

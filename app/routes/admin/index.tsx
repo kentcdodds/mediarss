@@ -6,7 +6,7 @@ import {
 	getScriptEntry,
 	getStylesheetHref,
 } from '#app/assets.ts'
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 import { AdminDocument } from './document.tsx'
 import { loadAdminRouteData } from './loaders.ts'
 

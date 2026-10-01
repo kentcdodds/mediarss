@@ -1,6 +1,6 @@
 import { type Action } from 'remix/router'
 import { getMediaRoots } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 
 /**
  * GET /admin/api/directories

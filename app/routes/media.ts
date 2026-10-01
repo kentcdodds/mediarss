@@ -1,7 +1,7 @@
 import nodePath from 'node:path'
 import { type Action } from 'remix/router'
 import { parseMediaPath, toAbsolutePath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { parseDirectoryPaths } from '#app/db/directory-feeds.ts'
 import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'

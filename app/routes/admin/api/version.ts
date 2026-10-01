@@ -1,6 +1,6 @@
 import { type Action } from 'remix/router'
 import { getGitHubRepo } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { getVersionInfo } from '#app/helpers/version.ts'
 
 /**

@@ -8,7 +8,7 @@ import {
 	parseFormData,
 } from 'remix/form-data-parser'
 import { getMediaRootByName, getMediaRoots } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { writeBlobToFile } from '#app/helpers/node-file.ts'
 
 /**

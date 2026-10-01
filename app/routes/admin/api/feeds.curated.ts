@@ -5,7 +5,7 @@ import {
 	parseMediaPath,
 	toAbsolutePath,
 } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
 import { createCuratedFeed } from '#app/db/curated-feeds.ts'
 import { addItemToFeed } from '#app/db/feed-items.ts'

@@ -5,7 +5,7 @@ import {
 	type RemixNode,
 	type SerializableValue,
 } from 'remix/ui'
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 import {
 	colors,
 	mq,

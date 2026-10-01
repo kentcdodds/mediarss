@@ -1,6 +1,6 @@
 import { type Action } from 'remix/router'
 import { getMediaRootByName, parseMediaPath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	listDirectoryFeeds,

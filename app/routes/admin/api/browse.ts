@@ -3,7 +3,7 @@ import nodePath from 'node:path'
 import { fileTypeFromFile } from 'file-type'
 import { type Action } from 'remix/router'
 import { getMediaRootByName } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 
 type DirectoryEntry = {
 	name: string

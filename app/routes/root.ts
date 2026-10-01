@@ -1,5 +1,5 @@
 import { type Action } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { createAdminRedirectResponse } from '#app/helpers/root-redirect.ts'
 
 export default {

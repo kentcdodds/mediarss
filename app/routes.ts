@@ -63,7 +63,7 @@ const mountedMcpRoutes = route('/mcp', mcpRoutes)
 const mountedAdminRoutes = route('/admin', adminRoutes)
 const mountedAdminApiRoutes = route('/admin/api', adminApiRoutes)
 
-export default {
+export const routes = {
 	...rootRoutes,
 	oauthToken: mountedOauthRoutes.token,
 	oauthJwks: mountedOauthRoutes.jwks,

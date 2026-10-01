@@ -6,7 +6,7 @@
  * and 404s.
  */
 
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 
 /**
  * Relative RSS path for a feed access token.

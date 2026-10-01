@@ -10,6 +10,7 @@ import {
 } from '#app/db/directory-feeds.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
 import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
+import { getDescriptionHtml } from '#app/helpers/description-html.ts'
 import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
 import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
@@ -94,6 +95,7 @@ type MediaDetailResponse = {
 		publicationDate: string | null
 		trackNumber: number | null
 		description: string | null
+		descriptionHtml: string | null
 		narrators: string[] | null
 		genres: string[] | null
 		copyright: string | null
@@ -346,6 +348,7 @@ export default {
 				publicationDate: updatedMetadata.publicationDate?.toISOString() ?? null,
 				trackNumber: updatedMetadata.trackNumber,
 				description: updatedMetadata.description,
+				descriptionHtml: getDescriptionHtml(updatedMetadata.description),
 				narrators: updatedMetadata.narrators,
 				genres: updatedMetadata.genres,
 				copyright: updatedMetadata.copyright,

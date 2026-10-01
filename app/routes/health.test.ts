@@ -1,7 +1,7 @@
 import '#app/config/init-env.ts'
 
 import { expect, test } from 'vitest'
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 import { clearDiagnostics, recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import {
 	DEFAULT_CIMD_PROBE_URL,

@@ -4,7 +4,7 @@ import {
 } from '@modelcontextprotocol/client'
 import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 import { deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { db } from '#app/db/index.ts'
 import { migrateDatabase } from '#app/db/migrate.ts'

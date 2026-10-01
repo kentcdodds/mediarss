@@ -9,7 +9,7 @@
 			"app/components/modal.tsx",
 			"app/components/props-component.ts",
 			"app/components/search-input.tsx",
-			"app/config/routes.ts",
+			"app/routes.ts",
 			"app/helpers/feed-list-sort.ts",
 			"app/helpers/format.ts",
 			"app/helpers/media-list-sort.ts",

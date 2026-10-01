@@ -2,7 +2,7 @@ import { type Action, type RequestContext } from 'remix/router'
 import { html } from 'remix/html-template'
 import { createHtmlResponse } from 'remix/response/html'
 import { renderLayout } from '#app/components/layout.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import {
 	clientSupportsGrantType,

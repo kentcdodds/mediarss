@@ -5,7 +5,7 @@ import {
 	parseMediaPath,
 	toAbsolutePath,
 } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { createDirectoryFeedToken } from '#app/db/directory-feed-tokens.ts'
 import { createDirectoryFeed } from '#app/db/directory-feeds.ts'
 import { type SortOrder } from '#app/db/types.ts'

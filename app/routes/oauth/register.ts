@@ -4,7 +4,7 @@
  */
 
 import { type Action, type RequestContext } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { REGISTRATION_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { createClient } from '#app/oauth/clients.ts'
 import { DEFAULT_GRANT_TYPES } from '#app/oauth/tokens.ts'

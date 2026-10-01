@@ -1,5 +1,5 @@
 import { type Action, type RequestContext } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'
 import { getPublicKeyJwk } from '#app/oauth/index.ts'
 

@@ -1,7 +1,7 @@
 import '#app/config/init-env.ts'
 
 import { expect, test } from 'vitest'
-import routes from '#app/config/routes.ts'
+import { routes } from '#app/routes.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import router from '#app/router.tsx'
 

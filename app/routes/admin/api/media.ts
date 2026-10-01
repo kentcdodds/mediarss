@@ -1,6 +1,6 @@
 import { type Action } from 'remix/router'
 import { resolveMediaPath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { listMediaPopularityMetrics } from '#app/db/feed-analytics-events.ts'
 import { type MediaFile, scanAllMediaRoots } from '#app/helpers/media.ts'
 import { createMediaKey } from '#app/helpers/path-parsing.ts'

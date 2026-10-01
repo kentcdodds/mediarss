@@ -13,7 +13,7 @@
 
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'

@@ -1,5 +1,5 @@
 import { type Action } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { getCuratedFeedById, updateCuratedFeed } from '#app/db/curated-feeds.ts'
 import {
 	getDirectoryFeedById,

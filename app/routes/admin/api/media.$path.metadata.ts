@@ -2,7 +2,7 @@ import { number, object, optional, parseSafe, string } from 'remix/data-schema'
 import { type Action } from 'remix/router'
 import { deleteCacheByPrefix } from '#app/cache/cache.ts'
 import { toAbsolutePath } from '#app/config/env.ts'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
 import {
 	listDirectoryFeeds,

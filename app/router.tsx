@@ -4,12 +4,13 @@ import { createHtmlResponse } from 'remix/response/html'
 import { createRouter, type Middleware } from 'remix/router'
 import { ASSETS_BASE_PATH, assets } from '#app/assets.ts'
 import { renderLayout } from '#app/components/layout.ts'
-import routes, {
+import {
+	routes,
 	adminApiRoutes,
 	adminRoutes,
 	mcpRoutes,
 	oauthRoutes,
-} from '#app/config/routes.ts'
+} from '#app/routes.ts'
 import { fileExists, getFileResponse } from '#app/helpers/node-file.ts'
 import { logger } from '#app/middleware/logger.ts'
 import { rateLimit } from '#app/middleware/rate-limit.ts'

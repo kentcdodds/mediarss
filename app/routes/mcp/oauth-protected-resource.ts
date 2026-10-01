@@ -7,7 +7,7 @@
  */
 
 import { type Action, type RequestContext } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { MCP_SCOPES } from '#app/mcp/auth.ts'
 import { DISCOVERY_CORS_HEADERS, withCors } from '#app/mcp/cors.ts'

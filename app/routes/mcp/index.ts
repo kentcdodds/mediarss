@@ -5,7 +5,7 @@
 
 import { createMcpHandler } from '@modelcontextprotocol/server'
 import { type Action, type RequestContext } from 'remix/router'
-import type routes from '#app/config/routes.ts'
+import { type routes } from '#app/routes.ts'
 import { recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import { getOrigin } from '#app/helpers/origin.ts'
 import { handleUnauthorized, resolveAuthInfo } from '#app/mcp/auth.ts'

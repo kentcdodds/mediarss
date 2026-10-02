@@ -4,7 +4,7 @@ import {
 	css as rmxCss,
 	navigate,
 	on as rmxOn,
-} from 'remix/ui'
+} from 'remix/component'
 import {
 	colors,
 	mq,

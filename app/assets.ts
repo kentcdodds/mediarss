@@ -28,7 +28,7 @@ export const assets = createAssetServer({
 	scripts: {
 		external: ['remove-accents'],
 		loaders: isHmr
-			? [(await import('remix/ui-hmr/assets')).uiHmr()]
+			? [(await import('remix/component-hmr/assets')).componentHmr()]
 			: undefined,
 	},
 	hmr: isHmr

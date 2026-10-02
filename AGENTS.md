@@ -34,8 +34,8 @@ refreshed on upgrades.
 
 ## No React
 
-This application does NOT use React. We use `remix/ui` for UI components. Do not
-introduce React, Preact, or any other UI framework.
+This application does NOT use React. We use `remix/component` for UI components.
+Do not introduce React, Preact, or any other UI framework.
 
 ## Node.js
 

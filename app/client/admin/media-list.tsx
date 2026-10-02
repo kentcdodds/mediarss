@@ -1,6 +1,10 @@
 import { matchSorter, rankings } from 'match-sorter'
-import { type Handle, css as rmxCss, navigate, on as rmxOn } from 'remix/ui'
-import checkbox from 'remix/ui/checkbox'
+import {
+	type Handle,
+	css as rmxCss,
+	navigate,
+	on as rmxOn,
+} from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,
@@ -11,6 +15,10 @@ import {
 } from '#app/components/modal.tsx'
 import { SearchInput } from '#app/components/search-input.tsx'
 import { formatDuration, formatFileSize } from '#app/helpers/format.ts'
+import {
+	checkboxAriaChecked,
+	checkboxStyles,
+} from '#app/styles/form-controls.ts'
 import {
 	MEDIA_SORT_OPTIONS,
 	type MediaSortBy,
@@ -1907,11 +1915,14 @@ function Checkbox(
 				]}
 			>
 				<input
+					type="checkbox"
 					checked={checked}
 					indeterminate={indeterminate}
+					aria-checked={checkboxAriaChecked[state]}
+					data-state={state}
 					aria-label={title ?? 'Select item'}
 					mix={[
-						checkbox({ size: 'lg', state }),
+						checkboxStyles,
 						rmxCss({
 							cursor: 'pointer',
 							'&:checked, &[aria-checked="true"], &[data-state="checked"], &:indeterminate, &[aria-checked="mixed"], &[data-state="mixed"]':

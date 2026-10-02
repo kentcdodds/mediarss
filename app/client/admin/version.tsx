@@ -1,4 +1,4 @@
-import { type Handle, type RemixNode, css as rmxCss } from 'remix/ui'
+import { type Handle, type RemixNode, css as rmxCss } from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	formatDate,

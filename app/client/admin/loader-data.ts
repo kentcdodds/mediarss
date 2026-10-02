@@ -1,4 +1,4 @@
-import { type SerializableValue } from 'remix/ui'
+import { type SerializableValue } from 'remix/component'
 
 export type AdminRouteLoaderData =
 	| { type: 'none' }

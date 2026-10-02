@@ -1,5 +1,4 @@
-import { type Handle, css as rmxCss, on as rmxOn } from 'remix/ui'
-import input from 'remix/ui/input'
+import { type Handle, css as rmxCss, on as rmxOn } from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	colors,
@@ -9,6 +8,10 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import {
+	textFieldInputStyles,
+	textFieldRootStyles,
+} from '#app/styles/form-controls.ts'
 
 type SearchInputProps = {
 	placeholder: string
@@ -25,7 +28,7 @@ export function SearchInput(handle: Handle<SearchInputProps>) {
 	return renderProps(handle, ({ placeholder, value, onInput, onClear }) => (
 		<div
 			mix={[
-				input.root({ size: 'lg' }),
+				textFieldRootStyles,
 				rmxCss({
 					width: '100%',
 					maxWidth: '400px',
@@ -57,7 +60,7 @@ export function SearchInput(handle: Handle<SearchInputProps>) {
 				placeholder={placeholder}
 				value={value}
 				mix={[
-					input.field(),
+					textFieldInputStyles,
 					rmxCss({
 						height: 'auto',
 						fontSize: typography.fontSize.sm,

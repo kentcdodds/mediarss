@@ -1,7 +1,12 @@
 import { run } from 'remix/node-hmr'
 
 run('./index.ts', {
-	nodeArgs: ['--import', 'remix/node-tsx', '--import', 'remix/ui-hmr/node'],
+	nodeArgs: [
+		'--import',
+		'remix/node-tsx',
+		'--import',
+		'remix/component-hmr/node',
+	],
 	watch: {
 		ignore: [
 			'**/node_modules/**',

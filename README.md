@@ -14,7 +14,7 @@
 
 ## Remix Version Notes
 
-MediaRSS currently targets `remix@3.0.0-rc.4`.
+MediaRSS currently targets `remix@3.0.0`.
 
 For migration details, package guidance, and framework usage patterns, start
 with the installed docs at `node_modules/remix/INDEX.md` and the repo-local

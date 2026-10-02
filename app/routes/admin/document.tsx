@@ -1,6 +1,6 @@
 import { type ScriptEntry } from 'remix/assets'
-import { type Handle } from 'remix/ui'
-import { ImportMap } from 'remix/ui/server'
+import { type Handle } from 'remix/component'
+import { ImportMap } from 'remix/component/server'
 import { AdminApp } from '#app/client/admin/app-root.tsx'
 import {
 	noAdminRouteLoaderData,

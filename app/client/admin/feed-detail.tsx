@@ -1,4 +1,9 @@
-import { type Handle, css as rmxCss, navigate, on as rmxOn } from 'remix/ui'
+import {
+	type Handle,
+	css as rmxCss,
+	navigate,
+	on as rmxOn,
+} from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	Modal,

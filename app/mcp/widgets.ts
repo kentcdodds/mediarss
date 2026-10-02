@@ -68,7 +68,7 @@ function toAbsoluteScriptEntry(
 	baseUrl: string,
 ): ScriptEntry {
 	const absolute = (url: string) => new URL(url, baseUrl).href
-	// Bare specifiers (e.g. `remix/ui`) stay as-is; URL-like keys are resolved
+	// Bare specifiers (e.g. `remix/component`) stay as-is; URL-like keys are resolved
 	// against the server origin because the browser resolves import map keys
 	// relative to the embedding document, not the module server.
 	const absoluteSpecifier = (specifier: string) =>

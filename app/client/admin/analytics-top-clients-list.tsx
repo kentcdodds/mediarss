@@ -1,4 +1,4 @@
-import { type Handle, css as rmxCss } from 'remix/ui'
+import { type Handle, css as rmxCss } from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import { formatFileSize } from '#app/helpers/format.ts'
 import { colors, radius, spacing, typography } from '#app/styles/tokens.ts'

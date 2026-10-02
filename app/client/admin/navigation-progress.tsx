@@ -1,4 +1,4 @@
-import { css as rmxCss, type Handle } from 'remix/ui'
+import { css as rmxCss, type Handle } from 'remix/component'
 import { colors } from '#app/styles/tokens.ts'
 
 // Spin-delay semantics (https://npm.im/spin-delay): the bar only appears if a

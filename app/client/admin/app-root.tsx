@@ -4,7 +4,7 @@ import {
 	css as rmxCss,
 	type RemixNode,
 	type SerializableValue,
-} from 'remix/ui'
+} from 'remix/component'
 import { routes } from '#app/routes.ts'
 import {
 	colors,

@@ -4,8 +4,7 @@ import {
 	navigate,
 	on as rmxOn,
 	unsafeHTML,
-} from 'remix/ui'
-import toggle from 'remix/ui/toggle'
+} from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	formatDate,
@@ -25,6 +24,7 @@ import {
 	transitions,
 	typography,
 } from '#app/styles/tokens.ts'
+import { toggleSwitchStyles } from '#app/styles/form-controls.ts'
 import { AnalyticsDailyActivityChart } from './analytics-daily-activity-chart.tsx'
 import { AnalyticsMetricCard } from './analytics-metric-card.tsx'
 import { AnalyticsTopClientsList } from './analytics-top-clients-list.tsx'
@@ -1584,10 +1584,12 @@ export function MediaDetail(handle: Handle<AdminRoutePageProps>) {
 																{feed.name}
 															</span>
 															<input
+																type="checkbox"
+																role="switch"
 																checked={isEnabled}
 																aria-label={`${isEnabled ? 'Remove from' : 'Assign to'} ${feed.name}`}
 																mix={[
-																	toggle({ size: 'lg' }),
+																	toggleSwitchStyles,
 																	rmxCss({
 																		cursor: 'pointer',
 																		background: colors.border,

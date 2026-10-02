@@ -4,7 +4,7 @@ import {
 	css as rmxCss,
 	on as rmxOn,
 	ref as rmxRef,
-} from 'remix/ui'
+} from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
 	artworkLayout,

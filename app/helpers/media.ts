@@ -329,9 +329,10 @@ function zonedWallTimeToUtc(
 		hour: number
 		minute: number
 		second: number
+		millisecond: number
 	},
 	timeZone: string,
-): Date {
+): Date | null {
 	const asUtc = Date.UTC(
 		parts.year,
 		parts.month - 1,
@@ -339,7 +340,22 @@ function zonedWallTimeToUtc(
 		parts.hour,
 		parts.minute,
 		parts.second,
+		parts.millisecond,
 	)
+	// Date.UTC normalizes out-of-range parts (month 13, hour 25, …); reject
+	// them so a malformed estimate falls through to the path fallback.
+	const check = new Date(asUtc)
+	if (
+		Number.isNaN(asUtc) ||
+		check.getUTCFullYear() !== parts.year ||
+		check.getUTCMonth() !== parts.month - 1 ||
+		check.getUTCDate() !== parts.day ||
+		check.getUTCHours() !== parts.hour ||
+		check.getUTCMinutes() !== parts.minute ||
+		check.getUTCSeconds() !== parts.second
+	) {
+		return null
+	}
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		timeZone,
 		hourCycle: 'h23',
@@ -362,7 +378,8 @@ function zonedWallTimeToUtc(
 			get('minute'),
 			get('second'),
 		)
-		return wall - instant
+		// Intl drops milliseconds, so compare against the whole-second instant.
+		return wall - (instant - (((instant % 1000) + 1000) % 1000))
 	}
 	let instant = asUtc - offsetAt(asUtc)
 	// Second pass settles instants near a DST transition.
@@ -371,7 +388,7 @@ function zonedWallTimeToUtc(
 }
 
 const NAIVE_DATE_TIME_RE =
-	/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/
+	/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?)?$/
 
 /**
  * Parse "Estimated publish: 2026-04-04T10:00:00" from a description.
@@ -389,7 +406,7 @@ function conferenceDateFromEstimatedPublish(
 	if (!raw) return null
 	const naive = raw.match(NAIVE_DATE_TIME_RE)
 	if (naive) {
-		const [, year, month, day, hour, minute, second] = naive
+		const [, year, month, day, hour, minute, second, fraction] = naive
 		const parsed = zonedWallTimeToUtc(
 			{
 				year: Number(year),
@@ -398,10 +415,11 @@ function conferenceDateFromEstimatedPublish(
 				hour: Number(hour ?? 0),
 				minute: Number(minute ?? 0),
 				second: Number(second ?? 0),
+				millisecond: fraction ? Math.floor(Number(`0.${fraction}`) * 1000) : 0,
 			},
 			CONFERENCE_TIME_ZONE,
 		)
-		return Number.isNaN(parsed.getTime()) ? null : parsed
+		return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null
 	}
 	return parseAsFullDate(raw)
 }

@@ -266,6 +266,29 @@ test('extractPublicationDate reads naive estimated publish times as Mountain tim
 	expect(explicitUtc!.toISOString()).toBe('2006-04-01T10:00:00.000Z')
 })
 
+test('extractPublicationDate keeps fractional seconds in estimated publish times', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({ date: '2026' }),
+		null,
+		{ description: 'Estimated publish: 2026-04-04T10:00:00.500' },
+	)
+
+	expect(publicationDate!.toISOString()).toBe('2026-04-04T16:00:00.500Z')
+})
+
+test('extractPublicationDate ignores an invalid estimated publish and falls back to the folder', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon({ date: '2026' }),
+		null,
+		{
+			description: 'Estimated publish: 2026-13-04T10:00:00',
+			path: '/media/series/General Conference/2026-04/01-introduction.m4a',
+		},
+	)
+
+	expect(publicationDate!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+})
+
 test('extractPublicationDate keeps a full releasedate over estimated publish', () => {
 	const publicationDate = extractPublicationDate(
 		metadataWithCommon({

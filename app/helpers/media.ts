@@ -189,13 +189,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(5 as const)), // Increment when schema or extraction changes
+	_cacheVersion: optional(literal(6 as const)), // Increment when schema or extraction changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema or extraction logic changes
-const CACHE_VERSION = 5 as const
+const CACHE_VERSION = 6 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -312,20 +312,90 @@ const ESTIMATED_PUBLISH_RE =
 const CONFERENCE_FOLDER_RE = /(?:^|\/)(\d{4})-(0[1-9]|1[0-2])(?:\/|$)/
 
 /**
- * Collapse a full date to the first of that month in UTC.
- * Directory feeds that sort `desc:pubDate,path` need talks in the same
- * conference to share a pubDate so path (01-, 02-, …) can keep session order.
- * Using the raw Saturday-vs-Sunday session timestamp would reverse that
- * under pubDate desc.
+ * General Conference is broadcast from Salt Lake City, so a naive
+ * "Estimated publish" wall-clock time (no zone) is Mountain time.
  */
-function toConferenceMonthDate(date: Date): Date {
-	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+const CONFERENCE_TIME_ZONE = 'America/Denver'
+
+/**
+ * Convert a naive wall-clock time in `timeZone` to the matching UTC instant
+ * (DST-aware, no dependencies).
+ */
+function zonedWallTimeToUtc(
+	parts: {
+		year: number
+		month: number
+		day: number
+		hour: number
+		minute: number
+		second: number
+		millisecond: number
+	},
+	timeZone: string,
+): Date | null {
+	const asUtc = Date.UTC(
+		parts.year,
+		parts.month - 1,
+		parts.day,
+		parts.hour,
+		parts.minute,
+		parts.second,
+		parts.millisecond,
+	)
+	// Date.UTC normalizes out-of-range parts (month 13, hour 25, …); reject
+	// them so a malformed estimate falls through to the path fallback.
+	const check = new Date(asUtc)
+	if (
+		Number.isNaN(asUtc) ||
+		check.getUTCFullYear() !== parts.year ||
+		check.getUTCMonth() !== parts.month - 1 ||
+		check.getUTCDate() !== parts.day ||
+		check.getUTCHours() !== parts.hour ||
+		check.getUTCMinutes() !== parts.minute ||
+		check.getUTCSeconds() !== parts.second
+	) {
+		return null
+	}
+	const formatter = new Intl.DateTimeFormat('en-US', {
+		timeZone,
+		hourCycle: 'h23',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+	})
+	const offsetAt = (instant: number) => {
+		const formatted = formatter.formatToParts(new Date(instant))
+		const get = (type: string) =>
+			Number(formatted.find((part) => part.type === type)?.value)
+		const wall = Date.UTC(
+			get('year'),
+			get('month') - 1,
+			get('day'),
+			get('hour'),
+			get('minute'),
+			get('second'),
+		)
+		// Intl drops milliseconds, so compare against the whole-second instant.
+		return wall - (instant - (((instant % 1000) + 1000) % 1000))
+	}
+	let instant = asUtc - offsetAt(asUtc)
+	// Second pass settles instants near a DST transition.
+	instant = asUtc - offsetAt(instant)
+	return new Date(instant)
 }
+
+const NAIVE_DATE_TIME_RE =
+	/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?)?$/
 
 /**
  * Parse "Estimated publish: 2026-04-04T10:00:00" from a description.
- * Returns the conference month (first of that month UTC) so April and October
- * of the same year sort apart without reversing talks inside a conference.
+ * Returns the talk's own timestamp so every talk in a conference gets a
+ * distinct, chronologically ordered pubDate (session start plus the talk's
+ * offset). Naive times are read as Mountain time (Salt Lake City); explicit
+ * Z or ±HH:MM offsets are honored.
  */
 function conferenceDateFromEstimatedPublish(
 	description: string | null | undefined,
@@ -334,12 +404,24 @@ function conferenceDateFromEstimatedPublish(
 	const match = description.match(ESTIMATED_PUBLISH_RE)
 	const raw = match?.[1]
 	if (!raw) return null
-	let dated = raw
-	if (raw.includes('T') && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(raw)) {
-		dated = `${raw}Z`
+	const naive = raw.match(NAIVE_DATE_TIME_RE)
+	if (naive) {
+		const [, year, month, day, hour, minute, second, fraction] = naive
+		const parsed = zonedWallTimeToUtc(
+			{
+				year: Number(year),
+				month: Number(month),
+				day: Number(day),
+				hour: Number(hour ?? 0),
+				minute: Number(minute ?? 0),
+				second: Number(second ?? 0),
+				millisecond: fraction ? Math.floor(Number(`0.${fraction}`) * 1000) : 0,
+			},
+			CONFERENCE_TIME_ZONE,
+		)
+		return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null
 	}
-	const parsed = parseAsFullDate(dated)
-	return parsed ? toConferenceMonthDate(parsed) : null
+	return parseAsFullDate(raw)
 }
 
 /**
@@ -364,7 +446,7 @@ function conferenceDateFromPath(
  * 3. TXXX:date
  * 4. common.releasedate (ID3 TDRL — preferred over TDRC/date)
  * 5. common.date (ID3 TDRC — often year-only)
- * 6. Estimated publish in the description (conference month)
+ * 6. Estimated publish in the description (the talk's own timestamp)
  * 7. YYYY-MM folder in the file path (conference month)
  * 8. common.year / year-only date fields
  *

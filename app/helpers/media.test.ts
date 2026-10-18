@@ -206,10 +206,11 @@ test('extractPublicationDate falls back to common.date when releasedate is missi
 	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
 })
 
-test('extractPublicationDate prefers estimated publish month over year-only date', () => {
+test('extractPublicationDate prefers the estimated publish timestamp over year-only date', () => {
 	// General Conference files are tagged with TDRC=2026 (year) and a
 	// description like "Estimated publish: 2026-04-04T10:00:00". April and
-	// October of the same year must not collapse to January 1.
+	// October of the same year must not collapse to January 1, and the naive
+	// time is Mountain time (Salt Lake City).
 	const publicationDate = extractPublicationDate(
 		metadataWithCommon({
 			date: '2026',
@@ -223,10 +224,10 @@ test('extractPublicationDate prefers estimated publish month over year-only date
 	)
 
 	expect(publicationDate).not.toBeNull()
-	expect(publicationDate!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+	expect(publicationDate!.toISOString()).toBe('2026-04-04T16:00:00.000Z')
 })
 
-test('extractPublicationDate uses the conference month so Saturday and Sunday talks share a pubDate', () => {
+test('extractPublicationDate gives each conference talk its own chronological timestamp', () => {
 	const yearOnly = metadataWithCommon({ date: '2026' })
 	const saturday = extractPublicationDate(yearOnly, null, {
 		description:
@@ -237,8 +238,32 @@ test('extractPublicationDate uses the conference month so Saturday and Sunday ta
 			'Session: Sunday Afternoon Session | Estimated publish: 2026-04-05T14:00:00 | Source: churchofjesuschrist.org',
 	})
 
-	expect(saturday!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
-	expect(sunday!.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+	const saturdaySecondTalk = extractPublicationDate(yearOnly, null, {
+		description:
+			'Session: Saturday Morning Session | Estimated publish: 2026-04-04T10:04:00 | Source: churchofjesuschrist.org',
+	})
+
+	expect(saturday!.toISOString()).toBe('2026-04-04T16:00:00.000Z')
+	expect(saturdaySecondTalk!.toISOString()).toBe('2026-04-04T16:04:00.000Z')
+	expect(sunday!.toISOString()).toBe('2026-04-05T20:00:00.000Z')
+})
+
+test('extractPublicationDate reads naive estimated publish times as Mountain time across DST', () => {
+	const yearOnly = metadataWithCommon({ date: '2006' })
+	const october = extractPublicationDate(yearOnly, null, {
+		description: 'Estimated publish: 2006-09-30T10:00:00',
+	})
+	const april = extractPublicationDate(yearOnly, null, {
+		// April 1, 2006 was before the 2007 DST rule change, so still MST (UTC-7).
+		description: 'Estimated publish: 2006-04-01T10:00:00',
+	})
+	const explicitUtc = extractPublicationDate(yearOnly, null, {
+		description: 'Estimated publish: 2006-04-01T10:00:00Z',
+	})
+
+	expect(october!.toISOString()).toBe('2006-09-30T16:00:00.000Z')
+	expect(april!.toISOString()).toBe('2006-04-01T17:00:00.000Z')
+	expect(explicitUtc!.toISOString()).toBe('2006-04-01T10:00:00.000Z')
 })
 
 test('extractPublicationDate keeps a full releasedate over estimated publish', () => {

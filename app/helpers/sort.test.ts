@@ -73,10 +73,10 @@ function conferenceTalk(options: {
 	})
 }
 
-test('directory feed sortFields=pubDate,path sortOrder=desc is newest conference first with session order inside a conference', () => {
+test('directory feed sortFields=pubDate,path sortOrder=desc is newest talk first, grouped by conference', () => {
 	// Same construction getDirectoryFeedItems uses: `${sortOrder}:${sortFields}`.
-	// Only the first field gets sortOrder; path defaults to asc so 01- stays
-	// before 37- when talks share a conference-month pubDate.
+	// Each talk carries its own estimated publish timestamp, so the feed is
+	// strictly reverse-chronological and conferences stay grouped.
 	const sortFields = 'pubDate,path'
 	const sortOrder = 'desc'
 
@@ -114,8 +114,8 @@ test('directory feed sortFields=pubDate,path sortOrder=desc is newest conference
 	const sorted = sortMediaFiles(items, `${sortOrder}:${sortFields}`)
 
 	expect(sorted.map((item) => item.title)).toEqual([
-		'2026 April introduction',
 		'2026 April closing',
+		'2026 April introduction',
 		'2025 October talk',
 		'2025 April talk',
 	])

@@ -434,6 +434,41 @@ Examples:
 Next: Use \`get_feed\` to verify the feeds were updated.`,
 	},
 
+	get_media_metadata: {
+		name: 'get_media_metadata',
+		title: 'Get Media Metadata',
+		description: `Read the full metadata MediaRSS has for one media file (the same data the admin media detail page shows).
+
+Inputs:
+- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
+- relativePath: string (required) — Path to the media file within the root
+
+Returns: { media: { title, author, description, publicationDate, trackNumber, album, albumArtist, genres, narrators, copyright, composer, publisher, discNumber, language, series, seriesPosition, encodedBy, subtitle, duration, sizeBytes, mimeType, fileModifiedAt, ... } }
+
+Paths must stay inside the media root (no ".." or symlink escapes).
+
+Next: Use \`update_media_metadata\` to change fields.`,
+	},
+
+	update_media_metadata: {
+		name: 'update_media_metadata',
+		title: 'Update Media Metadata',
+		description: `Write metadata tags into one media file (MP3/M4A/M4B/MKV) — the same edit the admin metadata editor makes.
+
+Inputs:
+- mediaRoot: string (required) — Name of the media root (from \`list_media_directories\`)
+- relativePath: string (required) — Path to the media file within the root
+- Any of: title, author, description, date ("YYYY", "YYYY-MM", or "YYYY-MM-DD"), genre, trackNumber, copyright, narrator, album, albumArtist, composer, publisher, discNumber, language, series, seriesPosition, encodedBy, subtitle
+
+Only the fields you pass are changed; every other tag (and embedded artwork) is copied unchanged. At least one field is required.
+
+Returns: { media: { ...updated metadata }, assignments: [{ feedId, feedType, feedName }] }
+
+⚠️ This rewrites the file on disk (FFmpeg stream copy, atomic replace). Read the current values with \`get_media_metadata\` first if you may need to restore them.
+
+Next: Use \`get_media_metadata\` to verify the change.`,
+	},
+
 	remove_media_from_feeds: {
 		name: 'remove_media_from_feeds',
 		title: 'Remove Media from Feeds',

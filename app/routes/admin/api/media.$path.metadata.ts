@@ -1,205 +1,16 @@
-import { number, object, optional, parseSafe, string } from 'remix/data-schema'
 import { type Action } from 'remix/router'
-import { deleteCacheByPrefix } from '#app/cache/cache.ts'
-import { toAbsolutePath } from '#app/config/env.ts'
 import { type routes } from '#app/routes.ts'
-import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import {
-	listDirectoryFeeds,
-	parseDirectoryPaths,
-} from '#app/db/directory-feeds.ts'
-import { getItemsForFeed } from '#app/db/feed-items.ts'
-import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
-import { getDescriptionHtml } from '#app/helpers/description-html.ts'
-import { type EditableMetadata, updateMetadata } from '#app/helpers/ffmpeg.ts'
-import { getFileMetadata } from '#app/helpers/media.ts'
-import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
-
-/**
- * Request body schema for metadata updates.
- */
-const DATE_PATTERN = /^\d{4}(-\d{2}(-\d{2})?)?$/
-
-function isValidYearMonthOrDate(value: string): boolean {
-	const parts = value.split('-')
-	if (parts.length === 1) return true // YYYY only
-
-	const month = parseInt(parts[1]!, 10)
-	if (month < 1 || month > 12) return false
-	if (parts.length === 2) return true // YYYY-MM
-
-	// Validate full date using Date constructor (handles month lengths and leap years)
-	const year = parseInt(parts[0]!, 10)
-	const day = parseInt(parts[2]!, 10)
-	const testDate = new Date(year, month - 1, day)
-	return (
-		testDate.getFullYear() === year &&
-		testDate.getMonth() === month - 1 &&
-		testDate.getDate() === day
-	)
-}
-
-const NonNegativeIntegerSchema = number()
-	.refine((value) => Number.isInteger(value), 'Expected an integer')
-	.refine((value) => value >= 0, 'Expected a non-negative integer')
-
-const MetadataUpdateSchema = object({
-	title: optional(string()),
-	author: optional(string()),
-	description: optional(string()),
-	date: optional(
-		string()
-			.refine(
-				(value) => DATE_PATTERN.test(value),
-				'Date must be in YYYY, YYYY-MM, or YYYY-MM-DD format',
-			)
-			.refine(
-				(value) => isValidYearMonthOrDate(value),
-				'Date contains invalid month or day values',
-			),
-	),
-	genre: optional(string()),
-	trackNumber: optional(NonNegativeIntegerSchema),
-	copyright: optional(string()),
-	// Additional fields
-	narrator: optional(string()),
-	album: optional(string()),
-	albumArtist: optional(string()),
-	composer: optional(string()),
-	publisher: optional(string()),
-	discNumber: optional(NonNegativeIntegerSchema),
-	language: optional(string()),
-	series: optional(string()),
-	seriesPosition: optional(string()),
-	encodedBy: optional(string()),
-	subtitle: optional(string()),
-})
-
-type FeedAssignment = {
-	feedId: string
-	feedType: 'curated' | 'directory'
-	feedName: string
-}
-
-type MediaDetailResponse = {
-	media: {
-		path: string
-		rootName: string
-		relativePath: string
-		filename: string
-		title: string
-		author: string | null
-		duration: number | null
-		sizeBytes: number
-		mimeType: string
-		publicationDate: string | null
-		trackNumber: number | null
-		description: string | null
-		descriptionHtml: string | null
-		narrators: string[] | null
-		genres: string[] | null
-		copyright: string | null
-		fileModifiedAt: number
-		// Additional metadata fields
-		album: string | null
-		albumArtist: string | null
-		composer: string | null
-		publisher: string | null
-		discNumber: number | null
-		totalDiscs: number | null
-		totalTracks: number | null
-		language: string | null
-		series: string | null
-		seriesPosition: string | null
-		encodedBy: string | null
-		subtitle: string | null
-	}
-	assignments: FeedAssignment[]
-	curatedFeeds: Array<{
-		id: string
-		name: string
-		updatedAt: number
-	}>
-	directoryFeeds: Array<{
-		id: string
-		name: string
-		directoryPaths: string[]
-		updatedAt: number
-	}>
-}
-
-/**
- * Check if a media file is within any of the directory paths for a feed.
- */
-function isMediaInDirectoryFeed(
-	rootName: string,
-	relativePath: string,
-	feed: DirectoryFeed,
-): boolean {
-	const paths = parseDirectoryPaths(feed)
-	const normalizedFile = `${rootName}:${normalizePath(relativePath)}`
-
-	for (const dirPath of paths) {
-		const normalizedDir = normalizePath(dirPath)
-
-		if (
-			normalizedFile.startsWith(normalizedDir + '/') ||
-			normalizedFile === normalizedDir
-		) {
-			return true
-		}
-	}
-	return false
-}
-
-/**
- * Get all feed assignments for a media file.
- */
-async function getAssignmentsForMedia(
-	rootName: string,
-	relativePath: string,
-	curatedFeeds: CuratedFeed[],
-	directoryFeeds: DirectoryFeed[],
-): Promise<FeedAssignment[]> {
-	const assignments: FeedAssignment[] = []
-
-	// Check curated feed assignments
-	const normalizedRelativePath = normalizePath(relativePath)
-	for (const feed of curatedFeeds) {
-		const items = await getItemsForFeed(feed.id)
-		if (
-			items.some(
-				(item) =>
-					item.mediaRoot === rootName &&
-					item.relativePath === normalizedRelativePath,
-			)
-		) {
-			assignments.push({
-				feedId: feed.id,
-				feedType: 'curated',
-				feedName: feed.name,
-			})
-		}
-	}
-
-	// Check directory feed matches
-	for (const feed of directoryFeeds) {
-		if (isMediaInDirectoryFeed(rootName, relativePath, feed)) {
-			assignments.push({
-				feedId: feed.id,
-				feedType: 'directory',
-				feedName: feed.name,
-			})
-		}
-	}
-
-	return assignments
-}
+import { applyMediaMetadataUpdate } from '#app/helpers/media-metadata-edit.ts'
+import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 
 /**
  * PUT /admin/api/media/*path/metadata
  * Updates metadata for a single media file using FFmpeg.
  * Returns the updated MediaDetailResponse.
+ *
+ * Validation, path containment, the FFmpeg write, and cache invalidation are
+ * shared with the MCP `update_media_metadata` tool via
+ * `#app/helpers/media-metadata-edit.ts`.
  */
 export default {
 	middleware: [],
@@ -227,23 +38,6 @@ export default {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}
 
-		const { rootName, relativePath } = parsed
-
-		// Convert to absolute file path
-		const filePath = toAbsolutePath(rootName, relativePath)
-		if (!filePath) {
-			return Response.json({ error: 'Unknown media root' }, { status: 404 })
-		}
-
-		// Get current file metadata to verify it exists and get MIME type
-		const currentMetadata = await getFileMetadata(filePath)
-		if (!currentMetadata) {
-			return Response.json(
-				{ error: 'File not found or not a media file' },
-				{ status: 404 },
-			)
-		}
-
 		// Parse request body
 		let body: unknown
 		try {
@@ -252,135 +46,20 @@ export default {
 			return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
 		}
 
-		// Validate request body
-		const parseResult = parseSafe(MetadataUpdateSchema, body)
-		if (!parseResult.success) {
-			return Response.json(
-				{
-					error: 'Invalid metadata',
-					details: parseResult.issues.map((issue) => issue.message),
-				},
-				{ status: 400 },
-			)
-		}
-
-		const metadataUpdate = parseResult.value
-
-		// Check if there's anything to update
-		if (Object.keys(metadataUpdate).length === 0) {
-			return Response.json(
-				{ error: 'No metadata fields provided' },
-				{ status: 400 },
-			)
-		}
-
-		// Update metadata using FFmpeg
-		try {
-			const editableMetadata: EditableMetadata = {
-				title: metadataUpdate.title,
-				author: metadataUpdate.author,
-				description: metadataUpdate.description,
-				date: metadataUpdate.date,
-				genre: metadataUpdate.genre,
-				trackNumber: metadataUpdate.trackNumber,
-				copyright: metadataUpdate.copyright,
-				narrator: metadataUpdate.narrator,
-				album: metadataUpdate.album,
-				albumArtist: metadataUpdate.albumArtist,
-				composer: metadataUpdate.composer,
-				publisher: metadataUpdate.publisher,
-				discNumber: metadataUpdate.discNumber,
-				language: metadataUpdate.language,
-				series: metadataUpdate.series,
-				seriesPosition: metadataUpdate.seriesPosition,
-				encodedBy: metadataUpdate.encodedBy,
-				subtitle: metadataUpdate.subtitle,
-			}
-
-			await updateMetadata(filePath, currentMetadata.mimeType, editableMetadata)
-		} catch (error) {
-			console.error('FFmpeg metadata update failed:', error)
-			return Response.json(
-				{
-					error:
-						error instanceof Error
-							? error.message
-							: 'Failed to update metadata',
-				},
-				{ status: 500 },
-			)
-		}
-
-		// Invalidate cache for this file
-		const cacheKey = `media:${filePath}`
-		await deleteCacheByPrefix(cacheKey)
-
-		// Re-fetch metadata to get updated values
-		const updatedMetadata = await getFileMetadata(filePath)
-		if (!updatedMetadata) {
-			return Response.json(
-				{ error: 'Failed to read updated metadata' },
-				{ status: 500 },
-			)
-		}
-
-		// Get feeds and assignments
-		const curatedFeeds = await listCuratedFeeds()
-		const directoryFeeds = await listDirectoryFeeds()
-		const assignments = await getAssignmentsForMedia(
-			rootName,
-			relativePath,
-			curatedFeeds,
-			directoryFeeds,
+		const result = await applyMediaMetadataUpdate(
+			parsed.rootName,
+			parsed.relativePath,
+			body,
 		)
-
-		const response: MediaDetailResponse = {
-			media: {
-				path: updatedMetadata.path,
-				rootName,
-				relativePath,
-				filename: updatedMetadata.filename,
-				title: updatedMetadata.title,
-				author: updatedMetadata.author,
-				duration: updatedMetadata.duration,
-				sizeBytes: updatedMetadata.sizeBytes,
-				mimeType: updatedMetadata.mimeType,
-				publicationDate: updatedMetadata.publicationDate?.toISOString() ?? null,
-				trackNumber: updatedMetadata.trackNumber,
-				description: updatedMetadata.description,
-				descriptionHtml: getDescriptionHtml(updatedMetadata.description),
-				narrators: updatedMetadata.narrators,
-				genres: updatedMetadata.genres,
-				copyright: updatedMetadata.copyright,
-				fileModifiedAt: updatedMetadata.fileModifiedAt,
-				// Additional metadata fields
-				album: updatedMetadata.album,
-				albumArtist: updatedMetadata.albumArtist,
-				composer: updatedMetadata.composer,
-				publisher: updatedMetadata.publisher,
-				discNumber: updatedMetadata.discNumber,
-				totalDiscs: updatedMetadata.totalDiscs,
-				totalTracks: updatedMetadata.totalTracks,
-				language: updatedMetadata.language,
-				series: updatedMetadata.series,
-				seriesPosition: updatedMetadata.seriesPosition,
-				encodedBy: updatedMetadata.encodedBy,
-				subtitle: updatedMetadata.subtitle,
-			},
-			assignments,
-			curatedFeeds: curatedFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				updatedAt: f.updatedAt,
-			})),
-			directoryFeeds: directoryFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				directoryPaths: parseDirectoryPaths(f),
-				updatedAt: f.updatedAt,
-			})),
+		if (!result.ok) {
+			return Response.json(
+				result.details
+					? { error: result.error, details: result.details }
+					: { error: result.error },
+				{ status: result.status },
+			)
 		}
 
-		return Response.json(response)
+		return Response.json(result.response)
 	},
 } satisfies Action<typeof routes.adminApiMediaMetadata>

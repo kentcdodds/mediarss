@@ -59,6 +59,7 @@ import {
 } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { getAllFeeds, getFeedById } from './feed-helpers.ts'
+import { registerMediaMetadataTools } from './media-metadata-tools.ts'
 import { toolsMetadata } from './metadata.ts'
 import {
 	createMediaWidgetResource,
@@ -1301,6 +1302,9 @@ export async function initializeTools(
 			},
 		)
 	}
+
+	// Single-file metadata read (mcp:read) and edit (mcp:write) tools
+	registerMediaMetadataTools(server, authInfo)
 
 	// Write tools (require mcp:write scope)
 	if (hasScope(authInfo, 'mcp:write')) {

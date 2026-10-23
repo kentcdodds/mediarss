@@ -7,11 +7,12 @@ description:
 
 # Ship PR
 
-Run Kody exports with the local CLI (bootstrap auth with
-`cliCredentialBootstrap` from the Kody MCP if needed):
+Run Kody exports with the local CLI, pinned because it runs with shipping
+credentials (bootstrap auth with `cliCredentialBootstrap` from the Kody MCP if
+needed). Use the same pinned version for every export below:
 
 ```sh
-npx @kodycodes/cli execute --local \
+npx @kodycodes/cli@1.31.10 execute --local \
   --code 'import run from "kody:@kentcdodds/ship-pr/tick"; export default (p) => run(p)' \
   --params '{"prUrl":"https://github.com/kentcdodds/mediarss/pull/<n>","risk":"<tier>","applySafeAutomations":true}'
 ```

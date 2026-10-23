@@ -31,9 +31,10 @@ C health --published --sha <merge-sha> --wait 900   # Docker Hub has the image
 C stop
 ```
 
-Every command takes `--json` and `--origin <url>`. `request` also takes
-`--status`, `--not-contains`, `--header "k: v"`, `--body`, and `--dump <file>`
-(binary bodies are summarized, not printed).
+Every command takes `--json`. `doctor`, `request`, `execute`, `browse`, and
+`health` take `--origin <url>`; `dev` and `stop` take `--port`. `request` also
+takes `--status`, `--not-contains`, `--header "k: v"`, `--body`, and
+`--dump <file>` (binary bodies are summarized, not printed).
 
 ## Environment
 

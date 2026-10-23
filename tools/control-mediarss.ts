@@ -61,7 +61,8 @@ Run as: npm run --silent control -- <command> [options]
   health --published --sha SHA [--wait SECONDS] [--image NAME]
                                            Docker Hub has the image built from SHA
 
-Every command accepts --origin URL (default: the control server) and --json.
+Every command accepts --json. doctor, request, execute, browse, and health
+accept --origin URL (default: the control server); dev and stop take --port.
 Admin routes have no app-level auth (Cloudflare Access guards them in
 production), so there is no login step.`
 

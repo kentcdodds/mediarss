@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: ⬣ Lint
+  validate:
+    name: ✅ Validate
     runs-on: ubuntu-22.04
     steps:
       - name: ⬇️ Checkout repo
@@ -33,11 +33,12 @@ jobs:
       - name: 📥 Install dependencies
         run: npm ci
 
-      - name: 🔬 Lint
-        run: npm run lint:check
+      # Format, lint, typecheck, and tests (including the Feature Map check).
+      - name: ✅ npm run validate
+        run: npm run validate
 
-  typecheck:
-    name: ʦ TypeCheck
+  e2e:
+    name: 🎭 Control CLI + Playwright
     runs-on: ubuntu-22.04
     steps:
       - name: ⬇️ Checkout repo
@@ -52,27 +53,32 @@ jobs:
       - name: 📥 Install dependencies
         run: npm ci
 
-      - name: 🔎 Type check
-        run: npm run typecheck
+      - name: 🎭 Install Chromium and ffmpeg
+        run: |
+          npx playwright install --with-deps --no-shell chromium
+          sudo apt-get install -y ffmpeg
 
-  test:
-    name: 🧪 Test
-    runs-on: ubuntu-22.04
-    steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v6
+      - name: 🕹️ Control CLI smoke
+        run: |
+          npm run --silent control -- dev --fresh
+          npm run --silent control -- doctor
+          npm run --silent control -- execute --code-file tools/control-fixtures/curated-feed.ts
+          npm run --silent control -- browse --path /admin --wait-for "Your Feeds"
+          npm run --silent control -- stop
 
-      - name: 📦 Setup Node
-        uses: actions/setup-node@v6
+      - name: 🎭 Playwright
+        run: npm run test:playwright
+
+      - name: 📤 Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 24
-          cache: npm
-
-      - name: 📥 Install dependencies
-        run: npm ci
-
-      - name: 🧪 Run tests
-        run: npm test
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            data/control/dev.log
+          retention-days: 7
 
   build:
     name: 🐳 Build
@@ -129,7 +135,7 @@ jobs:
   publish:
     name: 🚀 Publish
     runs-on: ubuntu-22.04
-    needs: [lint, typecheck, test, build]
+    needs: [validate, e2e, build]
     if: ${{ github.event_name == 'push' }}
     steps:
       - name: ⬇️ Checkout repo

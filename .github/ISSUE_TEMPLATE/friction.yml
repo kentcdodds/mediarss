@@ -1,0 +1,41 @@
+name: Friction
+description:
+  A durable, reproducible papercut an agent or human hit while working here.
+title: 'Friction: '
+labels: [friction]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        One papercut per issue. Search open issues first. Durable (still true
+        tomorrow), reproducible, and owned by this repo. Keep secrets and
+        private media details out. Add one priority label (P0-P3) and
+        `needs-decision` when it needs Kent's call.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected or wanted
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description:
+        Commands, ideally control CLI (`npm run --silent control -- ...`).
+    validations:
+      required: true
+  - type: textarea
+    id: cost
+    attributes:
+      label: Cost (time, retries, wrong output)
+  - type: textarea
+    id: files
+    attributes:
+      label: Relevant files or commands

@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-const port = Number(process.env.PLAYWRIGHT_PORT ?? 22050)
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 22052)
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
 
 export default defineConfig({
@@ -12,16 +12,16 @@ export default defineConfig({
 	},
 	workers: 1,
 	use: {
+		// Full Chromium in headless mode, so `playwright install --no-shell` is enough.
+		channel: 'chromium',
 		baseURL,
 		trace: 'retain-on-failure',
 	},
 	webServer: {
-		command: 'npm run dev:test',
-		url: baseURL,
+		// Fresh control environment: fixture media and throwaway databases.
+		command: `npm run --silent control -- dev --foreground --fresh --port ${port}`,
+		url: `${baseURL}/health`,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
-		env: {
-			PORT: String(port),
-		},
 	},
 })

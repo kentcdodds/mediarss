@@ -20,3 +20,6 @@
 
 # Epicshop workshops
 workshops/
+
+# Autopilot audit artifacts
+.autopilot/

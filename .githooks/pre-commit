@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fast static checks. Run `npm run check` to auto-fix format and lint issues.
+set -e
+npm run --silent check:ci
+npm run --silent lint:check

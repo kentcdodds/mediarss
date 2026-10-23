@@ -1,15 +1,33 @@
-<!-- Summary: Put your summary here -->
+## Intent
 
-## Test Plan
+<!-- What the PR does, one or two sentences. -->
 
-<!-- What steps need to be taken to verify this works as expected? -->
+Door: <!-- two-way | one-way (data, public feed URLs, OAuth/MCP, release) -->
 
-## Checklist
+Cleanup: <!-- none | needed (#issue) | done -->
 
-- [ ] Tests updated
-- [ ] Docs updated
+## Why
 
-## Screenshots
+<!-- The problem or request behind it. Link issues. -->
 
-<!-- If what you're changing is within the app, please show before/after.
-You can provide a video as well if that makes more sense -->
+## Testing
+
+<!--
+Commands you ran and their results:
+- `npm run validate`
+- Control CLI proof against `npm run --silent control -- dev`, e.g.
+  `request GET /feed/<token> --contains "<rss"`,
+  `execute --code-file <fixture>`, `browse --path /admin/... --record`
+  (attach the screenshot or video for UI changes).
+What data you used. Why any test expectation changed. What you could not verify.
+-->
+
+## System recap
+
+Risk: <!-- low | medium | high --> Touches:
+
+<!-- primitive or area (docs/primitives.md) -->
+
+(<!-- composes | extends | adds -->)
+
+<!-- Optional: 3-5 bullets or a mermaid diagram of the change flow. -->

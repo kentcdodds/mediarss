@@ -1,0 +1,37 @@
+name: Cleanup
+description: Leftover work with a testable condition for when it can be done.
+title: 'Cleanup: '
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Add one priority label (P0-P3), and `needs-decision` if Kent must
+        decide. The weekly legacy reaper picks these up once "Ready when" holds.
+  - type: textarea
+    id: what
+    attributes:
+      label: What to remove or change
+    validations:
+      required: true
+  - type: textarea
+    id: ready-when
+    attributes:
+      label: Ready when
+      description: >-
+        A falsifiable condition an agent can check, e.g. "the `schema_versions`
+        table is absent from every database the app opens" or "no release older
+        than v4.0.0 is pinned on the NAS".
+    validations:
+      required: true
+  - type: textarea
+    id: how-to-check
+    attributes:
+      label: How to check
+      description: The command or query that proves "Ready when".
+    validations:
+      required: true
+  - type: input
+    id: origin
+    attributes:
+      label: Created by
+      description: The PR or issue that left this behind.

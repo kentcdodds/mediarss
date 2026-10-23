@@ -14,7 +14,7 @@
     "dev": "NODE_ENV=development node server/dev.ts",
     "dev:test": "DATABASE_PATH=./data/test.db CACHE_DATABASE_PATH=./data/test-cache.db MEDIA_PATHS=audio:./local-test/1/audio NODE_ENV=development node server/dev.ts",
     "dev:test-mounted": "DATABASE_PATH=./data/mounted.db CACHE_DATABASE_PATH=./data/mounted-cache.db MEDIA_PATHS=audio-series:/Volumes/media/audio/series,audiobooks:/Volumes/media/audio/audiobooks NODE_ENV=development node server/dev.ts",
-    "test": "vitest run ./app --maxWorkers=1",
+    "test": "vitest run",
     "test:playwright": "playwright test -c playwright-config.ts",
     "start": "NODE_ENV=production node --import remix/node-tsx index.ts",
     "typecheck": "tsc --noEmit",
@@ -24,7 +24,9 @@
     "lint:check": "oxlint .",
     "check": "oxfmt . && oxlint --fix .",
     "check:ci": "oxfmt --check .",
-    "validate": "npm run check:ci && npm run lint:check && npm run typecheck && npm run test"
+    "validate": "npm run check:ci && npm run lint:check && npm run typecheck && npm run test",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "control": "node --import remix/node-tsx tools/control-mediarss.ts"
   },
   "devDependencies": {
     "@epic-web/config": "^3.1.0",

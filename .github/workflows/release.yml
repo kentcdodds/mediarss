@@ -44,5 +44,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run:
-          node --import ./server/register-hooks.mjs ./scripts/release.ts ${{
+          node --import remix/node-tsx ./scripts/release.ts ${{
           inputs.semverType }}

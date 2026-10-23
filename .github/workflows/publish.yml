@@ -77,7 +77,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-            data/control/dev.log
+            data/control/
           retention-days: 7
 
   build:

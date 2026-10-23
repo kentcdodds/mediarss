@@ -465,7 +465,8 @@ async function browse(args: Array<string>) {
 	const problems: Array<string> = []
 	let status: number | null = null
 	try {
-		const response = await page.goto(url, { waitUntil: 'networkidle' })
+		// The dev server's HMR connection stays open, so `networkidle` never fires.
+		const response = await page.goto(url, { waitUntil: 'load' })
 		status = response?.status() ?? null
 		for (const text of values['wait-for']) {
 			try {

@@ -7,13 +7,11 @@ import {
 	configureOutboundNetwork,
 	fetchOutbound,
 	getOutboundRequestOptions,
-	OUTBOUND_IP_FAMILY,
 } from './outbound-fetch.ts'
 
 test('outbound CIMD requests prefer IPv4', () => {
 	configureOutboundNetwork()
 	expect(dns.getDefaultResultOrder()).toBe('ipv4first')
-	expect(OUTBOUND_IP_FAMILY).toBe(4)
 	expect(
 		getOutboundRequestOptions('https://kody.codes/oauth/client-metadata.json'),
 	).toMatchObject({

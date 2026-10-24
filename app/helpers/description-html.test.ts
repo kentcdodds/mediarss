@@ -11,8 +11,6 @@ test('removes script elements and preserves safe content', () => {
 	const html = getSafeDescriptionHtml('<p>Hello</p><script>alert(1)</script>')
 
 	expect(html).toBe('<p>Hello</p>')
-	expect(html).not.toMatch(/<script/i)
-	expect(html).toContain('Hello')
 })
 
 test('removes script elements regardless of case and preserves text', () => {
@@ -21,24 +19,18 @@ test('removes script elements regardless of case and preserves text', () => {
 	)
 
 	expect(html).toBe('text')
-	expect(html).not.toMatch(/script/i)
-	expect(html).toContain('text')
 })
 
 test('strips event handlers from allowed elements and preserves content', () => {
 	const html = getSafeDescriptionHtml('<p onclick="alert(1)">Hi</p>')
 
 	expect(html).toBe('<p>Hi</p>')
-	expect(html).not.toMatch(/\son\w+=/i)
-	expect(html).toContain('Hi')
 })
 
 test('discards images with event handlers', () => {
 	const html = getSafeDescriptionHtml('<img src="x" onerror="alert(1)">')
 
 	expect(html).toBeNull()
-	expect(html ?? '').not.toMatch(/onerror/i)
-	expect(html ?? '').not.toMatch(/<img/i)
 })
 
 test('strips anchor event handlers and preserves safe links', () => {
@@ -97,8 +89,6 @@ test('preserves safe formatting', () => {
 	expect(html).toBe(
 		'<p><strong>Bold</strong> and <em>italic</em></p><ul><li>One</li></ul>',
 	)
-	expect(html).toContain('Bold')
-	expect(html).toContain('One')
 })
 
 test('preserves safe links and adds safe target attributes', () => {
@@ -126,16 +116,12 @@ test('preserves line breaks in plain text descriptions', () => {
 	const html = getSafeDescriptionHtml('Line one\nLine two')
 
 	expect(html).toBe('Line one<br>Line two')
-	expect(html).toContain('Line one')
-	expect(html).toContain('Line two')
 })
 
 test('escapes HTML-sensitive characters in plain text', () => {
 	const html = getSafeDescriptionHtml('5 < 6 & 7 > 3')
 
 	expect(html).toBe('5 &lt; 6 &amp; 7 &gt; 3')
-	expect(html).not.toContain('<')
-	expect(html).toContain('5 &lt; 6')
 })
 
 test.each([null, undefined, '', '   ', '<script>x</script>'])(

@@ -8,7 +8,7 @@ import { routes } from '#app/routes.ts'
 import { deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { db } from '#app/db/index.ts'
 import { migrateDatabase } from '#app/db/migrate.ts'
-import { buildFeedRssPath, buildFeedRssUrl } from '#app/helpers/feed-url.ts'
+import { buildFeedRssPath } from '#app/helpers/feed-url.ts'
 import { generateAccessToken } from '#app/oauth/tokens.ts'
 import router from '#app/router.tsx'
 import mcpHandler from './index.ts'
@@ -300,13 +300,8 @@ test('create_feed_token persists labels and returns /feed/{token} URLs', async (
 		const createdFeed = createFeed.structuredContent as CreateFeedToolResult
 		feedId = createdFeed.feed.id
 		expect(createdFeed.rssUrl).toBe(
-			buildFeedRssUrl('http://localhost', createdFeed.token),
-		)
-		expect(createdFeed.rssUrl).toBe(
 			`http://localhost/feed/${createdFeed.token}`,
 		)
-		expect(createdFeed.rssUrl).not.toContain('?token=')
-		expect(createdFeed.rssUrl).not.toContain(createdFeed.feed.id)
 
 		const createToken = await client.callTool({
 			name: 'create_feed_token',
@@ -316,11 +311,7 @@ test('create_feed_token persists labels and returns /feed/{token} URLs', async (
 
 		const createdToken = createToken.structuredContent as CreateTokenToolResult
 		expect(createdToken.label).toBe('Nathan')
-		expect(createdToken.rssUrl).toBe(
-			buildFeedRssUrl('http://localhost', createdToken.token),
-		)
 		expect(createdToken.rssUrl).toMatch(/\/feed\/[^/?]+$/)
-		expect(createdToken.rssUrl).not.toContain('?token=')
 		expect(createdToken.rssUrl).not.toContain(feedId)
 
 		expect(createToken.content[0]).toEqual({

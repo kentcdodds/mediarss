@@ -336,7 +336,6 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 	}
 
 	expect(tokenMetadataQueries).toHaveLength(1)
-	expect(tokenMetadataQueries[0]).toBeDefined()
 })
 
 test('media analytics endpoint chunks token metadata queries for low variable limits', async () => {
@@ -421,9 +420,6 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	}
 
 	expect(tokenMetadataQueries).toHaveLength(2)
-	for (const where of tokenMetadataQueries) {
-		expect(where).toBeDefined()
-	}
 })
 
 test('media analytics endpoint groups missing client names under Unknown', async () => {

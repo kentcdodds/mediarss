@@ -44,6 +44,13 @@ canonical. The skill is copied verbatim from `remix-run/remix` at the
 UI uses `remix/component`, not React
 ([decision 0001](decisions/0001-no-react-no-build-step.md)).
 
+## MCP
+
+The app serves Streamable HTTP MCP at `/mcp` with OAuth (PKCE). Tool names,
+descriptions, and server instructions live in `app/mcp/metadata.ts`. Follow
+[mcp-server-best-practices.md](mcp-server-best-practices.md) when adding or
+changing tools, resources, or prompts.
+
 ## Data layer
 
 - `app/db/index.ts` exports the app `db` (`createSqliteDatabase` from
@@ -69,10 +76,11 @@ UI uses `remix/component`, not React
 
 ## Testing
 
-`npm test` runs vitest (`app/**/*.test.ts`, `tools/**/*.test.ts`).
-`npm run test:playwright` runs the browser specs in `playwright/` against a
-fresh control server. To prove a change against the running app, use the control
-CLI ([skill](../.agents/skills/control-mediarss/SKILL.md)).
+`npm test` runs vitest (`app/**/*.test.ts`, `app/**/*.test.tsx`,
+`tools/**/*.test.ts`). `npm run test:playwright` runs the browser specs in
+`playwright/` against a fresh control server. To prove a change against the
+running app, use the control CLI
+([skill](../.agents/skills/control-mediarss/SKILL.md)).
 
 For manual testing with your own media, `npm run dev:test` uses `./data/test.db`
 and `MEDIA_PATHS=audio:./local-test/1/audio` (`local-test/` is gitignored).

@@ -12,20 +12,17 @@
 > not the primary focus and may have limitations (especially with regard to
 > performance) with certain formats.
 
-## Remix Version Notes
+## Development
 
-MediaRSS currently targets `remix@3.0.0`.
-
-For migration details, package guidance, and framework usage patterns, start
-with the installed docs at `node_modules/remix/INDEX.md` and the repo-local
-Remix skill at `.agents/skills/remix/SKILL.md`.
-
-## Development Tooling
-
-- Runtime: Node.js 24
+- Runtime: Node.js 24 (`engines.node` is `>=24.12.0`)
 - Package manager: npm
+- UI: Remix 3 (`remix@3.0.0`, `remix/component`, no React)
 - Linter: `oxlint`
 - Formatter: `oxfmt` (shared preset from `@epic-web/config`)
+
+Installed Remix docs live at `node_modules/remix/INDEX.md`. The repo skill is
+`.agents/skills/remix/SKILL.md`. How to work in the repo is in
+[docs/contributing.md](docs/contributing.md).
 
 Common commands:
 
@@ -34,29 +31,10 @@ Common commands:
 - `npm run format`
 - `npm run validate`
 
-### Database
-
-The data layer is `remix/data-table` on top of Node's built-in `node:sqlite`.
-Tables are declared in `app/db/schema.ts`, and the schema is managed by plain
-SQL migrations in `app/db/migrations/<YYYYMMDDHHmmss>_<slug>/{up,down}.sql`.
-
-The server applies pending migrations at startup (`app/db/migrate.ts`) before it
-accepts its first request, so deployments never need a separate migrate step.
-The same migrations can be driven from the CLI (configured in `remix.json`,
-`DATABASE_PATH` selects the file):
-
-```bash
-npx remix db status               # applied / pending / missing
-npx remix db migrate              # apply pending migrations
-npx remix db rollback             # revert the most recent migration (down.sql)
-npx remix db rollback --dry-run   # show what would be reverted
-npx remix db reset --force        # drop the file and re-run every migration
-```
-
-To add a migration, create a new directory under `app/db/migrations/` with an
-`up.sql` (and a `down.sql` when it is reversible) and update `app/db/schema.ts`
-to match. Applied migrations are journaled in the `data_table_migrations` table;
-the runner refuses to run if an applied migration's files have been edited.
+SQLite is `remix/data-table` on `node:sqlite`. Tables are in `app/db/schema.ts`;
+SQL migrations are in `app/db/migrations/`. The server applies pending
+migrations at startup. CRUD helpers, test databases, and `npx remix db` are in
+[docs/contributing.md](docs/contributing.md#data-layer).
 
 ## Screenshots
 
@@ -104,6 +82,22 @@ MediaRSS includes built-in feed and media analytics in the admin dashboard:
   - daily activity trends
 - **Time windows**: switch between 7d / 30d / 90d directly in the UI
 
+## MCP
+
+MediaRSS exposes a Model Context Protocol server at `/mcp` (Streamable HTTP
+`2026-07-28`). Clients authenticate with OAuth (PKCE). Discovery is public:
+
+- `/.well-known/oauth-authorization-server`
+- `/.well-known/oauth-protected-resource/mcp`
+
+Consent is `/admin/authorize`, behind Cloudflare Access with the rest of admin.
+Scopes are `mcp:read` and `mcp:write`. After you approve a client, it can
+connect to `/mcp` with the issued token.
+
+RSS subscribe URLs from MCP tools are `/feed/{token}`. Agent conventions for the
+server live in
+[docs/mcp-server-best-practices.md](docs/mcp-server-best-practices.md).
+
 ## Self-Hosting
 
 ### Prerequisites
@@ -131,7 +125,7 @@ If you're running this on a Synology NAS, follow these specific instructions:
    - You can mount any number of media directories from your Synology
 
 4. Open Docker in Synology DSM:
-   - Go to "Registry" and search for the mediarss image
+   - Go to "Registry" and search for `kentcdodds/mediarss`
    - Download the image
    - Go to "Container" and launch using the image
 
@@ -185,7 +179,7 @@ directories, and configure automatic restarts.
 1. Pull the Docker image:
 
 ```bash
-docker pull [your-image-name]
+docker pull kentcdodds/mediarss
 ```
 
 2. Create directories for persistent storage and ensure your media directories
@@ -210,7 +204,7 @@ docker run -d \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \
   -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \
-  [your-image-name]
+  kentcdodds/mediarss
 ```
 
 **Note on volume permissions:**
@@ -291,20 +285,32 @@ The following environment variables can be configured:
 - `ANALYTICS_RETENTION_DAYS`: Number of days to retain feed analytics events
   (default: `180`)
   - Older analytics events are pruned automatically on startup
+- `RATE_LIMIT_ADMIN_READ`: Admin GET/HEAD/OPTIONS requests per minute per IP
+  (default: `5000`)
+- `RATE_LIMIT_ADMIN_WRITE`: Admin write requests per minute per IP (default:
+  `30`)
+- `RATE_LIMIT_MEDIA`: Public `/media/*` enclosure requests (and admin artwork /
+  stream reads) per minute per IP (default: `300`)
+- `RATE_LIMIT_DEFAULT`: Other requests (feeds, art, MCP, OAuth, …) per minute
+  per IP (default: `1000`)
+- `GITHUB_REPO`: Repository URL used when linking to commits (default:
+  `https://github.com/kentcdodds/mediarss`)
 
 ### Securing the Admin Dashboard
 
-MediaRSS has two types of routes:
+MediaRSS routes fall into four groups:
 
-- **Public routes** (`/feed/*`, `/media/*`, `/art/*`) - These are accessed by
-  RSS readers and podcast apps. They use secret tokens in URLs for access
-  control.
-- **Admin routes** (`/`) - The dashboard for managing feeds. This should be
-  protected.
+- **Public token routes** (`/feed/*`, `/media/*`, `/art/*`) — podcast apps.
+  Access is the secret token in the URL.
+- **Admin routes** (`/admin`, `/admin/api/*`) — the dashboard. `/` redirects
+  here. Protect these at the edge.
+- **MCP** (`/mcp`) — OAuth bearer token. Leave this off the Access policy so
+  clients can connect after you approve them.
+- **OAuth discovery and tokens** (`/.well-known/*`, `/oauth/*`) — public so
+  clients can register and redeem codes. Consent itself is `/admin/authorize`.
 
-Since RSS readers need direct access to feed URLs without authentication
-prompts, we recommend using **Cloudflare Tunnel** to secure the admin dashboard
-rather than app-level authentication.
+Podcast apps need unauthenticated token URLs, so use **Cloudflare Tunnel** and
+an Access policy on `/admin` rather than app-level login.
 
 #### Why Cloudflare Tunnel?
 
@@ -351,7 +357,8 @@ rather than app-level authentication.
    - Set the domain to `media.yourdomain.com`
    - Set the path to `/admin` (just the admin pages)
    - Add an authentication method (email OTP is easiest)
-   - **Important:** Don't protect `/feed/*`, `/media/*`, or `/art/*` paths
+   - **Important:** Don't protect `/feed/*`, `/media/*`, `/art/*`, `/mcp`,
+     `/.well-known/*`, or `/oauth/*`
 
 #### Using Cloudflare Tunnel Without Moving DNS
 
@@ -393,12 +400,13 @@ To ensure your data persists between container restarts and updates, you
 run command above.
 
 Schema migrations run automatically when the container starts, before it serves
-any requests. Databases created by earlier releases are adopted in place: the
-first start after upgrading records the current schema as the baseline migration
-in `data_table_migrations` and leaves the old `schema_versions` bookkeeping
-table untouched, so rolling back to the previous image still works (it sees
-schema version 8 and skips its own migrations). No manual steps are needed, but
-taking a backup before upgrading is always a good idea.
+any requests. Databases journaled by the previous hand-rolled runner
+(`schema_versions`) are adopted in place when they are at schema version 8: the
+baseline migration is idempotent and leaves `schema_versions` untouched so the
+previous image can still start. Older schemas need one start on the previous
+release first. Take a backup before upgrading. See the
+[rollback runbook](docs/runbooks/rollback.md) if a new migration has to come
+off.
 
 ### Backup and Restore
 
@@ -439,7 +447,7 @@ To upgrade to a new version:
 
 ```bash
 # Pull the new image
-docker pull [your-image-name]
+docker pull kentcdodds/mediarss
 
 # Stop the current container
 docker stop mediarss
@@ -457,7 +465,7 @@ docker run -d \
   -v /path/to/audiobooks:/media/audiobooks:ro \
   -v /path/to/audio-series:/media/audio-series:ro \
   -e MEDIA_PATHS=audiobooks:/media/audiobooks,audio-series:/media/audio-series \
-  [your-image-name]
+  kentcdodds/mediarss
 ```
 
 Your data will be preserved as long as you use the same volume mount points.

@@ -1,442 +1,145 @@
-# MCP Server Best Practices
+# MCP server
 
-_Learnings from analyzing high-quality MCP server implementations_
+How MediaRSS's MCP server is built. Change `app/mcp/` to match these
+conventions.
 
-This document summarizes best practices learned from analyzing the following MCP
-server implementations:
+The server is Streamable HTTP revision `2026-07-28` (`createMcpHandler` from
+`@modelcontextprotocol/server`). Legacy transports are rejected. Clients
+authenticate with OAuth (PKCE); tools, resources, and prompts are registered
+from the caller's scopes.
 
-- [Linear MCP Server](https://github.com/iceener/linear-streamable-mcp-server)
-- [Google Calendar MCP Server](https://github.com/iceener/google-calendar-streamable-mcp-server)
-- [Google Maps MCP Server](https://github.com/iceener/maps-streamable-mcp-server)
-- [Tesla MCP Server](https://github.com/iceener/tesla-streamable-mcp-server)
+## Layout
 
----
+| Path                              | Owns                                                            |
+| --------------------------------- | --------------------------------------------------------------- |
+| `app/mcp/metadata.ts`             | Server instructions and tool/prompt names, titles, descriptions |
+| `app/mcp/tools.ts`                | Feed, browse, search, token, and assignment tools               |
+| `app/mcp/media-metadata-tools.ts` | `get_media_metadata` / `update_media_metadata`                  |
+| `app/mcp/resources.ts`            | `media://` resources and widget URIs                            |
+| `app/mcp/widgets.ts`              | MCP-UI media player widget HTML                                 |
+| `app/mcp/prompts.ts`              | Task-oriented conversation starters                             |
+| `app/mcp/server.ts`               | `McpServer` setup and scoped initialization                     |
+| `app/mcp/auth.ts`                 | Bearer verification and `mcp:read` / `mcp:write`                |
+| `app/mcp/cors.ts`                 | CORS for `/mcp` and discovery                                   |
+| `app/routes/mcp/`                 | `/mcp` and `/.well-known/oauth-protected-resource/mcp`          |
+| `app/oauth/`                      | Authorization codes, PKCE, tokens, refresh, signing keys        |
 
-## 1. Server Instructions
+Consent is `/admin/authorize` (behind Cloudflare Access with the rest of admin).
+Discovery is public: `/.well-known/oauth-authorization-server` and
+`/.well-known/oauth-protected-resource/mcp`.
 
-### What Great Servers Do
+## Scopes
 
-Provide comprehensive server-level instructions that act as an "onboarding
-guide" for the AI. This is the first thing the AI reads when connecting.
+| Scope       | Access                                                                |
+| ----------- | --------------------------------------------------------------------- |
+| `mcp:read`  | List and inspect feeds, media, tokens, and metadata                   |
+| `mcp:write` | Create, update, and delete feeds and tokens; assign media; write tags |
 
-**Best Practice Format:**
+## Metadata
 
-```
-Quick start
-- What to call first
-- Most common workflows
-- How to chain tools
+`app/mcp/metadata.ts` is the single source of truth for names, titles, and
+descriptions. `serverMetadata.instructions` is the onboarding text the client
+reads first: what to call first, how to chain IDs, default behavior, and
+supported vs unsupported search.
 
-Default behavior
-- What happens when optional params are omitted
-- Timezone handling
-- Date format expectations
+Tool descriptions include:
 
-How to chain tools safely
-- Which IDs come from which tools
-- Dependency order
-- Verification patterns
+1. What the tool does (one or two sentences)
+2. Inputs, with examples and valid values
+3. Returns (shape of the response)
+4. Concrete examples
+5. Next steps (which tool to call with which ID)
 
-Common patterns & examples
-- "To do X, first call Y, then Z"
-```
+Keep copy in `metadata.ts`. Handlers in `tools.ts` stay about behavior.
 
-**Example from Linear:**
+## Tools
 
-```
-Quick start
-- Call 'workspace_metadata' first to fetch canonical identifiers you will reuse across tools.
-- Then use 'list_issues' with teamId/projectId and filters to locate targets.
-- To modify, use 'update_issues', then verify with 'list_issues'.
-```
+Register with `server.registerTool()` so each tool has a title, description, Zod
+`inputSchema`, and annotations:
 
-**Our Current State:** Minimal instructions (just capability descriptions)
-
----
-
-## 2. Tool Descriptions
-
-### What Great Servers Do
-
-Tools have _detailed, structured descriptions_ that include:
-
-1. **What the tool does** (1-2 sentences)
-2. **Inputs** with examples and valid values
-3. **Returns** - what the response structure looks like
-4. **Next steps** - what to do after calling this tool
-5. **Examples** - concrete usage examples
-
-**Best Practice Format:**
-
-```
-Brief description of what the tool does.
-
-Inputs:
-- param1: type (required/optional) — description with examples
-- param2: type — description
-
-Returns: { field1, field2, ... }
-
-Examples:
-- "Do X" → { param: "value" }
-- "Do Y" → { param: "other" }
-
-Next: Use tool_a to verify. Pass id to tool_b.
-```
-
-**Example from Google Calendar:**
-
-```
-Search events across ALL calendars by default. Returns merged results sorted by start time.
-
-Inputs: calendarId? (default: 'all'), timeMin?, timeMax? (ISO 8601), query?, maxResults?...
-
-FILTERING BY TIME (important!):
-- Today's events: timeMin=start of day, timeMax=end of day
-- This week: timeMin=Monday 00:00, timeMax=Sunday 23:59:59
-
-Returns: { items: Array<{ id, summary, start, end, calendarId, calendarName... }> }
-
-Next: Use eventId AND calendarId with 'update_event' or 'delete_event'.
-```
-
-**Our Current State:** Brief descriptions, no examples or chaining hints
-
----
-
-## 3. Tool Annotations
-
-### What Great Servers Do
-
-Every tool includes annotations that help the AI understand the tool's behavior:
-
-```typescript
-annotations: {
-  readOnlyHint: true,      // Does not modify state
-  destructiveHint: false,  // Does not delete data
-  idempotentHint: true,    // Safe to call multiple times
-  openWorldHint: true,     // May access external resources
-}
-```
-
-**Guidelines:** | Annotation | When to use `true` |
-|------------|-------------------| | `readOnlyHint` | GET/LIST operations | |
-`destructiveHint` | DELETE operations, irreversible changes | | `idempotentHint`
-| Same input always produces same result | | `openWorldHint` | Accesses external
-APIs/resources |
-
-**Our Current State:** ✅ Annotations implemented using `server.registerTool()`
-API
-
-We use the newer `registerTool` API which supports both input schemas and
-annotations:
-
-```typescript
+```ts
 server.registerTool(
 	'list_feeds',
 	{
 		title: 'List Feeds',
-		description: '...',
+		description: getToolMetadata('list_feeds').description,
 		inputSchema: {
-			/* zod schema */
+			/* zod fields with .describe() */
 		},
 		annotations: {
 			readOnlyHint: true,
 			destructiveHint: false,
+			idempotentHint: true,
 		},
 	},
 	handler,
 )
 ```
 
----
-
-## 4. Input Schema Best Practices
-
-### What Great Servers Do
-
-Rich, descriptive input schemas with:
-
-- **Clear descriptions** for each parameter
-- **Default values** explained in description
-- **Valid values** listed (especially for enums)
-- **Format expectations** (dates, IDs, etc.)
-
-**Example:**
-
-```typescript
-z.object({
-	calendarId: z
-		.union([z.literal('all'), z.string(), z.array(z.string())])
-		.optional()
-		.default('all')
-		.describe(
-			'Calendar ID(s). Use "all" (default) to search all calendars, a single ID, or array of IDs',
-		),
-
-	timeMin: z
-		.string()
-		.optional()
-		.describe(
-			'Start of time range (RFC3339 with timezone, e.g., 2025-12-06T19:00:00Z)',
-		),
-
-	maxResults: z
-		.number()
-		.int()
-		.min(1)
-		.max(250)
-		.optional()
-		.default(50)
-		.describe('Max events to return (1-250, default: 50)'),
-})
-```
-
-**Our Current State:** Basic descriptions, missing defaults and format hints
-
----
-
-## 5. Response Formatting
-
-### What Great Servers Do
-
-Return **both** human-readable text AND structured content:
-
-```typescript
-return {
-	content: [
-		{
-			type: 'text',
-			text: `✓ Event created: [${title}](${htmlLink})\n  when: ${start}\n  meet: ${meetLink}`,
-		},
-	],
-	structuredContent: {
-		id: event.id,
-		summary: event.summary,
-		// ... full structured data
-	},
-}
-```
-
-**Human-readable text best practices:**
-
-- Use **markdown** formatting (links, bold, lists)
-- Use **emojis** for status (✓, ⚠️, 🟢, 🔴)
-- Include **context** (what calendar, which feed)
-- Provide **next steps** in the text
-
-**Example from Tesla:**
-
-```
-## Model 3
-
-**Status**: asleep
-**Locked**: Yes ✓
-**Sentry Mode**: On
-
-### Battery
-- Level: 78%
-- Range: 312 km
-- Charging: Not charging
-
-### ⚠️ Open
-- Trunk
-```
-
-**Our Current State:** JSON only, no human-readable formatting
-
----
-
-## 6. Centralized Metadata
-
-### What Great Servers Do
-
-Keep tool/prompt/resource metadata in a centralized file:
-
-```typescript
-// config/metadata.ts
-export const serverMetadata = {
-	title: 'Media Server',
-	instructions: `...comprehensive instructions...`,
-}
-
-export const toolsMetadata = {
-	list_feeds: {
-		name: 'list_feeds',
-		title: 'List Feeds',
-		description: '...detailed description...',
-	},
-	// ... more tools
-}
-```
-
-**Benefits:**
-
-- Single source of truth for descriptions
-- Easy to review/update all metadata
-- Consistent naming and style
-- Can be extracted for documentation
-
-**Our Current State:** Descriptions inline with tool definitions
-
----
-
-## 7. Tool Naming Conventions
-
-### What Great Servers Do
-
-| Pattern    | Example                    | Use Case              |
-| ---------- | -------------------------- | --------------------- |
-| `list_*`   | `list_feeds`, `list_users` | Get multiple items    |
-| `get_*`    | `get_feed`, `get_issue`    | Get single item by ID |
-| `create_*` | `create_feed`              | Create new item       |
-| `update_*` | `update_feed`              | Modify existing item  |
-| `delete_*` | `delete_feed`              | Remove item           |
-| `browse_*` | `browse_media`             | Navigate/explore      |
-| `search_*` | `search_events`            | Query with filters    |
-
-**Consistency rules:**
-
-- Use `snake_case` for tool names
-- Group related tools with common prefix
-- Use singular nouns for get/create, plural for list
-
-**Our Current State:** Good naming, but some inconsistency
-
----
-
-## 8. Error Handling
-
-### What Great Servers Do
-
-Provide helpful, actionable error messages:
-
-```typescript
-if (!feed) {
-	return {
-		content: [
-			{
-				type: 'text',
-				text: `Feed "${feedId}" not found.\n\nNext: Use list_feeds to see available feeds.`,
-			},
-		],
-		isError: true,
-	}
-}
-```
-
-**Best practices:**
-
-- Explain **what went wrong**
-- Suggest **how to fix it**
-- Reference **related tools** that can help
-- Include **valid values** when applicable
-
-**Our Current State:** Basic error messages, no suggestions
-
----
-
-## 9. Pagination & Limiting
-
-### What Great Servers Do
-
-Consistent pagination patterns:
-
-```typescript
-return {
-  content: [...],
-  structuredContent: {
-    items: [...],
-    pagination: {
-      hasMore: boolean,
-      nextCursor: string | undefined,
-      itemsReturned: number,
-      limit: number,
-    },
-  },
-}
-```
-
-**In descriptions:**
-
-```
-Returns: { items[], pagination: { hasMore, nextCursor } }
-
-Pass nextCursor to fetch the next page.
-```
-
-**Our Current State:** No pagination support
-
----
-
-## 10. Resources Best Practices
-
-### What Great Servers Do
-
-Resources provide **read-only data access** with:
-
-- Clear URI schemes (`media://feeds`, `media://feeds/{id}`)
-- Proper MIME types
-- Descriptions that explain the data structure
-
-**Good resource examples:**
-
-- `media://server` — Server info and statistics
-- `media://feeds` — All feeds list
-- `media://feeds/{id}` — Individual feed details
-- `media://directories` — Available media directories
-
-**Our Current State:** Good resource structure
-
----
-
-## 11. Prompts Best Practices
-
-### What Great Servers Do
-
-Prompts are **task-oriented conversation starters**:
-
-- Guide the user through **multi-step workflows**
-- Provide **context** about available tools
-- Include **concrete next steps**
-- Support **optional parameters** to customize the task
-
-**Example prompt:**
-
-```
-I want to create a new feed. Please help me decide:
-
-1. Should this be a directory feed (automatically includes all media from a folder)?
-2. Or a curated feed (manually select specific content)?
-
-Available media roots:
-- audio: /media/audio
-- video: /media/video
-
-Please ask me some questions to understand what I'm trying to create, then help me set it up.
-```
-
-**Our Current State:** Good prompt structure
-
----
-
-## Summary: Action Items for Our MCP Server
-
-### High Priority
-
-1. ✅ Add comprehensive server instructions
-2. ✅ Enhance tool descriptions with examples, inputs, returns, next steps
-3. ✅ Tool annotations (readOnlyHint, destructiveHint, etc.) — Using
-   `registerTool` API
-4. ✅ Improve response formatting (human-readable + structured)
-
-### Medium Priority
-
-5. ✅ Create centralized metadata file
-6. ✅ Add helpful error messages with suggestions
-7. ✅ Enhance input schema descriptions
-
-### Lower Priority
-
-8. Consider adding pagination support
-9. Review naming consistency
+| Annotation        | `true` when                           |
+| ----------------- | ------------------------------------- |
+| `readOnlyHint`    | The tool does not change data         |
+| `destructiveHint` | The change cannot be undone (deletes) |
+| `idempotentHint`  | The same input is safe to repeat      |
+| `openWorldHint`   | The tool reaches outside the process  |
+
+Names are `snake_case`. Use `list_*` / `search_*` / `browse_*` for collections,
+`get_*` for one record, `create_*` / `update_*` / `delete_*` for writes. Zod
+field `.describe()` calls name defaults, formats, and valid values.
+
+### Responses
+
+Return both human-readable markdown in `content` and a typed object in
+`structuredContent`. The text names the feed or file, links where they help, and
+says what to do next.
+
+On failure, say what went wrong, how to fix it, and which tool to call
+(`isError: true`). Example:
+`Feed "…" not found. Next: Use list_feeds to see available feeds.`
+
+### Catalog
+
+| Tool                      | Scope       | Role                                      |
+| ------------------------- | ----------- | ----------------------------------------- |
+| `list_feeds`              | `mcp:read`  | All feeds                                 |
+| `get_feed`                | `mcp:read`  | One feed and its items                    |
+| `list_media_directories`  | `mcp:read`  | Configured media roots                    |
+| `browse_media`            | `mcp:read`  | Files in a media root                     |
+| `search_media`            | `mcp:read`  | Fuzzy search (match-sorter, not semantic) |
+| `get_feed_tokens`         | `mcp:read`  | Tokens and `/feed/{token}` URLs           |
+| `get_media_widget`        | `mcp:read`  | Interactive player widget                 |
+| `get_media_metadata`      | `mcp:read`  | Tags for one file                         |
+| `create_directory_feed`   | `mcp:write` | Feed from a folder                        |
+| `create_curated_feed`     | `mcp:write` | Manually selected items                   |
+| `update_feed`             | `mcp:write` | Title, description, and related fields    |
+| `delete_feed`             | `mcp:write` | Remove a feed                             |
+| `create_feed_token`       | `mcp:write` | New access token (optional `label`)       |
+| `delete_feed_token`       | `mcp:write` | Revoke a token                            |
+| `add_media_to_feeds`      | `mcp:write` | Assign files to curated feeds             |
+| `remove_media_from_feeds` | `mcp:write` | Unassign files                            |
+| `update_media_metadata`   | `mcp:write` | Write tags into a file (ffmpeg)           |
+
+`get_feed_tokens` and `create_feed_token` return `rssUrl` as `/feed/{token}`.
+`/feed/{feedId}?token={token}` is not a route.
+
+List tools return the full set. There is no cursor pagination.
+
+## Resources
+
+Read-only JSON under a `media://` scheme, registered from `mcp:read`:
+
+- `media://server` — version, counts, media roots
+- `media://feeds` — every feed
+- `media://feeds/{id}` — one feed and its curated items
+- `media://directories` — configured media roots
+
+Widget HTML uses token URLs under `/mcp/widget/:token/*path`.
+
+## Prompts
+
+Prompts start multi-step work and name the tools to use next:
+
+- `summarize_library`
+- `explore_feed`
+- `create_feed_wizard`
+- `organize_media`

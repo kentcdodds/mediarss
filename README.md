@@ -117,7 +117,7 @@ If you're running this on a Synology NAS, follow these specific instructions:
 
 2. Create a shared folder for the database files:
    - Open Control Panel → Shared Folder
-   - Create a new shared folder named `docker-data` (or your preferred name)
+   - Create a new shared folder named `docker` (or your preferred name)
    - Inside this folder, create a directory called `mediarss`
 
 3. Note your media locations:
@@ -133,10 +133,10 @@ If you're running this on a Synology NAS, follow these specific instructions:
    - In the "Advanced Settings" → "Volume" tab:
      - Add a volume mount for the database:
        - Mount path: `/data`
-       - Local path: `/volume1/docker-data/mediarss`
+       - Local path: `/volume1/docker/mediarss`
      - Add a volume mount for artwork (to persist uploaded feed images):
        - Mount path: `/app/data/artwork`
-       - Local path: `/volume1/docker-data/mediarss/artwork`
+       - Local path: `/volume1/docker/mediarss/artwork`
      - Add your media volume mounts (add as many as you need):
        - Mount path: `/media/[your-name]` (e.g., `/media/shows`,
          `/media/personal`, etc.)
@@ -289,16 +289,26 @@ The following environment variables can be configured:
   (default: `5000`)
 - `RATE_LIMIT_ADMIN_WRITE`: Admin write requests per minute per IP (default:
   `30`)
-- `RATE_LIMIT_MEDIA`: Public `/media/*` enclosure requests (and admin artwork /
-  stream reads) per minute per IP (default: `300`)
-- `RATE_LIMIT_DEFAULT`: Other requests (feeds, art, MCP, OAuth, …) per minute
-  per IP (default: `1000`)
+- `RATE_LIMIT_MEDIA`: `/media/*` enclosure requests and admin artwork / stream
+  reads (`/admin/api/artwork`, `/admin/api/media-stream`, feed artwork GET) per
+  minute per IP (default: `300`). Public `/art/*` uses `RATE_LIMIT_DEFAULT`.
+- `RATE_LIMIT_DEFAULT`: Other requests (feeds, `/art/*`, MCP, OAuth, …) per
+  minute per IP (default: `1000`)
 - `GITHUB_REPO`: Repository URL used when linking to commits (default:
   `https://github.com/kentcdodds/mediarss`)
+- `COMMIT_SHA`: Git SHA reported by `/health` and `/admin/version`. The
+  published image sets this at build time (`SOURCE_COMMIT` is an accepted
+  alias).
+- `ALLOWED_HOSTS`: Optional comma-separated hosts allowed on `/oauth/token`.
+  Unset means any `Host` header is accepted.
+
+The Docker image sets `DATABASE_PATH=/data/sqlite.db` and
+`CACHE_DATABASE_PATH=/data/cache.db`. The `./data/…` defaults above apply to
+local development.
 
 ### Securing the Admin Dashboard
 
-MediaRSS routes fall into four groups:
+MediaRSS routes fall into five groups:
 
 - **Public token routes** (`/feed/*`, `/media/*`, `/art/*`) — podcast apps.
   Access is the secret token in the URL.
@@ -308,6 +318,8 @@ MediaRSS routes fall into four groups:
   clients can connect after you approve them.
 - **OAuth discovery and tokens** (`/.well-known/*`, `/oauth/*`) — public so
   clients can register and redeem codes. Consent itself is `/admin/authorize`.
+- **Health** (`/health`) — public snapshot (status, version, commit SHA,
+  database, media roots). Not rate-limited.
 
 Podcast apps need unauthenticated token URLs, so use **Cloudflare Tunnel** and
 an Access policy on `/admin` rather than app-level login.
@@ -358,7 +370,7 @@ an Access policy on `/admin` rather than app-level login.
    - Set the path to `/admin` (just the admin pages)
    - Add an authentication method (email OTP is easiest)
    - **Important:** Don't protect `/feed/*`, `/media/*`, `/art/*`, `/mcp`,
-     `/.well-known/*`, or `/oauth/*`
+     `/.well-known/*`, `/oauth/*`, or `/health`
 
 #### Using Cloudflare Tunnel Without Moving DNS
 
@@ -400,11 +412,7 @@ To ensure your data persists between container restarts and updates, you
 run command above.
 
 Schema migrations run automatically when the container starts, before it serves
-any requests. Databases journaled by the previous hand-rolled runner
-(`schema_versions`) are adopted in place when they are at schema version 8: the
-baseline migration is idempotent and leaves `schema_versions` untouched so the
-previous image can still start. Older schemas need one start on the previous
-release first. Take a backup before upgrading. See the
+any requests. Take a backup before upgrading. See the
 [rollback runbook](docs/runbooks/rollback.md) if a new migration has to come
 off.
 

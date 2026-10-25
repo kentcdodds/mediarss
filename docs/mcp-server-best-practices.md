@@ -3,10 +3,10 @@
 How MediaRSS's MCP server is built. Change `app/mcp/` to match these
 conventions.
 
-The server is Streamable HTTP revision `2026-07-28` (`createMcpHandler` from
-`@modelcontextprotocol/server`). Legacy transports are rejected. Clients
-authenticate with OAuth (PKCE); tools, resources, and prompts are registered
-from the caller's scopes.
+The server accepts Streamable HTTP revision `2026-07-28` only
+(`createMcpHandler` from `@modelcontextprotocol/server`). Clients authenticate
+with OAuth (PKCE); tools, resources, and prompts are registered from the
+caller's scopes.
 
 ## Layout
 
@@ -21,6 +21,7 @@ from the caller's scopes.
 | `app/mcp/server.ts`               | `McpServer` setup and scoped initialization                     |
 | `app/mcp/auth.ts`                 | Bearer verification and `mcp:read` / `mcp:write`                |
 | `app/mcp/cors.ts`                 | CORS for `/mcp` and discovery                                   |
+| `app/mcp/protocol-headers.ts`     | Required `MCP-Protocol-Version` check before dispatch           |
 | `app/routes/mcp/`                 | `/mcp` and `/.well-known/oauth-protected-resource/mcp`          |
 | `app/oauth/`                      | Authorization codes, PKCE, tokens, refresh, signing keys        |
 
@@ -126,20 +127,32 @@ List tools return the full set. There is no cursor pagination.
 
 ## Resources
 
-Read-only JSON under a `media://` scheme, registered from `mcp:read`:
+Registered from `mcp:read`.
+
+JSON under `media://`:
 
 - `media://server` — version, counts, media roots
 - `media://feeds` — every feed
 - `media://feeds/{id}` — one feed and its curated items
 - `media://directories` — configured media roots
 
-Widget HTML uses token URLs under `/mcp/widget/:token/*path`.
+HTML widgets:
+
+- `media://widget/media/{token}/{rootName}/{relativePath+}` — MCP-UI player
+  (needs a valid feed token)
+- `ui://widget/media-player-{hash}.html` — Apps SDK template from
+  `getMediaWidgetUIUri()` (`text/html+skybridge`; the hash changes when the
+  widget module graph changes)
+
+HTTP player media is `/mcp/widget/:token/*path`.
 
 ## Prompts
 
 Prompts start multi-step work and name the tools to use next:
 
-- `summarize_library`
-- `explore_feed`
-- `create_feed_wizard`
-- `organize_media`
+| Prompt               | Scope       | Role                               |
+| -------------------- | ----------- | ---------------------------------- |
+| `summarize_library`  | `mcp:read`  | Library overview                   |
+| `explore_feed`       | `mcp:read`  | Inspect one feed                   |
+| `create_feed_wizard` | `mcp:write` | Create a directory or curated feed |
+| `organize_media`     | `mcp:write` | Propose feeds from a root          |

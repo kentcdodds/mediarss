@@ -11,9 +11,11 @@ concern; extend it instead of duplicating it.
   [Feature Map](../.agents/skills/control-mediarss/references/feature-map.md) is
   generated from it.
 - `app/router.tsx`: maps routes to handlers and middleware.
-- `app/routes/`: one handler module per route (`admin/api/*` JSON API, `admin/*`
-  pages, `feed.ts` / `media.ts` / `art.ts` public token routes, `oauth/*`,
-  `mcp/*`, `health.ts`).
+- `app/routes/`: HTTP handlers. `admin/api/*` is the JSON API; `feed.ts` /
+  `media.ts` / `art.ts` are the public token routes; `oauth/*`, `mcp/*`, and
+  `health.ts` are the rest. Admin HTML is the SPA shell in
+  `app/routes/admin/index.tsx` plus `authorize.tsx`; pages live in
+  `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
 - `app/config/env.ts`: the env schema and media roots (`getEnv`,
   `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`).
@@ -47,9 +49,9 @@ concern; extend it instead of duplicating it.
 
 - `app/oauth/`: authorization codes, PKCE, tokens, refresh tokens, signing keys,
   client metadata documents.
-- `app/mcp/`: MCP server, tools, resources, prompts, widgets, auth.
-  `metadata.ts` is the source of truth for names and descriptions
-  ([conventions](mcp-server-best-practices.md)).
+- `app/mcp/`: MCP server, tools, resources, prompts, widgets, auth, and
+  protocol-header checks. `metadata.ts` is the source of truth for names and
+  descriptions ([conventions](mcp-server-best-practices.md)).
 
 ## UI
 

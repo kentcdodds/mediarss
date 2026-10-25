@@ -20,8 +20,8 @@ npm run --silent control -- health --published --sha <good-sha>
 docker stop mediarss && docker rm mediarss
 ```
 
-Older images keep working after a newer migration as long as the migration only
-added things (see "Data Persistence" in the README); skip to step 3.
+Additive migrations leave the previous image able to start against the same
+database; skip to step 3.
 
 If the bad release ran a migration the old image cannot run against, roll it
 back **before** starting the old image. The bad image has the migration files
@@ -58,3 +58,11 @@ npm run --silent control -- health --origin https://<your-mediarss-host> --sha <
 
 Then revert or fix forward on `main` with a normal PR, and file a `Cleanup:`
 issue to unpin the image tag.
+
+## Adopting a pre-Remix database
+
+Databases that still have a `schema_versions` table (the old in-app runner)
+start only when that journal is at version 8. The baseline migration is
+idempotent and leaves `schema_versions` in place so the previous image can still
+start. A database older than version 8 needs one start on the previous release
+first.

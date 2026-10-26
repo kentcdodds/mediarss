@@ -144,7 +144,8 @@ HTML widgets:
   `getMediaWidgetUIUri()` (`text/html+skybridge`; the hash changes when the
   widget module graph changes)
 
-HTTP player media is `/mcp/widget/:token/*path`.
+HTTP player media is `/mcp/widget/:token/*path` (feed token, same class as
+`/media/*`; not OAuth).
 
 ## Prompts
 

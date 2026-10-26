@@ -94,9 +94,9 @@ Consent is `/admin/authorize`, behind Cloudflare Access with the rest of admin.
 Scopes are `mcp:read` and `mcp:write`. After you approve a client, it can
 connect to `/mcp` with the issued token.
 
-RSS subscribe URLs from MCP tools are `/feed/{token}`. Agent conventions for the
-server live in
-[docs/mcp-server-best-practices.md](docs/mcp-server-best-practices.md).
+RSS subscribe URLs from MCP tools are `/feed/{token}`. The player widget is
+`/mcp/widget/{token}/...` (same feed token). Agent conventions for the server
+live in [docs/mcp-server-best-practices.md](docs/mcp-server-best-practices.md).
 
 ## Self-Hosting
 
@@ -310,16 +310,18 @@ local development.
 
 MediaRSS routes fall into five groups:
 
-- **Public token routes** (`/feed/*`, `/media/*`, `/art/*`) — podcast apps.
-  Access is the secret token in the URL.
+- **Public token routes** (`/feed/*`, `/media/*`, `/art/*`, `/mcp/widget/*`) —
+  podcast apps and the MCP player widget. Access is the secret token in the URL.
 - **Admin routes** (`/admin`, `/admin/api/*`) — the dashboard. `/` redirects
-  here. Protect these at the edge.
-- **MCP** (`/mcp`) — OAuth bearer token. Leave this off the Access policy so
-  clients can connect after you approve them.
+  here. `/admin/health` is the same snapshot as `/health`. Protect these at the
+  edge.
+- **MCP** (`/mcp`) — OAuth bearer token for the Streamable HTTP server. Leave
+  `/mcp` off the Access policy so clients can connect after you approve them.
 - **OAuth discovery and tokens** (`/.well-known/*`, `/oauth/*`) — public so
   clients can register and redeem codes. Consent itself is `/admin/authorize`.
 - **Health** (`/health`) — public snapshot (status, version, commit SHA,
-  database, media roots). Not rate-limited.
+  database, media roots, MCP protocol). Not rate-limited unless `?probe=` is
+  present (`?probe=cimd` live-fetches Kody's client metadata).
 
 Podcast apps need unauthenticated token URLs, so use **Cloudflare Tunnel** and
 an Access policy on `/admin` rather than app-level login.

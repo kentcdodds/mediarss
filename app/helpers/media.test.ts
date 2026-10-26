@@ -97,7 +97,6 @@ test('getFileMetadata extracts metadata from various media file types', async ()
 	const m4bMetadata = await getFileMetadata(
 		path.join(TEST_AUDIO_DIR, 'Inkheart.m4b'),
 	)
-	expect(m4bMetadata).not.toBeNull()
 	expect(m4bMetadata!.path).toContain('Inkheart')
 	expect(m4bMetadata!.filename).toBe('Inkheart.m4b')
 	expect(m4bMetadata!.mimeType).toMatch(/audio/)
@@ -109,7 +108,6 @@ test('getFileMetadata extracts metadata from various media file types', async ()
 	const mp3Metadata = await getFileMetadata(
 		path.join(TEST_AUDIO_DIR, 'On the Edge of the Dark Sea of Darkness.mp3'),
 	)
-	expect(mp3Metadata).not.toBeNull()
 	expect(mp3Metadata!.mimeType).toBe('audio/mpeg')
 	expect(mp3Metadata!.sizeBytes).toBeGreaterThan(0)
 
@@ -117,7 +115,6 @@ test('getFileMetadata extracts metadata from various media file types', async ()
 	const mkvMetadata = await getFileMetadata(
 		path.join(TEST_VIDEO_DIR, 'Toy Story.mkv'),
 	)
-	expect(mkvMetadata).not.toBeNull()
 	expect(mkvMetadata!.mimeType).toMatch(/video/)
 	expect(mkvMetadata!.filename).toBe('Toy Story.mkv')
 })
@@ -179,7 +176,6 @@ test('extractPublicationDate prefers TDRL releasedate over year-only TDRC date',
 		}),
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
 })
 
@@ -191,7 +187,6 @@ test('extractPublicationDate prefers releasedate over full common.date', () => {
 		}),
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
 })
 
@@ -202,7 +197,6 @@ test('extractPublicationDate falls back to common.date when releasedate is missi
 		}),
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
 })
 
@@ -223,7 +217,6 @@ test('extractPublicationDate prefers the estimated publish timestamp over year-o
 		},
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString()).toBe('2026-04-04T16:00:00.000Z')
 })
 
@@ -301,7 +294,6 @@ test('extractPublicationDate keeps a full releasedate over estimated publish', (
 		},
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
 })
 
@@ -316,7 +308,6 @@ test('extractPublicationDate falls back to YYYY-MM folder when estimated publish
 		},
 	)
 
-	expect(publicationDate).not.toBeNull()
 	expect(publicationDate!.toISOString()).toBe('2025-10-01T00:00:00.000Z')
 })
 

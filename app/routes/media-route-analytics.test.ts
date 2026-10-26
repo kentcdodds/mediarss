@@ -312,7 +312,6 @@ test('media route treats malformed range headers as download starts when serving
 	expect(response.status).toBe(200)
 
 	const event = await readLatestMediaEvent(ctx.feed.id)
-	expect(event).not.toBeNull()
 	expect(event).toMatchObject({
 		status_code: 200,
 		is_download_start: 1,

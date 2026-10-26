@@ -773,8 +773,6 @@ test('JWT token has correct claims structure', async () => {
 	expect(payload.sub).toBe('user')
 	expect(payload.scope).toBe('mcp:read')
 	expect(payload.client_id).toBe(testClient.id)
-	expect(typeof payload.iat).toBe('number')
-	expect(typeof payload.exp).toBe('number')
 	expect(payload.exp! - payload.iat!).toBe(3600)
 })
 

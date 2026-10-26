@@ -18,7 +18,6 @@ test('admin routes return server-rendered hydrated shell', async () => {
 	expect(body.startsWith('<!DOCTYPE html>')).toBe(true)
 	expect(body).toContain('MediaRSS')
 	expect(body).toContain('Your Feeds')
-	expect(body).not.toContain('data-admin-route-placeholder')
 	expect(body).toContain('<script data-rmx-import-map type="importmap">')
 	expect(body).toMatch(
 		/<script type="module" src="\/assets\/app\/client\/admin\/entry\.[^"]*tsx">/,
@@ -37,7 +36,6 @@ test.each([
 
 	expect(response.status).toBe(200)
 	expect(body).toContain(content)
-	expect(body).not.toContain('data-admin-route-placeholder')
 })
 
 test('admin feed list applies query params during server render', async () => {

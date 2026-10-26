@@ -260,17 +260,6 @@ export function toAbsolutePath(
 }
 
 /**
- * Convert absolute path to mediaRoot:relativePath format.
- */
-export function toMediaPath(absolutePath: string): string | null {
-	const resolved = resolveMediaPath(absolutePath)
-	if (!resolved) return null
-	return resolved.relativePath
-		? `${resolved.root.name}:${resolved.relativePath}`
-		: resolved.root.name
-}
-
-/**
  * Parse mediaRoot:relativePath format to components.
  */
 export function parseMediaPath(mediaPath: string): {

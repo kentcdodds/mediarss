@@ -282,17 +282,3 @@ export async function updateMetadata(
 		throw error
 	}
 }
-
-/**
- * Check if FFmpeg is available on the system.
- */
-export async function isFFmpegAvailable(): Promise<boolean> {
-	try {
-		await execFileAsync('ffmpeg', ['-version'], {
-			windowsHide: true,
-		})
-		return true
-	} catch {
-		return false
-	}
-}

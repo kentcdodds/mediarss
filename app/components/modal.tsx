@@ -658,23 +658,6 @@ export function ModalAlert(handle: Handle<ModalAlertProps>) {
 	})
 }
 
-/**
- * A divider line for separating content within modals.
- */
-export function ModalDivider() {
-	return () => (
-		<hr
-			mix={[
-				rmxCss({
-					border: 'none',
-					borderTop: `1px solid ${colors.border}`,
-					margin: `${spacing.lg} 0`,
-				}),
-			]}
-		/>
-	)
-}
-
 type ModalSectionProps = {
 	/**
 	 * Optional section title.

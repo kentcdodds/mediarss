@@ -63,7 +63,7 @@ server.registerTool(
 	'list_feeds',
 	{
 		title: 'List Feeds',
-		description: getToolMetadata('list_feeds').description,
+		description: toolsMetadata.list_feeds.description,
 		inputSchema: {
 			/* zod fields with .describe() */
 		},

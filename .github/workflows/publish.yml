@@ -40,6 +40,7 @@ jobs:
   e2e:
     name: 🎭 Control CLI + Playwright
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v6
@@ -53,10 +54,13 @@ jobs:
       - name: 📥 Install dependencies
         run: npm ci
 
-      - name: 🎭 Install Chromium and ffmpeg
-        run: |
-          npx playwright install --with-deps --no-shell chromium
-          sudo apt-get install -y ffmpeg
+      - name: 🎭 Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install --with-deps --no-shell chromium
+
+      - name: 🎵 Install ffmpeg
+        timeout-minutes: 3
+        run: sudo apt-get install -y ffmpeg
 
       - name: 🕹️ Control CLI smoke
         run: |

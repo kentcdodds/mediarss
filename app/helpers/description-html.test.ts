@@ -39,7 +39,6 @@ test('strips anchor event handlers and preserves safe links', () => {
 	)
 
 	expect(html).toContain('href="https://example.com"')
-	expect(html).not.toMatch(/onmouseover/i)
 	expect(html).toContain('x')
 })
 

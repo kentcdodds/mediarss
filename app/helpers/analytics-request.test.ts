@@ -93,7 +93,7 @@ test('getClientFingerprint is stable for equivalent canonical client traits', ()
 		}),
 	)
 
-	expect(fingerprintFromNoisyHeaders).toBeTruthy()
+	expect(fingerprintFromNoisyHeaders).toMatch(/^fp_[0-9a-f]{8}$/)
 	expect(fingerprintFromNoisyHeaders).toBe(fingerprintFromCanonicalHeaders)
 })
 
@@ -112,7 +112,7 @@ test('getClientFingerprint falls back to user-agent when IP is unavailable', () 
 		}),
 	)
 
-	expect(userAgentOnlyFingerprint).toBeTruthy()
+	expect(userAgentOnlyFingerprint).toMatch(/^fp_[0-9a-f]{8}$/)
 	expect(userAgentOnlyFingerprint).toBe(equivalentFallbackFingerprint)
 })
 

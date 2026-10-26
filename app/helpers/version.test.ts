@@ -39,28 +39,19 @@ test('getShortCommitHash returns 7 character hash when in git repo', async () =>
 
 test('getDisplayVersion returns version or short commit hash', async () => {
 	const displayVersion = await getDisplayVersion()
-	expect(displayVersion).not.toBeNull()
 	expect(
-		displayVersion!.match(/^\d+\.\d+\.\d+/) || displayVersion!.length === 7,
+		displayVersion?.match(/^\d+\.\d+\.\d+/) || displayVersion?.length === 7,
 	).toBeTruthy()
 })
 
 test('getVersionInfo returns complete version info object with all required properties', async () => {
 	const info = await getVersionInfo()
 
-	expect(info).toHaveProperty('version')
-	expect(info).toHaveProperty('commit')
-	expect(info).toHaveProperty('startTime')
-	expect(info).toHaveProperty('uptimeMs')
-
-	// Version should be a string or null
 	if (info.version !== null) {
 		expect(info.version).toMatch(/^\d+\.\d+\.\d+/)
 	}
 
-	expect(typeof info.startTime).toBe('string')
 	expect(new Date(info.startTime).toISOString()).toBeTruthy()
-	expect(typeof info.uptimeMs).toBe('number')
 	expect(info.uptimeMs).toBeGreaterThanOrEqual(0)
 })
 

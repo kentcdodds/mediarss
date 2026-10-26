@@ -21,7 +21,6 @@ import {
 	getClient,
 	generateCodeVerifier,
 	getAudience,
-	CIMD_FETCH_USER_AGENT,
 	getClientMetadata,
 	lookupClientMetadata,
 	isUrlClientId,
@@ -984,7 +983,9 @@ test('resolveClientResult explains missing, unknown, and unreadable clients', as
 	assertFailedClientResolve(unread)
 	expect(unread.reason).toContain(cimdUrl)
 	expect(unread.reason).toMatch(/404/)
-	expect(mockCtx.capturedHeaders[0]?.userAgent).toBe(CIMD_FETCH_USER_AGENT)
+	expect(mockCtx.capturedHeaders[0]?.userAgent).toBe(
+		'MediaRSS/1.0 (CIMD resolver; +https://github.com/kentcdodds/mediarss)',
+	)
 })
 
 test('authorization endpoint reports why a client_id could not be resolved', async () => {

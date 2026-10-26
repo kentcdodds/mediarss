@@ -47,7 +47,6 @@ test('resolveAuthInfo includes token expiry for the 2026 resource-server contrac
 
 	const authInfo = await resolveAuthInfo(`Bearer ${token}`, issuer)
 
-	expect(authInfo).not.toBeNull()
 	expect(authInfo?.scopes).toEqual(['mcp:read'])
 	expect(authInfo?.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000))
 })

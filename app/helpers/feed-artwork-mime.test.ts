@@ -1,6 +1,5 @@
 import { expect, test } from 'vitest'
 import { type MediaFile } from '#app/helpers/media.ts'
-import { PODCAST_ART_PLACEHOLDER_CONTENT_TYPE } from '#app/helpers/podcast-art-placeholder.ts'
 import { resolveFeedArtworkMimeType } from './feed-artwork-mime.ts'
 
 function mediaFile(
@@ -65,5 +64,5 @@ test('resolveFeedArtworkMimeType falls back to PNG placeholder', () => {
 			uploadedFeedArtworkMimeType: null,
 			items: [mediaFile({ path: '/a', artworkMimeType: null })],
 		}),
-	).toBe(PODCAST_ART_PLACEHOLDER_CONTENT_TYPE)
+	).toBe('image/png')
 })

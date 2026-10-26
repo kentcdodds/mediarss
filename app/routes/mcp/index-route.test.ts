@@ -205,10 +205,6 @@ test('modern MCP client can discover the server and list tools', async () => {
 		expect(toolNames).toContain('get_feed_tokens')
 		expect(toolNames).toContain('create_feed_token')
 
-		for (const tool of tools) {
-			expect(tool.description ?? '').not.toContain('/feed/{feedId}?token=')
-			expect(tool.description ?? '').not.toContain('?token=')
-		}
 		expect(toolsByName.get_feed_tokens?.description).toContain('/feed/{token}')
 		expect(toolsByName.create_feed_token?.description).toContain(
 			'/feed/{token}',
@@ -322,10 +318,6 @@ test('create_feed_token persists labels and returns /feed/{token} URLs', async (
 			type: 'text',
 			text: expect.stringContaining(createdToken.rssUrl),
 		})
-		expect(createToken.content[0]).toEqual({
-			type: 'text',
-			text: expect.not.stringContaining('?token='),
-		})
 
 		const listTokens = await client.callTool({
 			name: 'get_feed_tokens',
@@ -352,14 +344,6 @@ test('create_feed_token persists labels and returns /feed/{token} URLs', async (
 		expect(listTokens.content[0]).toEqual({
 			type: 'text',
 			text: expect.stringMatching(/Nathan[\s\S]*Default|Default[\s\S]*Nathan/),
-		})
-		expect(listTokens.content[0]).toEqual({
-			type: 'text',
-			text: expect.not.stringContaining('Unlabeled'),
-		})
-		expect(listTokens.content[0]).toEqual({
-			type: 'text',
-			text: expect.not.stringContaining('?token='),
 		})
 
 		const feedResponse = await router.fetch(

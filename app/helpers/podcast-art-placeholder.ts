@@ -18,9 +18,4 @@ export function getPodcastArtPlaceholderBytes(): Buffer {
 	return cached
 }
 
-/** Body for `Response` (assert: TS `BodyInit` vs `Uint8Array` buffer typing mismatch). */
-export function getPodcastArtPlaceholderBody(): BodyInit {
-	return new Uint8Array(getPodcastArtPlaceholderBytes()) as BodyInit
-}
-
 export const PODCAST_ART_PLACEHOLDER_CONTENT_TYPE = 'image/png'

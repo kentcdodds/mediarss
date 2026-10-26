@@ -16,18 +16,11 @@ export type { AuthInfo }
 /**
  * Extended auth info with our custom fields stored in extra.
  */
-export interface AuthInfoExtra {
+interface AuthInfoExtra {
 	/** Subject (user identifier) from the token */
 	sub: string
 	/** Full token payload */
 	payload: AccessTokenPayload
-}
-
-/**
- * Helper to get the extra data from AuthInfo.
- */
-export function getAuthExtra(authInfo: AuthInfo): AuthInfoExtra {
-	return authInfo.extra as unknown as AuthInfoExtra
 }
 
 /**
@@ -104,25 +97,6 @@ export function handleUnauthorized(request: Request): Response {
 		status: 401,
 		headers: {
 			'WWW-Authenticate': wwwAuthenticateParts.join(', '),
-		},
-	})
-}
-
-/**
- * Generate a 403 Forbidden response for insufficient scope.
- * @param requiredScopes - The scopes that were required
- * @returns Response with 403 status
- */
-export function handleInsufficientScope(requiredScopes: McpScope[]): Response {
-	return new Response('Forbidden', {
-		status: 403,
-		headers: {
-			'WWW-Authenticate': [
-				`Bearer realm="MediaServer"`,
-				`error="insufficient_scope"`,
-				`error_description="Required scope(s): ${requiredScopes.join(' ')}"`,
-				`scope="${requiredScopes.join(' ')}"`,
-			].join(', '),
 		},
 	})
 }

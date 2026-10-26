@@ -1,6 +1,6 @@
 import { invariant } from '@epic-web/invariant'
 import { resolveMediaPath } from '#app/config/env.ts'
-import { type DirectoryFeed, type Feed } from '#app/db/types.ts'
+import { type Feed } from '#app/db/types.ts'
 import { formatItunesDuration, formatRssDate } from './format.ts'
 import { type MediaFile } from './media.ts'
 import {
@@ -264,13 +264,6 @@ function generateItem(
       <itunes:explicit>no</itunes:explicit>
       <itunes:episodeType>full</itunes:episodeType>
     </item>`
-}
-
-/**
- * Check if a feed is a DirectoryFeed.
- */
-function _isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
-	return 'directoryPaths' in feed
 }
 
 /**

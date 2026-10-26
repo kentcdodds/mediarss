@@ -539,21 +539,3 @@ export const promptsMetadata = {
 		description: 'Help organize media files into logical feeds',
 	},
 } as const satisfies Record<string, PromptMetadata>
-
-/**
- * Type-safe helper to get tool metadata.
- */
-export function getToolMetadata(
-	toolName: keyof typeof toolsMetadata,
-): ToolMetadata {
-	return toolsMetadata[toolName]
-}
-
-/**
- * Type-safe helper to get prompt metadata.
- */
-export function getPromptMetadata(
-	promptName: keyof typeof promptsMetadata,
-): PromptMetadata {
-	return promptsMetadata[promptName]
-}

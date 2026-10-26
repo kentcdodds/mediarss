@@ -113,10 +113,3 @@ export async function getItemByPath(
 	})
 	return row ? toCamelCaseRow(row) : undefined
 }
-
-export async function clearFeedItems(feedId: string): Promise<number> {
-	const result = await db.deleteMany(feedItemsTable, {
-		where: { feed_id: feedId },
-	})
-	return result.affectedRows
-}

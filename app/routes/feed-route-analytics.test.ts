@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { sql } from 'remix/data-table'
 import '#app/config/init-env.ts'
 import {
@@ -17,7 +17,6 @@ import {
 import { db } from '#app/db/index.ts'
 import { selectOne } from '#app/db/rows.ts'
 import { migrateDatabase } from '#app/db/migrate.ts'
-import { spyOn } from '#test/bun-test-compat.ts'
 import feedHandler from './feed.ts'
 
 await migrateDatabase(db)
@@ -206,7 +205,9 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 
 test('feed route still returns rss when analytics writes fail', async () => {
 	await using ctx = await createCuratedFeedRouteTestContext()
-	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+	const consoleErrorSpy = vi
+		.spyOn(console, 'error')
+		.mockImplementation(() => {})
 	using _restoreConsoleErrorSpy = {
 		[Symbol.dispose]: () => {
 			consoleErrorSpy.mockRestore()

@@ -50,10 +50,3 @@ export type FeedToken = DirectoryFeedToken | CuratedFeedToken
 export function isDirectoryFeed(feed: Feed): feed is DirectoryFeed {
 	return 'directoryPaths' in feed
 }
-
-/**
- * Type guard to check if a feed is a CuratedFeed
- */
-export function isCuratedFeed(feed: Feed): feed is CuratedFeed {
-	return !('directoryPaths' in feed)
-}

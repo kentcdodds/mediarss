@@ -52,16 +52,6 @@ export async function getClient(clientId: string): Promise<OAuthClient | null> {
 	return row ? toClient(row) : null
 }
 
-/**
- * Check if a redirect URI is valid for a given client.
- */
-export function isValidRedirectUri(
-	client: OAuthClient,
-	redirectUri: string,
-): boolean {
-	return client.redirectUris.includes(redirectUri)
-}
-
 async function insertClient(
 	id: string,
 	name: string,

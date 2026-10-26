@@ -1,7 +1,7 @@
 /**
  * Generate a UUIDv7 identifier.
  * UUIDv7 is time-sortable and uses the current timestamp plus random bits.
- * Bun's crypto.randomUUID() generates UUIDv4, so we implement UUIDv7 manually.
+ * Node's crypto.randomUUID() generates UUIDv4, so we implement UUIDv7 manually.
  */
 export function generateId(): string {
 	const timestamp = Date.now()

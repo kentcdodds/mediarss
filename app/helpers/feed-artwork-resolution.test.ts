@@ -1,7 +1,6 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test } from 'vitest'
-import { spyOn } from '#test/bun-test-compat.ts'
+import { expect, test, vi } from 'vitest'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
@@ -77,53 +76,51 @@ test('resolveFeedArtwork returns PNG placeholder when feed has no artwork source
 
 test('resolveFeedArtwork falls back to embedded artwork when uploaded artwork squaring fails', async () => {
 	await using ctx = await createFeedArtworkResolutionContext()
-	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+	const consoleErrorSpy = vi
+		.spyOn(console, 'error')
+		.mockImplementation(() => {})
 	using _restoreConsoleErrorSpy = {
 		[Symbol.dispose]: () => {
 			consoleErrorSpy.mockRestore()
 		},
 	}
-	const getFeedArtworkPathSpy = spyOn(
-		feedArtworkHelpers,
-		'getFeedArtworkPath',
-	).mockResolvedValue({
-		path: '/tmp/broken-uploaded-artwork.png',
-		mimeType: 'image/png',
-	})
+	const getFeedArtworkPathSpy = vi
+		.spyOn(feedArtworkHelpers, 'getFeedArtworkPath')
+		.mockResolvedValue({
+			path: '/tmp/broken-uploaded-artwork.png',
+			mimeType: 'image/png',
+		})
 	using _restoreGetFeedArtworkPathSpy = {
 		[Symbol.dispose]: () => {
 			getFeedArtworkPathSpy.mockRestore()
 		},
 	}
-	const getSquareArtworkFromFileSpy = spyOn(
-		squareArtworkHelpers,
-		'getSquareArtworkFromFile',
-	).mockRejectedValue(new Error('Corrupt uploaded artwork'))
+	const getSquareArtworkFromFileSpy = vi
+		.spyOn(squareArtworkHelpers, 'getSquareArtworkFromFile')
+		.mockRejectedValue(new Error('Corrupt uploaded artwork'))
 	using _restoreGetSquareArtworkFromFileSpy = {
 		[Symbol.dispose]: () => {
 			getSquareArtworkFromFileSpy.mockRestore()
 		},
 	}
-	const extractArtworkSpy = spyOn(
-		artworkHelpers,
-		'extractArtwork',
-	).mockResolvedValue({
-		data: Buffer.from('embedded-artwork'),
-		mimeType: 'image/jpeg',
-	})
+	const extractArtworkSpy = vi
+		.spyOn(artworkHelpers, 'extractArtwork')
+		.mockResolvedValue({
+			data: Buffer.from('embedded-artwork'),
+			mimeType: 'image/jpeg',
+		})
 	using _restoreExtractArtworkSpy = {
 		[Symbol.dispose]: () => {
 			extractArtworkSpy.mockRestore()
 		},
 	}
 	const embeddedArtwork = Buffer.from('embedded-square-artwork')
-	const getSquareArtworkSpy = spyOn(
-		squareArtworkHelpers,
-		'getSquareArtwork',
-	).mockResolvedValue({
-		data: embeddedArtwork,
-		mimeType: 'image/jpeg',
-	})
+	const getSquareArtworkSpy = vi
+		.spyOn(squareArtworkHelpers, 'getSquareArtwork')
+		.mockResolvedValue({
+			data: embeddedArtwork,
+			mimeType: 'image/jpeg',
+		})
 	using _restoreGetSquareArtworkSpy = {
 		[Symbol.dispose]: () => {
 			getSquareArtworkSpy.mockRestore()
@@ -142,37 +139,36 @@ test('resolveFeedArtwork falls back to embedded artwork when uploaded artwork sq
 
 test('resolveFeedArtwork returns placeholder when embedded artwork squaring fails', async () => {
 	await using ctx = await createFeedArtworkResolutionContext()
-	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+	const consoleErrorSpy = vi
+		.spyOn(console, 'error')
+		.mockImplementation(() => {})
 	using _restoreConsoleErrorSpy = {
 		[Symbol.dispose]: () => {
 			consoleErrorSpy.mockRestore()
 		},
 	}
-	const getFeedArtworkPathSpy = spyOn(
-		feedArtworkHelpers,
-		'getFeedArtworkPath',
-	).mockResolvedValue(null)
+	const getFeedArtworkPathSpy = vi
+		.spyOn(feedArtworkHelpers, 'getFeedArtworkPath')
+		.mockResolvedValue(null)
 	using _restoreGetFeedArtworkPathSpy = {
 		[Symbol.dispose]: () => {
 			getFeedArtworkPathSpy.mockRestore()
 		},
 	}
-	const extractArtworkSpy = spyOn(
-		artworkHelpers,
-		'extractArtwork',
-	).mockResolvedValue({
-		data: Buffer.from('broken-embedded-artwork'),
-		mimeType: 'image/jpeg',
-	})
+	const extractArtworkSpy = vi
+		.spyOn(artworkHelpers, 'extractArtwork')
+		.mockResolvedValue({
+			data: Buffer.from('broken-embedded-artwork'),
+			mimeType: 'image/jpeg',
+		})
 	using _restoreExtractArtworkSpy = {
 		[Symbol.dispose]: () => {
 			extractArtworkSpy.mockRestore()
 		},
 	}
-	const getSquareArtworkSpy = spyOn(
-		squareArtworkHelpers,
-		'getSquareArtwork',
-	).mockRejectedValue(new Error('Corrupt embedded artwork'))
+	const getSquareArtworkSpy = vi
+		.spyOn(squareArtworkHelpers, 'getSquareArtwork')
+		.mockRejectedValue(new Error('Corrupt embedded artwork'))
 	using _restoreGetSquareArtworkSpy = {
 		[Symbol.dispose]: () => {
 			getSquareArtworkSpy.mockRestore()

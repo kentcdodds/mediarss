@@ -6,7 +6,7 @@
 import { type RequestContext } from 'remix/router'
 
 /**
- * Handler function type for Bun/Remix routes.
+ * Handler function type for Remix routes.
  */
 type RouteHandler = (context: RequestContext) => Response | Promise<Response>
 
@@ -73,7 +73,7 @@ export function withCors({
 		// Add CORS headers directly to the response
 		// NOTE: We modify headers in place rather than creating a new Response
 		// because creating a new Response with response.body converts file bodies
-		// to ReadableStreams, which causes Bun to use Transfer-Encoding: chunked
+		// to ReadableStreams, which causes Node to use Transfer-Encoding: chunked
 		// instead of Content-Length. This breaks download progress in clients.
 		if (corsHeaders instanceof Headers) {
 			corsHeaders.forEach((value, key) => {

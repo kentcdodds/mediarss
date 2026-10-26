@@ -40,7 +40,7 @@ export async function getFileResponse(
 		contentType?: string
 		/**
 		 * When false, skip ETag / Last-Modified and never return 304.
-		 * Bun-era artwork responses always streamed a full body; `createFileResponse`
+		 * Artwork responses always stream a full body; `createFileResponse`
 		 * otherwise returns 304 for conditional requests, which many podcast clients
 		 * mishandle for itunes:image-style fetches.
 		 */

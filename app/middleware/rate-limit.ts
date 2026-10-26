@@ -178,7 +178,7 @@ export function rateLimit(): Middleware {
 		// Add rate limit headers directly to the response
 		// NOTE: We modify headers in place rather than creating a new Response
 		// because creating a new Response with response.body converts file bodies
-		// to ReadableStreams, which causes Bun to use Transfer-Encoding: chunked
+		// to ReadableStreams, which causes Node to use Transfer-Encoding: chunked
 		// instead of Content-Length. This breaks download progress in podcast apps.
 		response.headers.set('X-RateLimit-Limit', String(limiter.getMaxRequests()))
 		response.headers.set('X-RateLimit-Remaining', String(remaining))

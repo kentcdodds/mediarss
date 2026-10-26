@@ -1,8 +1,7 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { sql } from 'remix/data-table'
-import { expect, test } from 'vitest'
-import { spyOn } from '#test/bun-test-compat.ts'
+import { expect, test, vi } from 'vitest'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -324,7 +323,9 @@ test('media route treats malformed range headers as download starts when serving
 test('media route still serves files when analytics writes fail', async () => {
 	await using ctx = await createDirectoryMediaAnalyticsTestContext()
 	const pathParam = `${ctx.rootName}/${ctx.relativePath}`
-	const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {})
+	const consoleErrorSpy = vi
+		.spyOn(console, 'error')
+		.mockImplementation(() => {})
 	try {
 		await withAnalyticsTableUnavailable(async () => {
 			const response = await mediaHandler.handler(

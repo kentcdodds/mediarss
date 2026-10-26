@@ -1,8 +1,7 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { sql } from 'remix/data-table'
-import { expect, test } from 'vitest'
-import { spyOn } from '#test/bun-test-compat.ts'
+import { expect, test, vi } from 'vitest'
 import '#app/config/init-env.ts'
 import { initEnv } from '#app/config/env.ts'
 import { createCuratedFeedToken } from '#app/db/curated-feed-tokens.ts'
@@ -16,7 +15,7 @@ import { createFeedAnalyticsEvent } from '#app/db/feed-analytics-events.ts'
 import { db } from '#app/db/index.ts'
 import { migrateDatabase } from '#app/db/migrate.ts'
 import { directoryFeedTokensTable } from '#app/db/schema.ts'
-import { deleteEnvVar, setEnvVar, writeTextFile } from '#test/test-helpers.ts'
+import { setEnvVar, unsetEnvVar, writeTextFile } from '#test/test-helpers.ts'
 import analyticsHandler from './media-analytics.$path.ts'
 
 await migrateDatabase(db)
@@ -73,7 +72,7 @@ async function createMediaApiTestContext() {
 			await deleteDirectoryFeed(feedTwo.id)
 
 			if (previousMediaPaths === undefined) {
-				deleteEnvVar('MEDIA_PATHS')
+				unsetEnvVar('MEDIA_PATHS')
 			} else {
 				setEnvVar('MEDIA_PATHS', previousMediaPaths)
 			}
@@ -315,7 +314,7 @@ test('media analytics endpoint batch-loads token metadata', async () => {
 
 	const tokenMetadataQueries: Array<unknown> = []
 	const originalFindMany = db.findMany.bind(db)
-	const querySpy = spyOn(db, 'findMany').mockImplementation(((
+	const querySpy = vi.spyOn(db, 'findMany').mockImplementation(((
 		...args: Parameters<typeof originalFindMany>
 	) => {
 		const [table, options] = args
@@ -394,7 +393,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 
 	const tokenMetadataQueries: Array<unknown> = []
 	const originalFindMany = db.findMany.bind(db)
-	const querySpy = spyOn(db, 'findMany').mockImplementation(((
+	const querySpy = vi.spyOn(db, 'findMany').mockImplementation(((
 		...args: Parameters<typeof originalFindMany>
 	) => {
 		const [table, options] = args
@@ -413,7 +412,7 @@ test('media analytics endpoint chunks token metadata queries for low variable li
 	} finally {
 		querySpy.mockRestore()
 		if (previousLimit === undefined) {
-			deleteEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER')
+			unsetEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER')
 		} else {
 			setEnvVar('MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER', previousLimit)
 		}

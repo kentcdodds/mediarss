@@ -12,13 +12,15 @@ concern; extend it instead of duplicating it.
   generated from it.
 - `app/router.tsx`: maps routes to handlers and middleware.
 - `app/routes/`: HTTP handlers. `admin/api/*` is the JSON API; `feed.ts` /
-  `media.ts` / `art.ts` are the public token routes; `oauth/*`, `mcp/*`, and
-  `health.ts` are the rest. Admin HTML is the SPA shell in
-  `app/routes/admin/index.tsx` plus `authorize.tsx`; pages live in
+  `media.ts` / `art.ts` are the public token routes; `mcp/widget.ts` is the
+  feed-token player; `oauth/*`, `mcp/*`, and `health.ts` (public `/health`) are
+  the rest. `/admin/health` is `admin/api/health.ts`. Admin HTML is the SPA
+  shell in `app/routes/admin/index.tsx` plus `authorize.tsx`; pages live in
   `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
 - `app/config/env.ts`: the env schema and media roots (`getEnv`,
   `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`).
+  `app/config/init-env.ts` parses env and sets outbound IPv4-first DNS.
 
 ## Data
 
@@ -48,7 +50,7 @@ concern; extend it instead of duplicating it.
 ## Auth and MCP
 
 - `app/oauth/`: authorization codes, PKCE, tokens, refresh tokens, signing keys,
-  client metadata documents.
+  client metadata documents (`client-metadata.ts` fetches CIMD).
 - `app/mcp/`: MCP server, tools, resources, prompts, widgets, auth, and
   protocol-header checks. `metadata.ts` is the source of truth for names and
   descriptions ([conventions](mcp-server-best-practices.md)).
@@ -62,8 +64,12 @@ concern; extend it instead of duplicating it.
 
 ## Ops and tooling
 
-- `app/helpers/health.ts`, `version.ts`, `diagnostics.ts`: `/health` and version
-  data (commit SHA from `COMMIT_SHA`).
+- `app/helpers/health.ts`, `version.ts`, `diagnostics.ts`: `/health` and
+  `/admin/health` (same payload). Optional `?probe=cimd` live-fetches Kody's
+  client metadata. Commit SHA from `COMMIT_SHA`.
+- `app/helpers/outbound-fetch.ts`: IPv4-first outbound HTTP (CIMD, NAS Docker).
+- `server/dev.ts`: HMR supervisor for `npm run dev`. `server/node-server.ts` is
+  the Node HTTP adapter.
 - `tools/control-mediarss.ts`: the control CLI
   ([skill](../.agents/skills/control-mediarss/SKILL.md)).
 - `scripts/release.ts`: version bump, tag, GitHub release.

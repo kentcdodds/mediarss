@@ -33,13 +33,14 @@ CLI smoke, Playwright, and the Docker build. Do not commit if it fails.
 ## Remix
 
 Load the repo-local skill at `.agents/skills/remix/SKILL.md` before changing
-routes, controllers, middleware, data access, validation, auth, sessions,
-uploads, server setup, UI components, hydration, navigation, or tests. Start
-from the installed docs: search `node_modules/remix/INDEX.md`, then follow links
-to `node_modules/remix/guides/` and the package README. Installed docs are
+routes, handlers, middleware, data access, validation, auth, sessions, uploads,
+server setup, UI components, hydration, navigation, or tests. Start from the
+installed docs: search `node_modules/remix/INDEX.md`, then follow links to
+`node_modules/remix/guides/` and the package README. Installed docs are
 canonical. The skill is copied verbatim from `remix-run/remix` at the
-`remix@<version>` tag; refresh it on upgrades (there is no
-`remix skills install`).
+`remix@<version>` tag (starter examples use `app/router.ts` and `app/actions/`).
+This app uses `app/router.tsx` plus handler modules in `app/routes/`. Refresh
+the skill on upgrades (there is no `remix skills install`).
 
 UI uses `remix/component`, not React
 ([decision 0001](decisions/0001-no-react-no-build-step.md)).
@@ -84,7 +85,8 @@ running app, use the control CLI
 
 For manual testing with your own media, `npm run dev:test` uses `./data/test.db`
 and `MEDIA_PATHS=audio:./local-test/1/audio` (`local-test/` is gitignored).
-Media path names must be unique.
+`npm run dev:test-mounted` is the same idea against host volumes listed in
+`package.json`. Media path names must be unique.
 
 ## Frontend dependencies
 

@@ -13,6 +13,7 @@ push. Run `npm run check` to auto-fix format and lint before you finish.
 
 This file is a map. Open the page that owns the task:
 
+- Self-hosting, env vars, and Cloudflare Access: [README.md](README.md)
 - Contributing, tooling, data layer, testing, triage:
   [docs/contributing.md](docs/contributing.md)
 - Primitives and code roots: [docs/primitives.md](docs/primitives.md)

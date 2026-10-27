@@ -159,7 +159,7 @@ export const featureNotes = {
 	adminMediaEdit: {
 		surface: 'page',
 		summary: 'Edit a media file’s metadata (writes the file via ffmpeg)',
-		seed: 'Fixture media is copied into data/control/media, so edits never touch test/fixtures',
+		seed: 'Fixture media is copied into data/control/<port>/media, so edits never touch test/fixtures',
 		reach: 'browse --path /admin/media/audio/Inkheart.m4b/edit --record',
 	},
 	adminMediaDetail: {
@@ -286,7 +286,7 @@ export const featureNotes = {
 		surface: 'admin-api',
 		summary: 'Write metadata tags into a media file (ffmpeg)',
 		methods: 'PUT',
-		seed: 'Writes the copy under data/control/media; run dev --fresh to reset',
+		seed: 'Writes the copy under data/control/<port>/media; run dev --fresh to reset',
 		reach:
 			'request PUT /admin/api/media/audio/Inkheart.m4b/metadata --json-body \'{"title":"Inkheart"}\'',
 	},
@@ -301,7 +301,7 @@ export const featureNotes = {
 		surface: 'admin-api',
 		summary: 'Upload a media file into a writable media root',
 		methods: 'POST',
-		seed: 'Uploads land in data/control/media; run dev --fresh to reset',
+		seed: 'Uploads land in data/control/<port>/media; run dev --fresh to reset',
 		reach: 'browse --path /admin/media --record (upload UI)',
 	},
 	adminApiArtwork: {

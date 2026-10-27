@@ -17,7 +17,7 @@ control environment (`npm run --silent control -- dev`). Commands are
 | `adminFeedEdit` | `/admin/feeds/:id/edit` | ANY | Edit feed settings | `execute --code-file tools/control-fixtures/curated-feed.ts` creates a curated feed with fixture audio and prints its id and token | `browse --path /admin/feeds/<id>/edit --record` |  |
 | `adminFeed` | `/admin/feeds/:id` | ANY | Feed details: items, tokens, analytics, artwork | `execute --code-file tools/control-fixtures/curated-feed.ts` creates a curated feed with fixture audio and prints its id and token | `browse --path /admin/feeds/<id> --record` |  |
 | `adminMedia` | `/admin/media` | ANY | Media library with search and sort (URL-synced) | - | `browse --path "/admin/media?sort=title-az" --wait-for "Media Library"` |  |
-| `adminMediaEdit` | `/admin/media/*path/edit` | ANY | Edit a media file’s metadata (writes the file via ffmpeg) | Fixture media is copied into data/control/media, so edits never touch test/fixtures | `browse --path /admin/media/audio/Inkheart.m4b/edit --record` |  |
+| `adminMediaEdit` | `/admin/media/*path/edit` | ANY | Edit a media file’s metadata (writes the file via ffmpeg) | Fixture media is copied into data/control/<port>/media, so edits never touch test/fixtures | `browse --path /admin/media/audio/Inkheart.m4b/edit --record` |  |
 | `adminMediaDetail` | `/admin/media/*path` | ANY | Media details: metadata, feed assignments, analytics | - | `browse --path /admin/media/audio/Inkheart.m4b --record` |  |
 | `adminVersion` | `/admin/version` | ANY | Version page | - | `browse --path /admin/version` |  |
 | `adminCatchAll` | `/admin/*path` | ANY | Admin shell for unknown paths (200; the not-found UI renders in the page) | - | `browse --path /admin/does-not-exist` |  |
@@ -42,9 +42,9 @@ control environment (`npm run --silent control -- dev`). Commands are
 | `adminApiMedia` | `/admin/api/media` | GET | List all media with metadata | - | `request GET /admin/api/media --contains Inkheart` |  |
 | `adminApiMediaAssignments` | `/admin/api/media/assignments` | GET, PUT, POST | Read or change which feeds a media file belongs to | `execute --code-file tools/control-fixtures/curated-feed.ts` creates a curated feed with fixture audio and prints its id and token | `request GET /admin/api/media/assignments` |  |
 | `adminApiMediaDetail` | `/admin/api/media/*path` | GET | One media file’s metadata and assignments | - | `request GET /admin/api/media/audio/Inkheart.m4b --contains Inkheart` |  |
-| `adminApiMediaMetadata` | `/admin/api/media/*path/metadata` | PUT | Write metadata tags into a media file (ffmpeg) | Writes the copy under data/control/media; run dev --fresh to reset | `request PUT /admin/api/media/audio/Inkheart.m4b/metadata --json-body '{"title":"Inkheart"}'` |  |
+| `adminApiMediaMetadata` | `/admin/api/media/*path/metadata` | PUT | Write metadata tags into a media file (ffmpeg) | Writes the copy under data/control/<port>/media; run dev --fresh to reset | `request PUT /admin/api/media/audio/Inkheart.m4b/metadata --json-body '{"title":"Inkheart"}'` |  |
 | `adminApiMediaStream` | `/admin/api/media-stream/*path` | GET | Stream media for the admin player (no token) | - | `request GET /admin/api/media-stream/audio/Inkheart.m4b --status 200` |  |
-| `adminApiMediaUpload` | `/admin/api/media/upload` | POST | Upload a media file into a writable media root | Uploads land in data/control/media; run dev --fresh to reset | `browse --path /admin/media --record (upload UI)` |  |
+| `adminApiMediaUpload` | `/admin/api/media/upload` | POST | Upload a media file into a writable media root | Uploads land in data/control/<port>/media; run dev --fresh to reset | `browse --path /admin/media --record (upload UI)` |  |
 | `adminApiArtwork` | `/admin/api/artwork/*path` | GET | Embedded artwork for a media file | - | `request GET /admin/api/artwork/audio/Inkheart.m4b` |  |
 
 ## Public feed, media, and art (podcast apps)

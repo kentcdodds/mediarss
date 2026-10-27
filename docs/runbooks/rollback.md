@@ -59,10 +59,10 @@ npm run --silent control -- health --origin https://<your-mediarss-host> --sha <
 Then revert or fix forward on `main` with a normal PR, and file a `Cleanup:`
 issue to unpin the image tag.
 
-## Adopting a pre-Remix database
+## Legacy `schema_versions` databases
 
-Databases that still have a `schema_versions` table (the old in-app runner)
-start only when that journal is at version 8. The baseline migration is
-idempotent and leaves `schema_versions` in place so the previous image can still
-start. A database older than version 8 needs one start on the previous release
-first.
+A database with a `schema_versions` table (the in-app journal from before
+`remix db`) starts only when that journal is at version 8. The baseline
+migration is idempotent and leaves `schema_versions` in place so the prior
+release image can start. A database older than version 8 needs one start on the
+prior release first.

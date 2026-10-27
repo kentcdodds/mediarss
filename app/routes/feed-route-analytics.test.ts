@@ -199,8 +199,8 @@ test('feed route logs rss_fetch analytics for successful responses', async () =>
 		token: ctx.token,
 		status_code: 200,
 	})
-	expect(event?.client_name).not.toBeNull()
-	expect(event?.client_fingerprint).toBeTruthy()
+	expect(event?.client_name).toBe('Pocket Casts')
+	expect(event?.client_fingerprint).toMatch(/^fp_[0-9a-f]{8}$/)
 })
 
 test('feed route still returns rss when analytics writes fail', async () => {

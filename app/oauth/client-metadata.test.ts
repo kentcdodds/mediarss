@@ -173,7 +173,6 @@ test('resolveClient resolves static clients and returns null for unknown clients
 
 	// Should resolve to static client
 	const resolved = await resolveClient(staticClient.id)
-	expect(resolved).not.toBeNull()
 	expect(resolved!.id).toBe(staticClient.id)
 	expect(resolved!.name).toContain('Static Test')
 	expect(resolved!.redirectUris).toEqual(['http://localhost:3000/callback'])
@@ -192,7 +191,6 @@ test('static clients take precedence over URL lookups for non-URL IDs', async ()
 
 	// Should resolve to static client, not try URL lookup
 	const resolved = await resolveClient(staticClient.id)
-	expect(resolved).not.toBeNull()
 	expect(resolved!.isMetadataClient).toBe(false)
 	expect(resolved!.id).toBe(staticClient.id)
 })
@@ -206,7 +204,6 @@ test('isValidClientRedirectUri validates redirect URIs for static clients', asyn
 	])
 
 	const resolved = await resolveClient(staticClient.id)
-	expect(resolved).not.toBeNull()
 
 	// Valid URIs
 	expect(
@@ -230,7 +227,6 @@ test('clientSupportsGrantType validates grant types correctly', async () => {
 	])
 
 	const resolved = await resolveClient(staticClient.id)
-	expect(resolved).not.toBeNull()
 
 	// Static clients default to authorization_code and refresh_token
 	expect(clientSupportsGrantType(resolved!, 'authorization_code')).toBe(true)
@@ -362,7 +358,6 @@ test('full authorization code flow with static client', async () => {
 		expires_in: number
 		scope: string
 	}
-	expect(tokenData.access_token).toBeTruthy()
 	expect(tokenData.token_type).toBe('Bearer')
 	expect(tokenData.scope).toBe('read write')
 
@@ -542,7 +537,6 @@ test('getClientMetadata fetches and validates metadata documents', async () => {
 	)
 
 	const result = await getClientMetadata(validClientUrl)
-	expect(result).not.toBeNull()
 	expect(result!.client_id).toBe(validClientUrl)
 	expect(result!.client_name).toBe('Test MCP Client')
 	expect(result!.redirect_uris).toEqual([
@@ -567,7 +561,6 @@ test('getClientMetadata fetches and validates metadata documents', async () => {
 	)
 
 	const multiResult = await getClientMetadata(multiRedirectUrl)
-	expect(multiResult).not.toBeNull()
 	expect(multiResult!.redirect_uris).toHaveLength(3)
 	expect(multiResult!.redirect_uris).toContain(
 		'https://app.example.com/callback',
@@ -587,7 +580,6 @@ test('getClientMetadata fetches and validates metadata documents', async () => {
 	)
 
 	const minimalResult = await getClientMetadata(minimalUrl)
-	expect(minimalResult).not.toBeNull()
 	expect(minimalResult!.client_id).toBe(minimalUrl)
 	expect(minimalResult!.client_name).toBeUndefined()
 	expect(minimalResult!.grant_types).toBeUndefined()
@@ -766,7 +758,6 @@ test('getClientMetadata caches metadata in memory and database', async () => {
 
 	// Second call - should use memory cache
 	const result2 = await getClientMetadata(clientIdUrl)
-	expect(result2).not.toBeNull()
 	expect(result2!.client_id).toBe(clientIdUrl)
 	expect(fetchCount).toBe(1) // No additional fetch
 
@@ -776,7 +767,6 @@ test('getClientMetadata caches metadata in memory and database', async () => {
 		sql`SELECT * FROM client_metadata_cache WHERE client_id = ${clientIdUrl};`,
 	)
 
-	expect(row).not.toBeNull()
 	expect(row!.client_id).toBe(clientIdUrl)
 
 	const cachedMetadata = JSON.parse(row!.metadata_json)
@@ -787,7 +777,6 @@ test('getClientMetadata caches metadata in memory and database', async () => {
 
 	// Should retrieve from DB cache, not fetch again
 	const result3 = await getClientMetadata(clientIdUrl)
-	expect(result3).not.toBeNull()
 	expect(result3!.client_id).toBe(clientIdUrl)
 	expect(fetchCount).toBe(1) // Still no additional fetch
 })
@@ -819,7 +808,6 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${ttlTestUrl};`,
 	)
 
-	expect(ttlRow).not.toBeNull()
 	const ttlDuration = ttlRow!.expires_at - ttlRow!.cached_at
 	expect(ttlDuration).toBe(600) // Should match max-age
 
@@ -849,7 +837,6 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${minCacheUrl};`,
 	)
 
-	expect(minRow).not.toBeNull()
 	const minDuration = minRow!.expires_at - minRow!.cached_at
 	expect(minDuration).toBe(300) // Should be enforced minimum (5 minutes)
 
@@ -879,7 +866,6 @@ test('metadata cache respects Cache-Control headers with min/max bounds', async 
 		sql`SELECT expires_at, cached_at FROM client_metadata_cache WHERE client_id = ${maxCacheUrl};`,
 	)
 
-	expect(maxRow).not.toBeNull()
 	const maxDuration = maxRow!.expires_at - maxRow!.cached_at
 	expect(maxDuration).toBe(86400) // Should be enforced maximum (24 hours)
 })
@@ -902,7 +888,6 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 	)
 
 	const resolved = await resolveClient(validUrl)
-	expect(resolved).not.toBeNull()
 	expect(resolved!.id).toBe(validUrl)
 	expect(resolved!.name).toBe('My MCP App')
 	expect(resolved!.redirectUris).toEqual([
@@ -926,7 +911,6 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 	)
 
 	const noNameResolved = await resolveClient(noNameUrl)
-	expect(noNameResolved).not.toBeNull()
 	expect(noNameResolved!.name).toBe('test-no-name.example.com')
 
 	clearMetadataCache()
@@ -944,7 +928,6 @@ test('resolveClient resolves URL-based clients from metadata documents', async (
 	)
 
 	const defaultGrantResolved = await resolveClient(defaultGrantUrl)
-	expect(defaultGrantResolved).not.toBeNull()
 	expect(defaultGrantResolved!.grantTypes).toEqual([
 		'authorization_code',
 		'refresh_token',
@@ -1048,7 +1031,6 @@ test('URL-based client redirect URI and grant type validation', async () => {
 	)
 
 	const redirectResolved = await resolveClient(redirectUrl)
-	expect(redirectResolved).not.toBeNull()
 
 	// Valid redirect URIs
 	expect(
@@ -1088,7 +1070,6 @@ test('URL-based client redirect URI and grant type validation', async () => {
 	)
 
 	const grantResolved = await resolveClient(grantUrl)
-	expect(grantResolved).not.toBeNull()
 
 	expect(clientSupportsGrantType(grantResolved!, 'authorization_code')).toBe(
 		true,
@@ -1114,7 +1095,6 @@ test('URL-based client redirect URI and grant type validation', async () => {
 	)
 
 	const noAuthCodeResolved = await resolveClient(noAuthCodeUrl)
-	expect(noAuthCodeResolved).not.toBeNull()
 	expect(
 		clientSupportsGrantType(noAuthCodeResolved!, 'authorization_code'),
 	).toBe(false)

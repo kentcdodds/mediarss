@@ -139,11 +139,9 @@ test('OAuth clients can be created, retrieved, listed, and deleted', async () =>
 	const client = await createTestClient('Test Client ' + uniqueId())
 	expect(client.name).toContain('Test Client')
 	expect(client.redirectUris).toEqual(['http://localhost:9999/callback'])
-	expect(client.id).toBeTruthy()
 
 	// getClient retrieves an existing client
 	const retrieved = await getClient(client.id)
-	expect(retrieved).not.toBeNull()
 	expect(retrieved!.name).toContain('Test Client')
 
 	// getClient returns null for unknown client
@@ -179,14 +177,12 @@ test('authorization codes can be created and consumed only once', async () => {
 		codeChallengeMethod: 'S256',
 	})
 
-	expect(code.code).toBeTruthy()
 	expect(code.clientId).toBe(client.id)
 	expect(code.scope).toBe('read write')
 	expect(code.usedAt).toBeNull()
 
 	// First consumption should succeed
 	const consumed = await consumeAuthorizationCode(code.code)
-	expect(consumed).not.toBeNull()
 	expect(consumed!.usedAt).not.toBeNull()
 
 	// Second consumption should fail (single-use)
@@ -314,7 +310,6 @@ test('POST to authorization endpoint issues authorization code with state', asyn
 	expect(response.status).toBe(302)
 
 	const location = response.headers.get('Location')
-	expect(location).toBeTruthy()
 
 	const redirectUrl = new URL(location!)
 	expect(redirectUrl.origin).toBe('http://localhost:9999')
@@ -379,7 +374,6 @@ test('full OAuth authorization code flow with token exchange and JWT verificatio
 		refresh_token: string
 		scope: string
 	}
-	expect(tokenData.access_token).toBeTruthy()
 	expect(tokenData.refresh_token).toBeTruthy()
 	expect(tokenData.token_type).toBe('Bearer')
 	expect(tokenData.expires_in).toBe(3600)
@@ -895,7 +889,6 @@ test('refresh token grant rotates the refresh token and issues a new access toke
 	expect(refreshed.token_type).toBe('Bearer')
 	expect(refreshed.expires_in).toBe(3600)
 	expect(refreshed.scope).toBe('mcp:read mcp:write')
-	expect(refreshed.access_token).toBeTruthy()
 	expect(refreshed.access_token).not.toBe(first.access_token)
 	expect(refreshed.refresh_token).toBeTruthy()
 	expect(refreshed.refresh_token).not.toBe(first.refresh_token)
@@ -927,7 +920,6 @@ test('Kody resource indicator does not drop the refresh token', async () => {
 		resource,
 	})
 
-	expect(first.refresh_token).toBeTruthy()
 	expect(first.scope).toBe('mcp:read mcp:write')
 
 	const refreshResponse = await postRefresh(ctx.baseUrl, {

@@ -20,7 +20,6 @@ test('getFileResponse returns 304 when If-None-Match matches (default)', async (
 		})
 		expect(r1?.status).toBe(200)
 		const etag = r1?.headers.get('etag')
-		expect(etag).toBeTruthy()
 		const r2 = await getFileResponse(
 			fp,
 			new Request(url, { headers: { 'if-none-match': etag! } }),

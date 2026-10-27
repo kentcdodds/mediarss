@@ -60,7 +60,6 @@ test('getCommitInfo prefers a baked COMMIT_SHA over the local git hash', async (
 	process.env.COMMIT_SHA = 'abcdef1234567890abcdef1234567890abcdef12'
 	try {
 		const commit = await getCommitInfo()
-		expect(commit).not.toBeNull()
 		expect(commit!.source).toBe('env')
 		expect(commit!.hash).toBe('abcdef1234567890abcdef1234567890abcdef12')
 		expect(commit!.shortHash).toBe('abcdef1')

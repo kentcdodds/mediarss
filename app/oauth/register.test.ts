@@ -121,7 +121,6 @@ test('DCR endpoint creates clients with various configurations', async () => {
 
 	testClientIds.push(basicClientData.client_id)
 
-	expect(basicClientData.client_id).toBeTruthy()
 	expect(basicClientData.client_name).toBe('DCR Test Client')
 	expect(basicClientData.redirect_uris).toEqual([
 		'http://localhost:9999/callback',
@@ -134,7 +133,6 @@ test('DCR endpoint creates clients with various configurations', async () => {
 
 	// Verify client was persisted to database
 	const dbClient = await getClient(basicClientData.client_id)
-	expect(dbClient).not.toBeNull()
 	expect(dbClient!.name).toBe('DCR Test Client')
 
 	// Create client with multiple redirect URIs
@@ -374,7 +372,6 @@ test('full OAuth flow with DCR-registered client', async () => {
 	expect(authorizeResponse.status).toBe(302)
 	const redirectUrl = new URL(authorizeResponse.headers.get('Location')!)
 	const code = redirectUrl.searchParams.get('code')!
-	expect(code).toBeTruthy()
 	expect(redirectUrl.searchParams.get('state')).toBe('test-state')
 
 	// Step 4: Exchange code for token

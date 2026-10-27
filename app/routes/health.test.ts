@@ -92,7 +92,9 @@ test('health ?probe=cimd records an outbound CIMD lookup', async () => {
 		expect(response.status).toBe(503)
 		expect(body.status).toBe('error')
 		expect(body.probes?.cimd.ok).toBe(false)
-		expect(body.probes?.cimd.url).toBe(DEFAULT_CIMD_PROBE_URL)
+		expect(body.probes?.cimd.url).toBe(
+			'https://kody.codes/oauth/client-metadata.json',
+		)
 		expect(body.probes?.cimd.error).toMatch(/403/)
 		expect(
 			body.diagnostics.some(

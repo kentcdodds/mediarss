@@ -75,8 +75,8 @@ test('getClientName derives non-empty names for user-agent values', () => {
 		}),
 	)
 
-	expect(knownClientName).toBeTruthy()
-	expect(unknownClientName).toBeTruthy()
+	expect(knownClientName).toBe('Pocket Casts')
+	expect(unknownClientName).toBe('CustomPodClient/1.2')
 })
 
 test('getClientFingerprint is stable for equivalent canonical client traits', () => {

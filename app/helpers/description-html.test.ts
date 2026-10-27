@@ -8,13 +8,13 @@ function getSafeDescriptionHtml(description: string | null | undefined) {
 }
 
 test('removes script elements and preserves safe content', () => {
-	const html = getSafeDescriptionHtml('<p>Hello</p><script>alert(1)</script>')
+	const html = getDescriptionHtml('<p>Hello</p><script>alert(1)</script>')
 
 	expect(html).toBe('<p>Hello</p>')
 })
 
 test('removes script elements regardless of case and preserves text', () => {
-	const html = getSafeDescriptionHtml(
+	const html = getDescriptionHtml(
 		'<SCRIPT src="https://evil.example/x.js"></SCRIPT>text',
 	)
 
@@ -22,13 +22,13 @@ test('removes script elements regardless of case and preserves text', () => {
 })
 
 test('strips event handlers from allowed elements and preserves content', () => {
-	const html = getSafeDescriptionHtml('<p onclick="alert(1)">Hi</p>')
+	const html = getDescriptionHtml('<p onclick="alert(1)">Hi</p>')
 
 	expect(html).toBe('<p>Hi</p>')
 })
 
 test('discards images with event handlers', () => {
-	const html = getSafeDescriptionHtml('<img src="x" onerror="alert(1)">')
+	const html = getDescriptionHtml('<img src="x" onerror="alert(1)">')
 
 	expect(html).toBeNull()
 })
@@ -81,7 +81,7 @@ test('drops protocol-relative URLs and preserves link text', () => {
 })
 
 test('preserves safe formatting', () => {
-	const html = getSafeDescriptionHtml(
+	const html = getDescriptionHtml(
 		'<p><strong>Bold</strong> and <em>italic</em></p><ul><li>One</li></ul>',
 	)
 
@@ -112,13 +112,13 @@ test('overwrites unsafe target and rel values', () => {
 })
 
 test('preserves line breaks in plain text descriptions', () => {
-	const html = getSafeDescriptionHtml('Line one\nLine two')
+	const html = getDescriptionHtml('Line one\nLine two')
 
 	expect(html).toBe('Line one<br>Line two')
 })
 
 test('escapes HTML-sensitive characters in plain text', () => {
-	const html = getSafeDescriptionHtml('5 < 6 & 7 > 3')
+	const html = getDescriptionHtml('5 < 6 & 7 > 3')
 
 	expect(html).toBe('5 &lt; 6 &amp; 7 &gt; 3')
 })
@@ -126,6 +126,6 @@ test('escapes HTML-sensitive characters in plain text', () => {
 test.each([null, undefined, '', '   ', '<script>x</script>'])(
 	'returns null for empty descriptions: %s',
 	(description) => {
-		expect(getSafeDescriptionHtml(description)).toBeNull()
+		expect(getDescriptionHtml(description)).toBeNull()
 	},
 )

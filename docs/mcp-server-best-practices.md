@@ -82,7 +82,6 @@ server.registerTool(
 | `readOnlyHint`    | The tool does not change data         |
 | `destructiveHint` | The change cannot be undone (deletes) |
 | `idempotentHint`  | The same input is safe to repeat      |
-| `openWorldHint`   | The tool reaches outside the process  |
 
 Names are `snake_case`. Use `list_*` / `search_*` / `browse_*` for collections,
 `get_*` for one record, `create_*` / `update_*` / `delete_*` for writes. Zod

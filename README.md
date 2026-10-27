@@ -60,9 +60,17 @@ migrations at startup. CRUD helpers, test databases, and `npx remix db` are in
 
 ![Media Details](docs/screenshots/media-details.png)
 
+## Media library
+
+The admin media pages list files from every `MEDIA_PATHS` root, with search,
+sort, feed assignment, and per-file analytics. Uploading a file or writing tags
+(the media editor or MCP `update_media_metadata`) rewrites the file on disk and
+needs a read/write media mount. The Docker image includes ffmpeg for those
+writes. Mount media read-only (`:ro`) if you only serve existing files.
+
 ## Analytics
 
-MediaRSS includes built-in feed and media analytics in the admin dashboard:
+The admin dashboard shows feed and media analytics:
 
 - **Feed analytics** (per feed + per token):
   - RSS fetches
@@ -142,8 +150,8 @@ If you're running this on a Synology NAS, follow these specific instructions:
          `/media/personal`, etc.)
        - Local path: `/volume1/[your-folder]`
        - Check "Read-only" if you only need to serve existing files
-       - **Uncheck "Read-only"** if you want to upload media via the admin
-         dashboard
+       - **Uncheck "Read-only"** to upload files or edit metadata (see
+         [Media library](#media-library))
    - In the "Port Settings" tab:
      - Local Port: 22050 (or your preferred port)
      - Container Port: 22050 (or whatever you set PORT to in the env settings)
@@ -207,16 +215,8 @@ docker run -d \
   kentcdodds/mediarss
 ```
 
-**Note on volume permissions:**
-
-- The `:ro` flag makes media volumes read-only, which is recommended for
-  security if you only need to serve existing files.
-- **To enable media uploads**, mount volumes read/write by removing the `:ro`
-  flag:
-  ```bash
-  -v /path/to/audiobooks:/media/audiobooks \
-  ```
-  This allows uploading new media files through the admin dashboard.
+Media volume permissions (read-only vs upload and metadata edits) are under
+[Volume Mounts](#volume-mounts).
 
 ### Volume Mounts
 
@@ -241,8 +241,8 @@ The application requires these volume mounts:
      - `-v /path/to/audiobooks:/media/audiobooks:ro`
      - `-v /path/to/audio-series:/media/audio-series:ro`
    - Mount read-only (`:ro`) if you only need to serve existing files
-   - **For media uploads:** Mount read/write (without `:ro`) to enable uploading
-     files via the admin dashboard
+   - Mount read/write (no `:ro`) to upload files or edit metadata; see
+     [Media library](#media-library)
    - Name the mount points anything that makes sense for your use case
 
 ### Media Directory Structure
@@ -398,25 +398,16 @@ provide sufficient security for trusted networks.
 
 ### Data Persistence
 
-The application stores persistent data in two locations:
+Persistent files live on the `/data` and `/app/data/artwork` mounts (see
+[Volume Mounts](#volume-mounts)):
 
-**Databases** (in `/data`):
+- `/data/sqlite.db` — main database
+- `/data/cache.db` — media metadata cache (safe to delete; it rebuilds)
+- `/app/data/artwork` — uploaded feed cover images
 
-- Main database: `/data/sqlite.db`
-- Cache database: `/data/cache.db`
-
-**Uploaded Artwork** (in `/app/data/artwork`):
-
-- Feed cover images uploaded through the admin dashboard
-
-To ensure your data persists between container restarts and updates, you
-**must** mount volumes to both `/data` and `/app/data/artwork` as shown in the
-run command above.
-
-Schema migrations run automatically when the container starts, before it serves
-any requests. Take a backup before upgrading. See the
-[rollback runbook](docs/runbooks/rollback.md) if a new migration has to come
-off.
+Schema migrations run at container start, before the app serves requests. Take a
+backup before upgrading. See the [rollback runbook](docs/runbooks/rollback.md)
+when a migration has to be reversed.
 
 ### Backup and Restore
 
@@ -466,7 +457,7 @@ docker stop mediarss
 docker rm mediarss
 
 # Run the new container (using the same data directory and media mount)
-# Note: Remove :ro from media volumes if you need to upload media files
+# Note: Remove :ro from media volumes to upload files or edit metadata
 docker run -d \
   --name mediarss \
   -p 22050:22050 \

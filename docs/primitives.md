@@ -57,8 +57,9 @@ concern; extend it instead of duplicating it.
 
 ## UI
 
-- `app/client/admin/`: the admin SPA (`entry.tsx`, `app-root.tsx`, one module
-  per page, `url-state.ts` for URL-synced state).
+- `app/client/admin/`: the admin SPA (`entry.tsx`, `app-root.tsx` holds the page
+  registry, `admin-pages.ts` matches URLs; `FeedDetail` and `MediaDetail` each
+  serve their view and edit routes; `url-state.ts` for URL-synced state).
 - `app/client/widgets/`: MCP UI widgets.
 - `app/components/`, `app/styles/`: shared components and style tokens.
 
@@ -69,7 +70,8 @@ concern; extend it instead of duplicating it.
   client metadata. Commit SHA from `COMMIT_SHA`.
 - `app/helpers/outbound-fetch.ts`: IPv4-first outbound HTTP (CIMD, NAS Docker).
 - `server/dev.ts`: HMR supervisor for `npm run dev`. `server/node-server.ts` is
-  the Node HTTP adapter.
+  the Node HTTP adapter. `server/cli.ts` is the interactive keyboard shortcuts
+  (`o`/`u`/`c`/`h`/`q`).
 - `tools/control-mediarss.ts`: the control CLI
   ([skill](../.agents/skills/control-mediarss/SKILL.md)).
 - `scripts/release.ts`: version bump, tag, GitHub release.

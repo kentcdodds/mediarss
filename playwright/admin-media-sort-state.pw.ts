@@ -1,4 +1,24 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
+
+/**
+ * `rmxOn('input')` is attached only after hydration. `selectOption` before
+ * that sets the DOM value without updating the URL, and the handler does
+ * not read the current value on mount.
+ */
+async function selectMediaSort(page: Page, value: string, url: RegExp) {
+	const sortSelect = page.locator('#media-sort')
+	await expect(sortSelect).toBeVisible()
+
+	await expect(async () => {
+		if ((await sortSelect.inputValue()) === value) {
+			await sortSelect.selectOption(
+				value === 'recently-modified' ? 'title-az' : 'recently-modified',
+			)
+		}
+		await sortSelect.selectOption(value)
+		expect(page.url()).toMatch(url)
+	}).toPass()
+}
 
 test('admin media sort select reflects URL state across navigation', async ({
 	page,
@@ -8,8 +28,11 @@ test('admin media sort select reflects URL state across navigation', async ({
 	const sortSelect = page.locator('#media-sort')
 	await expect(sortSelect).toHaveValue('recently-modified')
 
-	await sortSelect.selectOption('title-az')
-	await expect(page).toHaveURL(/\/admin\/media\?q=demo&sort=title-az$/)
+	await selectMediaSort(
+		page,
+		'title-az',
+		/\/admin\/media\?q=demo&sort=title-az$/,
+	)
 	await expect(sortSelect).toHaveValue('title-az')
 	await page.reload()
 	await expect(page).toHaveURL(/\/admin\/media\?q=demo&sort=title-az$/)
@@ -44,9 +67,11 @@ test('query-only replace navigation preserves scroll position', async ({
 	await page.evaluate(() => window.scrollTo(0, 1200))
 	await page.waitForTimeout(100)
 
-	const sortSelect = page.locator('#media-sort')
-	await sortSelect.selectOption('title-az')
-	await expect(page).toHaveURL(/\/admin\/media\?q=demo&sort=title-az$/)
+	await selectMediaSort(
+		page,
+		'title-az',
+		/\/admin\/media\?q=demo&sort=title-az$/,
+	)
 
 	const scrollY = await page.evaluate(() => window.scrollY)
 	expect(scrollY).toBeGreaterThanOrEqual(1100)
@@ -58,8 +83,7 @@ test('back navigation restores a query-synced entry without a document reload', 
 	await page.goto('/admin/media')
 
 	const sortSelect = page.locator('#media-sort')
-	await sortSelect.selectOption('title-az')
-	await expect(page).toHaveURL(/\/admin\/media\?sort=title-az$/)
+	await selectMediaSort(page, 'title-az', /\/admin\/media\?sort=title-az$/)
 
 	const documentRequests: Array<string> = []
 	page.on('request', (request) => {

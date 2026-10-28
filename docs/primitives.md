@@ -14,19 +14,22 @@ concern; extend it instead of duplicating it.
 - `app/routes/`: HTTP handlers. `admin/api/*` is the JSON API; `feed.ts` /
   `media.ts` / `art.ts` are the public token routes; `mcp/widget.ts` is the
   feed-token player; `oauth/*`, `mcp/*`, and `health.ts` (public `/health`) are
-  the rest. `/admin/health` is `admin/api/health.ts`. Admin HTML is the SPA
-  shell in `app/routes/admin/index.tsx` plus `authorize.tsx`; pages live in
-  `app/client/admin/`.
+  the rest. `/admin/health` is the same payload, served from
+  `admin/api/health.ts` (the URL is `/admin/health`, not `/admin/api/health`).
+  Admin HTML is the SPA shell in `app/routes/admin/index.tsx` plus
+  `authorize.tsx`; pages live in `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
-- `app/config/env.ts`: the env schema and media roots (`getEnv`,
-  `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`).
-  `app/config/init-env.ts` parses env and sets outbound IPv4-first DNS.
+- `app/config/env.ts`: the startup schema and media roots (`getEnv`,
+  `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`). `COMMIT_SHA` /
+  `SOURCE_COMMIT` (`version.ts`) and `ALLOWED_HOSTS` (`oauth/token.ts`) are read
+  from `process.env` outside that schema. `app/config/init-env.ts` parses env
+  and sets outbound IPv4-first DNS.
 
 ## Data
 
 - `app/db/index.ts` (`db`), `schema.ts` (tables), `migrations/` (SQL),
-  `migrate.ts` (startup migrator), `rows.ts` (typed raw reads),
-  `test-database.ts` (in-memory test DB).
+  `migrate.ts` (startup migrator), `rows.ts` (typed raw reads), `types.ts`
+  (shared `TableRow` aliases), `test-database.ts` (in-memory test DB).
 - Feed data modules in `app/db/`: `directory-feeds.ts`, `curated-feeds.ts`,
   `feed-items.ts`, `directory-feed-tokens.ts`, `curated-feed-tokens.ts`,
   `feed-analytics-events.ts`.
@@ -52,8 +55,9 @@ concern; extend it instead of duplicating it.
 - `app/oauth/`: authorization codes, PKCE, tokens, refresh tokens, signing keys,
   client metadata documents (`client-metadata.ts` fetches CIMD).
 - `app/mcp/`: MCP server, tools, resources, prompts, widgets, auth, and
-  protocol-header checks. `metadata.ts` is the source of truth for names and
-  descriptions ([conventions](mcp-server-best-practices.md)).
+  protocol-header checks. `feed-helpers.ts` is the shared feed lookup used by
+  tools, resources, and prompts. `metadata.ts` is the source of truth for names
+  and descriptions ([conventions](mcp-server-best-practices.md)).
 
 ## UI
 
@@ -67,7 +71,8 @@ concern; extend it instead of duplicating it.
 
 - `app/helpers/health.ts`, `version.ts`, `diagnostics.ts`: `/health` and
   `/admin/health` (same payload). Optional `?probe=cimd` live-fetches Kody's
-  client metadata. Commit SHA from `COMMIT_SHA`.
+  client metadata. Commit SHA from `COMMIT_SHA` (`SOURCE_COMMIT` is an accepted
+  alias).
 - `app/helpers/outbound-fetch.ts`: IPv4-first outbound HTTP (CIMD, NAS Docker).
 - `server/dev.ts`: HMR supervisor for `npm run dev`. `server/node-server.ts` is
   the Node HTTP adapter. `server/cli.ts` is the interactive keyboard shortcuts

@@ -18,6 +18,7 @@ C() { npm run --silent control -- "$@"; }
 C doctor                       # node, deps, git hooks, Chromium, ffmpeg, server
 C dev                          # start or reuse http://127.0.0.1:22051
 C dev --fresh                  # wipe data/control/22051 and start clean
+C dev --foreground             # run in this terminal (logs stay attached)
 C request GET /admin/api/media --contains Inkheart
 C request POST /admin/api/feeds/directory \
   --json-body '{"name":"Audio","directoryPaths":["audio:"]}' --status 201

@@ -13,6 +13,7 @@ caller's scopes.
 | Path                              | Owns                                                            |
 | --------------------------------- | --------------------------------------------------------------- |
 | `app/mcp/metadata.ts`             | Server instructions and tool/prompt names, titles, descriptions |
+| `app/mcp/feed-helpers.ts`         | Shared feed list/lookup used by tools, resources, and prompts   |
 | `app/mcp/tools.ts`                | Feed, browse, search, token, and assignment tools               |
 | `app/mcp/media-metadata-tools.ts` | `get_media_metadata` / `update_media_metadata`                  |
 | `app/mcp/resources.ts`            | `media://` resources and widget URIs                            |

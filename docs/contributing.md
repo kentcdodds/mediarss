@@ -58,7 +58,8 @@ tools, resources, or prompts.
   `remix/data-table/sqlite`, backed by `node:sqlite`). `app/cache/cache.ts` owns
   a separate cache database with the same setup.
 - Tables are declared once in `app/db/schema.ts`. Row types come from
-  `TableRow<typeof someTable>`; don't hand-write row shapes or cast results.
+  `TableRow<typeof someTable>` (shared aliases in `app/db/types.ts`); don't
+  hand-write row shapes or cast results.
 - Prefer the CRUD helpers (`db.find`, `db.findMany`, `db.create`, `db.update`,
   `db.updateMany`, `db.delete`, `db.deleteMany`) and `db.query(table)`. Use
   ``db.exec(sql`...`)`` (with `selectAll`/`selectOne` from `app/db/rows.ts`)

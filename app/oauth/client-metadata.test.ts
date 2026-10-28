@@ -1152,11 +1152,10 @@ test('unknown CIMD URLs still fail when the live fetch fails', async () => {
 	})
 
 	const lookup = await lookupClientMetadata(unknownUrl)
-	expect(lookup.metadata).toBeNull()
-	if (lookup.metadata !== null) {
-		throw new Error('expected unknown CIMD lookup to fail')
-	}
-	expect(lookup.error).toMatch(/Timeout fetching client metadata/)
+	expect(lookup).toEqual({
+		metadata: null,
+		error: expect.stringMatching(/Timeout fetching client metadata/),
+	})
 })
 
 test('lookupClientMetadata uses expired database cache when fetch fails', async () => {

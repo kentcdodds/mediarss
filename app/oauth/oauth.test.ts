@@ -209,7 +209,6 @@ test('JWKS endpoint returns valid public key without private components', async 
 		}>
 	}
 
-	expect(Array.isArray(jwks.keys)).toBe(true)
 	expect(jwks.keys.length).toBe(1)
 
 	const key = jwks.keys[0]!

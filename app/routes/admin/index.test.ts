@@ -3,7 +3,11 @@ import '#app/config/init-env.ts'
 import { expect, test } from 'vitest'
 import { routes } from '#app/routes.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
+import { db } from '#app/db/index.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import router from '#app/router.tsx'
+
+await migrateDatabase(db)
 
 async function fetchAdminRoute(pathname: string) {
 	return router.fetch(new Request(`http://localhost${pathname}`))

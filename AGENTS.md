@@ -6,8 +6,8 @@ media are public by token, and the admin UI sits behind Cloudflare Access.
 Node.js + npm, Remix 3 (`remix/component`, no React), SQLite via
 `remix/data-table`.
 
-`npm run validate` is the single local gate. CI runs that command, then the
-control CLI smoke, Playwright, and a Docker image smoke test. Git hooks
+`npm run validate` is the single local gate. CI runs that command, then Control
+CLI smoke + Playwright, then a Docker image build and `/health` smoke. Git hooks
 (installed by `npm install`) run format and lint on commit and typecheck on
 push. Run `npm run check` to auto-fix format and lint before you finish.
 

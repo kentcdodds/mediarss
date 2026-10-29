@@ -5,9 +5,10 @@ page holds the details.
 
 ## Gate
 
-`npm run validate` is the only gate: format check, lint, typecheck, and tests
-(including the Feature Map check). CI runs the same command, plus the control
-CLI smoke, Playwright, and the Docker build. Do not commit if it fails.
+`npm run validate` is the only local gate: format check, lint, typecheck, and
+tests (including the Feature Map check). CI (`.github/workflows/publish.yml`)
+runs the same command, then Control CLI smoke + Playwright, then a Docker image
+build and `/health` smoke. Do not commit if validate fails.
 
 - `npm run check` auto-fixes format and lint (`npm run format`, `npm run lint`
   individually).
@@ -37,10 +38,10 @@ routes, handlers, middleware, data access, validation, auth, sessions, uploads,
 server setup, UI components, hydration, navigation, or tests. Start from the
 installed docs: search `node_modules/remix/INDEX.md`, then follow links to
 `node_modules/remix/guides/` and the package README. Installed docs are
-canonical. The skill is copied verbatim from `remix-run/remix` at the
-`remix@<version>` tag (starter examples use `app/router.ts` and `app/actions/`).
-This app uses `app/router.tsx` plus handler modules in `app/routes/`. Refresh
-the skill on upgrades (there is no `remix skills install`).
+canonical. This app's route contract is `app/routes.ts`, the router is
+`app/router.tsx`, and handlers live in `app/routes/` (the skill's starter layout
+is `app/router.ts` plus `app/actions/`). Sync the skill from the
+`remix@<version>` tag when bumping Remix; there is no `remix skills install`.
 
 UI uses `remix/component`, not React
 ([decision 0001](decisions/0001-no-react-no-build-step.md)).

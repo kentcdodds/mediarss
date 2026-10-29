@@ -7,8 +7,8 @@ page holds the details.
 
 `npm run validate` is the only local gate: format check, lint, typecheck, and
 tests (including the Feature Map check). CI (`.github/workflows/publish.yml`)
-runs the same command, then Control CLI smoke + Playwright, then a Docker image
-build and `/health` smoke. Do not commit if validate fails.
+runs that command, Control CLI smoke + Playwright, and a Docker image build and
+`/health` smoke as independent jobs. Do not commit if validate fails.
 
 - `npm run check` auto-fixes format and lint (`npm run format`, `npm run lint`
   individually).

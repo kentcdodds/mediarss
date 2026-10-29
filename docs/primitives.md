@@ -17,8 +17,8 @@ concern; extend it instead of duplicating it.
   the rest. `/admin/health` is the same payload, served from
   `admin/api/health.ts` (the URL is `/admin/health`, not `/admin/api/health`).
   Admin HTML is `app/routes/admin/document.tsx` (shell), `index.tsx` (handler),
-  and `loaders.ts` (first-paint data for dashboard, create, media, and version);
-  `authorize.tsx` is OAuth consent. Pages live in `app/client/admin/`.
+  and `loaders.ts` (first-paint data for the feed list, create, media, and
+  version); `authorize.tsx` is OAuth consent. Pages live in `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
 - `app/config/env.ts`: the startup schema and media roots (`getEnv`,
   `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`). `COMMIT_SHA` /

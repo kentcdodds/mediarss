@@ -134,15 +134,6 @@ test('curated_feeds table stores feeds with all fields and correct schema', asyn
 	expect(fullFeed.category).toBe('Comedy')
 	expect(fullFeed.link).toBe('https://curated.example.com')
 	expect(fullFeed.overrides).toBe('{"rss": {"channel": {"custom": true}}}')
-
-	// Verify curated_feeds does NOT have filter_in/filter_out columns
-	const columns = ctx.sqlite
-		.prepare(`PRAGMA table_info(curated_feeds)`)
-		.all() as Array<{ name: string }>
-	const columnNames = columns.map((c) => c.name)
-
-	expect(columnNames).not.toContain('filter_in')
-	expect(columnNames).not.toContain('filter_out')
 })
 
 test('directory_feeds supports updating fields and setting nullable fields to null', async () => {

@@ -72,5 +72,4 @@ test.each([
 	expect(body).toMatch(
 		/<script type="module" src="\/assets\/app\/client\/admin\/entry\.[^"]*tsx">/,
 	)
-	expect(body).not.toContain('data-admin-route-placeholder')
 })

@@ -16,8 +16,9 @@ concern; extend it instead of duplicating it.
   feed-token player; `oauth/*`, `mcp/*`, and `health.ts` (public `/health`) are
   the rest. `/admin/health` is the same payload, served from
   `admin/api/health.ts` (the URL is `/admin/health`, not `/admin/api/health`).
-  Admin HTML is the SPA shell in `app/routes/admin/index.tsx` plus
-  `authorize.tsx`; pages live in `app/client/admin/`.
+  Admin HTML is `app/routes/admin/document.tsx` (shell), `index.tsx` (handler),
+  and `loaders.ts` (first-paint data for dashboard, create, media, and version);
+  `authorize.tsx` is OAuth consent. Pages live in `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
 - `app/config/env.ts`: the startup schema and media roots (`getEnv`,
   `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`). `COMMIT_SHA` /
@@ -33,6 +34,8 @@ concern; extend it instead of duplicating it.
 - Feed data modules in `app/db/`: `directory-feeds.ts`, `curated-feeds.ts`,
   `feed-items.ts`, `directory-feed-tokens.ts`, `curated-feed-tokens.ts`,
   `feed-analytics-events.ts`.
+- Analytics helpers: `app/helpers/analytics-window.ts` (days query) and
+  `analytics-request.ts` (client identity for recorded events).
 - `app/cache/cache.ts`: separate cache database for media metadata.
 
 ## Media and feeds
@@ -64,6 +67,8 @@ concern; extend it instead of duplicating it.
 - `app/client/admin/`: the admin SPA (`entry.tsx`, `app-root.tsx` holds the page
   registry, `admin-pages.ts` matches URLs; `FeedDetail` and `MediaDetail` each
   serve their view and edit routes; `url-state.ts` for URL-synced state).
+  `app/helpers/feed-list-sort.ts` and `media-list-sort.ts` own the admin list
+  sort keys.
 - `app/client/widgets/`: MCP UI widgets.
 - `app/components/`, `app/styles/`: shared components and style tokens.
 

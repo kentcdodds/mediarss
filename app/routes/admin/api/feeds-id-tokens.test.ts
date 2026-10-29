@@ -2,8 +2,12 @@ import { expect, test } from 'vitest'
 import '#app/config/init-env.ts'
 import { routes } from '#app/routes.ts'
 import { createCuratedFeed, deleteCuratedFeed } from '#app/db/curated-feeds.ts'
+import { db } from '#app/db/index.ts'
+import { migrateDatabase } from '#app/db/migrate.ts'
 import { buildFeedRssPath } from '#app/helpers/feed-url.ts'
 import router from '#app/router.tsx'
+
+await migrateDatabase(db)
 
 type CreatedToken = {
 	token: string

@@ -20,17 +20,21 @@ concern; extend it instead of duplicating it.
   and `loaders.ts` (first-paint data for the feed list, create, media, and
   version); `authorize.tsx` is OAuth consent. Pages live in `app/client/admin/`.
 - `app/middleware/`: `logger.ts`, `rate-limit.ts` (limits from env).
+  `app/helpers/rate-limiter.ts` is the token bucket those limiters use.
 - `app/config/env.ts`: the startup schema and media roots (`getEnv`,
-  `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`). `COMMIT_SHA` /
-  `SOURCE_COMMIT` (`version.ts`) and `ALLOWED_HOSTS` (`oauth/token.ts`) are read
-  from `process.env` outside that schema. `app/config/init-env.ts` parses env
-  and sets outbound IPv4-first DNS.
+  `getMediaRootByName`, `parseMediaPath`, `toAbsolutePath`). Read from
+  `process.env` outside that schema: `COMMIT_SHA` / `SOURCE_COMMIT`
+  (`version.ts`), `ALLOWED_HOSTS` (`oauth/token.ts`), and
+  `MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER`
+  (`admin/api/media-analytics.$path.ts`, optional IN-clause batch cap).
+  `app/config/init-env.ts` parses env and sets outbound IPv4-first DNS.
 
 ## Data
 
 - `app/db/index.ts` (`db`), `schema.ts` (tables), `migrations/` (SQL),
   `migrate.ts` (startup migrator), `rows.ts` (typed raw reads), `types.ts`
   (shared `TableRow` aliases), `test-database.ts` (in-memory test DB).
+  `app/helpers/crypto.ts` mints UUIDv7 ids and random tokens.
 - Feed data modules in `app/db/`: `directory-feeds.ts`, `curated-feeds.ts`,
   `feed-items.ts`, `directory-feed-tokens.ts`, `curated-feed-tokens.ts`,
   `feed-analytics-events.ts`.
@@ -42,8 +46,9 @@ concern; extend it instead of duplicating it.
 
 - `app/helpers/media.ts`: scan and read media metadata (cached).
 - `app/helpers/rss.ts`: RSS/iTunes XML generation. `app/helpers/feed-items.ts`
-  and `app/helpers/sort.ts` order items; `description-html.ts` sanitizes
-  descriptions. `app/helpers/path-parsing.ts` parses splat media paths.
+  and `app/helpers/sort.ts` order items; `filter.ts` applies directory-feed
+  `filterIn` / `filterOut`; `description-html.ts` sanitizes descriptions.
+  `app/helpers/path-parsing.ts` parses splat media paths.
 - `app/helpers/range-request.ts`, `node-file.ts`: streaming with ranges.
 - `app/helpers/feed-access.ts`, `feed-lookup.ts`, `feed-url.ts`: token lookup
   and public URLs; `origin.ts` resolves the public origin behind proxies.

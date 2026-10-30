@@ -36,7 +36,7 @@ export const featureNotes = {
 	health: {
 		surface: 'ops',
 		summary:
-			'Public health snapshot: status, version, commit SHA, database, media roots',
+			'Public health snapshot: status, version, commit SHA, database, media roots, MCP protocol',
 		reach: 'health (or request GET /health --contains \'"status":"ok"\')',
 	},
 	feed: {

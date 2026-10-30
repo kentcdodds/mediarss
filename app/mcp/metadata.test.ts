@@ -4,12 +4,7 @@ import { serverMetadata, toolsMetadata } from './metadata.ts'
 const liveTokenPath = '/feed/{token}'
 
 test('MCP instructions and token tools document /feed/{token}', () => {
-	const descriptions = Object.values(toolsMetadata)
-		.map((tool) => tool.description)
-		.join('\n')
-
 	expect(serverMetadata.instructions).toContain(liveTokenPath)
-	expect(descriptions).toContain(liveTokenPath)
 
 	expect(toolsMetadata.get_feed_tokens.description).toContain(liveTokenPath)
 	expect(toolsMetadata.get_feed_tokens.description).toContain('rssUrl')

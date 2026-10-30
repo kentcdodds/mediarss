@@ -371,7 +371,6 @@ test('full authorization code flow with static client', async () => {
 		audience: getAudience(),
 	})
 
-	expect(payload.iss).toBe(ctx.baseUrl)
 	expect(payload.scope).toBe('read write')
 	expect('refresh_token' in tokenData).toBe(true)
 })

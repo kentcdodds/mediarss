@@ -74,8 +74,10 @@ tools, resources, or prompts.
   CLI.
 - Database tests use `createTestDatabase()` from `app/db/test-database.ts`
   (in-memory, migrated). Module-level code that uses the shared `db` runs
-  against the throwaway `DATABASE_PATH`; vitest runs one worker so those tests
-  don't race.
+  against the throwaway `DATABASE_PATH` from `test/global-setup.ts` (an empty
+  file until the test migrates it). Route and handler tests that need tables
+  `await migrateDatabase(db)` at module load. Vitest runs one worker so those
+  tests don't race.
 
 ## Testing
 
@@ -95,7 +97,8 @@ and `MEDIA_PATHS=audio:./local-test/1/audio` (`local-test/` is gitignored).
 Keep them minimal. Every `node_modules` package used by browser code must be
 listed in `assets.allowPackages` in `remix.json` and must ship ESM;
 CommonJS-only packages need an ESM shim under `app/client/vendor/` marked as
-`scripts.external` in `app/assets.ts`
+`scripts.external` in `app/assets.ts`. The in-tree example is `remove-accents`
+(a `match-sorter` dependency) → `app/client/vendor/remove-accents.ts`
 ([decision 0006](decisions/0006-frontend-deps-need-allowpackages.md)).
 
 ## Issues and triage

@@ -36,7 +36,7 @@ export const featureNotes = {
 	health: {
 		surface: 'ops',
 		summary:
-			'Public health snapshot: status, version, commit SHA, database, media roots, MCP protocol',
+			'Public health snapshot: status, version, commit SHA, database, media roots, MCP, OAuth',
 		reach: 'health (or request GET /health --contains \'"status":"ok"\')',
 	},
 	feed: {
@@ -99,7 +99,7 @@ export const featureNotes = {
 	mcp: {
 		surface: 'mcp',
 		summary: 'MCP server (streamable HTTP); requires an OAuth bearer token',
-		methods: 'POST',
+		methods: 'GET, POST, OPTIONS',
 		reach: 'request POST /mcp --status 401 (no token)',
 		high: true,
 	},

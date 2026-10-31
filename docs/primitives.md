@@ -71,11 +71,15 @@ concern; extend it instead of duplicating it.
 
 - `app/client/admin/`: the admin SPA (`entry.tsx`, `app-root.tsx` holds the page
   registry, `admin-pages.ts` matches URLs; `FeedDetail` and `MediaDetail` each
-  serve their view and edit routes; `url-state.ts` for URL-synced state).
-  `app/helpers/feed-list-sort.ts` and `media-list-sort.ts` own the admin list
-  sort keys.
+  serve their view and edit routes; `edit-route-paths.ts` builds those hrefs;
+  `url-state.ts` for URL-synced state). `app/helpers/feed-list-sort.ts` and
+  `media-list-sort.ts` own the admin list sort keys. `app/helpers/format.ts`
+  formats dates, durations, and sizes.
+- `app/assets.ts`: the `remix/assets` server, script entries, and the
+  `remove-accents` import-map shim.
 - `app/client/widgets/`: MCP UI widgets.
-- `app/components/`, `app/styles/`: shared components and style tokens.
+- `app/components/`, `app/styles/tokens.ts`: shared components and style tokens.
+  CSS variables live in `app/assets/styles.css`.
 
 ## Ops and tooling
 

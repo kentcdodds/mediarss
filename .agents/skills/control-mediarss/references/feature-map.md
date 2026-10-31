@@ -71,12 +71,12 @@ control environment (`npm run --silent control -- dev`). Commands are
 
 | Route | Pattern | Methods | What | Seed | Reach | High |
 | --- | --- | --- | --- | --- | --- | --- |
-| `mcp` | `/mcp` | POST | MCP server (streamable HTTP); requires an OAuth bearer token | - | `request POST /mcp --status 401 (no token)` | yes |
+| `mcp` | `/mcp` | GET, POST, OPTIONS | MCP server (streamable HTTP); requires an OAuth bearer token | - | `request POST /mcp --status 401 (no token)` | yes |
 | `mcpWidget` | `/mcp/widget/:token/*path` | GET | MCP UI widget media for a feed token | `execute --code-file tools/control-fixtures/curated-feed.ts` creates a curated feed with fixture audio and prints its id and token | `request GET /mcp/widget/<token>/audio/Inkheart.m4b` | yes |
 
 ## Operations
 
 | Route | Pattern | Methods | What | Seed | Reach | High |
 | --- | --- | --- | --- | --- | --- | --- |
-| `health` | `/health` | GET | Public health snapshot: status, version, commit SHA, database, media roots, MCP protocol | - | `health (or request GET /health --contains '"status":"ok"')` |  |
+| `health` | `/health` | GET | Public health snapshot: status, version, commit SHA, database, media roots, MCP, OAuth | - | `health (or request GET /health --contains '"status":"ok"')` |  |
 | `adminHealth` | `/admin/health` | GET | Admin health snapshot (same data as /health) | - | `request GET /admin/health --contains status` |  |

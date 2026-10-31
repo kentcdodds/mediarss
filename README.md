@@ -14,27 +14,11 @@
 
 ## Development
 
-- Runtime: Node.js 24 (`engines.node` is `>=24.12.0`)
-- Package manager: npm
-- UI: Remix 3 (`remix@3.0.0`, `remix/component`, no React)
-- Linter: `oxlint`
-- Formatter: `oxfmt` (shared preset from `@epic-web/config`)
-
-Installed Remix docs live at `node_modules/remix/INDEX.md`. The repo skill is
-`.agents/skills/remix/SKILL.md`. How to work in the repo is in
-[docs/contributing.md](docs/contributing.md).
-
-Common commands:
-
-- `npm run dev`
-- `npm run lint`
-- `npm run format`
-- `npm run validate`
-
-SQLite is `remix/data-table` on `node:sqlite`. Tables are in `app/db/schema.ts`;
-SQL migrations are in `app/db/migrations/`. The server applies pending
-migrations at startup. CRUD helpers, test databases, and `npx remix db` are in
-[docs/contributing.md](docs/contributing.md#data-layer).
+Node.js 24 (`engines.node` is `>=24.12.0`), npm, Remix 3 (`remix@3.0.0`,
+`remix/component`, no React). Format with `oxfmt`, lint with `oxlint`. How to
+work in the repo, including `npm run validate`, the data layer, and
+`npx remix db`, is in [docs/contributing.md](docs/contributing.md). Installed
+Remix docs live at `node_modules/remix/INDEX.md`.
 
 ## Screenshots
 
@@ -301,6 +285,9 @@ The following environment variables can be configured:
   alias).
 - `ALLOWED_HOSTS`: Optional comma-separated hosts allowed on `/oauth/token`.
   Unset means any `Host` header is accepted.
+- `MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER`: Optional cap on SQLite IN-clause
+  bind variables when aggregating per-file analytics. Unset uses the compiled
+  SQLite `MAX_VARIABLE_NUMBER` (or `999`).
 
 The Docker image sets `DATABASE_PATH=/data/sqlite.db` and
 `CACHE_DATABASE_PATH=/data/cache.db`. The `./data/…` defaults above apply to
@@ -319,9 +306,9 @@ MediaRSS routes fall into five groups:
   `/mcp` off the Access policy so clients can connect after you approve them.
 - **OAuth discovery and tokens** (`/.well-known/*`, `/oauth/*`) — public so
   clients can register and redeem codes. Consent itself is `/admin/authorize`.
-- **Health** (`/health`) — public snapshot (status, version, commit SHA,
-  database, media roots, MCP protocol). Not rate-limited unless `?probe=` is
-  present (`?probe=cimd` live-fetches Kody's client metadata).
+- **Health** (`/health`) — public JSON snapshot of process, database, media
+  roots, MCP, and OAuth. Not rate-limited unless `?probe=` is present
+  (`?probe=cimd` live-fetches Kody's client metadata).
 
 Podcast apps need unauthenticated token URLs, so use **Cloudflare Tunnel** and
 an Access policy on `/admin` rather than app-level login.

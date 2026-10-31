@@ -35,7 +35,9 @@ C stop
 Every command takes `--json`. `doctor`, `request`, `execute`, `browse`, and
 `health` take `--origin <url>`; `dev` and `stop` take `--port`. `request` also
 takes `--status`, `--not-contains`, `--header "k: v"`, `--body`, and
-`--dump <file>` (binary bodies are summarized, not printed).
+`--dump <file>` (binary bodies are summarized, not printed). `browse` also takes
+`--headed` and `--out <dir>`. `health --published` also takes `--image <name>`
+(default `kentcdodds/mediarss`).
 
 ## Environment
 

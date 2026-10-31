@@ -74,10 +74,10 @@ tools, resources, or prompts.
   CLI.
 - Database tests use `createTestDatabase()` from `app/db/test-database.ts`
   (in-memory, migrated). Module-level code that uses the shared `db` runs
-  against the throwaway `DATABASE_PATH` from `test/global-setup.ts` (an empty
-  file until the test migrates it). Route and handler tests that need tables
-  `await migrateDatabase(db)` at module load. Vitest runs one worker so those
-  tests don't race.
+  against the throwaway `DATABASE_PATH` from `test/global-setup.ts` (the file is
+  created and WAL-enabled on import; unmigrated until the test migrates it).
+  Route and handler tests that need tables `await migrateDatabase(db)` at module
+  load. Vitest runs one worker so those tests don't race.
 
 ## Testing
 

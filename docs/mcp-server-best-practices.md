@@ -4,9 +4,10 @@ How MediaRSS's MCP server is built. Change `app/mcp/` to match these
 conventions.
 
 The server accepts Streamable HTTP revision `2026-07-28` only
-(`createMcpHandler` from `@modelcontextprotocol/server`). Clients authenticate
-with OAuth (PKCE); tools, resources, and prompts are registered from the
-caller's scopes.
+(`createMcpHandler` from `@modelcontextprotocol/server`, `legacy: 'reject'`).
+Clients authenticate with OAuth (PKCE); tools, resources, and prompts are
+registered from the caller's scopes. CORS advertises `GET`, `POST`, and
+`OPTIONS`; legacy session `DELETE` is rejected.
 
 ## Layout
 

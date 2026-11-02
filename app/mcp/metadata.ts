@@ -539,3 +539,7 @@ export const promptsMetadata = {
 		description: 'Help organize media files into logical feeds',
 	},
 } as const satisfies Record<string, PromptMetadata>
+
+/** Names advertised on `media://server` — keep derived from the catalogs above. */
+export const advertisedToolNames = Object.keys(toolsMetadata)
+export const advertisedPromptNames = Object.keys(promptsMetadata)

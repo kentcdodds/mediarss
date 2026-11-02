@@ -9,6 +9,10 @@ import { deleteCuratedFeed } from '#app/db/curated-feeds.ts'
 import { db } from '#app/db/index.ts'
 import { migrateDatabase } from '#app/db/migrate.ts'
 import { buildFeedRssPath } from '#app/helpers/feed-url.ts'
+import {
+	advertisedPromptNames,
+	advertisedToolNames,
+} from '#app/mcp/metadata.ts'
 import { generateAccessToken } from '#app/oauth/tokens.ts'
 import router from '#app/router.tsx'
 import mcpHandler from './index.ts'
@@ -227,6 +231,18 @@ test('modern MCP client can discover the server and list tools', async () => {
 		const result = await client.callTool({ name: 'list_feeds' })
 		expect(result.isError).toBeFalsy()
 		expect(result.content[0]).toMatchObject({ type: 'text' })
+
+		const serverInfo = await client.readResource({ uri: 'media://server' })
+		const serverContent = serverInfo.contents[0]
+		expect(serverContent && 'text' in serverContent).toBe(true)
+		if (!serverContent || !('text' in serverContent)) {
+			throw new Error('expected media://server to return text contents')
+		}
+		const serverPayload = JSON.parse(serverContent.text) as {
+			capabilities: { tools: Array<string>; prompts: Array<string> }
+		}
+		expect(serverPayload.capabilities.tools).toEqual(advertisedToolNames)
+		expect(serverPayload.capabilities.prompts).toEqual(advertisedPromptNames)
 	} finally {
 		await client.close()
 	}

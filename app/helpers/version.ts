@@ -112,25 +112,6 @@ export async function getCommitInfo(): Promise<CommitInfo | null> {
 }
 
 /**
- * Get the shortened commit hash (first 7 characters).
- * Returns null if commit info cannot be retrieved.
- */
-export async function getShortCommitHash(): Promise<string | null> {
-	const commit = await getCommitInfo()
-	return commit?.shortHash ?? null
-}
-
-/**
- * Get the display version string.
- * Returns the app version if available, otherwise the short commit hash.
- */
-export async function getDisplayVersion(): Promise<string | null> {
-	const version = await getAppVersion()
-	if (version) return version
-	return getShortCommitHash()
-}
-
-/**
  * Get full version information including app version, commit info, and uptime.
  */
 export async function getVersionInfo(): Promise<VersionInfo> {

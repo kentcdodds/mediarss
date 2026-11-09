@@ -77,7 +77,10 @@ concern; extend it instead of duplicating it.
   formats dates, durations, and sizes.
 - `app/assets.ts`: the `remix/assets` server, script entries, and the
   `remove-accents` import-map shim.
-- `app/client/widgets/`: MCP UI widgets.
+- `app/client/widgets/`: MCP-UI media player. `mcp-ui.ts` exports
+  `waitForRenderData` (posts `ui-lifecycle-iframe-ready`, then reads
+  `payload.renderData` from `ui-lifecycle-iframe-render-data`).
+  `media-player.tsx` is the widget UI.
 - `app/components/`, `app/styles/tokens.ts`: shared components and style tokens.
   CSS variables live in `app/assets/styles.css`.
 

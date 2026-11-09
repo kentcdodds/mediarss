@@ -19,6 +19,7 @@ registered from the caller's scopes. CORS advertises `GET`, `POST`, and
 | `app/mcp/media-metadata-tools.ts` | `get_media_metadata` / `update_media_metadata`                  |
 | `app/mcp/resources.ts`            | `media://` resources and widget URIs                            |
 | `app/mcp/widgets.ts`              | MCP-UI media player widget HTML                                 |
+| `app/client/widgets/mcp-ui.ts`    | Iframe handshake (`waitForRenderData`)                          |
 | `app/mcp/prompts.ts`              | Task-oriented conversation starters                             |
 | `app/mcp/server.ts`               | `McpServer` setup and scoped initialization                     |
 | `app/mcp/auth.ts`                 | Bearer verification and `mcp:read` / `mcp:write`                |
@@ -146,7 +147,11 @@ HTML widgets:
   widget module graph changes)
 
 HTTP player media is `/mcp/widget/:token/*path` (feed token, same class as
-`/media/*`; not OAuth).
+`/media/*`; not OAuth). The HTML shell has no media payload. `waitForRenderData`
+in `app/client/widgets/mcp-ui.ts` posts `ui-lifecycle-iframe-ready` and reads
+`payload.renderData` from `ui-lifecycle-iframe-render-data`. Direct
+`/mcp/widget/` loads stay on the loading state because there is no parent
+handshake.
 
 ## Prompts
 

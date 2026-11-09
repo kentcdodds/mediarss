@@ -142,11 +142,10 @@ function getMediaFeeds(
 	item: MediaItem,
 	assignments: Record<string, Array<FeedAssignment>>,
 	directoryFeeds: Array<DirectoryFeed>,
-): Array<{ feedId: string; feedType: 'curated' | 'directory'; name: string }> {
+): Array<{ feedId: string; feedType: 'curated' | 'directory' }> {
 	const feeds: Array<{
 		feedId: string
 		feedType: 'curated' | 'directory'
-		name: string
 	}> = []
 
 	// Build the media path key in the same format as assignments
@@ -158,7 +157,6 @@ function getMediaFeeds(
 		feeds.push({
 			feedId: assignment.feedId,
 			feedType: 'curated',
-			name: '', // Will be filled by caller if needed
 		})
 	}
 
@@ -168,7 +166,6 @@ function getMediaFeeds(
 			feeds.push({
 				feedId: dirFeed.id,
 				feedType: 'directory',
-				name: dirFeed.name,
 			})
 		}
 	}

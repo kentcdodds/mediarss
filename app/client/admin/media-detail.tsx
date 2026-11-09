@@ -2265,7 +2265,6 @@ function MetadataField(
 					<input
 						type="text"
 						value={value}
-						list={undefined}
 						mix={[
 							rmxCss(inputStyles),
 							rmxOn<HTMLInputElement, 'input'>('input', (e: Event) =>

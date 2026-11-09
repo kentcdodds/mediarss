@@ -263,6 +263,9 @@ export function MediaDetail(handle: Handle<AdminRoutePageProps>) {
 		}
 	}
 
+	// No self-recursion: the dev HMR transform does not rewrite a setup
+	// function's reference to itself, so a recursive call throws
+	// "fetchMedia is not defined" in development.
 	const fetchMedia = async (encodedPath: string, fallbackPath?: string) => {
 		currentPath = encodedPath
 		state = { status: 'loading' }
@@ -270,18 +273,18 @@ export function MediaDetail(handle: Handle<AdminRoutePageProps>) {
 		handle.update()
 
 		try {
-			const res = await fetch(`/admin/api/media/${encodedPath}`, {
+			let res = await fetch(`/admin/api/media/${encodedPath}`, {
 				signal: handle.signal,
 			})
 
+			if (res.status === 404 && fallbackPath && fallbackPath !== encodedPath) {
+				currentPath = fallbackPath
+				res = await fetch(`/admin/api/media/${fallbackPath}`, {
+					signal: handle.signal,
+				})
+			}
+
 			if (!res.ok) {
-				if (
-					fallbackPath &&
-					res.status === 404 &&
-					fallbackPath !== encodedPath
-				) {
-					return fetchMedia(fallbackPath)
-				}
 				const data = await res.json().catch(() => ({}))
 				throw new Error(data.error || `HTTP ${res.status}`)
 			}

@@ -15,7 +15,7 @@ import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { getAllFeeds, getFeedById } from './feed-helpers.ts'
-import { serverMetadata } from './metadata.ts'
+import { promptsMetadata, serverMetadata, toolsMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
 
 /**
@@ -262,26 +262,8 @@ export async function initializeResources(
 										path: mr.path,
 									})),
 									capabilities: {
-										tools: [
-											'list_feeds',
-											'get_feed',
-											'list_media_directories',
-											'browse_media',
-											'get_feed_tokens',
-											'get_media_widget',
-											'create_directory_feed',
-											'create_curated_feed',
-											'update_feed',
-											'delete_feed',
-											'create_feed_token',
-											'delete_feed_token',
-										],
-										prompts: [
-											'summarize_library',
-											'explore_feed',
-											'create_feed_wizard',
-											'organize_media',
-										],
+										tools: Object.keys(toolsMetadata),
+										prompts: Object.keys(promptsMetadata),
 										resources: [
 											'media://feeds',
 											'media://feeds/{id}',

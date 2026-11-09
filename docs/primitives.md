@@ -87,9 +87,11 @@ concern; extend it instead of duplicating it.
 ## Ops and tooling
 
 - `app/helpers/health.ts`, `version.ts`, `diagnostics.ts`: `/health` and
-  `/admin/health` (same payload). Optional `?probe=cimd` live-fetches Kody's
-  client metadata. Commit SHA from `COMMIT_SHA` (`SOURCE_COMMIT` is an accepted
-  alias).
+  `/admin/health` (same payload) plus `/admin/api/version`. Optional
+  `?probe=cimd` live-fetches Kody's client metadata. `getVersionInfo()` is the
+  shared snapshot; `getCommitInfo()` prefers baked `COMMIT_SHA` /
+  `SOURCE_COMMIT` over git. The version page composes
+  `version || commit.shortHash`.
 - `app/helpers/outbound-fetch.ts`: IPv4-first outbound HTTP (CIMD, NAS Docker).
 - `server/dev.ts`: HMR supervisor for `npm run dev`. `server/node-server.ts` is
   the Node HTTP adapter. `server/cli.ts` is the interactive keyboard shortcuts

@@ -3420,7 +3420,6 @@ function DirectoryPathsEditor(
 	let browseState: BrowseState = { status: 'idle' }
 	let selectedRoot: string | null = null
 	let currentPath = ''
-	let entries: Array<DirectoryEntry> = []
 
 	const fetchDirectory = async (root: string, path: string) => {
 		browseState = { status: 'loading' }
@@ -3434,8 +3433,7 @@ function DirectoryPathsEditor(
 				throw new Error(`HTTP ${res.status}`)
 			}
 			const data = await res.json()
-			entries = data.entries || []
-			browseState = { status: 'success', entries }
+			browseState = { status: 'success', entries: data.entries || [] }
 		} catch (err) {
 			browseState = {
 				status: 'error',
@@ -3759,7 +3757,7 @@ function DirectoryPathsEditor(
 											📁 ..
 										</button>
 									)}
-									{entries
+									{browseState.entries
 										.filter((e) => e.type === 'directory')
 										.map((entry) => (
 											<button
@@ -3786,8 +3784,8 @@ function DirectoryPathsEditor(
 												📁 {entry.name}
 											</button>
 										))}
-									{entries.filter((e) => e.type === 'directory').length ===
-										0 && (
+									{browseState.entries.filter((e) => e.type === 'directory')
+										.length === 0 && (
 										<div
 											mix={[
 												rmxCss({

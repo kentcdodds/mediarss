@@ -15,7 +15,7 @@ import { getFileMetadata } from '#app/helpers/media.ts'
 import { parseMediaPathStrict } from '#app/helpers/path-parsing.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { getAllFeeds, getFeedById } from './feed-helpers.ts'
-import { serverMetadata } from './metadata.ts'
+import { promptsMetadata, serverMetadata, toolsMetadata } from './metadata.ts'
 import { generateMediaWidgetHtml, getMediaWidgetUIUri } from './widgets.ts'
 
 /**
@@ -32,6 +32,8 @@ export async function initializeResources(
 ): Promise<void> {
 	// Read resources (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
+		const widgetUri = await getMediaWidgetUIUri()
+
 		// All feeds resource
 		server.registerResource(
 			'feeds',
@@ -262,32 +264,15 @@ export async function initializeResources(
 										path: mr.path,
 									})),
 									capabilities: {
-										tools: [
-											'list_feeds',
-											'get_feed',
-											'list_media_directories',
-											'browse_media',
-											'get_feed_tokens',
-											'get_media_widget',
-											'create_directory_feed',
-											'create_curated_feed',
-											'update_feed',
-											'delete_feed',
-											'create_feed_token',
-											'delete_feed_token',
-										],
-										prompts: [
-											'summarize_library',
-											'explore_feed',
-											'create_feed_wizard',
-											'organize_media',
-										],
+										tools: Object.keys(toolsMetadata),
+										prompts: Object.keys(promptsMetadata),
 										resources: [
 											'media://feeds',
 											'media://feeds/{id}',
 											'media://directories',
 											'media://server',
-											'media://widget/media/{token}/{rootName}/{relativePath}',
+											'media://widget/media/{token}/{rootName}/{relativePath+}',
+											widgetUri,
 										],
 									},
 								},
@@ -388,7 +373,6 @@ export async function initializeResources(
 
 		// Media widget template resource for ChatGPT Apps SDK
 		// This is a template resource that ChatGPT uses to render widgets
-		const widgetUri = await getMediaWidgetUIUri()
 		// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
 		const cspOrigin = new URL(baseUrl).origin
 

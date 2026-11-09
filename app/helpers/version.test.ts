@@ -1,11 +1,5 @@
 import { expect, test } from 'vitest'
-import {
-	getAppVersion,
-	getCommitInfo,
-	getDisplayVersion,
-	getShortCommitHash,
-	getVersionInfo,
-} from './version.ts'
+import { getAppVersion, getCommitInfo, getVersionInfo } from './version.ts'
 
 test('getAppVersion returns a valid semver version string from package.json', async () => {
 	await expect(getAppVersion()).resolves.toMatch(/^\d+\.\d+\.\d+/)
@@ -30,27 +24,10 @@ test('getCommitInfo returns complete git commit information when in a git repo',
 	expect(commit.source === 'git' || commit.source === 'env').toBe(true)
 })
 
-test('getShortCommitHash returns 7 character hash when in git repo', async () => {
-	const shortHash = await getShortCommitHash()
-	if (shortHash === null) return
-
-	expect(shortHash).toHaveLength(7)
-})
-
-test('getDisplayVersion returns version or short commit hash', async () => {
-	const displayVersion = await getDisplayVersion()
-	expect(
-		displayVersion?.match(/^\d+\.\d+\.\d+/) || displayVersion?.length === 7,
-	).toBeTruthy()
-})
-
 test('getVersionInfo returns complete version info object with all required properties', async () => {
 	const info = await getVersionInfo()
 
-	if (info.version !== null) {
-		expect(info.version).toMatch(/^\d+\.\d+\.\d+/)
-	}
-
+	expect(info.version).toMatch(/^\d+\.\d+\.\d+/)
 	expect(new Date(info.startTime).toISOString()).toBeTruthy()
 	expect(info.uptimeMs).toBeGreaterThanOrEqual(0)
 })

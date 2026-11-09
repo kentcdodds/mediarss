@@ -32,6 +32,8 @@ export async function initializeResources(
 ): Promise<void> {
 	// Read resources (require mcp:read scope)
 	if (hasScope(authInfo, 'mcp:read')) {
+		const widgetUri = await getMediaWidgetUIUri()
+
 		// All feeds resource
 		server.registerResource(
 			'feeds',
@@ -269,7 +271,8 @@ export async function initializeResources(
 											'media://feeds/{id}',
 											'media://directories',
 											'media://server',
-											'media://widget/media/{token}/{rootName}/{relativePath}',
+											'media://widget/media/{token}/{rootName}/{relativePath+}',
+											widgetUri,
 										],
 									},
 								},
@@ -370,7 +373,6 @@ export async function initializeResources(
 
 		// Media widget template resource for ChatGPT Apps SDK
 		// This is a template resource that ChatGPT uses to render widgets
-		const widgetUri = await getMediaWidgetUIUri()
 		// Get the origin (protocol + host) for CSP - OpenAI requires full URLs
 		const cspOrigin = new URL(baseUrl).origin
 

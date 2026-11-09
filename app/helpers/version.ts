@@ -11,7 +11,10 @@ const execFileAsync = promisify(execFile)
 const APP_START_TIME = Date.now()
 
 /**
- * Git commit information.
+ * Commit identity reported by health and version.
+ *
+ * `source` is `'env'` when `COMMIT_SHA` or `SOURCE_COMMIT` is set (message
+ * `'baked at image build'`, `date` is process start), otherwise `'git'`.
  */
 export type CommitInfo = {
 	hash: string
@@ -43,7 +46,7 @@ function commitFromSha(
 }
 
 /**
- * Full version information returned by getVersionInfo().
+ * Snapshot returned by `getVersionInfo()` for `/health` and `/admin/api/version`.
  */
 export type VersionInfo = {
 	version: string | null
@@ -78,8 +81,11 @@ export async function getAppVersion(): Promise<string | null> {
 }
 
 /**
- * Get git commit information for the current repository.
- * Returns null if not in a git repository or git commands fail.
+ * Resolve the running commit.
+ *
+ * Prefers baked `COMMIT_SHA` or `SOURCE_COMMIT` (`source: 'env'`). Falls
+ * back to `git log` (`source: 'git'`). Returns null if neither source is
+ * available.
  */
 export async function getCommitInfo(): Promise<CommitInfo | null> {
 	const baked = readBakedCommitSha()
@@ -112,7 +118,8 @@ export async function getCommitInfo(): Promise<CommitInfo | null> {
 }
 
 /**
- * Get full version information including app version, commit info, and uptime.
+ * App version, commit, start time, and uptime for `/health` and
+ * `/admin/api/version`.
  */
 export async function getVersionInfo(): Promise<VersionInfo> {
 	const [version, commit] = await Promise.all([

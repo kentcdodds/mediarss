@@ -1,18 +1,20 @@
 /**
  * MCP-UI render-data handshake for the media player widget iframe.
  *
- * Signals readiness to the ChatGPT parent frame and waits for
- * `ui-lifecycle-iframe-render-data` containing `initial-render-data`.
+ * Posts `ui-lifecycle-iframe-ready` to the parent frame, then waits for
+ * `ui-lifecycle-iframe-render-data` and resolves with `payload.renderData`.
+ * Hosts populate that payload from `uiMetadata['initial-render-data']`.
  */
 
 import { parseSafe, type Schema } from 'remix/data-schema'
 
 /**
- * Wait for the initial render data from the parent frame.
+ * Wait for the initial render data from the MCP-UI parent frame.
  *
- * This signals to ChatGPT that the iframe is ready, and waits for
- * the `ui-lifecycle-iframe-render-data` message containing the
- * `initial-render-data` that was passed in `uiMetadata`.
+ * Posts `ui-lifecycle-iframe-ready`, then waits for
+ * `ui-lifecycle-iframe-render-data` and returns `payload.renderData` (the
+ * host maps `uiMetadata['initial-render-data']` into that field). Optional
+ * `schema` validates the payload with `parseSafe`.
  *
  * @param schema - Optional data schema to validate the render data
  * @param timeoutMs - Timeout in milliseconds (default: 10000)

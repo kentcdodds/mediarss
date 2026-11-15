@@ -79,8 +79,8 @@ export default {
 			return new Response('File path required', { status: 400 })
 		}
 
-		// Accept podcast-client-friendly URLs that end in .jpg (and optional
-		// /v/{cacheVersion}/ prefix) while keeping legacy undecorated paths.
+		// Accept podcast-client-friendly URLs that end in an image extension
+		// (and optional /v/{cacheVersion}/ prefix) as well as undecorated paths.
 		const artPath = normalizePodcastArtPath(splatParam)
 
 		// Special case: "/art/:token/feed" (also feed.jpg / v/:n/feed.jpg)

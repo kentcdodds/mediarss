@@ -64,12 +64,12 @@ test('normalizePodcastArtPath strips version prefix and image extension', () => 
 	expect(normalizePodcastArtPath('feed.webp')).toBe('feed')
 })
 
-test('normalizePodcastArtPath keeps legacy undecorated paths intact', () => {
+test('normalizePodcastArtPath keeps undecorated paths intact', () => {
 	expect(normalizePodcastArtPath('feed')).toBe('feed')
 	expect(normalizePodcastArtPath('audio/Book%2Fepisode.m4b')).toBe(
 		'audio/Book%2Fepisode.m4b',
 	)
 	// A media root named `v` must not be treated as a cache-bust prefix
-	// unless the URL also ends with an image extension (new format).
+	// unless the URL also ends with an image extension.
 	expect(normalizePodcastArtPath('v/123/episode.m4b')).toBe('v/123/episode.m4b')
 })

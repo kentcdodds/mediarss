@@ -64,19 +64,23 @@ concern; extend it instead of duplicating it.
   client metadata documents (`client-metadata.ts` fetches CIMD).
 - `app/mcp/`: MCP server, tools, resources, prompts, widgets, auth, and
   protocol-header checks. `feed-helpers.ts` is the shared feed lookup used by
-  tools, resources, and prompts. `metadata.ts` is the source of truth for names
-  and descriptions ([conventions](mcp-server-best-practices.md)).
+  tools, resources, and prompts. `media-metadata-tools.ts` owns
+  `get_media_metadata` / `update_media_metadata`. `metadata.ts` is the source of
+  truth for tool and prompt names and descriptions
+  ([conventions](mcp-server-best-practices.md)).
 
 ## UI
 
 - `app/client/admin/`: the admin SPA (`entry.tsx`, `app-root.tsx` holds the page
   registry, `admin-pages.ts` matches URLs; `FeedDetail` and `MediaDetail` each
   serve their view and edit routes; `edit-route-paths.ts` builds those hrefs;
-  `url-state.ts` for URL-synced state). `app/helpers/feed-list-sort.ts` and
-  `media-list-sort.ts` own the admin list sort keys. `app/helpers/format.ts`
-  formats dates, durations, and sizes.
+  `url-state.ts` for URL-synced state; `loader-data.ts` types first-paint
+  payloads; `navigation-progress.tsx` is the top-bar pending indicator).
+  `app/helpers/feed-list-sort.ts` and `media-list-sort.ts` own the admin list
+  sort keys. `app/helpers/format.ts` formats dates, durations, and sizes.
 - `app/assets.ts`: the `remix/assets` server, script entries, and the
-  `remove-accents` import-map shim.
+  `remove-accents` import-map shim. `remix.json` lists `assets.allowPackages`
+  and `allowFiles`.
 - `app/client/widgets/`: MCP-UI media player. `mcp-ui.ts` exports
   `waitForRenderData` (posts `ui-lifecycle-iframe-ready`, then reads
   `payload.renderData` from `ui-lifecycle-iframe-render-data`).

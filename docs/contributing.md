@@ -48,8 +48,8 @@ UI uses `remix/component`, not React
 
 ## MCP
 
-Streamable HTTP at `/mcp` with OAuth (PKCE). Names, titles, and descriptions
-live in `app/mcp/metadata.ts`. Follow
+Streamable HTTP at `/mcp` with OAuth (PKCE). Tool and prompt names, titles, and
+descriptions live in `app/mcp/metadata.ts`. Follow
 [mcp-server-best-practices.md](mcp-server-best-practices.md) when changing
 tools, resources, or prompts.
 

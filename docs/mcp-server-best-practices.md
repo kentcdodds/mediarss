@@ -41,8 +41,9 @@ Discovery is public: `/.well-known/oauth-authorization-server` and
 
 ## Metadata
 
-`app/mcp/metadata.ts` is the single source of truth for names, titles, and
-descriptions. `serverMetadata.instructions` is the onboarding text the client
+`app/mcp/metadata.ts` is the source of truth for tool and prompt names, titles,
+and descriptions. Resource descriptions live next to the registrations in
+`resources.ts`. `serverMetadata.instructions` is the onboarding text the client
 reads first: what to call first, how to chain IDs, default behavior, and
 supported vs unsupported search.
 
@@ -54,7 +55,8 @@ Tool descriptions include:
 4. Concrete examples
 5. Next steps (which tool to call with which ID)
 
-Keep copy in `metadata.ts`. Handlers in `tools.ts` stay about behavior.
+Keep tool and prompt copy in `metadata.ts`. Handlers in `tools.ts` stay about
+behavior.
 
 ## Tools
 
@@ -133,7 +135,8 @@ Registered from `mcp:read`.
 
 JSON under `media://`:
 
-- `media://server` — version, counts, media roots
+- `media://server` — version, feed counts, media roots, and the live tool,
+  prompt, and resource catalog (tool and prompt names from `metadata.ts`)
 - `media://feeds` — every feed
 - `media://feeds/{id}` — one feed and its curated items
 - `media://directories` — configured media roots

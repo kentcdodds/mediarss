@@ -280,9 +280,9 @@ The following environment variables can be configured:
   minute per IP (default: `1000`)
 - `GITHUB_REPO`: Repository URL used when linking to commits (default:
   `https://github.com/kentcdodds/mediarss`)
-- `COMMIT_SHA`: Git SHA reported by `/health` and `/admin/version`. The
-  published image sets this at build time (`SOURCE_COMMIT` is an accepted
-  alias).
+- `COMMIT_SHA`: Git SHA reported by `/health`, `/admin/health`, and
+  `/admin/api/version` (the version page reads that snapshot). The published
+  image sets this at build time (`SOURCE_COMMIT` is an accepted alias).
 - `ALLOWED_HOSTS`: Optional comma-separated hosts allowed on `/oauth/token`.
   Unset means any `Host` header is accepted.
 - `MEDIA_ANALYTICS_MAX_SQLITE_VARIABLE_NUMBER`: Optional cap on SQLite IN-clause

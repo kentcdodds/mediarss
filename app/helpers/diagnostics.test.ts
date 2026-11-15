@@ -28,7 +28,7 @@ test('recordDiagnostic keeps a recent ring buffer and structured events', () => 
 		ok: false,
 		detail: { httpStatus: 403 },
 	})
-	expect(typeof events[0]?.at).toBe('string')
+	expect(events[0]?.at).toBe(new Date(events[0]!.at).toISOString())
 	clearDiagnostics()
 	expect(getRecentDiagnostics()).toEqual([])
 })

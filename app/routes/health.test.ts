@@ -36,13 +36,15 @@ test('public /health returns commit, runtime, and MCP/OAuth facts', async () => 
 	expect(response.status).toBe(200)
 	expect(body.status).toBe('ok')
 	expect(body.database.ok).toBe(true)
-	expect(typeof body.timestamp).toBe('string')
-	expect(typeof body.uptimeMs).toBe('number')
+	expect(body.timestamp).toBe(new Date(body.timestamp).toISOString())
+	expect(
+		Math.abs(body.uptimeMs - (Date.now() - Date.parse(body.startTime))),
+	).toBeLessThan(1000)
 	expect(body.node).toMatch(/^v\d+/)
 	expect(body.mcp).toEqual({ protocol: '2026-07-28', legacy: 'reject' })
 	expect(body.oauth.clientIdMetadataDocumentSupported).toBe(true)
 	expect(Array.isArray(body.mediaRoots)).toBe(true)
-	expect(Array.isArray(body.diagnostics)).toBe(true)
+	expect(body.diagnostics).toEqual([])
 	expect(body.probes).toBeUndefined()
 	expect(body.commit!.sha.length).toBeGreaterThanOrEqual(7)
 	expect(body.commit!.short).toBe(body.commit!.sha.slice(0, 7))

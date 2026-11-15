@@ -136,11 +136,13 @@ test('getFileMetadata returns null for non-existent and non-media files', async 
 test('scanDirectoryWithMetadata returns complete metadata for all media files', async () => {
 	// Directory with media files should return metadata for each
 	const audioFilesWithMetadata = await scanDirectoryWithMetadata(TEST_AUDIO_DIR)
-	expect(audioFilesWithMetadata.length).toBeGreaterThan(0)
+	expect(audioFilesWithMetadata.map((file) => file.filename).sort()).toEqual([
+		'Inkheart.m4b',
+		'On the Edge of the Dark Sea of Darkness.mp3',
+	])
 	for (const file of audioFilesWithMetadata) {
-		expect(file.path).toBeTruthy()
-		expect(file.filename).toBeTruthy()
-		expect(file.mimeType).toBeTruthy()
+		expect(file.path).toContain(file.filename)
+		expect(file.mimeType).toMatch(/audio/)
 		expect(file.sizeBytes).toBeGreaterThan(0)
 	}
 

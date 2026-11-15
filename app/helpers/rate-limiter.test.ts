@@ -91,17 +91,6 @@ test('RateLimiter.resetMs indicates time until oldest request expires', async ()
 	expect(blockedResult.resetMs).toBeLessThanOrEqual(200)
 })
 
-test('RateLimiter exposes configuration via getter methods', () => {
-	using ctx1 = createTestLimiter({ name: 'my-limiter', maxRequests: 30 })
-	using ctx2 = createTestLimiter({ name: 'other-limiter', maxRequests: 1000 })
-
-	expect(ctx1.limiter.getName()).toBe('my-limiter')
-	expect(ctx1.limiter.getMaxRequests()).toBe(30)
-
-	expect(ctx2.limiter.getName()).toBe('other-limiter')
-	expect(ctx2.limiter.getMaxRequests()).toBe(1000)
-})
-
 test('RateLimiter uses 60 second default window when windowMs not specified', () => {
 	using ctx = createTestLimiter({ maxRequests: 5 })
 

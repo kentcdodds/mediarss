@@ -71,12 +71,9 @@ type Feed = DirectoryFeed | CuratedFeed
 type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
 /**
- * ChatGPT / MCP clients may retry tool calls if the connection drops or a response
- * isn't received in time. Our create feed tools used to be non-idempotent, so
- * a retry could create duplicate feeds with identical settings.
- *
- * We avoid that by treating identical create requests within a short window as
- * duplicates and returning the already-created feed instead.
+ * ChatGPT / MCP clients may retry tool calls if the connection drops or a
+ * response isn't received in time. Identical create-feed requests within this
+ * window return the already-created feed instead of inserting another.
  */
 const MCP_CREATE_DEDUPE_WINDOW_SECONDS = 120
 

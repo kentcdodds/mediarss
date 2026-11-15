@@ -1,6 +1,7 @@
 /**
  * Centralized metadata for the MCP server.
- * Single source of truth for all tool, prompt, and resource descriptions.
+ * Source of truth for tool and prompt names, titles, and descriptions.
+ * Resource descriptions live next to the registrations in `resources.ts`.
  */
 
 export interface ToolMetadata {

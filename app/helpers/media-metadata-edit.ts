@@ -99,6 +99,123 @@ export const EDITABLE_METADATA_FIELDS = [
 	'subtitle',
 ] as const satisfies ReadonlyArray<keyof EditableMetadata>
 
+export type EditableMetadataField = (typeof EDITABLE_METADATA_FIELDS)[number]
+
+function dateFieldMatches(
+	requested: string,
+	publicationDate: string | null,
+): boolean {
+	if (publicationDate === null) return false
+	if (/^\d{4}$/.test(requested)) {
+		const parsed = new Date(publicationDate)
+		return (
+			!Number.isNaN(parsed.getTime()) &&
+			parsed.getUTCFullYear() === Number(requested)
+		)
+	}
+	return publicationDate.startsWith(requested)
+}
+
+function splitCommaList(value: string): string[] {
+	return value
+		.split(',')
+		.map((part) => part.trim())
+		.filter(Boolean)
+}
+
+function nullableStringMatches(
+	requested: string,
+	stored: string | null,
+): boolean {
+	if (requested === '') return stored === null || stored === ''
+	return stored === requested
+}
+
+function narratorFieldMatches(
+	requested: string,
+	narrators: string[] | null,
+): boolean {
+	const requestedNames = splitCommaList(requested)
+	if (requestedNames.length === 0) {
+		return narrators === null || narrators.length === 0
+	}
+	const stored = narrators ?? []
+	return (
+		requestedNames.length === stored.length &&
+		requestedNames.every((name, index) => name === stored[index])
+	)
+}
+
+function editableFieldMatches(
+	field: EditableMetadataField,
+	requested: string | number,
+	media: MediaDetail,
+): boolean {
+	switch (field) {
+		case 'title':
+			return media.title === requested
+		case 'author':
+			return nullableStringMatches(String(requested), media.author)
+		case 'description':
+			return nullableStringMatches(String(requested), media.description)
+		case 'date':
+			return dateFieldMatches(String(requested), media.publicationDate)
+		case 'genre': {
+			const requestedGenre = String(requested)
+			if (requestedGenre === '') {
+				return media.genres === null || media.genres.length === 0
+			}
+			return (
+				media.genres?.includes(requestedGenre) === true ||
+				media.genres?.join(':') === requestedGenre
+			)
+		}
+		case 'trackNumber':
+			return media.trackNumber === requested
+		case 'copyright':
+			return nullableStringMatches(String(requested), media.copyright)
+		case 'narrator':
+			return narratorFieldMatches(String(requested), media.narrators)
+		case 'album':
+			return nullableStringMatches(String(requested), media.album)
+		case 'albumArtist':
+			return nullableStringMatches(String(requested), media.albumArtist)
+		case 'composer':
+			return nullableStringMatches(String(requested), media.composer)
+		case 'publisher':
+			return nullableStringMatches(String(requested), media.publisher)
+		case 'discNumber':
+			return media.discNumber === requested
+		case 'language':
+			return nullableStringMatches(String(requested), media.language)
+		case 'series':
+			return nullableStringMatches(String(requested), media.series)
+		case 'seriesPosition':
+			return nullableStringMatches(String(requested), media.seriesPosition)
+		case 'encodedBy':
+			return nullableStringMatches(String(requested), media.encodedBy)
+		case 'subtitle':
+			return nullableStringMatches(String(requested), media.subtitle)
+		default: {
+			const exhaustive: never = field
+			return exhaustive
+		}
+	}
+}
+
+export function persistedEditableFields(
+	requested: EditableMetadata,
+	media: MediaDetail,
+): Array<EditableMetadataField> {
+	const persisted: Array<EditableMetadataField> = []
+	for (const field of EDITABLE_METADATA_FIELDS) {
+		const value = requested[field]
+		if (value === undefined) continue
+		if (editableFieldMatches(field, value, media)) persisted.push(field)
+	}
+	return persisted
+}
+
 export type FeedAssignment = {
 	feedId: string
 	feedType: 'curated' | 'directory'
@@ -309,7 +426,7 @@ export function toMediaDetail(
 	}
 }
 
-async function buildMediaDetailResponse(
+export async function buildMediaDetailResponse(
 	metadata: MediaFile,
 	rootName: string,
 	relativePath: string,
@@ -368,7 +485,14 @@ export async function applyMediaMetadataUpdate(
 	rootName: string,
 	relativePath: string,
 	update: unknown,
-): Promise<{ ok: true; response: MediaDetailResponse } | Failure> {
+): Promise<
+	| {
+			ok: true
+			response: MediaDetailResponse
+			updatedFields: Array<EditableMetadataField>
+	  }
+	| Failure
+> {
 	const resolved = await resolveContainedMediaFile(rootName, relativePath)
 	if (!resolved.ok) return resolved
 	const { filePath } = resolved
@@ -428,12 +552,14 @@ export async function applyMediaMetadataUpdate(
 		}
 	}
 
+	const response = await buildMediaDetailResponse(
+		updatedMetadata,
+		rootName,
+		relativePath,
+	)
 	return {
 		ok: true,
-		response: await buildMediaDetailResponse(
-			updatedMetadata,
-			rootName,
-			relativePath,
-		),
+		response,
+		updatedFields: persistedEditableFields(editableMetadata, response.media),
 	}
 }

@@ -7,7 +7,6 @@ import {
 } from 'remix/component'
 import { renderProps } from '#app/components/props-component.ts'
 import {
-	artworkLayout,
 	colors,
 	mq,
 	radius,
@@ -17,7 +16,7 @@ import {
 	typography,
 } from '#app/styles/tokens.ts'
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl'
+export type ModalSize = 'sm' | 'md' | 'lg'
 
 type ModalProps = {
 	/**
@@ -27,26 +26,15 @@ type ModalProps = {
 	title: string
 
 	/**
-	 * Optional subtitle/description shown below the title.
+	 * Optional subtitle shown below the title.
 	 */
 	subtitle?: string
-
-	/**
-	 * Optional smaller description text shown below the subtitle.
-	 */
-	description?: string
-
-	/**
-	 * Optional image URL to show in the header (top left corner).
-	 */
-	headerImage?: string
 
 	/**
 	 * The size of the modal. Affects max-width.
 	 * - sm: 400px (confirmations, simple prompts)
 	 * - md: 480px (forms, details)
 	 * - lg: 600px (complex forms, file pickers)
-	 * - xl: 800px (large content, tables)
 	 * @default 'md'
 	 */
 	size?: ModalSize
@@ -78,7 +66,6 @@ const sizeMap: Record<ModalSize, string> = {
 	sm: '400px',
 	md: '480px',
 	lg: '600px',
-	xl: '800px',
 }
 
 function getModalIdBase(title: string) {
@@ -133,8 +120,6 @@ export function Modal(handle: Handle<ModalProps>) {
 		({
 			title,
 			subtitle,
-			description,
-			headerImage,
 			size = 'md',
 			onClose,
 			showHeaderBorder = true,
@@ -186,14 +171,7 @@ export function Modal(handle: Handle<ModalProps>) {
 			const idBase = getModalIdBase(title)
 			const titleId = `modal-title-${idBase}`
 			const subtitleId = `modal-subtitle-${idBase}`
-			const descriptionId = `modal-description-${idBase}`
-			const describedBy =
-				[
-					subtitle ? subtitleId : undefined,
-					description ? descriptionId : undefined,
-				]
-					.filter((id) => id !== undefined)
-					.join(' ') || undefined
+			const describedBy = subtitle ? subtitleId : undefined
 
 			return (
 				<div
@@ -347,23 +325,6 @@ export function Modal(handle: Handle<ModalProps>) {
 								</svg>
 							</button>
 
-							{headerImage && (
-								<img
-									src={headerImage}
-									alt=""
-									mix={[
-										rmxCss({
-											width: '48px',
-											height: '48px',
-											borderRadius: radius.md,
-											...artworkLayout.centeredContain,
-											backgroundColor: colors.background,
-											flexShrink: 0,
-										}),
-									]}
-								/>
-							)}
-
 							<div mix={[rmxCss({ minWidth: 0, flex: 1 })]}>
 								<h2
 									id={titleId}
@@ -396,22 +357,6 @@ export function Modal(handle: Handle<ModalProps>) {
 										]}
 									>
 										{subtitle}
-									</p>
-								)}
-
-								{description && (
-									<p
-										id={descriptionId}
-										mix={[
-											rmxCss({
-												fontSize: typography.fontSize.xs,
-												color: colors.textMuted,
-												margin: `4px 0 0 0`,
-												paddingRight: spacing.xl,
-											}),
-										]}
-									>
-										{description}
 									</p>
 								)}
 							</div>
@@ -594,12 +539,9 @@ export function ModalButton(handle: Handle<ModalButtonProps>) {
 
 type ModalAlertProps = {
 	/**
-	 * The type of alert.
-	 * - warning: Orange/yellow for warnings
-	 * - error: Red for errors/destructive actions
-	 * - info: Blue for informational content
+	 * The type of alert. Only error is used.
 	 */
-	type: 'warning' | 'error' | 'info'
+	type: 'error'
 
 	/**
 	 * Alert content.
@@ -612,21 +554,14 @@ type ModalAlertProps = {
  */
 export function ModalAlert(handle: Handle<ModalAlertProps>) {
 	return renderProps(handle, ({ type, children }) => {
-		const colorMap = {
-			warning: {
-				bg: 'rgba(245, 158, 11, 0.1)',
-				border: 'rgba(245, 158, 11, 0.3)',
-				text: '#d97706',
-			},
+		const colorMap: Record<
+			ModalAlertProps['type'],
+			{ bg: string; border: string; text: string }
+		> = {
 			error: {
 				bg: 'rgba(239, 68, 68, 0.1)',
 				border: 'rgba(239, 68, 68, 0.3)',
 				text: '#ef4444',
-			},
-			info: {
-				bg: 'rgba(59, 130, 246, 0.1)',
-				border: 'rgba(59, 130, 246, 0.3)',
-				text: '#3b82f6',
 			},
 		}
 

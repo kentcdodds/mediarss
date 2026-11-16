@@ -91,6 +91,7 @@ test('update_media_metadata forwards only editable fields to the shared editor',
 			curatedFeeds: [],
 			directoryFeeds: [],
 		},
+		updatedFields: ['description'],
 	})
 
 	const result = await updateMediaMetadataTool({
@@ -107,6 +108,32 @@ test('update_media_metadata forwards only editable fields to the shared editor',
 	)
 	expect(result.structuredContent).toMatchObject({
 		updatedFields: ['description'],
+	})
+})
+
+test('update_media_metadata is an error when no requested field persists', async () => {
+	const { updateMediaMetadataTool } = await import('./media-metadata-tools.ts')
+	applyMock.mockResolvedValueOnce({
+		ok: true,
+		response: {
+			media: { title: 'Talk', publicationDate: null, description: null },
+			assignments: [],
+			curatedFeeds: [],
+			directoryFeeds: [],
+		},
+		updatedFields: [],
+	})
+
+	const result = await updateMediaMetadataTool({
+		mediaRoot: 'audio',
+		relativePath: 'Inkheart.m4b',
+		narrator: 'Probe Narrator',
+	})
+
+	expect(result.isError).toBe(true)
+	expect(result.structuredContent).toMatchObject({
+		updatedFields: [],
+		skippedFields: ['narrator'],
 	})
 })
 

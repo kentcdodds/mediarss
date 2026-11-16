@@ -3,6 +3,7 @@ import {
 	formatDate,
 	formatDuration,
 	formatFileSize,
+	formatIsoDateFromUnixSeconds,
 	formatItunesDuration,
 	formatRelativeTime,
 	formatRssDate,
@@ -33,6 +34,11 @@ test('formatUptime converts milliseconds to human-readable duration', () => {
 	expect(formatUptime(125000)).toBe('2m 5s')
 	expect(formatUptime(3725000)).toBe('1h 2m 5s')
 	expect(formatUptime(90000000)).toBe('1d 1h 0m')
+})
+
+test('formatIsoDateFromUnixSeconds returns an ISO calendar date', () => {
+	expect(formatIsoDateFromUnixSeconds(0)).toBe('1970-01-01')
+	expect(formatIsoDateFromUnixSeconds(1767787200)).toBe('2026-01-07')
 })
 
 test('formatItunesDuration formats duration for iTunes podcast feeds', () => {

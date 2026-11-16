@@ -157,6 +157,14 @@ export function formatRssDate(date: Date): string {
 }
 
 /**
+ * Format a unix-seconds timestamp as an ISO calendar date (YYYY-MM-DD).
+ */
+export function formatIsoDateFromUnixSeconds(timestamp: number): string {
+	const isoString = new Date(timestamp * 1000).toISOString()
+	return isoString.split('T')[0] ?? isoString
+}
+
+/**
  * Format relative time (e.g., "2 hours ago", "3 days ago").
  *
  * @param date - Date object, ISO string, or unix timestamp (seconds)

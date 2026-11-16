@@ -18,6 +18,11 @@ import {
 	string,
 } from 'remix/data-schema'
 import { renderProps } from '#app/components/props-component.ts'
+import {
+	formatDate,
+	formatDuration,
+	formatFileSize,
+} from '#app/helpers/format.ts'
 import { artworkLayout } from '#app/styles/tokens.ts'
 import { waitForRenderData } from './mcp-ui.ts'
 
@@ -89,59 +94,6 @@ const radius = {
 	sm: '0.25rem',
 	md: '0.5rem',
 	lg: '0.75rem',
-}
-
-/**
- * Format duration in seconds to human-readable format.
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === 0) return '—'
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m ${secs}s`
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
-}
-
-/**
- * Format file size in bytes to human-readable format.
- */
-function formatFileSize(bytes: number): string {
-	if (bytes === 0) return '0 B'
-
-	const units = ['B', 'KB', 'MB', 'GB', 'TB']
-	const k = 1024
-	const i = Math.floor(Math.log(bytes) / Math.log(k))
-	const size = bytes / Math.pow(k, i)
-
-	return `${size.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
-}
-
-/**
- * Format a date to a readable string.
- */
-function formatDate(dateStr: string | null): string {
-	if (!dateStr) return '—'
-
-	try {
-		const date = new Date(dateStr)
-		if (Number.isNaN(date.getTime())) return '—'
-
-		return date.toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-		})
-	} catch {
-		return '—'
-	}
 }
 
 /**
@@ -519,7 +471,9 @@ function MediaPlayerContent(handle: Handle<{ media: MediaData }>) {
 						>
 							<MetadataItem
 								label="Duration"
-								value={formatDuration(media.duration)}
+								value={formatDuration(media.duration, {
+									showSeconds: true,
+								})}
 							/>
 							<MetadataItem
 								label="Size"
@@ -528,7 +482,9 @@ function MediaPlayerContent(handle: Handle<{ media: MediaData }>) {
 							<MetadataItem label="Format" value={media.mimeType} />
 							<MetadataItem
 								label="Published"
-								value={formatDate(media.publicationDate)}
+								value={formatDate(media.publicationDate, {
+									style: 'date',
+								})}
 							/>
 							{media.genres && media.genres.length > 0 && (
 								<MetadataItem label="Genres" value={media.genres.join(', ')} />

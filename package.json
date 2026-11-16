@@ -19,7 +19,6 @@
     "start": "NODE_ENV=production node --import remix/node-tsx index.ts",
     "typecheck": "tsc --noEmit",
     "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
     "lint": "oxlint --fix .",
     "lint:check": "oxlint .",
     "check": "oxfmt . && oxlint --fix .",

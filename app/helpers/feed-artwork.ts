@@ -10,8 +10,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
  * Ensure the artwork directory exists.
  */
 async function ensureArtworkDir(): Promise<void> {
-	const { mkdir } = await import('node:fs/promises')
-	await mkdir(ARTWORK_DIR, { recursive: true })
+	await fs.promises.mkdir(ARTWORK_DIR, { recursive: true })
 }
 
 /**
@@ -44,8 +43,7 @@ export async function deleteFeedArtwork(feedId: string): Promise<boolean> {
 	}
 
 	try {
-		const { unlink } = await import('node:fs/promises')
-		await unlink(artwork.path)
+		await fs.promises.unlink(artwork.path)
 		return true
 	} catch (error) {
 		console.error(`Error deleting artwork for feed ${feedId}:`, error)

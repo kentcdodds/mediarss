@@ -3,6 +3,8 @@
  * Tools provide callable functions that the AI can invoke.
  */
 
+import { readdir, realpath, stat as statFile } from 'node:fs/promises'
+import { relative, resolve, sep } from 'node:path'
 import { type McpServer } from '@modelcontextprotocol/server'
 import { matchSorter } from 'match-sorter'
 import { z } from 'zod'
@@ -39,14 +41,18 @@ import {
 } from '#app/db/feed-items.ts'
 import {
 	type CuratedFeed,
-	type CuratedFeedToken,
 	type DirectoryFeed,
-	type DirectoryFeedToken,
+	type Feed,
 	type FeedItem,
+	type FeedToken,
 } from '#app/db/types.ts'
 import { encodeRelativePath, isFileAllowed } from '#app/helpers/feed-access.ts'
 import { getFeedByToken } from '#app/helpers/feed-lookup.ts'
 import { buildFeedRssUrl, displayTokenLabel } from '#app/helpers/feed-url.ts'
+import {
+	formatDuration,
+	formatIsoDateFromUnixSeconds,
+} from '#app/helpers/format.ts'
 import {
 	getFileMetadata,
 	type MediaFile,
@@ -66,9 +72,6 @@ import {
 	getMediaWidgetToolMeta,
 	type MediaWidgetData,
 } from './widgets.ts'
-
-type Feed = DirectoryFeed | CuratedFeed
-type FeedToken = DirectoryFeedToken | CuratedFeedToken
 
 /**
  * ChatGPT / MCP clients may retry tool calls if the connection drops or a
@@ -233,14 +236,6 @@ async function findTokenForMedia(
 }
 
 /**
- * Format a date timestamp for human-readable output.
- */
-function formatDate(timestamp: number): string {
-	const isoString = new Date(timestamp * 1000).toISOString()
-	return isoString.split('T')[0] ?? isoString
-}
-
-/**
  * Format file size for human-readable output.
  */
 function formatSize(bytes: number): string {
@@ -251,33 +246,12 @@ function formatSize(bytes: number): string {
 	return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-/**
- * Format duration in seconds to human-readable format.
- */
-function formatDuration(seconds: number | null): string {
-	if (seconds === null || seconds === 0) return 'Unknown'
-
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}h ${minutes}m ${secs}s`
-	}
-	if (minutes > 0) {
-		return `${minutes}m ${secs}s`
-	}
-	return `${secs}s`
-}
-
 async function validateDirectoryPathsUpdate(
 	directoryPaths: Array<string>,
 ): Promise<
 	{ ok: true; directoryPaths: Array<string> } | { ok: false; error: string }
 > {
 	const mediaRoots = getMediaRoots()
-	const { resolve, sep } = await import('node:path')
-	const fs = await import('node:fs/promises')
 
 	const errors: string[] = []
 	const normalized: string[] = []
@@ -320,7 +294,7 @@ async function validateDirectoryPathsUpdate(
 		// If the media root itself isn't accessible, fail early.
 		let realBasePath: string
 		try {
-			realBasePath = await fs.realpath(basePath)
+			realBasePath = await realpath(basePath)
 		} catch {
 			errors.push(
 				`Media root "${mediaRoot}" is not accessible while validating "${entry}".`,
@@ -331,9 +305,7 @@ async function validateDirectoryPathsUpdate(
 		// If the target exists, enforce containment using real paths (symlink-safe).
 		// If it doesn't exist, keep the resolve() containment check above.
 		try {
-			const realFullPath = await fs.realpath(
-				resolve(realBasePath, relativePath),
-			)
+			const realFullPath = await realpath(resolve(realBasePath, relativePath))
 			if (
 				realFullPath !== realBasePath &&
 				!realFullPath.startsWith(realBasePath + sep)
@@ -402,7 +374,7 @@ export async function initializeTools(
 						lines.push(`### Directory Feeds (${directoryFeeds.length})`)
 						for (const feed of directoryFeeds) {
 							lines.push(
-								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
+								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatIsoDateFromUnixSeconds(feed.createdAt)}`,
 							)
 							if (feed.description) lines.push(`  ${feed.description}`)
 							if (feed.subtitle) lines.push(`  _${feed.subtitle}_`)
@@ -414,7 +386,7 @@ export async function initializeTools(
 						lines.push(`### Curated Feeds (${curatedFeeds.length})`)
 						for (const feed of curatedFeeds) {
 							lines.push(
-								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatDate(feed.createdAt)}`,
+								`- **${feed.name}** (id: \`${feed.id}\`) — Created ${formatIsoDateFromUnixSeconds(feed.createdAt)}`,
 							)
 							if (feed.description) lines.push(`  ${feed.description}`)
 							if (feed.subtitle) lines.push(`  _${feed.subtitle}_`)
@@ -505,7 +477,9 @@ export async function initializeTools(
 				lines.push('')
 				lines.push(`- **Type**: ${feed.type}`)
 				lines.push(`- **ID**: \`${feed.id}\``)
-				lines.push(`- **Created**: ${formatDate(feed.createdAt)}`)
+				lines.push(
+					`- **Created**: ${formatIsoDateFromUnixSeconds(feed.createdAt)}`,
+				)
 				if (feed.description) {
 					lines.push(`- **Description**: ${feed.description}`)
 				}
@@ -666,7 +640,6 @@ export async function initializeTools(
 				}
 
 				// Resolve paths and validate to prevent directory traversal
-				const { resolve, sep } = await import('node:path')
 				const basePath = resolve(mr.path)
 				const fullPath = subPath ? resolve(basePath, subPath) : basePath
 
@@ -690,8 +663,7 @@ export async function initializeTools(
 						size?: number
 					}> = []
 
-					const fs = await import('node:fs/promises')
-					const dirEntries = await fs.readdir(fullPath, { withFileTypes: true })
+					const dirEntries = await readdir(fullPath, { withFileTypes: true })
 
 					for (const entry of dirEntries) {
 						const isDir = entry.isDirectory()
@@ -699,8 +671,8 @@ export async function initializeTools(
 
 						if (!isDir) {
 							try {
-								const stat = await fs.stat(`${fullPath}/${entry.name}`)
-								size = stat.size
+								const info = await statFile(`${fullPath}/${entry.name}`)
+								size = info.size
 							} catch {
 								continue
 							}
@@ -831,7 +803,7 @@ export async function initializeTools(
 					for (const t of tokens) {
 						const rssUrl = buildFeedRssUrl(baseUrl, t.token)
 						lines.push(
-							`- **${displayTokenLabel(t.label)}** — \`${t.token}\` — Created ${formatDate(t.createdAt)}`,
+							`- **${displayTokenLabel(t.label)}** — \`${t.token}\` — Created ${formatIsoDateFromUnixSeconds(t.createdAt)}`,
 						)
 						lines.push(`  RSS URL: \`${rssUrl}\``)
 					}
@@ -1031,7 +1003,12 @@ export async function initializeTools(
 				if (metadata.narrators && metadata.narrators.length > 0) {
 					lines.push(`**Narrated by**: ${metadata.narrators.join(', ')}`)
 				}
-				lines.push(`**Duration**: ${formatDuration(metadata.duration)}`)
+				lines.push(
+					`**Duration**: ${formatDuration(metadata.duration, {
+						showSeconds: true,
+						fallback: 'Unknown',
+					})}`,
+				)
 				lines.push(`**Size**: ${formatSize(metadata.sizeBytes)}`)
 				lines.push(`**Format**: ${metadata.mimeType}`)
 				if (metadata.genres && metadata.genres.length > 0) {
@@ -1126,7 +1103,7 @@ export async function initializeTools(
 
 					// Helper to get relative path and media root from absolute path
 					// Sort roots by path length descending so longer (more specific) paths match first
-					const { sep: pathSep } = await import('node:path')
+					const pathSep = sep
 					const sortedRoots = [...mediaRoots].sort(
 						(a, b) => b.path.length - a.path.length,
 					)
@@ -1241,7 +1218,12 @@ export async function initializeTools(
 							if (media.narrators && media.narrators.length > 0) {
 								lines.push(`**Narrated by**: ${media.narrators.join(', ')}`)
 							}
-							lines.push(`**Duration**: ${formatDuration(media.duration)}`)
+							lines.push(
+								`**Duration**: ${formatDuration(media.duration, {
+									showSeconds: true,
+									fallback: 'Unknown',
+								})}`,
+							)
 							lines.push(`**Format**: ${media.mimeType}`)
 							lines.push(
 								`**Path**: \`${pathInfo.mediaRoot}:${pathInfo.relativePath}\``,
@@ -1445,7 +1427,6 @@ export async function initializeTools(
 				}
 
 				// Validate directoryPath to prevent path traversal
-				const { resolve, sep } = await import('node:path')
 				const basePath = resolve(mr.path)
 				const fullPath = resolve(basePath, directoryPath)
 
@@ -2415,8 +2396,6 @@ export async function initializeTools(
 			},
 			async ({ items, feedIds }) => {
 				const mediaRoots = getMediaRoots()
-				const { resolve, sep, relative } = await import('node:path')
-				const fs = await import('node:fs/promises')
 
 				// Validate all feeds first
 				const feedErrors: string[] = []
@@ -2482,7 +2461,7 @@ export async function initializeTools(
 					let realBasePath: string
 					let realFullPath: string
 					try {
-						realBasePath = await fs.realpath(basePath)
+						realBasePath = await realpath(basePath)
 					} catch {
 						itemErrors.push({
 							...item,
@@ -2492,7 +2471,7 @@ export async function initializeTools(
 					}
 
 					try {
-						realFullPath = await fs.realpath(fullPath)
+						realFullPath = await realpath(fullPath)
 					} catch {
 						itemErrors.push({
 							...item,
@@ -2515,8 +2494,8 @@ export async function initializeTools(
 
 					// Check if file (not directory)
 					try {
-						const stat = await fs.stat(realFullPath)
-						if (!stat.isFile()) {
+						const info = await statFile(realFullPath)
+						if (!info.isFile()) {
 							itemErrors.push({
 								...item,
 								error: 'Path is a directory, not a file',

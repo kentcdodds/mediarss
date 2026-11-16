@@ -112,10 +112,23 @@ function getNativeValue(
 				foundItem.value !== null &&
 				'text' in foundItem.value
 			) {
-				return (foundItem.value as { text: string }).text
+				const text = (foundItem.value as { text: unknown }).text
+				return text == null ? undefined : String(text)
 			}
-			return foundItem.value as string
+			if (foundItem.value == null) return undefined
+			return String(foundItem.value)
 		}
+	}
+	return undefined
+}
+
+function getNativeValueAny(
+	metadata: mm.IAudioMetadata,
+	...nativeIds: string[]
+): string | undefined {
+	for (const nativeId of nativeIds) {
+		const value = getNativeValue(metadata, nativeId)
+		if (value) return value
 	}
 	return undefined
 }
@@ -189,13 +202,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(6 as const)), // Increment when schema or extraction changes
+	_cacheVersion: optional(literal(8 as const)), // Increment when schema or extraction changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema or extraction logic changes
-const CACHE_VERSION = 6 as const
+const CACHE_VERSION = 8 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -273,6 +286,10 @@ function isYearString(value: string): boolean {
  */
 function isYearNumber(value: number): boolean {
 	return Number.isInteger(value) && value >= 1900 && value <= 2100
+}
+
+function dateFromYearOnly(year: number): Date {
+	return new Date(Date.UTC(year, 0, 1))
 }
 
 /**
@@ -444,11 +461,12 @@ function conferenceDateFromPath(
  * 1. json64.release_date (e.g. "2023-11-07")
  * 2. TXXX:year (may contain full date like "2023-11-07")
  * 3. TXXX:date
- * 4. common.releasedate (ID3 TDRL — preferred over TDRC/date)
- * 5. common.date (ID3 TDRC — often year-only)
- * 6. Estimated publish in the description (the talk's own timestamp)
- * 7. YYYY-MM folder in the file path (conference month)
- * 8. common.year / year-only date fields
+ * 4. track:DATE (Matroska)
+ * 5. common.releasedate (ID3 TDRL — preferred over TDRC/date)
+ * 6. common.date (ID3 TDRC — often year-only)
+ * 7. Estimated publish in the description (the talk's own timestamp)
+ * 8. YYYY-MM folder in the file path (conference month)
+ * 9. common.year / year-only date fields
  *
  * Handles edge cases where date/year fields may be swapped or contain unexpected formats
  */
@@ -479,60 +497,55 @@ export function extractPublicationDate(
 		if (fullDate) return fullDate
 	}
 
-	// 4. common.releasedate (TDRL) — preferred over TDRC/date when both exist
+	// 4. Matroska DATE (ffmpeg writes track:DATE; common.date stays empty)
+	const trackDate = getNativeValue(metadata, 'track:DATE')
+	if (trackDate) {
+		const fullDate = parseAsFullDate(trackDate)
+		if (fullDate) return fullDate
+	}
+
+	// 5. common.releasedate (TDRL) — preferred over TDRC/date when both exist
 	if (common.releasedate) {
 		const fullDate = parseAsFullDate(common.releasedate)
 		if (fullDate) return fullDate
 	}
 
-	// 5. common.date (TDRC)
+	// 6. common.date (TDRC)
 	if (common.date) {
 		const fullDate = parseAsFullDate(common.date)
 		if (fullDate) return fullDate
 	}
 
-	// Check if year field actually contains a full date string (metadata quirk)
-	if (common.year) {
-		// year is typed as number, but sometimes it's actually a date string
-		const yearAsString = String(common.year)
-		if (!isYearString(yearAsString)) {
-			const fullDate = parseAsFullDate(yearAsString)
-			if (fullDate) return fullDate
-		}
-	}
-
-	// 6. Estimated publish in the description (more specific than year-only)
+	// 7. Estimated publish in the description (more specific than year-only)
 	const estimatedConferenceDate = conferenceDateFromEstimatedPublish(
 		inference.description,
 	)
 	if (estimatedConferenceDate) return estimatedConferenceDate
 
-	// 7. YYYY-MM conference folder in the path
+	// 8. YYYY-MM conference folder in the path
 	const pathConferenceDate = conferenceDateFromPath(inference.path)
 	if (pathConferenceDate) return pathConferenceDate
 
-	// Fall back to year-only dates
-	// Check TXXX:year for year-only
+	// Fall back to year-only dates (UTC so the calendar year survives ISO serialize)
 	if (txxxYear && isYearString(txxxYear)) {
-		const year = parseInt(txxxYear, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(txxxYear, 10))
+	}
+
+	if (trackDate && isYearString(trackDate)) {
+		return dateFromYearOnly(parseInt(trackDate, 10))
 	}
 
 	// Prefer releasedate year over date year when both are year-only
 	if (common.releasedate && isYearString(common.releasedate)) {
-		const year = parseInt(common.releasedate, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(common.releasedate, 10))
 	}
 
-	// Check if date field contains just a year
 	if (common.date && isYearString(common.date)) {
-		const year = parseInt(common.date, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(common.date, 10))
 	}
 
-	// Use year field as a year
 	if (common.year && isYearNumber(common.year)) {
-		return new Date(common.year, 0, 1)
+		return dateFromYearOnly(common.year)
 	}
 
 	return null
@@ -601,8 +614,9 @@ function getNativeCommentDescription(
  * 2. TXXX:description (native tag)
  * 3. common.description
  * 4. TXXX:comment
- * 5. common.comment (excluding Apple iTun* private COMM frames)
- * 6. COMM native tags (excluding Apple iTun* private COMM frames)
+ * 5. track:COMMENT / track:DESCRIPTION (Matroska)
+ * 6. common.comment (excluding Apple iTun* private COMM frames)
+ * 7. COMM native tags (excluding Apple iTun* private COMM frames)
  */
 export function extractDescription(
 	metadata: mm.IAudioMetadata,
@@ -635,7 +649,17 @@ export function extractDescription(
 		return txxxComment
 	}
 
-	// 5. common.comment — skip Apple private iTun* COMM frames
+	// 5. Matroska comment/description (ffmpeg writes track:COMMENT)
+	const trackComment = getNativeValueAny(
+		metadata,
+		'track:COMMENT',
+		'track:DESCRIPTION',
+	)
+	if (trackComment) {
+		return trackComment
+	}
+
+	// 6. common.comment — skip Apple private iTun* COMM frames
 	if (common.comment && common.comment.length > 0) {
 		const comment = common.comment
 			.filter((entry) => !isItunesPrivateComment(entry))
@@ -645,7 +669,7 @@ export function extractDescription(
 		if (comment) return comment
 	}
 
-	// 6. COMM native tags — same iTun* filter as common.comment
+	// 7. COMM native tags — same iTun* filter as common.comment
 	return getNativeCommentDescription(metadata)
 }
 
@@ -654,8 +678,9 @@ export function extractDescription(
  * 1. json64.narrated_by (comma-separated)
  * 2. TXXX:narrated_by
  * 3. ----:com.apple.iTunes:PERFORMER_NAME
- * 4. ----:com.apple.iTunes:NARRATOR (custom tag we write for MP4)
+ * 4. ----:com.apple.iTunes:NARRATOR (existing tags; ffmpeg drops this on write)
  * 5. TPE3 (ID3v2 conductor/performer - we write this for MP3)
+ * 6. track:LEAD_PERFORMER (Matroska; ffmpeg stores performer= under this id)
  */
 function extractNarrators(
 	metadata: mm.IAudioMetadata,
@@ -693,7 +718,7 @@ function extractNarrators(
 		if (narrators.length > 0) return narrators
 	}
 
-	// 4. Custom iTunes narrator tag (we write this for MP4)
+	// 4. Apple iTunes narrator freeform (readable on existing files; ffmpeg drops it)
 	const itunesNarrator = getNativeValue(
 		metadata,
 		'----:com.apple.iTunes:NARRATOR',
@@ -716,8 +741,8 @@ function extractNarrators(
 		if (narrators.length > 0) return narrators
 	}
 
-	// 6. performer tag (we write this for MKV)
-	const mkvPerformer = getNativeValue(metadata, 'performer')
+	// 6. Matroska performer (ffmpeg writes track:LEAD_PERFORMER)
+	const mkvPerformer = getNativeValue(metadata, 'track:LEAD_PERFORMER')
 	if (mkvPerformer) {
 		const narrators = mkvPerformer
 			.split(',')
@@ -797,21 +822,27 @@ function extractCopyright(
 		return metadata.common.copyright
 	}
 
-	return null
+	return getNativeValue(metadata, 'track:COPYRIGHT') ?? null
 }
 
 /**
  * Extract album from metadata
  */
 function extractAlbum(metadata: mm.IAudioMetadata): string | null {
-	return metadata.common.album ?? null
+	return (
+		metadata.common.album ?? getNativeValue(metadata, 'track:ALBUM') ?? null
+	)
 }
 
 /**
  * Extract album artist from metadata
  */
 function extractAlbumArtist(metadata: mm.IAudioMetadata): string | null {
-	return metadata.common.albumartist ?? null
+	return (
+		metadata.common.albumartist ??
+		getNativeValue(metadata, 'track:ALBUM_ARTIST') ??
+		null
+	)
 }
 
 /**
@@ -822,7 +853,7 @@ function extractComposer(metadata: mm.IAudioMetadata): string | null {
 	if (composers && composers.length > 0) {
 		return composers.join(', ')
 	}
-	return null
+	return getNativeValue(metadata, 'track:COMPOSER') ?? null
 }
 
 /**
@@ -834,13 +865,6 @@ function extractPublisher(metadata: mm.IAudioMetadata): string | null {
 		return metadata.common.label[0] ?? null
 	}
 
-	// Check native tags for publisher
-	const publisher = getNativeValue(metadata, 'TPUB') // ID3v2 Publisher
-	if (publisher) return publisher
-
-	const publisher2 = getNativeValue(metadata, 'publisher')
-	if (publisher2) return publisher2
-
 	return null
 }
 
@@ -848,7 +872,11 @@ function extractPublisher(metadata: mm.IAudioMetadata): string | null {
  * Extract disc number from metadata
  */
 function extractDiscNumber(metadata: mm.IAudioMetadata): number | null {
-	return metadata.common.disk?.no ?? null
+	if (metadata.common.disk?.no != null) return metadata.common.disk.no
+	const disc = getNativeValue(metadata, 'track:DISC')
+	if (!disc) return null
+	const parsed = Number.parseInt(disc, 10)
+	return Number.isFinite(parsed) ? parsed : null
 }
 
 /**
@@ -874,35 +902,20 @@ function extractLanguage(metadata: mm.IAudioMetadata): string | null {
 		return metadata.common.language
 	}
 
-	// Check native tags
-	const lang = getNativeValue(metadata, 'TLAN') // ID3v2 Language
-	if (lang) return lang
-
-	const lang2 = getNativeValue(metadata, 'language')
-	if (lang2) return lang2
-
-	return null
+	return getNativeValue(metadata, 'track:LANGUAGE') ?? null
 }
 
 /**
  * Extract series/show name from metadata
  */
 function extractSeries(metadata: mm.IAudioMetadata): string | null {
-	// Check for TV show name (common in iTunes-style metadata)
-	const show = getNativeValue(metadata, 'tvsh') // iTunes show name
-	if (show) return show
-
-	// Check for show tag (MP4)
-	const showTag = getNativeValue(metadata, 'show')
-	if (showTag) return showTag
-
-	// Check for series tag
-	const series = getNativeValue(metadata, 'series')
+	const series = getNativeValueAny(
+		metadata,
+		'tvsh',
+		'track:SHOW',
+		'TXXX:series',
+	)
 	if (series) return series
-
-	// Check for TXXX:series (MP3 custom tag we write to)
-	const txxxSeries = getNativeValue(metadata, 'TXXX:series')
-	if (txxxSeries) return txxxSeries
 
 	// Check for grouping (sometimes used for series)
 	if (metadata.common.grouping) {
@@ -916,21 +929,13 @@ function extractSeries(metadata: mm.IAudioMetadata): string | null {
  * Extract series position/episode number from metadata
  */
 function extractSeriesPosition(metadata: mm.IAudioMetadata): string | null {
-	// Check for episode sort order
-	const episodeSort = getNativeValue(metadata, 'tves') // iTunes episode sort
-	if (episodeSort) return episodeSort
-
-	// Check for episode_sort (MP4)
-	const episodeSortTag = getNativeValue(metadata, 'episode_sort')
-	if (episodeSortTag) return episodeSortTag
-
-	// Check for series-part
-	const seriesPart = getNativeValue(metadata, 'series-part')
-	if (seriesPart) return seriesPart
-
-	// Check for TXXX:series-part (MP3 custom tag we write to)
-	const txxxSeriesPart = getNativeValue(metadata, 'TXXX:series-part')
-	if (txxxSeriesPart) return txxxSeriesPart
+	const seriesPosition = getNativeValueAny(
+		metadata,
+		'tves',
+		'track:EPISODE_SORT',
+		'TXXX:series-part',
+	)
+	if (seriesPosition) return seriesPosition
 
 	// Check for movement name (classical music)
 	if (metadata.common.movement) {
@@ -944,17 +949,14 @@ function extractSeriesPosition(metadata: mm.IAudioMetadata): string | null {
  * Extract encoded by from metadata
  */
 function extractEncodedBy(metadata: mm.IAudioMetadata): string | null {
-	// Check common field
+	// Prefer the tag ffmpeg writes. common.encodedby on mkv/mp4 is often the
+	// libav encoder string (Lavc/Lavf), not the encoded_by metadata we set.
+	const written = getNativeValue(metadata, 'track:ENCODED_BY')
+	if (written) return written
+
 	if (metadata.common.encodedby) {
 		return metadata.common.encodedby
 	}
-
-	// Check native tags
-	const encodedBy = getNativeValue(metadata, 'TENC') // ID3v2 Encoded by
-	if (encodedBy) return encodedBy
-
-	const encodedBy2 = getNativeValue(metadata, 'encoded_by')
-	if (encodedBy2) return encodedBy2
 
 	return null
 }
@@ -963,16 +965,11 @@ function extractEncodedBy(metadata: mm.IAudioMetadata): string | null {
  * Extract subtitle from metadata
  */
 function extractSubtitle(metadata: mm.IAudioMetadata): string | null {
-	// Check common subtitle field
 	if (metadata.common.subtitle && metadata.common.subtitle.length > 0) {
 		return metadata.common.subtitle[0] ?? null
 	}
 
-	// Check native tags
-	const subtitle = getNativeValue(metadata, 'TIT3') // ID3v2 Subtitle
-	if (subtitle) return subtitle
-
-	return null
+	return getNativeValue(metadata, 'track:SUBTITLE') ?? null
 }
 
 /**

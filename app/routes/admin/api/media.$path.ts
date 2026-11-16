@@ -1,133 +1,9 @@
 import { type Action } from 'remix/router'
 import { toAbsolutePath } from '#app/config/env.ts'
 import { type routes } from '#app/routes.ts'
-import { listCuratedFeeds } from '#app/db/curated-feeds.ts'
-import {
-	listDirectoryFeeds,
-	parseDirectoryPaths,
-} from '#app/db/directory-feeds.ts'
-import { getItemsForFeed } from '#app/db/feed-items.ts'
-import { type CuratedFeed, type DirectoryFeed } from '#app/db/types.ts'
-import { getDescriptionHtml } from '#app/helpers/description-html.ts'
+import { buildMediaDetailResponse } from '#app/helpers/media-metadata-edit.ts'
 import { getFileMetadata } from '#app/helpers/media.ts'
-import { normalizePath, parseMediaPath } from '#app/helpers/path-parsing.ts'
-
-type FeedAssignment = {
-	feedId: string
-	feedType: 'curated' | 'directory'
-	feedName: string
-}
-
-type MediaDetailResponse = {
-	media: {
-		path: string
-		rootName: string
-		relativePath: string
-		filename: string
-		title: string
-		author: string | null
-		duration: number | null
-		sizeBytes: number
-		mimeType: string
-		publicationDate: string | null
-		trackNumber: number | null
-		description: string | null
-		descriptionHtml: string | null
-		narrators: string[] | null
-		genres: string[] | null
-		copyright: string | null
-		fileModifiedAt: number
-		// Additional metadata fields
-		album: string | null
-		albumArtist: string | null
-		composer: string | null
-		publisher: string | null
-		discNumber: number | null
-		totalDiscs: number | null
-		totalTracks: number | null
-		language: string | null
-		series: string | null
-		seriesPosition: string | null
-		encodedBy: string | null
-		subtitle: string | null
-	}
-	assignments: FeedAssignment[]
-	curatedFeeds: Array<{ id: string; name: string; updatedAt: number }>
-	directoryFeeds: Array<{
-		id: string
-		name: string
-		directoryPaths: string[]
-		updatedAt: number
-	}>
-}
-
-/**
- * Check if a media file is within any of the directory paths for a feed.
- */
-function isMediaInDirectoryFeed(
-	rootName: string,
-	relativePath: string,
-	feed: DirectoryFeed,
-): boolean {
-	const paths = parseDirectoryPaths(feed)
-	const normalizedFile = `${rootName}:${normalizePath(relativePath)}`
-
-	for (const dirPath of paths) {
-		const normalizedDir = normalizePath(dirPath)
-
-		if (
-			normalizedFile.startsWith(normalizedDir + '/') ||
-			normalizedFile === normalizedDir
-		) {
-			return true
-		}
-	}
-	return false
-}
-
-/**
- * Get all feed assignments for a media file.
- */
-async function getAssignmentsForMedia(
-	rootName: string,
-	relativePath: string,
-	curatedFeeds: CuratedFeed[],
-	directoryFeeds: DirectoryFeed[],
-): Promise<FeedAssignment[]> {
-	const assignments: FeedAssignment[] = []
-
-	// Check curated feed assignments
-	const normalizedRelativePath = normalizePath(relativePath)
-	for (const feed of curatedFeeds) {
-		const items = await getItemsForFeed(feed.id)
-		if (
-			items.some(
-				(item) =>
-					item.mediaRoot === rootName &&
-					item.relativePath === normalizedRelativePath,
-			)
-		) {
-			assignments.push({
-				feedId: feed.id,
-				feedType: 'curated',
-				feedName: feed.name,
-			})
-		}
-	}
-
-	// Check directory feed matches
-	for (const feed of directoryFeeds) {
-		if (isMediaInDirectoryFeed(rootName, relativePath, feed)) {
-			assignments.push({
-				feedId: feed.id,
-				feedType: 'directory',
-				feedName: feed.name,
-			})
-		}
-	}
-
-	return assignments
-}
+import { parseMediaPath } from '#app/helpers/path-parsing.ts'
 
 /**
  * GET /admin/api/media/*path
@@ -142,21 +18,17 @@ export default {
 			return Response.json({ error: 'Path required' }, { status: 400 })
 		}
 
-		// Parse root name and relative path from URL
 		const parsed = parseMediaPath(splatParam)
 		if (!parsed) {
 			return Response.json({ error: 'Invalid path format' }, { status: 400 })
 		}
 
 		const { rootName, relativePath } = parsed
-
-		// Convert to absolute file path
 		const filePath = toAbsolutePath(rootName, relativePath)
 		if (!filePath) {
 			return Response.json({ error: 'Unknown media root' }, { status: 404 })
 		}
 
-		// Get file metadata
 		const metadata = await getFileMetadata(filePath)
 		if (!metadata) {
 			return Response.json(
@@ -165,63 +37,8 @@ export default {
 			)
 		}
 
-		// Get feeds and assignments
-		const curatedFeeds = await listCuratedFeeds()
-		const directoryFeeds = await listDirectoryFeeds()
-		const assignments = await getAssignmentsForMedia(
-			rootName,
-			relativePath,
-			curatedFeeds,
-			directoryFeeds,
+		return Response.json(
+			await buildMediaDetailResponse(metadata, rootName, relativePath),
 		)
-
-		const response: MediaDetailResponse = {
-			media: {
-				path: metadata.path,
-				rootName,
-				relativePath,
-				filename: metadata.filename,
-				title: metadata.title,
-				author: metadata.author,
-				duration: metadata.duration,
-				sizeBytes: metadata.sizeBytes,
-				mimeType: metadata.mimeType,
-				publicationDate: metadata.publicationDate?.toISOString() ?? null,
-				trackNumber: metadata.trackNumber,
-				description: metadata.description,
-				descriptionHtml: getDescriptionHtml(metadata.description),
-				narrators: metadata.narrators,
-				genres: metadata.genres,
-				copyright: metadata.copyright,
-				fileModifiedAt: metadata.fileModifiedAt,
-				// Additional metadata fields
-				album: metadata.album,
-				albumArtist: metadata.albumArtist,
-				composer: metadata.composer,
-				publisher: metadata.publisher,
-				discNumber: metadata.discNumber,
-				totalDiscs: metadata.totalDiscs,
-				totalTracks: metadata.totalTracks,
-				language: metadata.language,
-				series: metadata.series,
-				seriesPosition: metadata.seriesPosition,
-				encodedBy: metadata.encodedBy,
-				subtitle: metadata.subtitle,
-			},
-			assignments,
-			curatedFeeds: curatedFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				updatedAt: f.updatedAt,
-			})),
-			directoryFeeds: directoryFeeds.map((f) => ({
-				id: f.id,
-				name: f.name,
-				directoryPaths: JSON.parse(f.directoryPaths) as string[],
-				updatedAt: f.updatedAt,
-			})),
-		}
-
-		return Response.json(response)
 	},
 } satisfies Action<typeof routes.adminApiMediaDetail>

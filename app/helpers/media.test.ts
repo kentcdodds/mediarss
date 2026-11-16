@@ -63,19 +63,20 @@ test('isMediaFile correctly identifies media and non-media files', async () => {
 })
 
 test('scanDirectory finds media files in directories', async () => {
-	// Audio directory should contain audio files with absolute paths
 	const audioFiles = await scanDirectory(TEST_AUDIO_DIR)
-	expect(audioFiles.length).toBeGreaterThan(0)
-	for (const file of audioFiles) {
-		expect(path.isAbsolute(file)).toBe(true)
-	}
+	expect(audioFiles.sort()).toEqual(
+		[
+			path.resolve(TEST_AUDIO_DIR, 'Inkheart.m4b'),
+			path.resolve(
+				TEST_AUDIO_DIR,
+				'On the Edge of the Dark Sea of Darkness.mp3',
+			),
+		].sort(),
+	)
 
-	// Video directory should contain video files
 	const videoFiles = await scanDirectory(TEST_VIDEO_DIR)
-	expect(videoFiles.length).toBeGreaterThan(0)
-	expect(videoFiles.some((f) => f.includes('Toy Story'))).toBe(true)
+	expect(videoFiles).toEqual([path.resolve(TEST_VIDEO_DIR, 'Toy Story.mkv')])
 
-	// Non-existent directory should return empty array
 	consoleWarn.mockImplementation(() => {})
 	const nonExistentFiles = await scanDirectory('/nonexistent/directory')
 	expect(nonExistentFiles).toEqual([])
@@ -93,30 +94,43 @@ test('scanDirectory returns empty array for directory without media files', asyn
 })
 
 test('getFileMetadata extracts metadata from various media file types', async () => {
-	// Test m4b audiobook
-	const m4bMetadata = await getFileMetadata(
-		path.join(TEST_AUDIO_DIR, 'Inkheart.m4b'),
-	)
-	expect(m4bMetadata!.path).toContain('Inkheart')
+	const inkheartPath = path.join(TEST_AUDIO_DIR, 'Inkheart.m4b')
+	const inkheartStat = await fs.stat(inkheartPath)
+	const m4bMetadata = await getFileMetadata(inkheartPath)
+	expect(m4bMetadata!.path).toBe(path.resolve(inkheartPath))
 	expect(m4bMetadata!.filename).toBe('Inkheart.m4b')
-	expect(m4bMetadata!.mimeType).toMatch(/audio/)
-	expect(m4bMetadata!.sizeBytes).toBeGreaterThan(0)
-	expect(m4bMetadata!.fileModifiedAt).toBeGreaterThan(0)
-	expect(m4bMetadata!.title.length).toBeGreaterThan(0)
+	expect(m4bMetadata!.title).toBe('Inkheart')
+	expect(m4bMetadata!.author).toBe('Cornelia Funke')
+	expect(m4bMetadata!.mimeType).toBe('audio/x-m4a')
+	expect(m4bMetadata!.sizeBytes).toBe(inkheartStat.size)
+	expect(m4bMetadata!.fileModifiedAt).toBe(
+		Math.floor(inkheartStat.mtimeMs / 1000),
+	)
+	expect(m4bMetadata!.publicationDate!.toISOString()).toBe(
+		'2004-03-25T00:00:00.000Z',
+	)
 
-	// Test mp3 file
-	const mp3Metadata = await getFileMetadata(
-		path.join(TEST_AUDIO_DIR, 'On the Edge of the Dark Sea of Darkness.mp3'),
+	const mp3Path = path.join(
+		TEST_AUDIO_DIR,
+		'On the Edge of the Dark Sea of Darkness.mp3',
+	)
+	const mp3Stat = await fs.stat(mp3Path)
+	const mp3Metadata = await getFileMetadata(mp3Path)
+	expect(mp3Metadata!.filename).toBe(
+		'On the Edge of the Dark Sea of Darkness.mp3',
+	)
+	expect(mp3Metadata!.title).toBe(
+		'On the Edge of the Dark Sea of Darkness - The Wingfeather Saga, Book 1',
 	)
 	expect(mp3Metadata!.mimeType).toBe('audio/mpeg')
-	expect(mp3Metadata!.sizeBytes).toBeGreaterThan(0)
+	expect(mp3Metadata!.sizeBytes).toBe(mp3Stat.size)
+	expect(mp3Metadata!.fileModifiedAt).toBe(Math.floor(mp3Stat.mtimeMs / 1000))
 
-	// Test mkv video
-	const mkvMetadata = await getFileMetadata(
-		path.join(TEST_VIDEO_DIR, 'Toy Story.mkv'),
-	)
-	expect(mkvMetadata!.mimeType).toMatch(/video/)
+	const mkvPath = path.join(TEST_VIDEO_DIR, 'Toy Story.mkv')
+	const mkvMetadata = await getFileMetadata(mkvPath)
 	expect(mkvMetadata!.filename).toBe('Toy Story.mkv')
+	expect(mkvMetadata!.title).toBe('Toy Story')
+	expect(mkvMetadata!.mimeType).toBe('video/matroska')
 })
 
 test('getFileMetadata returns null for non-existent and non-media files', async () => {
@@ -134,19 +148,30 @@ test('getFileMetadata returns null for non-existent and non-media files', async 
 })
 
 test('scanDirectoryWithMetadata returns complete metadata for all media files', async () => {
-	// Directory with media files should return metadata for each
 	const audioFilesWithMetadata = await scanDirectoryWithMetadata(TEST_AUDIO_DIR)
 	expect(audioFilesWithMetadata.map((file) => file.filename).sort()).toEqual([
 		'Inkheart.m4b',
 		'On the Edge of the Dark Sea of Darkness.mp3',
 	])
-	for (const file of audioFilesWithMetadata) {
-		expect(file.path).toContain(file.filename)
-		expect(file.mimeType).toMatch(/audio/)
-		expect(file.sizeBytes).toBeGreaterThan(0)
+	const byName = new Map(
+		audioFilesWithMetadata.map((file) => [file.filename, file]),
+	)
+	for (const filename of [
+		'Inkheart.m4b',
+		'On the Edge of the Dark Sea of Darkness.mp3',
+	]) {
+		const file = byName.get(filename)!
+		const filePath = path.resolve(TEST_AUDIO_DIR, filename)
+		const stat = await fs.stat(filePath)
+		expect(file.path).toBe(filePath)
+		expect(file.sizeBytes).toBe(stat.size)
+		expect(file.fileModifiedAt).toBe(Math.floor(stat.mtimeMs / 1000))
 	}
+	expect(byName.get('Inkheart.m4b')!.mimeType).toBe('audio/x-m4a')
+	expect(
+		byName.get('On the Edge of the Dark Sea of Darkness.mp3')!.mimeType,
+	).toBe('audio/mpeg')
 
-	// Directory without media files should return empty array
 	const noMediaFiles = await scanDirectoryWithMetadata('./app/db')
 	expect(noMediaFiles).toEqual([])
 })
@@ -174,10 +199,29 @@ test('extractPublicationDate treats year-only values as UTC January 1', () => {
 	)
 	expect(fromCommon!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
 
+	const fromYear = extractPublicationDate(metadataWithCommon({ year: 2020 }))
+	expect(fromYear!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+
 	const fromTrack = extractPublicationDate(
 		metadataWithCommon({}, { matroska: [{ id: 'track:DATE', value: '2020' }] }),
 	)
 	expect(fromTrack!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+
+	const fromNumericTrack = extractPublicationDate(
+		metadataWithCommon({}, { matroska: [{ id: 'track:DATE', value: 2020 }] }),
+	)
+	expect(fromNumericTrack!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+})
+
+test('extractPublicationDate reads a full Matroska track:DATE as UTC midnight', () => {
+	const publicationDate = extractPublicationDate(
+		metadataWithCommon(
+			{},
+			{ matroska: [{ id: 'track:DATE', value: '2023-11-07' }] },
+		),
+	)
+
+	expect(publicationDate!.toISOString()).toBe('2023-11-07T00:00:00.000Z')
 })
 
 test('extractPublicationDate prefers TDRL releasedate over year-only TDRC date', () => {
@@ -190,7 +234,7 @@ test('extractPublicationDate prefers TDRL releasedate over year-only TDRC date',
 		}),
 	)
 
-	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+	expect(publicationDate!.toISOString()).toBe('2026-07-28T00:00:00.000Z')
 })
 
 test('extractPublicationDate prefers releasedate over full common.date', () => {
@@ -201,7 +245,7 @@ test('extractPublicationDate prefers releasedate over full common.date', () => {
 		}),
 	)
 
-	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+	expect(publicationDate!.toISOString()).toBe('2026-07-28T00:00:00.000Z')
 })
 
 test('extractPublicationDate falls back to common.date when releasedate is missing', () => {
@@ -211,7 +255,7 @@ test('extractPublicationDate falls back to common.date when releasedate is missi
 		}),
 	)
 
-	expect(publicationDate!.toISOString().startsWith('2025-03-15')).toBe(true)
+	expect(publicationDate!.toISOString()).toBe('2025-03-15T00:00:00.000Z')
 })
 
 test('extractPublicationDate prefers the estimated publish timestamp over year-only date', () => {
@@ -308,7 +352,7 @@ test('extractPublicationDate keeps a full releasedate over estimated publish', (
 		},
 	)
 
-	expect(publicationDate!.toISOString().startsWith('2026-07-28')).toBe(true)
+	expect(publicationDate!.toISOString()).toBe('2026-07-28T00:00:00.000Z')
 })
 
 test('extractPublicationDate falls back to YYYY-MM folder when estimated publish is missing', () => {
@@ -323,6 +367,36 @@ test('extractPublicationDate falls back to YYYY-MM folder when estimated publish
 	)
 
 	expect(publicationDate!.toISOString()).toBe('2025-10-01T00:00:00.000Z')
+})
+
+test('extractDescription reads Matroska track:COMMENT before iTun* common comments', () => {
+	const description = extractDescription(
+		metadataWithCommon(
+			{
+				comment: [{ language: 'eng', descriptor: 'iTunPGAP', text: '0' }],
+			},
+			{
+				matroska: [{ id: 'track:COMMENT', value: 'Matroska comment' }],
+			},
+		),
+		null,
+	)
+
+	expect(description).toBe('Matroska comment')
+})
+
+test('extractDescription falls back to Matroska track:DESCRIPTION', () => {
+	const description = extractDescription(
+		metadataWithCommon(
+			{},
+			{
+				matroska: [{ id: 'track:DESCRIPTION', value: 'Matroska description' }],
+			},
+		),
+		null,
+	)
+
+	expect(description).toBe('Matroska description')
 })
 
 test('extractDescription ignores Apple iTun* COMM frames', () => {

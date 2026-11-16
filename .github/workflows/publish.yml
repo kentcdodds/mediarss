@@ -91,6 +91,9 @@ jobs:
   build:
     name: 🐳 Build
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      actions: write # type=gha cache export
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v6
@@ -145,6 +148,9 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [validate, e2e, build]
     if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: read
+      actions: write # type=gha cache export
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v6

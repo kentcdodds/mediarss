@@ -122,7 +122,7 @@ export async function updateMediaMetadataTool(input: MediaMetadataToolInput) {
 			updatedFields: persisted,
 			...(skipped.length > 0 ? { skippedFields: skipped } : {}),
 		},
-		isError: false,
+		isError: persisted.length === 0,
 	}
 }
 

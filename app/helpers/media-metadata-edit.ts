@@ -105,7 +105,45 @@ function dateFieldMatches(
 	requested: string,
 	publicationDate: string | null,
 ): boolean {
-	return publicationDate !== null && publicationDate.startsWith(requested)
+	if (publicationDate === null) return false
+	if (/^\d{4}$/.test(requested)) {
+		const parsed = new Date(publicationDate)
+		return (
+			!Number.isNaN(parsed.getTime()) &&
+			parsed.getUTCFullYear() === Number(requested)
+		)
+	}
+	return publicationDate.startsWith(requested)
+}
+
+function splitCommaList(value: string): string[] {
+	return value
+		.split(',')
+		.map((part) => part.trim())
+		.filter(Boolean)
+}
+
+function nullableStringMatches(
+	requested: string,
+	stored: string | null,
+): boolean {
+	if (requested === '') return stored === null || stored === ''
+	return stored === requested
+}
+
+function narratorFieldMatches(
+	requested: string,
+	narrators: string[] | null,
+): boolean {
+	const requestedNames = splitCommaList(requested)
+	if (requestedNames.length === 0) {
+		return narrators === null || narrators.length === 0
+	}
+	const stored = narrators ?? []
+	return (
+		requestedNames.length === stored.length &&
+		requestedNames.every((name, index) => name === stored[index])
+	)
 }
 
 function editableFieldMatches(
@@ -117,9 +155,9 @@ function editableFieldMatches(
 		case 'title':
 			return media.title === requested
 		case 'author':
-			return media.author === requested
+			return nullableStringMatches(String(requested), media.author)
 		case 'description':
-			return media.description === requested
+			return nullableStringMatches(String(requested), media.description)
 		case 'date':
 			return dateFieldMatches(String(requested), media.publicationDate)
 		case 'genre':
@@ -130,32 +168,29 @@ function editableFieldMatches(
 		case 'trackNumber':
 			return media.trackNumber === requested
 		case 'copyright':
-			return media.copyright === requested
+			return nullableStringMatches(String(requested), media.copyright)
 		case 'narrator':
-			return (
-				media.narrators?.includes(String(requested)) === true ||
-				media.narrators?.join(', ') === requested
-			)
+			return narratorFieldMatches(String(requested), media.narrators)
 		case 'album':
-			return media.album === requested
+			return nullableStringMatches(String(requested), media.album)
 		case 'albumArtist':
-			return media.albumArtist === requested
+			return nullableStringMatches(String(requested), media.albumArtist)
 		case 'composer':
-			return media.composer === requested
+			return nullableStringMatches(String(requested), media.composer)
 		case 'publisher':
-			return media.publisher === requested
+			return nullableStringMatches(String(requested), media.publisher)
 		case 'discNumber':
 			return media.discNumber === requested
 		case 'language':
-			return media.language === requested
+			return nullableStringMatches(String(requested), media.language)
 		case 'series':
-			return media.series === requested
+			return nullableStringMatches(String(requested), media.series)
 		case 'seriesPosition':
-			return media.seriesPosition === String(requested)
+			return nullableStringMatches(String(requested), media.seriesPosition)
 		case 'encodedBy':
-			return media.encodedBy === requested
+			return nullableStringMatches(String(requested), media.encodedBy)
 		case 'subtitle':
-			return media.subtitle === requested
+			return nullableStringMatches(String(requested), media.subtitle)
 		default: {
 			const exhaustive: never = field
 			return exhaustive

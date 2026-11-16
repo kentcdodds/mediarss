@@ -139,3 +139,16 @@ test('mkv writes are readable from track: ids', async () => {
 	expect(after?.copyright).toBe('Probe Copyright')
 	expect(after?.discNumber).toBe(2)
 })
+
+test('mkv year-only date round-trips as UTC January 1', async () => {
+	await using copied = await copyFixture(FIXTURES.mkv, 'movie.mkv')
+	const filePath = copied.filePath
+	const before = await getFileMetadata(filePath)
+	expect(before?.mimeType).toMatch(/video/)
+
+	await updateMetadata(filePath, before!.mimeType, { date: '2020' })
+	await deleteCacheByPrefix(`media:${path.resolve(filePath)}`)
+
+	const after = await getFileMetadata(filePath)
+	expect(after?.publicationDate?.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+})

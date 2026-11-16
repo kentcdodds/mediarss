@@ -111,6 +111,32 @@ test('update_media_metadata forwards only editable fields to the shared editor',
 	})
 })
 
+test('update_media_metadata is an error when no requested field persists', async () => {
+	const { updateMediaMetadataTool } = await import('./media-metadata-tools.ts')
+	applyMock.mockResolvedValueOnce({
+		ok: true,
+		response: {
+			media: { title: 'Talk', publicationDate: null, description: null },
+			assignments: [],
+			curatedFeeds: [],
+			directoryFeeds: [],
+		},
+		updatedFields: [],
+	})
+
+	const result = await updateMediaMetadataTool({
+		mediaRoot: 'audio',
+		relativePath: 'Inkheart.m4b',
+		narrator: 'Probe Narrator',
+	})
+
+	expect(result.isError).toBe(true)
+	expect(result.structuredContent).toMatchObject({
+		updatedFields: [],
+		skippedFields: ['narrator'],
+	})
+})
+
 test('metadata tools surface editor errors as MCP tool errors', async () => {
 	const { getMediaMetadataTool, updateMediaMetadataTool } =
 		await import('./media-metadata-tools.ts')

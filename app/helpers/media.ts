@@ -202,13 +202,13 @@ export type MediaFile = InferOutput<typeof MediaFileSchema>
 const CachedMediaFileSchema = object({
 	...MediaFileShape,
 	publicationDate: nullable(string()), // ISO string in cache
-	_cacheVersion: optional(literal(7 as const)), // Increment when schema or extraction changes
+	_cacheVersion: optional(literal(8 as const)), // Increment when schema or extraction changes
 })
 
 type CachedMediaFile = InferOutput<typeof CachedMediaFileSchema>
 
 // Current cache version - increment when MediaFile schema or extraction logic changes
-const CACHE_VERSION = 7 as const
+const CACHE_VERSION = 8 as const
 
 /**
  * Convert a MediaFile to a cacheable format (Date -> ISO string).
@@ -286,6 +286,10 @@ function isYearString(value: string): boolean {
  */
 function isYearNumber(value: number): boolean {
 	return Number.isInteger(value) && value >= 1900 && value <= 2100
+}
+
+function dateFromYearOnly(year: number): Date {
+	return new Date(Date.UTC(year, 0, 1))
 }
 
 /**
@@ -522,28 +526,26 @@ export function extractPublicationDate(
 	const pathConferenceDate = conferenceDateFromPath(inference.path)
 	if (pathConferenceDate) return pathConferenceDate
 
-	// Fall back to year-only dates
-	// Check TXXX:year for year-only
+	// Fall back to year-only dates (UTC so the calendar year survives ISO serialize)
 	if (txxxYear && isYearString(txxxYear)) {
-		const year = parseInt(txxxYear, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(txxxYear, 10))
+	}
+
+	if (trackDate && isYearString(trackDate)) {
+		return dateFromYearOnly(parseInt(trackDate, 10))
 	}
 
 	// Prefer releasedate year over date year when both are year-only
 	if (common.releasedate && isYearString(common.releasedate)) {
-		const year = parseInt(common.releasedate, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(common.releasedate, 10))
 	}
 
-	// Check if date field contains just a year
 	if (common.date && isYearString(common.date)) {
-		const year = parseInt(common.date, 10)
-		return new Date(year, 0, 1)
+		return dateFromYearOnly(parseInt(common.date, 10))
 	}
 
-	// Use year field as a year
 	if (common.year && isYearNumber(common.year)) {
-		return new Date(common.year, 0, 1)
+		return dateFromYearOnly(common.year)
 	}
 
 	return null
@@ -676,8 +678,9 @@ export function extractDescription(
  * 1. json64.narrated_by (comma-separated)
  * 2. TXXX:narrated_by
  * 3. ----:com.apple.iTunes:PERFORMER_NAME
- * 4. TPE3 (ID3v2 conductor/performer - we write this for MP3)
- * 5. track:LEAD_PERFORMER (Matroska; ffmpeg stores performer= under this id)
+ * 4. ----:com.apple.iTunes:NARRATOR (existing tags; ffmpeg drops this on write)
+ * 5. TPE3 (ID3v2 conductor/performer - we write this for MP3)
+ * 6. track:LEAD_PERFORMER (Matroska; ffmpeg stores performer= under this id)
  */
 function extractNarrators(
 	metadata: mm.IAudioMetadata,
@@ -715,7 +718,20 @@ function extractNarrators(
 		if (narrators.length > 0) return narrators
 	}
 
-	// 4. TPE3 - ID3v2 conductor/performer (we write this for MP3)
+	// 4. Apple iTunes narrator freeform (readable on existing files; ffmpeg drops it)
+	const itunesNarrator = getNativeValue(
+		metadata,
+		'----:com.apple.iTunes:NARRATOR',
+	)
+	if (itunesNarrator) {
+		const narrators = itunesNarrator
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean)
+		if (narrators.length > 0) return narrators
+	}
+
+	// 5. TPE3 - ID3v2 conductor/performer (we write this for MP3)
 	const tpe3 = getNativeValue(metadata, 'TPE3')
 	if (tpe3) {
 		const narrators = tpe3
@@ -725,7 +741,7 @@ function extractNarrators(
 		if (narrators.length > 0) return narrators
 	}
 
-	// 5. Matroska performer (ffmpeg writes track:LEAD_PERFORMER)
+	// 6. Matroska performer (ffmpeg writes track:LEAD_PERFORMER)
 	const mkvPerformer = getNativeValue(metadata, 'track:LEAD_PERFORMER')
 	if (mkvPerformer) {
 		const narrators = mkvPerformer

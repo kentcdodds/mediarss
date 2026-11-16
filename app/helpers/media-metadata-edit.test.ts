@@ -221,3 +221,55 @@ test('applyMediaMetadataUpdate rejects invalid input without touching the file',
 
 	expect(updateMetadataMock).not.toHaveBeenCalled()
 })
+
+test('persistedEditableFields matches year-only dates by UTC calendar year', async () => {
+	const { persistedEditableFields, toMediaDetail } =
+		await import('./media-metadata-edit.ts')
+	const filePath = path.join(rootDir, 'Conference', 'talk.mp3')
+	const tokyoLocalYear = toMediaDetail(
+		{
+			...mediaFile(filePath, null),
+			publicationDate: new Date('2019-12-31T15:00:00.000Z'),
+		},
+		'series',
+		'Conference/talk.mp3',
+	)
+	expect(persistedEditableFields({ date: '2020' }, tokyoLocalYear)).toEqual([])
+
+	const utcYear = toMediaDetail(
+		{
+			...mediaFile(filePath, null),
+			publicationDate: new Date('2020-01-01T00:00:00.000Z'),
+		},
+		'series',
+		'Conference/talk.mp3',
+	)
+	expect(persistedEditableFields({ date: '2020' }, utcYear)).toEqual(['date'])
+})
+
+test('persistedEditableFields normalizes narrator lists and empty nullable clears', async () => {
+	const { persistedEditableFields, toMediaDetail } =
+		await import('./media-metadata-edit.ts')
+	const filePath = path.join(rootDir, 'Conference', 'talk.mp3')
+	const withNarrators = toMediaDetail(
+		{
+			...mediaFile(filePath, null),
+			narrators: ['Alice', 'Bob'],
+			series: null,
+			title: 'Talk',
+		},
+		'series',
+		'Conference/talk.mp3',
+	)
+
+	expect(
+		persistedEditableFields({ narrator: 'Alice,Bob' }, withNarrators),
+	).toEqual(['narrator'])
+	expect(
+		persistedEditableFields({ narrator: 'Alice, Bob' }, withNarrators),
+	).toEqual(['narrator'])
+	expect(persistedEditableFields({ series: '' }, withNarrators)).toEqual([
+		'series',
+	])
+	expect(persistedEditableFields({ title: '' }, withNarrators)).toEqual([])
+})

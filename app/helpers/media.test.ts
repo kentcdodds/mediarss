@@ -168,6 +168,18 @@ function metadataWithCommon(
 	}
 }
 
+test('extractPublicationDate treats year-only values as UTC January 1', () => {
+	const fromCommon = extractPublicationDate(
+		metadataWithCommon({ date: '2020' }),
+	)
+	expect(fromCommon!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+
+	const fromTrack = extractPublicationDate(
+		metadataWithCommon({}, { matroska: [{ id: 'track:DATE', value: '2020' }] }),
+	)
+	expect(fromTrack!.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+})
+
 test('extractPublicationDate prefers TDRL releasedate over year-only TDRC date', () => {
 	// Podcast files often have TDRC=2026 (year) and TDRL=2026-07-28 (full date).
 	// music-metadata maps those to common.date and common.releasedate.

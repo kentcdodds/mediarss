@@ -128,9 +128,7 @@ test('mkv writes are readable from track: ids', async () => {
 	expect(after?.narrators).toEqual(['Probe Narrator'])
 	expect(after?.album).toBe('Probe Album')
 	expect(after?.description).toBe('Probe Comment')
-	expect(after?.publicationDate?.toISOString().startsWith('2023-11-07')).toBe(
-		true,
-	)
+	expect(after?.publicationDate?.toISOString()).toBe('2023-11-07T00:00:00.000Z')
 	expect(after?.publisher).toBe('Probe Publisher')
 	expect(after?.language).toBe('en')
 	expect(after?.encodedBy).toBe('Probe Encoder')

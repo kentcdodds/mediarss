@@ -57,7 +57,7 @@ type ModalProps = {
 
 	/**
 	 * Optional footer content (e.g., action buttons).
-	 * If provided, renders in a sticky footer with proper spacing.
+	 * If provided, renders below the scrollable body and does not shrink.
 	 */
 	footer?: RemixNode
 }
@@ -206,7 +206,7 @@ export function Modal(handle: Handle<ModalProps>) {
 							// Store currently focused element to restore later
 							previouslyFocusedElement = document.activeElement
 
-							// Focus the close button (or first focusable element)
+							// Focus the close button
 							const closeButton =
 								node.querySelector<HTMLElement>('[data-modal-close]')
 							if (closeButton) {
@@ -539,7 +539,7 @@ export function ModalButton(handle: Handle<ModalButtonProps>) {
 
 type ModalAlertProps = {
 	/**
-	 * The type of alert. Only error is used.
+	 * The alert type. Only `'error'` is supported.
 	 */
 	type: 'error'
 
@@ -550,7 +550,7 @@ type ModalAlertProps = {
 }
 
 /**
- * A styled alert box for displaying warnings, errors, or info within modals.
+ * A styled error alert box for modal content.
  */
 export function ModalAlert(handle: Handle<ModalAlertProps>) {
 	return renderProps(handle, ({ type, children }) => {
@@ -641,13 +641,13 @@ export function ModalSection(handle: Handle<ModalSectionProps>) {
 
 type ModalListProps = {
 	/**
-	 * List content (typically a series of ModalListItem components).
+	 * List content (typically checkbox or radio rows).
 	 */
 	children: RemixNode
 
 	/**
 	 * Maximum height before scrolling.
-	 * @default '300px'
+	 * @default '60vh'
 	 */
 	maxHeight?: string
 }

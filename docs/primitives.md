@@ -85,8 +85,11 @@ concern; extend it instead of duplicating it.
   `waitForRenderData` (posts `ui-lifecycle-iframe-ready`, then reads
   `payload.renderData` from `ui-lifecycle-iframe-render-data`).
   `media-player.tsx` is the widget UI.
-- `app/components/`, `app/styles/tokens.ts`: shared components and style tokens.
-  CSS variables live in `app/assets/styles.css`.
+- `app/components/`: `modal.tsx` exports `Modal` (`ModalSize`: `sm`/`md`/`lg`),
+  `ModalFooter`, `ModalButton`, `ModalAlert` (`type: 'error'`), `ModalSection`,
+  and `ModalList` (default `maxHeight` `60vh`). Also `search-input.tsx`,
+  `layout.ts`, `props-component.ts`. `app/styles/tokens.ts`: style tokens. CSS
+  variables live in `app/assets/styles.css`.
 
 ## Ops and tooling
 

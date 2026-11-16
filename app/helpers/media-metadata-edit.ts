@@ -160,11 +160,16 @@ function editableFieldMatches(
 			return nullableStringMatches(String(requested), media.description)
 		case 'date':
 			return dateFieldMatches(String(requested), media.publicationDate)
-		case 'genre':
+		case 'genre': {
+			const requestedGenre = String(requested)
+			if (requestedGenre === '') {
+				return media.genres === null || media.genres.length === 0
+			}
 			return (
-				media.genres?.includes(String(requested)) === true ||
-				media.genres?.join(':') === requested
+				media.genres?.includes(requestedGenre) === true ||
+				media.genres?.join(':') === requestedGenre
 			)
+		}
 		case 'trackNumber':
 			return media.trackNumber === requested
 		case 'copyright':

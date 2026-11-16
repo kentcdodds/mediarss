@@ -256,6 +256,7 @@ test('persistedEditableFields normalizes narrator lists and empty nullable clear
 			...mediaFile(filePath, null),
 			narrators: ['Alice', 'Bob'],
 			series: null,
+			genres: null,
 			title: 'Talk',
 		},
 		'series',
@@ -270,6 +271,9 @@ test('persistedEditableFields normalizes narrator lists and empty nullable clear
 	).toEqual(['narrator'])
 	expect(persistedEditableFields({ series: '' }, withNarrators)).toEqual([
 		'series',
+	])
+	expect(persistedEditableFields({ genre: '' }, withNarrators)).toEqual([
+		'genre',
 	])
 	expect(persistedEditableFields({ title: '' }, withNarrators)).toEqual([])
 })

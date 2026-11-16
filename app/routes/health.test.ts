@@ -1,6 +1,7 @@
 import '#app/config/init-env.ts'
 
 import { expect, test } from 'vitest'
+import { consoleError } from '#test/setup.ts'
 import { routes } from '#app/routes.ts'
 import { clearDiagnostics, recordDiagnostic } from '#app/helpers/diagnostics.ts'
 import {
@@ -74,6 +75,7 @@ test('health includes recent diagnostics from failed authorize/CIMD work', async
 })
 
 test('health ?probe=cimd records an outbound CIMD lookup', async () => {
+	consoleError.mockImplementation(() => {})
 	using _diagnostics = withClearedDiagnostics()
 	const originalFetch = globalThis.fetch
 	globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -109,6 +111,7 @@ test('health ?probe=cimd records an outbound CIMD lookup', async () => {
 })
 
 test('health ?probe=cimd coalesces overlapping and cooldown lookups', async () => {
+	consoleError.mockImplementation(() => {})
 	using _diagnostics = withClearedDiagnostics()
 	resetCimdProbeState()
 	let fetches = 0

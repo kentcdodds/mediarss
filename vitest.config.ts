@@ -4,6 +4,7 @@ export default defineConfig({
 	test: {
 		include: ['app/**/*.test.{ts,tsx}', 'tools/**/*.test.ts'],
 		globalSetup: ['./test/global-setup.ts'],
+		setupFiles: ['./test/setup.ts'],
 		maxWorkers: 1,
 	},
 })

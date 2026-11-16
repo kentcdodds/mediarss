@@ -16,7 +16,9 @@ runs that command, Control CLI smoke + Playwright, and a Docker image build and
   `prepare` script). Pre-commit runs the format and lint checks; pre-push runs
   the typecheck. If they are missing, run `npm run prepare`.
 - Tests run against throwaway databases (`test/global-setup.ts`), never your
-  `./data` files.
+  `./data` files. `test/setup.ts` is a vitest `setupFiles` entry: it resets rate
+  limiters and fails the test if `console.error` / `console.warn` fire
+  unexpectedly.
 
 ## Runtime and tooling
 

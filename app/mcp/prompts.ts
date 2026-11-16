@@ -7,18 +7,11 @@ import { type McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { getMediaRoots } from '#app/config/env.ts'
 import { getItemsForFeed } from '#app/db/feed-items.ts'
+import { formatIsoDateFromUnixSeconds } from '#app/helpers/format.ts'
 import { type FeedItem } from '#app/db/types.ts'
 import { type AuthInfo, hasScope } from './auth.ts'
 import { getAllFeeds, getFeedById } from './feed-helpers.ts'
 import { promptsMetadata } from './metadata.ts'
-
-/**
- * Format a date timestamp for human-readable output.
- */
-function formatDate(timestamp: number): string {
-	const isoString = new Date(timestamp * 1000).toISOString()
-	return isoString.split('T')[0] ?? isoString
-}
 
 /**
  * Initialize MCP prompts based on authorized scopes.
@@ -66,7 +59,7 @@ ${
 		: feeds
 				.map(
 					(f) =>
-						`- **${f.name}** (${f.type}) — ID: \`${f.id}\`, Created: ${formatDate(f.createdAt)}${f.description ? `\n  ${f.description}` : ''}`,
+						`- **${f.name}** (${f.type}) — ID: \`${f.id}\`, Created: ${formatIsoDateFromUnixSeconds(f.createdAt)}${f.description ? `\n  ${f.description}` : ''}`,
 				)
 				.join('\n')
 }
@@ -152,7 +145,7 @@ Please use one of the available feed IDs above, or use \`list_feeds\` to see all
 | Name | ${feed.name} |
 | Type | ${feed.type} |
 | ID | \`${feed.id}\` |
-| Created | ${formatDate(feed.createdAt)} |
+| Created | ${formatIsoDateFromUnixSeconds(feed.createdAt)} |
 | Description | ${feed.description || '*No description*'} |
 
 ${

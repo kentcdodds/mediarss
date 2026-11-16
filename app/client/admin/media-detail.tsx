@@ -33,6 +33,7 @@ import {
 	getMediaEditPath,
 	getMediaFetchPaths,
 } from './edit-route-paths.ts'
+import { LoadingSpinner } from './loading-spinner.tsx'
 import { type AdminRoutePageProps } from './loader-data.ts'
 
 type MediaInfo = {
@@ -1820,37 +1821,6 @@ export function MediaDetail(handle: Handle<AdminRoutePageProps>) {
 
 function isBrowser() {
 	return typeof window !== 'undefined'
-}
-
-function LoadingSpinner() {
-	return () => (
-		<div
-			mix={[
-				rmxCss({
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					padding: spacing['2xl'],
-				}),
-			]}
-		>
-			<div
-				mix={[
-					rmxCss({
-						width: '40px',
-						height: '40px',
-						border: `3px solid ${colors.border}`,
-						borderTopColor: colors.primary,
-						borderRadius: '50%',
-						animation: 'spin 1s linear infinite',
-						'@keyframes spin': {
-							to: { transform: 'rotate(360deg)' },
-						},
-					}),
-				]}
-			/>
-		</div>
-	)
 }
 
 function ErrorMessage(handle: Handle<{ message: string }>) {

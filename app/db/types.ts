@@ -14,7 +14,6 @@ export type CuratedFeed = CamelCaseRow<TableRow<typeof curatedFeedsTable>>
 export type FeedItem = CamelCaseRow<TableRow<typeof feedItemsTable>>
 
 export type SortOrder = DirectoryFeed['sortOrder']
-export type FeedType = NonNullable<DirectoryFeed['feedType']>
 
 type FeedAnalyticsEvent = CamelCaseRow<
 	TableRow<typeof feedAnalyticsEventsTable>

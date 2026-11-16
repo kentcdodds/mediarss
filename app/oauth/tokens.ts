@@ -1,6 +1,6 @@
 import * as jose from 'jose'
 import { generateId } from '#app/helpers/crypto.ts'
-import { getKeyId, getPrivateKey } from './keys.ts'
+import { getKeyId, getPrivateKey, getSigningKeyPair } from './keys.ts'
 
 // Access tokens expire after 1 hour
 const ACCESS_TOKEN_EXPIRY_SECONDS = 3600
@@ -68,9 +68,7 @@ export async function verifyAccessToken(
 	issuer: string,
 ): Promise<AccessTokenPayload | null> {
 	try {
-		const { publicKey } = await import('./keys.ts').then((m) =>
-			m.getSigningKeyPair(),
-		)
+		const { publicKey } = await getSigningKeyPair()
 		const jwk = await jose.importJWK(publicKey, 'RS256')
 
 		const { payload } = await jose.jwtVerify(token, jwk, {

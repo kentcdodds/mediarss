@@ -48,6 +48,3 @@ export default function removeAccents(input: string): string {
 			(character) => specialCharacters[character] ?? character,
 		)
 }
-
-export const has = (input: string) => removeAccents(input) !== input
-export const remove = removeAccents

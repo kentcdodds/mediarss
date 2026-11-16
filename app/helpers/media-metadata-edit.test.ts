@@ -155,9 +155,32 @@ test('applyMediaMetadataUpdate writes only the provided fields and invalidates t
 	expect(deleteCacheByPrefixMock).toHaveBeenCalledWith(`media:${filePath}`)
 	expect(result).toMatchObject({
 		ok: true,
+		updatedFields: ['description'],
 		response: {
 			media: { description, title: 'The Sustaining of Church Officers' },
 		},
+	})
+})
+
+test('applyMediaMetadataUpdate reports only fields that actually persisted', async () => {
+	const { applyMediaMetadataUpdate } = await import('./media-metadata-edit.ts')
+	const filePath = path.join(rootDir, 'Conference', 'talk.mp3')
+	getFileMetadataMock
+		.mockImplementationOnce(async () => mediaFile(filePath, null))
+		.mockImplementationOnce(async () => ({
+			...mediaFile(filePath, null),
+			series: 'Wingfeather',
+		}))
+
+	const result = await applyMediaMetadataUpdate(
+		'series',
+		'Conference/talk.mp3',
+		{ series: 'Wingfeather', narrator: 'Andrew Peterson' },
+	)
+
+	expect(result).toMatchObject({
+		ok: true,
+		updatedFields: ['series'],
 	})
 })
 

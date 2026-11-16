@@ -91,6 +91,7 @@ test('update_media_metadata forwards only editable fields to the shared editor',
 			curatedFeeds: [],
 			directoryFeeds: [],
 		},
+		updatedFields: ['description'],
 	})
 
 	const result = await updateMediaMetadataTool({

@@ -17,15 +17,15 @@ export type EditableMetadata = {
 	trackNumber?: number // maps to "track" tag
 	copyright?: string
 	// Additional fields
-	narrator?: string // maps to TPE3 (MP3), custom iTunes NARRATOR (MP4), or performer (MKV)
+	narrator?: string // maps to TPE3 (MP3) or performer (MKV); ffmpeg drops the mp4 iTunes key
 	album?: string
 	albumArtist?: string // maps to "album_artist" tag
 	composer?: string
 	publisher?: string
 	discNumber?: number // maps to "disc" tag
 	language?: string
-	series?: string // maps to "show" or "series" tag
-	seriesPosition?: string // maps to "episode_sort" or "series-part" tag
+	series?: string // maps to "show" (mp4/mkv) or "series" (mp3 TXXX)
+	seriesPosition?: string // maps to "episode_sort" (mp4/mkv) or "series-part" (mp3 TXXX)
 	encodedBy?: string // maps to "encoded_by" tag
 	subtitle?: string // secondary title
 }
@@ -51,8 +51,8 @@ const TAG_MAPPINGS = {
 		publisher: 'publisher',
 		discNumber: 'disc',
 		language: 'language',
-		series: 'TXXX:series', // Custom tag for series name
-		seriesPosition: 'TXXX:series-part', // Custom tag for series position
+		series: 'series', // stored as TXXX:series (a TXXX: prefix here becomes TXXX:TXXX:series)
+		seriesPosition: 'series-part', // stored as TXXX:series-part
 		encodedBy: 'encoded_by',
 		subtitle: 'TIT3', // ID3v2 subtitle/description refinement
 	},
@@ -65,7 +65,7 @@ const TAG_MAPPINGS = {
 		genre: 'genre',
 		trackNumber: 'track',
 		copyright: 'copyright',
-		narrator: '----:com.apple.iTunes:NARRATOR', // Custom iTunes tag for narrator
+		narrator: '----:com.apple.iTunes:NARRATOR', // ffmpeg 6.1 drops this; music-metadata never sees it
 		album: 'album',
 		albumArtist: 'album_artist',
 		composer: 'composer',
@@ -112,7 +112,12 @@ function getFormatType(mimeType: string): 'mp3' | 'mp4' | 'mkv' | null {
 		mimeType === 'video/mp4'
 	)
 		return 'mp4'
-	if (mimeType === 'video/x-matroska' || mimeType === 'audio/x-matroska')
+	if (
+		mimeType === 'video/x-matroska' ||
+		mimeType === 'audio/x-matroska' ||
+		mimeType === 'video/matroska' ||
+		mimeType === 'audio/matroska'
+	)
 		return 'mkv'
 	return null
 }

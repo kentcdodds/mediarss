@@ -97,19 +97,31 @@ export async function updateMediaMetadataTool(input: MediaMetadataToolInput) {
 	const result = await applyMediaMetadataUpdate(mediaRoot, relativePath, update)
 	if (!result.ok) return errorResult(result.error, result.details)
 	const { media, assignments } = result.response
-	const changed = Object.keys(update)
+	const persisted = result.updatedFields
+	const skipped = Object.keys(update).filter(
+		(field) => !persisted.includes(field as (typeof persisted)[number]),
+	)
 	const lines = [
-		`✅ Updated ${changed.join(', ')} on ${mediaRoot}:${relativePath}`,
+		persisted.length > 0
+			? `✅ Updated ${persisted.join(', ')} on ${mediaRoot}:${relativePath}`
+			: `⚠️ No fields were stored on ${mediaRoot}:${relativePath}`,
 		'',
 		`- **Title**: ${media.title}`,
 		`- **Publication date**: ${media.publicationDate ?? '—'}`,
 		`- **Description**: ${media.description ?? '—'}`,
-		'',
-		'Next: Use `get_media_metadata` to verify the change.',
 	]
+	if (skipped.length > 0) {
+		lines.push('', `⚠️ Not stored for this file format: ${skipped.join(', ')}`)
+	}
+	lines.push('', 'Next: Use `get_media_metadata` to verify the change.')
 	return {
 		content: [{ type: 'text' as const, text: lines.join('\n') }],
-		structuredContent: { media, assignments, updatedFields: changed },
+		structuredContent: {
+			media,
+			assignments,
+			updatedFields: persisted,
+			...(skipped.length > 0 ? { skippedFields: skipped } : {}),
+		},
 		isError: false,
 	}
 }

@@ -6,9 +6,8 @@ outside the app.
 
 ## 1. Find the last good image
 
-A successful push to `main` or `dev` publishes
-`kentcdodds/mediarss:sha-<full sha>`. A successful push to `main` also moves
-`latest`. Version tags (`v*`) publish `:<version>`.
+A successful push to `main` publishes `kentcdodds/mediarss:sha-<full sha>` and
+moves `latest`. Version tags (`v*`) publish `:<version>`.
 
 ```sh
 git log --oneline -10 origin/main         # pick the last good commit

@@ -6,9 +6,11 @@ page holds the details.
 ## Gate
 
 `npm run validate` is the only local gate: format check, lint, typecheck, and
-tests (including the Feature Map check). CI (`.github/workflows/publish.yml`)
-runs that command, Control CLI smoke + Playwright, and a Docker image build and
-`/health` smoke as independent jobs. Do not commit if validate fails.
+tests (including the Feature Map check). Tag-write tests spawn `ffmpeg`; install
+it locally (`apt-get install ffmpeg` or `brew install ffmpeg`). CI
+(`.github/workflows/publish.yml`) installs ffmpeg, then runs that command,
+Control CLI smoke + Playwright, and a Docker image build and `/health` smoke as
+independent jobs. Do not commit if validate fails.
 
 - `npm run check` auto-fixes format and lint (`npm run format`, `npm run lint`
   individually).

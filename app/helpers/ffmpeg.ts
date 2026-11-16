@@ -262,8 +262,8 @@ export async function updateMetadata(
 			const stderr =
 				error && typeof error === 'object' && 'stderr' in error
 					? String(error.stderr)
-					: String(error)
-			throw new Error(`FFmpeg failed: ${stderr}`)
+					: ''
+			throw new Error(`FFmpeg failed: ${stderr || String(error)}`)
 		}
 
 		// Verify temp file was created and has content
